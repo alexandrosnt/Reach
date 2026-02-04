@@ -1,0 +1,38 @@
+# Dependencies
+node_modules/
+
+# Build output
+build/
+dist/
+.svelte-kit/
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/WixTools/
+src-tauri/gen/
+
+# Environment
+.env
+.env.*
+!.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+npm-debug.log*
+
+# Credentials (never commit)
+*.enc
+*.key
+*.pem

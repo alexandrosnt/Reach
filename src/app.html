@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en" class="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<link rel="icon" href="%sveltekit.assets%/favicon.png" />
+		<title>Reach</title>
+		<style>
+			body { margin: 0; background: #0a0a0a; }
+			#preloader {
+				position: fixed;
+				inset: 0;
+				z-index: 9999;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				justify-content: center;
+				gap: 20px;
+				background: #0a0a0a;
+				transition: opacity 0.4s ease, visibility 0.4s ease;
+			}
+			#preloader.hidden {
+				opacity: 0;
+				visibility: hidden;
+				pointer-events: none;
+			}
+			#preloader .logo {
+				width: 56px;
+				height: 56px;
+				opacity: 0;
+				animation: logoIn 0.6s ease 0.1s forwards;
+			}
+			#preloader .app-name {
+				font-family: 'Inter', system-ui, -apple-system, sans-serif;
+				font-size: 15px;
+				font-weight: 500;
+				letter-spacing: 0.5px;
+				color: #86868b;
+				opacity: 0;
+				animation: logoIn 0.5s ease 0.3s forwards;
+			}
+			#preloader .loader {
+				width: 24px;
+				height: 24px;
+				border: 2px solid rgba(255,255,255,0.06);
+				border-top-color: #0a84ff;
+				border-radius: 50%;
+				opacity: 0;
+				animation: logoIn 0.4s ease 0.5s forwards, spin 0.8s linear 0.5s infinite;
+			}
+			@keyframes logoIn {
+				to { opacity: 1; }
+			}
+			@keyframes spin {
+				to { transform: rotate(360deg); }
+			}
+		</style>
+		%sveltekit.head%
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div id="preloader">
+			<svg class="logo" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+				<!-- Minimal "reach" icon: a rounded terminal cursor with a signal arc -->
+				<rect x="8" y="12" width="40" height="32" rx="8" stroke="#f5f5f7" stroke-width="2" fill="none" opacity="0.15"/>
+				<rect x="8" y="12" width="40" height="32" rx="8" fill="#1c1c1e"/>
+				<path d="M18 32l6-8 6 8" stroke="#0a84ff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+				<line x1="32" y1="32" x2="38" y2="32" stroke="#0a84ff" stroke-width="2.5" stroke-linecap="round" opacity="0.5"/>
+				<!-- Signal arcs -->
+				<path d="M40 16c3 2 5 5.5 5 10s-2 8-5 10" stroke="#0a84ff" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.35"/>
+				<path d="M43 13c4.5 3 7.5 8 7.5 15s-3 12-7.5 15" stroke="#0a84ff" stroke-width="1.5" stroke-linecap="round" fill="none" opacity="0.18"/>
+			</svg>
+			<span class="app-name">Reach</span>
+			<div class="loader"></div>
+		</div>
+		<div style="display: contents">%sveltekit.body%</div>
+	</body>
+</html>
