@@ -39,10 +39,9 @@ rand = "0.8"
 zeroize = { version = "1", features = ["derive"] }
 base64 = "0.22"
 
-# PTY
+# PTY (desktop only)
+[target.'cfg(not(target_os = "android"))'.dependencies]
 portable-pty = "0.8"
-
-# Serial
 serialport = "4"
 
 # HTTP (AI API proxy)

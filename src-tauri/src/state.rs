@@ -1,10 +1,14 @@
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
+#[cfg(desktop)]
+use std::sync::Mutex;
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 
 use crate::monitoring::collector::MonitoringCollector;
+#[cfg(desktop)]
 use crate::pty::manager::PtyManager;
+#[cfg(desktop)]
 use crate::serial::port::SerialManager;
 use crate::ssh::client::SshManager;
 use crate::tunnel::manager::TunnelManager;
@@ -123,9 +127,11 @@ pub struct AppState {
     pub saved_playbooks: Arc<RwLock<HashMap<String, SavedPlaybook>>>,
     pub playbook_runs: Arc<RwLock<HashMap<String, PlaybookRun>>>,
     pub master_key: Arc<RwLock<Option<Vec<u8>>>>,
+    #[cfg(desktop)]
     pub pty_manager: Arc<Mutex<PtyManager>>,
     pub monitoring_collector: Arc<tokio::sync::Mutex<MonitoringCollector>>,
     pub tunnel_manager: Arc<tokio::sync::Mutex<TunnelManager>>,
+    #[cfg(desktop)]
     pub serial_manager: Arc<tokio::sync::Mutex<SerialManager>>,
 }
 
@@ -141,9 +147,11 @@ impl AppState {
             saved_playbooks: Arc::new(RwLock::new(HashMap::new())),
             playbook_runs: Arc::new(RwLock::new(HashMap::new())),
             master_key: Arc::new(RwLock::new(None)),
+            #[cfg(desktop)]
             pty_manager: Arc::new(Mutex::new(PtyManager::new())),
             monitoring_collector: Arc::new(tokio::sync::Mutex::new(MonitoringCollector::new())),
             tunnel_manager: Arc::new(tokio::sync::Mutex::new(TunnelManager::new())),
+            #[cfg(desktop)]
             serial_manager: Arc::new(tokio::sync::Mutex::new(SerialManager::new())),
         }
     }
