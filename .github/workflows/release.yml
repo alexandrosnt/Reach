@@ -109,10 +109,52 @@ jobs:
       - name: Initialize Android project
         run: pnpm tauri android init
 
+      - name: Generate signing keystore
+        run: |
+          keytool -genkey -v \
+            -keystore ${{ runner.temp }}/release.keystore \
+            -alias reach \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass reachapp -keypass reachapp \
+            -dname "CN=Reach,O=Reach,L=Unknown,ST=Unknown,C=US"
+
+      - name: Configure signing in Gradle
+        run: |
+          cat >> src-tauri/gen/android/app/build.gradle.kts << 'GRADLE'
+
+          android {
+              signingConfigs {
+                  create("release") {
+                      storeFile = file("${{ runner.temp }}/release.keystore")
+                      storePassword = "reachapp"
+                      keyAlias = "reach"
+                      keyPassword = "reachapp"
+                  }
+              }
+              buildTypes {
+                  getByName("release") {
+                      signingConfig = signingConfigs.getByName("release")
+                  }
+              }
+          }
+          GRADLE
+
       - name: Build Android APK
         run: pnpm tauri android build --apk
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
+
+      - name: Sign APK with apksigner
+        run: |
+          BUILD_TOOLS=$(ls -d $ANDROID_SDK_ROOT/build-tools/*/ | sort -V | tail -1)
+          APK=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -1)
+          ${BUILD_TOOLS}apksigner sign \
+            --ks ${{ runner.temp }}/release.keystore \
+            --ks-key-alias reach \
+            --ks-pass pass:reachapp \
+            --key-pass pass:reachapp \
+            "$APK"
+          ${BUILD_TOOLS}apksigner verify "$APK"
 
       - name: Upload APK to release
         uses: softprops/action-gh-release@v2
