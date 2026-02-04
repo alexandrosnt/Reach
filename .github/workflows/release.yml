@@ -5,6 +5,9 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  contents: write
+
 jobs:
   build-desktop:
     strategy:
@@ -15,7 +18,7 @@ jobs:
             target: x86_64-pc-windows-msvc
           - platform: macos-latest
             target: aarch64-apple-darwin
-          - platform: macos-15-large
+          - platform: macos-15-intel
             target: x86_64-apple-darwin
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
@@ -67,6 +70,7 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -116,11 +120,10 @@ jobs:
           tag_name: ${{ github.ref_name }}
           draft: true
           files: src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   build-ios:
     runs-on: macos-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -180,7 +183,7 @@ jobs:
           cp $PP_PATH ~/Library/MobileDevice/Provisioning\ Profiles/
 
       - name: Build iOS IPA
-        run: pnpm tauri ios build --export-method debug
+        run: pnpm tauri ios build --export-method debugging
         env:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
@@ -190,19 +193,13 @@ jobs:
           tag_name: ${{ github.ref_name }}
           draft: true
           files: src-tauri/gen/apple/build/**/*.ipa
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   publish-release:
-    needs: [build-desktop, build-android, build-ios]
+    needs: [build-desktop]
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           draft: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
