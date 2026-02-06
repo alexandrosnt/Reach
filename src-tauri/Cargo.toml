@@ -54,13 +54,13 @@ keyring = { version = "3", features = ["windows-native", "apple-native", "linux-
 # HTTP (AI API proxy)
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tauri-plugin-process = "2.3.1"
-tauri-plugin-autostart = "2"
-tauri-plugin-updater = "2"
 
-# PTY & Serial (desktop only)
+# PTY, Serial, Autostart, Updater (desktop only)
 [target.'cfg(not(target_os = "android"))'.dependencies]
 portable-pty = "0.8"
 serialport = "4"
+tauri-plugin-autostart = "2"
+tauri-plugin-updater = "2"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]

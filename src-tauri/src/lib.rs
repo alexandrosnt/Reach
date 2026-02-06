@@ -57,12 +57,17 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_autostart::init(
-            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
-            None,
-        ))
         .manage(AppState::new());
+
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_autostart::init(
+                tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+                None,
+            ));
+    }
 
     #[cfg(desktop)]
     {
@@ -397,6 +402,7 @@ pub fn run() {
                 let app_state = window.state::<AppState>();
                 if app_state.close_to_tray.load(Ordering::Relaxed) {
                     api.prevent_close();
+                    #[cfg(desktop)]
                     let _ = window.hide();
                 }
             }
