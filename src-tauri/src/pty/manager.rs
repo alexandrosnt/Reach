@@ -77,6 +77,11 @@ impl PtyManager {
 
         let mut cmd = CommandBuilder::new(&shell_path);
 
+        // Set TERM so that programs like clear, htop, vim work correctly.
+        // xterm-256color matches the xterm.js frontend.
+        cmd.env("TERM", "xterm-256color");
+        cmd.env("COLORTERM", "truecolor");
+
         // On Windows, pass -NoLogo to PowerShell for a cleaner experience.
         #[cfg(target_os = "windows")]
         {

@@ -7,16 +7,18 @@
 	interface Props {
 		open: boolean;
 		editSession?: SessionConfig;
+		vaultId?: string | null; // Which vault to save to (null = private)
 		onsave?: () => void;
 	}
 
-	let { open = $bindable(), editSession, onsave }: Props = $props();
+	let { open = $bindable(), editSession, vaultId = null, onsave }: Props = $props();
 
 	let name = $state('');
 	let host = $state('');
 	let portStr = $state('22');
 	let username = $state('root');
 	let authType = $state<'Password' | 'Key' | 'Agent'>('Password');
+	let password = $state('');
 	let keyPath = $state('');
 	let keyPassphrase = $state('');
 	let tagsStr = $state('');
@@ -34,7 +36,9 @@
 			portStr = String(editSession.port);
 			username = editSession.username;
 			authType = editSession.auth_method.type;
+			password = editSession.auth_method.password ?? '';
 			keyPath = editSession.auth_method.path ?? '';
+			keyPassphrase = editSession.auth_method.passphrase ?? '';
 			tagsStr = editSession.tags.join(', ');
 		} else {
 			name = '';
@@ -42,6 +46,7 @@
 			portStr = '22';
 			username = 'root';
 			authType = 'Password';
+			password = '';
 			keyPath = '';
 			keyPassphrase = '';
 			tagsStr = '';
@@ -55,9 +60,11 @@
 		error = undefined;
 
 		const port = parseInt(portStr, 10) || 22;
-		const authMethod: AuthMethod = authType === 'Key'
-			? { type: 'Key', path: keyPath }
-			: { type: authType };
+		const authMethod: AuthMethod = authType === 'Password'
+			? { type: 'Password', password: password || undefined }
+			: authType === 'Key'
+				? { type: 'Key', path: keyPath, passphrase: keyPassphrase || undefined }
+				: { type: 'Agent' };
 		const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
 
 		try {
@@ -80,6 +87,7 @@
 					authMethod: authMethod,
 					folderId: null,
 					tags,
+					vaultId,
 				});
 			}
 			onsave?.();
@@ -146,9 +154,11 @@
 			</div>
 		</div>
 
-		{#if authType === 'Key'}
+		{#if authType === 'Password'}
+			<Input label="Password (optional)" bind:value={password} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
+		{:else if authType === 'Key'}
 			<Input label="Key Path" bind:value={keyPath} placeholder="~/.ssh/id_rsa" disabled={saving} />
-			<Input label="Passphrase (optional)" bind:value={keyPassphrase} type="password" disabled={saving} />
+			<Input label="Passphrase (optional)" bind:value={keyPassphrase} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
 		{/if}
 
 		<Input label="Tags (comma-separated)" bind:value={tagsStr} placeholder="production, web, linux" disabled={saving} />

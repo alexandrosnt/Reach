@@ -1,3 +1,6 @@
+import * as settingsIpc from '$lib/ipc/settings';
+import type { AppSettings } from '$lib/ipc/settings';
+
 export interface Settings {
 	theme: 'dark' | 'light' | 'system';
 	fontSize: number;
@@ -5,6 +8,13 @@ export interface Settings {
 	defaultShell: string;
 	openLastSession: boolean;
 	locale: string;
+}
+
+/** Secure settings stored encrypted in vault (API keys etc.) */
+export interface SecureSettings {
+	openrouterApiKey: string | null;
+	openrouterUrl: string | null;
+	defaultAiModel: string | null;
 }
 
 const STORAGE_KEY = 'reach-settings';
@@ -19,6 +29,16 @@ const defaults: Settings = {
 };
 
 let settings = $state<Settings>({ ...defaults });
+
+// Secure settings (API keys) - stored encrypted in vault
+const secureDefaults: SecureSettings = {
+	openrouterApiKey: null,
+	openrouterUrl: null,
+	defaultAiModel: null
+};
+let secureSettings = $state<SecureSettings>({ ...secureDefaults });
+let secureLoading = $state(false);
+let secureError = $state<string | null>(null);
 
 export function getSettings(): Settings {
 	return settings;
@@ -56,4 +76,83 @@ export function saveSettings(): void {
 	} catch {
 		// Storage might be full or unavailable
 	}
+}
+
+// --- Secure Settings (API keys in encrypted vault) ---
+
+/** Get secure settings (read-only). */
+export function getSecureSettings(): SecureSettings {
+	return secureSettings;
+}
+
+/** Check if secure settings are loading. */
+export function isSecureLoading(): boolean {
+	return secureLoading;
+}
+
+/** Get secure settings error. */
+export function getSecureError(): string | null {
+	return secureError;
+}
+
+/** Check if API key is configured. */
+export function hasApiKey(): boolean {
+	return !!secureSettings.openrouterApiKey;
+}
+
+/** Get OpenRouter API key. */
+export function getOpenRouterApiKey(): string | null {
+	return secureSettings.openrouterApiKey;
+}
+
+/** Get OpenRouter URL (with default). */
+export function getOpenRouterUrl(): string {
+	return secureSettings.openrouterUrl ?? 'https://openrouter.ai/api/v1/chat/completions';
+}
+
+/** Get default AI model (with default). */
+export function getDefaultAiModel(): string {
+	return secureSettings.defaultAiModel ?? 'anthropic/claude-3.5-sonnet';
+}
+
+/** Load secure settings from vault. Call after vault unlock. */
+export async function loadSecureSettings(): Promise<void> {
+	secureLoading = true;
+	secureError = null;
+
+	try {
+		const loaded = await settingsIpc.getAll();
+		secureSettings.openrouterApiKey = loaded.openrouterApiKey;
+		secureSettings.openrouterUrl = loaded.openrouterUrl;
+		secureSettings.defaultAiModel = loaded.defaultAiModel;
+	} catch (e) {
+		secureError = e instanceof Error ? e.message : String(e);
+	} finally {
+		secureLoading = false;
+	}
+}
+
+/** Set OpenRouter API key. O(1). */
+export async function setOpenRouterApiKey(apiKey: string): Promise<void> {
+	await settingsIpc.set(settingsIpc.SETTING_KEYS.OPENROUTER_API_KEY, apiKey);
+	secureSettings.openrouterApiKey = apiKey;
+}
+
+/** Set OpenRouter URL. O(1). */
+export async function setOpenRouterUrl(url: string): Promise<void> {
+	await settingsIpc.set(settingsIpc.SETTING_KEYS.OPENROUTER_URL, url);
+	secureSettings.openrouterUrl = url;
+}
+
+/** Set default AI model. O(1). */
+export async function setDefaultAiModel(model: string): Promise<void> {
+	await settingsIpc.set(settingsIpc.SETTING_KEYS.DEFAULT_AI_MODEL, model);
+	secureSettings.defaultAiModel = model;
+}
+
+/** Clear secure settings (on vault lock). */
+export function clearSecureSettings(): void {
+	secureSettings.openrouterApiKey = null;
+	secureSettings.openrouterUrl = null;
+	secureSettings.defaultAiModel = null;
 }

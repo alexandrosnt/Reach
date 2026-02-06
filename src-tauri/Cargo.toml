@@ -1,6 +1,6 @@
 [package]
 name = "reach"
-version = "0.1.0"
+version = "0.1.1"
 description = "Cross-platform SSH & Remote Management Tool"
 authors = ["Reach Contributors"]
 edition = "2021"
@@ -34,13 +34,26 @@ async-trait = "0.1"
 
 # Encryption
 aes-gcm = "0.10"
-argon2 = "0.5"
+argon2 = { version = "0.5", features = ["std"] }
 rand = "0.8"
 zeroize = { version = "1", features = ["derive"] }
 base64 = "0.22"
+chacha20poly1305 = "0.10"
+hkdf = "0.12"
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+secrecy = { version = "0.10", features = ["serde"] }
+
+# Vault storage
+libsql = "0.6"
+dirs = "5"
+sha2 = "0.10"
+# Keychain/credential storage
+# NOTE: Not available on Android - needs tauri-plugin-biometric for Android Keystore
+keyring = { version = "3", features = ["windows-native", "apple-native", "linux-native"] }
 
 # HTTP (AI API proxy)
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tauri-plugin-process = "2.3.1"
 
 # PTY & Serial (desktop only)
 [target.'cfg(not(target_os = "android"))'.dependencies]

@@ -3,6 +3,8 @@
 	import GeneralTab from './GeneralTab.svelte';
 	import AppearanceTab from './AppearanceTab.svelte';
 	import SecurityTab from './SecurityTab.svelte';
+	import SyncTab from './SyncTab.svelte';
+	import BackupTab from './BackupTab.svelte';
 	import AITab from './AITab.svelte';
 
 	interface Props {
@@ -12,12 +14,14 @@
 
 	let { open, onclose }: Props = $props();
 
-	type TabId = 'general' | 'appearance' | 'security' | 'ai';
+	type TabId = 'general' | 'appearance' | 'security' | 'sync' | 'backup' | 'ai';
 
 	const tabs: { id: TabId; label: string }[] = [
 		{ id: 'general', label: 'General' },
 		{ id: 'appearance', label: 'Appearance' },
 		{ id: 'security', label: 'Security' },
+		{ id: 'sync', label: 'Sync' },
+		{ id: 'backup', label: 'Backup' },
 		{ id: 'ai', label: 'AI' }
 	];
 
@@ -45,6 +49,10 @@
 				<AppearanceTab />
 			{:else if activeTabId === 'security'}
 				<SecurityTab />
+			{:else if activeTabId === 'sync'}
+				<SyncTab />
+			{:else if activeTabId === 'backup'}
+				<BackupTab />
 			{:else if activeTabId === 'ai'}
 				<AITab />
 			{/if}

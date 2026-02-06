@@ -7,12 +7,23 @@
 		getModels,
 		getModelsLoading,
 		getModelsError,
-		fetchModels
+		fetchModels,
+		loadSecureAISettings
 	} from '$lib/state/ai.svelte';
+	import { isLocked } from '$lib/state/vault.svelte';
 
 	const aiSettings = getAISettings();
 
 	let searchQuery = $state('');
+	let savingApiKey = $state(false);
+	let apiKeyError = $state<string | null>(null);
+
+	// Load secure settings when vault is unlocked
+	$effect(() => {
+		if (!isLocked()) {
+			loadSecureAISettings();
+		}
+	});
 
 	const filteredModels = $derived.by(() => {
 		const models = getModels();
@@ -23,20 +34,29 @@
 		);
 	});
 
-	function onEnabledChange(checked: boolean) {
-		updateAISetting('enabled', checked);
+	async function onEnabledChange(checked: boolean) {
+		await updateAISetting('enabled', checked);
 	}
 
-	function onApiKeyInput(e: Event & { currentTarget: HTMLInputElement }) {
-		updateAISetting('apiKey', e.currentTarget.value);
+	async function onApiKeyInput(e: Event & { currentTarget: HTMLInputElement }) {
+		const value = e.currentTarget.value;
+		savingApiKey = true;
+		apiKeyError = null;
+		try {
+			await updateAISetting('apiKey', value);
+		} catch (err) {
+			apiKeyError = err instanceof Error ? err.message : String(err);
+		} finally {
+			savingApiKey = false;
+		}
 	}
 
 	async function onValidate() {
 		await fetchModels();
 	}
 
-	function selectModel(id: string) {
-		updateAISetting('selectedModel', id);
+	async function selectModel(id: string) {
+		await updateAISetting('selectedModel', id);
 	}
 
 	function formatContext(length: number): string {
@@ -96,10 +116,16 @@
 				</button>
 			</div>
 			<div class="api-status">
-				{#if getModelsError()}
+				{#if apiKeyError}
+					<span class="status-error">{apiKeyError}</span>
+				{:else if savingApiKey}
+					<span class="status-hint">Saving encrypted...</span>
+				{:else if getModelsError()}
 					<span class="status-error">{getModelsError()}</span>
 				{:else if getModels().length > 0}
 					<span class="status-success">{getModels().length} models available</span>
+				{:else if isLocked()}
+					<span class="status-hint">Unlock vault to enter API key securely</span>
 				{:else}
 					<span class="status-hint">Enter your API key and click Validate to load models</span>
 				{/if}

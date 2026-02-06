@@ -37,6 +37,7 @@
 	import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 	import { lintKeymap } from '@codemirror/lint';
 	import { LanguageDescription } from '@codemirror/language';
+	import { hcl } from 'codemirror-lang-hcl';
 
 	interface Props {
 		content: string;
@@ -104,7 +105,22 @@
 		return LanguageDescription.matchFilename(languages, `file.${ext}`);
 	}
 
+	/** Languages not in @codemirror/language-data */
+	const HCL_LANGS = new Set(['hcl', 'tf', 'terraform', 'tfvars']);
+
 	function loadLanguage(lang: string): void {
+		const normalized = lang.toLowerCase();
+
+		// HCL/Terraform - not in language-data, use codemirror-lang-hcl
+		if (HCL_LANGS.has(normalized)) {
+			if (editorView) {
+				editorView.dispatch({
+					effects: languageCompartment.reconfigure(hcl())
+				});
+			}
+			return;
+		}
+
 		const langDesc = getLanguageExtension(lang);
 		if (langDesc) {
 			langDesc.load().then((loaded) => {

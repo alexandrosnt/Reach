@@ -2,12 +2,14 @@
 	import QuickConnect from './QuickConnect.svelte';
 	import SessionEditor from './SessionEditor.svelte';
 	import SessionCard from './SessionCard.svelte';
+	import VaultSelector from '$lib/components/vault/VaultSelector.svelte';
 	import { sessionList, sessionDelete, sessionUpdate, type SessionConfig } from '$lib/ipc/sessions';
 	import { sshConnect, sshDetectOs } from '$lib/ipc/ssh';
-	import { getCachedPassword, setCachedPassword, hasCachedPassword } from '$lib/state/passwords.svelte';
+	// Passwords are now stored encrypted in vault, not in memory cache
 	import { createTab } from '$lib/state/tabs.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { untrack } from 'svelte';
+	import { vaultState, checkState, initIdentity, refreshVaults, importIdentity } from '$lib/state/vault.svelte';
 
 	let showQuickConnect = $state(false);
 	let showEditor = $state(false);
@@ -15,6 +17,30 @@
 	let sessions = $state<SessionConfig[]>([]);
 	let loading = $state(true);
 	let deleteConfirm = $state<string | null>(null);
+
+	// Selected vault filter (null = private/default vault)
+	let selectedVaultId = $state<string | null>(null);
+
+	// Filter sessions by selected vault
+	let filteredSessions = $derived(
+		sessions.filter(s => {
+			if (selectedVaultId === null) {
+				// Show sessions without vault_id (private vault)
+				return !s.vault_id;
+			}
+			return s.vault_id === selectedVaultId;
+		})
+	);
+
+
+	// Vault state (TLS-style: auto-unlock, no password needed)
+	let locked = $derived(vaultState.locked);
+	let hasIdentity = $derived(vaultState.hasIdentity);
+	let keychainError = $derived(vaultState.keychainError);
+	let initializing = $state(false);
+	let initError = $state('');
+	let importKey = $state('');
+	let importing = $state(false);
 
 	// Connect prompt state
 	let connectSession = $state<SessionConfig | undefined>();
@@ -38,26 +64,28 @@
 	}
 
 	async function handleConnect(session: SessionConfig): Promise<void> {
-		const saved = getCachedPassword(session.id);
+		// Check if credentials are stored in the session (from vault)
+		const storedPassword = session.auth_method.type === 'Password' ? session.auth_method.password : undefined;
+		const storedPassphrase = session.auth_method.type === 'Key' ? session.auth_method.passphrase : undefined;
 
-		// Auto-connect if we have a saved password
-		if (saved) {
+		// Auto-connect if we have stored credentials OR Agent auth
+		if (storedPassword || storedPassphrase || session.auth_method.type === 'Agent') {
 			connectSession = session;
 			connectError = undefined;
 			rememberPassword = true;
 			hasSavedPassword = true;
 
 			if (session.auth_method.type === 'Password') {
-				connectPassword = saved;
+				connectPassword = storedPassword ?? '';
 			} else if (session.auth_method.type === 'Key') {
-				connectKeyPassphrase = saved;
+				connectKeyPassphrase = storedPassphrase ?? '';
 			}
 
 			await doConnect();
 			return;
 		}
 
-		// Otherwise show the prompt
+		// Otherwise show the prompt for credentials
 		connectSession = session;
 		connectPassword = '';
 		connectKeyPassphrase = '';
@@ -85,16 +113,11 @@
 				username: session.username,
 				authMethod: authType === 'Key' ? 'key' : authType.toLowerCase(),
 				password: authType === 'Password' ? connectPassword : undefined,
-				keyPath: authType === 'Key' ? session.auth_method.path : undefined,
+				keyPath: authType === 'Key' && session.auth_method.type === 'Key' ? session.auth_method.path : undefined,
 				keyPassphrase: authType === 'Key' && connectKeyPassphrase ? connectKeyPassphrase : undefined,
 				cols: 80,
 				rows: 24,
 			});
-
-			// Cache password for future connections in this session
-			if (rememberPassword && passwordToSave) {
-				setCachedPassword(session.id, passwordToSave);
-			}
 
 			createTab('ssh', `${session.username}@${session.host}`, id);
 			addToast(`Connected to ${session.name}`, 'success');
@@ -160,50 +183,161 @@
 		loadSessions();
 	}
 
-	// Load sessions on mount
+	// TLS-style: initialize identity (generates X25519 keypair, stores in OS keychain)
+	async function handleInitialize(): Promise<void> {
+		initializing = true;
+		initError = '';
+		try {
+			await initIdentity(''); // No password needed - TLS-style
+			await loadSessions();
+			addToast('Identity created. Your encryption key is stored securely in the OS keychain.', 'success');
+		} catch (err) {
+			initError = String(err);
+		} finally {
+			initializing = false;
+		}
+	}
+
+	// Import identity from backup key
+	async function handleImport(): Promise<void> {
+		if (!importKey.trim()) {
+			initError = 'Please enter your backup key';
+			return;
+		}
+		importing = true;
+		initError = '';
+		try {
+			await importIdentity(importKey.trim());
+			await loadSessions();
+			importKey = '';
+			addToast('Identity restored successfully.', 'success');
+		} catch (err) {
+			initError = String(err);
+		} finally {
+			importing = false;
+		}
+	}
+
+	// Reset - delete existing data and start fresh
+	async function handleReset(): Promise<void> {
+		// Delete identity file and vaults to start fresh
+		try {
+			const { invoke } = await import('@tauri-apps/api/core');
+			await invoke('vault_reset');
+			await checkState();
+			addToast('Data cleared. You can now initialize.', 'info');
+		} catch (err) {
+			initError = String(err);
+		}
+	}
+
+	// Load sessions and vaults on mount (auto-unlock via OS keychain)
 	$effect(() => {
-		untrack(() => loadSessions());
+		untrack(() => {
+			checkState().then(async () => {
+				if (!vaultState.locked) {
+					await refreshVaults();
+					await loadSessions();
+				} else {
+					loading = false;
+				}
+			});
+		});
 	});
 </script>
 
 <div class="session-list">
-	<div class="actions-row">
-		<button class="quick-connect-btn" onclick={() => (showQuickConnect = true)}>
-			<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-				<path
-					d="M13 10V3L4 14h7v7l9-11h-7z"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				/>
-			</svg>
-			Quick Connect
-		</button>
-		<button class="save-session-btn" onclick={handleNewSession}>
-			<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-				<path
-					d="M12 5v14M5 12h14"
-					stroke="currentColor"
-					stroke-width="2"
-					stroke-linecap="round"
-				/>
-			</svg>
-			Save Session
-		</button>
-	</div>
-
-	{#if loading}
-		<div class="loading-state">
-			<span class="spinner"></span>
-			<span class="loading-text">Loading sessions...</span>
+	{#if !hasIdentity}
+		<!-- First run: Initialize identity (TLS-style, no password) -->
+		<div class="init-section">
+			<div class="init-icon">
+				<svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+					<path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+			</div>
+			<p class="init-title">Secure Sessions</p>
+			<p class="init-desc">Your sessions are encrypted locally. Click to generate your encryption key (stored securely in OS keychain).</p>
+			{#if initError}
+				<p class="init-error">{initError}</p>
+			{/if}
+			<button class="init-btn" onclick={handleInitialize} disabled={initializing}>
+				{#if initializing}Initializing...{:else}Initialize{/if}
+			</button>
 		</div>
-	{:else if sessions.length === 0}
-		<p class="empty-state">No saved sessions yet. Create one to get started.</p>
+	{:else if keychainError}
+		<!-- Keychain error: data exists but can't access key -->
+		<div class="init-section">
+			<div class="init-icon error">
+				<svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+					<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+			</div>
+			<p class="init-title">Keychain Access Failed</p>
+			<p class="init-desc">Your encrypted data exists but the OS keychain key is missing. Import your backup key to recover, or start fresh (data will be lost).</p>
+			{#if initError}
+				<p class="init-error">{initError}</p>
+			{/if}
+			<input
+				class="import-input"
+				type="password"
+				placeholder="Paste backup key here"
+				bind:value={importKey}
+				disabled={importing}
+			/>
+			<div class="recovery-buttons">
+				<button class="init-btn" onclick={handleImport} disabled={importing || !importKey.trim()}>
+					{#if importing}Restoring...{:else}Restore Identity{/if}
+				</button>
+				<button class="reset-btn" onclick={handleReset} disabled={importing}>
+					Start Fresh
+				</button>
+			</div>
+		</div>
+	{:else if locked}
+		<!-- Locked but has identity - keychain access failed -->
+		<div class="init-section">
+			<p class="init-desc">Unable to access keychain. Please check OS permissions.</p>
+		</div>
 	{:else}
+		<div class="actions-row">
+			<button class="quick-connect-btn" onclick={() => (showQuickConnect = true)}>
+				<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+					<path
+						d="M13 10V3L4 14h7v7l9-11h-7z"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+				</svg>
+				Quick Connect
+			</button>
+			<button class="save-session-btn" onclick={handleNewSession}>
+				<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+					<path
+						d="M12 5v14M5 12h14"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+					/>
+				</svg>
+				Save Session
+			</button>
+		</div>
+
+		<VaultSelector onvaultselect={(id) => (selectedVaultId = id)} onrefresh={() => loadSessions()} />
+
+		{#if loading}
+			<div class="loading-state">
+				<span class="spinner"></span>
+				<span class="loading-text">Loading sessions...</span>
+			</div>
+		{:else if filteredSessions.length === 0}
+			<p class="empty-state">No sessions in this vault. Create one to get started.</p>
+		{:else}
 		<div class="divider"></div>
 		<div class="sessions-scroll">
-			{#each sessions as session (session.id)}
+			{#each filteredSessions as session (session.id)}
 				{#if deleteConfirm === session.id}
 					<div class="delete-confirm">
 						<span class="delete-confirm-text">Delete "{session.name}"?</span>
@@ -224,11 +358,12 @@
 				{/if}
 			{/each}
 		</div>
+		{/if}
 	{/if}
 </div>
 
 <QuickConnect bind:open={showQuickConnect} />
-<SessionEditor bind:open={showEditor} editSession={editingSession} onsave={handleEditorSave} />
+<SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={selectedVaultId} onsave={handleEditorSave} />
 
 {#if showConnectPrompt && connectSession}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -280,6 +415,7 @@
 		</div>
 	</div>
 {/if}
+
 
 <style>
 	.session-list {
@@ -577,5 +713,112 @@
 
 	.prompt-connect:hover:not(:disabled) {
 		background-color: var(--color-accent-hover);
+	}
+
+	/* Init section (first run) */
+	.init-section {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 12px;
+		padding: 24px 16px;
+		text-align: center;
+	}
+
+	.init-icon {
+		color: var(--color-text-secondary);
+		opacity: 0.6;
+	}
+
+	.init-icon.error {
+		color: var(--color-danger);
+		opacity: 1;
+	}
+
+	.import-input {
+		width: 100%;
+		max-width: 240px;
+		padding: 8px 12px;
+		font-family: var(--font-mono);
+		font-size: 0.75rem;
+		color: var(--color-text-primary);
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		outline: none;
+	}
+
+	.import-input:focus {
+		border-color: var(--color-accent);
+	}
+
+	.recovery-buttons {
+		display: flex;
+		gap: 8px;
+	}
+
+	.reset-btn {
+		padding: 8px 16px;
+		font-family: var(--font-sans);
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: var(--color-text-secondary);
+		background: transparent;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		cursor: pointer;
+		transition: background-color var(--duration-default) var(--ease-default);
+	}
+
+	.reset-btn:hover:not(:disabled) {
+		background-color: rgba(255, 255, 255, 0.05);
+	}
+
+	.reset-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
+
+	.init-title {
+		margin: 0;
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: var(--color-text-primary);
+	}
+
+	.init-desc {
+		margin: 0;
+		font-size: 0.75rem;
+		color: var(--color-text-secondary);
+		max-width: 200px;
+		line-height: 1.4;
+	}
+
+	.init-error {
+		margin: 0;
+		font-size: 0.6875rem;
+		color: var(--color-danger);
+	}
+
+	.init-btn {
+		padding: 8px 20px;
+		font-family: var(--font-sans);
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: #fff;
+		background-color: var(--color-accent);
+		border: none;
+		border-radius: 6px;
+		cursor: pointer;
+		transition: background-color var(--duration-default) var(--ease-default);
+	}
+
+	.init-btn:hover:not(:disabled) {
+		background-color: var(--color-accent-hover);
+	}
+
+	.init-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 </style>

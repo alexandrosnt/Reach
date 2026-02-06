@@ -3,8 +3,9 @@
 	import SessionList from '$lib/components/sessions/SessionList.svelte';
 	import PlaybookList from '$lib/components/playbook/PlaybookList.svelte';
 	import TunnelManager from '$lib/components/tunnel/TunnelManager.svelte';
+	import SnippetList from '$lib/components/snippets/SnippetList.svelte';
 
-	type Section = 'sessions' | 'explorer' | 'playbooks' | 'tunnels';
+	type Section = 'sessions' | 'explorer' | 'playbooks' | 'tunnels' | 'snippets';
 
 	const STORAGE_KEY = 'reach-sidebar-width';
 	const MIN_WIDTH = 160;
@@ -60,6 +61,11 @@
 			id: 'tunnels',
 			label: 'Tunnels',
 			icon: 'M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71'
+		},
+		{
+			id: 'snippets',
+			label: 'Snippets',
+			icon: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01'
 		}
 	];
 
@@ -142,6 +148,8 @@
 					<PlaybookList {connectionId} />
 				{:else if activeSection === 'tunnels'}
 					<TunnelManager {connectionId} />
+				{:else if activeSection === 'snippets'}
+					<SnippetList {connectionId} />
 				{/if}
 			</div>
 		</div>

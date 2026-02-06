@@ -1,6 +1,6 @@
 {
   "name": "reach",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -24,13 +24,15 @@
     "@codemirror/view": "^6.35.0",
     "@tauri-apps/api": "^2.2.0",
     "@tauri-apps/plugin-dialog": "^2.6.0",
+    "@tauri-apps/plugin-process": "^2.3.1",
     "@tauri-apps/plugin-shell": "^2.2.0",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-unicode11": "^0.8.0",
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/addon-webgl": "^0.18.0",
     "@xterm/xterm": "^5.5.0",
-    "codemirror": "^6.0.2"
+    "codemirror": "^6.0.2",
+    "codemirror-lang-hcl": "^0.1.0"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.8",

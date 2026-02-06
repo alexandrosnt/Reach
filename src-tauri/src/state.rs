@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 #[cfg(desktop)]
 use std::sync::Mutex;
@@ -12,6 +13,7 @@ use crate::pty::manager::PtyManager;
 use crate::serial::port::SerialManager;
 use crate::ssh::client::SshManager;
 use crate::tunnel::manager::TunnelManager;
+use crate::vault::VaultManager;
 
 /// Configuration for a saved session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -26,14 +28,28 @@ pub struct SessionConfig {
     pub tags: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detected_os: Option<String>,
+    /// Which vault this session belongs to (None = private __sessions__ vault)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vault_id: Option<String>,
 }
 
 /// Authentication method for an SSH session.
+/// Credentials (password, passphrase, key_content) are stored encrypted in the vault.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum AuthMethod {
-    Password,
-    Key { path: String },
+    Password {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        password: Option<String>,
+    },
+    Key {
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        path: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        passphrase: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        key_content: Option<String>, // Embedded key for sharing
+    },
     Agent,
 }
 
@@ -43,13 +59,6 @@ pub struct Folder {
     pub id: String,
     pub name: String,
     pub parent_id: Option<String>,
-}
-
-/// An encrypted credential stored in the vault.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EncryptedCredential {
-    pub nonce: String,
-    pub ciphertext: String,
 }
 
 /// Configuration for a port-forwarding tunnel.
@@ -117,42 +126,43 @@ pub enum PlaybookStatus {
 ///
 /// All collections are behind `Arc<RwLock<_>>` for safe concurrent access
 /// from multiple Tauri command handlers.
+///
+/// Note: Sessions, folders, playbooks, credentials, and settings are all
+/// stored encrypted in the vault (SQLite + XChaCha20-Poly1305).
 pub struct AppState {
     pub ssh_manager: Arc<tokio::sync::Mutex<SshManager>>,
-    pub sessions: Arc<RwLock<HashMap<String, SessionConfig>>>,
-    pub folders: Arc<RwLock<HashMap<String, Folder>>>,
-    pub credentials: Arc<RwLock<HashMap<String, EncryptedCredential>>>,
     pub tunnels: Arc<RwLock<HashMap<String, TunnelConfig>>>,
     pub monitoring: Arc<RwLock<HashMap<String, SystemStats>>>,
-    pub saved_playbooks: Arc<RwLock<HashMap<String, SavedPlaybook>>>,
+    /// Ephemeral playbook run state (not persisted)
     pub playbook_runs: Arc<RwLock<HashMap<String, PlaybookRun>>>,
-    pub master_key: Arc<RwLock<Option<Vec<u8>>>>,
     #[cfg(desktop)]
     pub pty_manager: Arc<Mutex<PtyManager>>,
     pub monitoring_collector: Arc<tokio::sync::Mutex<MonitoringCollector>>,
     pub tunnel_manager: Arc<tokio::sync::Mutex<TunnelManager>>,
     #[cfg(desktop)]
     pub serial_manager: Arc<tokio::sync::Mutex<SerialManager>>,
+    pub vault_manager: Arc<tokio::sync::Mutex<VaultManager>>,
 }
 
 impl AppState {
     pub fn new() -> Self {
+        // Get app data directory for vault storage
+        let app_dir = dirs::data_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("com.reach.app");
+
         Self {
             ssh_manager: Arc::new(tokio::sync::Mutex::new(SshManager::new())),
-            sessions: Arc::new(RwLock::new(HashMap::new())),
-            folders: Arc::new(RwLock::new(HashMap::new())),
-            credentials: Arc::new(RwLock::new(HashMap::new())),
             tunnels: Arc::new(RwLock::new(HashMap::new())),
             monitoring: Arc::new(RwLock::new(HashMap::new())),
-            saved_playbooks: Arc::new(RwLock::new(HashMap::new())),
             playbook_runs: Arc::new(RwLock::new(HashMap::new())),
-            master_key: Arc::new(RwLock::new(None)),
             #[cfg(desktop)]
             pty_manager: Arc::new(Mutex::new(PtyManager::new())),
             monitoring_collector: Arc::new(tokio::sync::Mutex::new(MonitoringCollector::new())),
             tunnel_manager: Arc::new(tokio::sync::Mutex::new(TunnelManager::new())),
             #[cfg(desktop)]
             serial_manager: Arc::new(tokio::sync::Mutex::new(SerialManager::new())),
+            vault_manager: Arc::new(tokio::sync::Mutex::new(VaultManager::new(app_dir))),
         }
     }
 }

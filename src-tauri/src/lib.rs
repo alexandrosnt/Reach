@@ -1,4 +1,3 @@
-pub mod credentials;
 pub mod ipc;
 pub mod monitoring;
 pub mod playbook;
@@ -11,12 +10,14 @@ pub mod sftp;
 pub mod ssh;
 pub mod state;
 pub mod tunnel;
+pub mod vault;
 
 use state::AppState;
 use tracing_subscriber::EnvFilter;
 
 use ipc::ai_commands::*;
 use ipc::credential_commands::*;
+use ipc::settings_commands::*;
 use ipc::monitoring_commands::*;
 use ipc::playbook_commands::*;
 #[cfg(desktop)]
@@ -27,6 +28,7 @@ use ipc::session_commands::*;
 use ipc::sftp_commands::*;
 use ipc::ssh_commands::*;
 use ipc::tunnel_commands::*;
+use ipc::vault_commands::*;
 
 /// Build and run the Tauri application.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -42,6 +44,7 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_process::init())
         .manage(AppState::new());
 
     #[cfg(desktop)]
@@ -73,6 +76,7 @@ pub fn run() {
             session_list_folders,
             session_create_folder,
             session_delete_folder,
+            session_share,
             // Playbook commands
             playbook_run,
             playbook_get_run,
@@ -113,6 +117,62 @@ pub fn run() {
             credential_get_password,
             credential_has_password,
             credential_delete_password,
+            // Settings commands
+            settings_get_all,
+            settings_get,
+            settings_set,
+            settings_delete,
+            settings_save_all,
+            // Vault commands
+            vault_init_identity,
+            vault_unlock,
+            vault_auto_unlock,
+            vault_reset,
+            vault_export_identity,
+            vault_import_identity,
+            vault_lock,
+            vault_is_locked,
+            vault_has_identity,
+            vault_get_public_key,
+            vault_get_user_uuid,
+            vault_create,
+            vault_open,
+            vault_close,
+            vault_list,
+            vault_unlock_vault,
+            vault_lock_vault,
+            vault_sync,
+            vault_secret_create,
+            vault_secret_read,
+            vault_secret_update,
+            vault_secret_delete,
+            vault_secret_list,
+            vault_invite_member,
+            vault_accept_invite,
+            vault_remove_member,
+            vault_list_members,
+            vault_delete,
+            // Vault sharing individual items
+            vault_share_item,
+            vault_list_shared_items,
+            vault_revoke_shared_item,
+            vault_accept_shared_item,
+            vault_list_received_shares,
+            // Vault settings
+            vault_get_settings,
+            vault_save_settings,
+            vault_get_turso_config,
+            vault_set_turso_config,
+            // Turso Platform API
+            turso_create_database,
+            turso_create_database_token,
+            // Personal sync config
+            vault_set_personal_sync,
+            vault_get_personal_sync,
+            // Full backup
+            vault_export_backup,
+            vault_preview_backup,
+            vault_import_backup,
         ]);
     }
 
@@ -145,6 +205,7 @@ pub fn run() {
             session_list_folders,
             session_create_folder,
             session_delete_folder,
+            session_share,
             // Playbook commands
             playbook_run,
             playbook_get_run,
@@ -175,6 +236,62 @@ pub fn run() {
             credential_get_password,
             credential_has_password,
             credential_delete_password,
+            // Settings commands
+            settings_get_all,
+            settings_get,
+            settings_set,
+            settings_delete,
+            settings_save_all,
+            // Vault commands
+            vault_init_identity,
+            vault_unlock,
+            vault_auto_unlock,
+            vault_reset,
+            vault_export_identity,
+            vault_import_identity,
+            vault_lock,
+            vault_is_locked,
+            vault_has_identity,
+            vault_get_public_key,
+            vault_get_user_uuid,
+            vault_create,
+            vault_open,
+            vault_close,
+            vault_list,
+            vault_unlock_vault,
+            vault_lock_vault,
+            vault_sync,
+            vault_secret_create,
+            vault_secret_read,
+            vault_secret_update,
+            vault_secret_delete,
+            vault_secret_list,
+            vault_invite_member,
+            vault_accept_invite,
+            vault_remove_member,
+            vault_list_members,
+            vault_delete,
+            // Vault sharing individual items
+            vault_share_item,
+            vault_list_shared_items,
+            vault_revoke_shared_item,
+            vault_accept_shared_item,
+            vault_list_received_shares,
+            // Vault settings
+            vault_get_settings,
+            vault_save_settings,
+            vault_get_turso_config,
+            vault_set_turso_config,
+            // Turso Platform API
+            turso_create_database,
+            turso_create_database_token,
+            // Personal sync config
+            vault_set_personal_sync,
+            vault_get_personal_sync,
+            // Full backup
+            vault_export_backup,
+            vault_preview_backup,
+            vault_import_backup,
         ]);
     }
 
@@ -196,37 +313,10 @@ pub fn run() {
                     return;
                 }
 
-                match crate::session::storage::load_sessions(&app_data_dir).await {
-                    Ok(store) => {
-                        let state = handle.state::<AppState>();
-                        let mut sessions = state.sessions.write().await;
-                        for session in store.sessions {
-                            sessions.insert(session.id.clone(), session);
-                        }
-                        let mut folders = state.folders.write().await;
-                        for folder in store.folders {
-                            folders.insert(folder.id.clone(), folder);
-                        }
-                        tracing::info!("Loaded sessions from disk");
-                    }
-                    Err(e) => {
-                        tracing::warn!("Failed to load sessions: {}", e);
-                    }
-                }
-
-                match crate::playbook::storage::load_playbooks(&app_data_dir).await {
-                    Ok(store) => {
-                        let state = handle.state::<AppState>();
-                        let mut playbooks = state.saved_playbooks.write().await;
-                        for pb in store.playbooks {
-                            playbooks.insert(pb.id.clone(), pb);
-                        }
-                        tracing::info!("Loaded playbooks from disk");
-                    }
-                    Err(e) => {
-                        tracing::warn!("Failed to load playbooks: {}", e);
-                    }
-                }
+                // All data (sessions, playbooks, credentials, settings) now loaded
+                // from encrypted vault on-demand after user unlocks with master password.
+                // No JSON file loading needed.
+                tracing::info!("App data directory ready: {:?}", app_data_dir);
             });
             Ok(())
         })
