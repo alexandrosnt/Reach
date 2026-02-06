@@ -79,23 +79,40 @@ npm run tauri build
 ## Project structure
 
 ```
-src/                  # Svelte frontend
-  lib/
-    components/       # UI components (layout, terminal, explorer, etc.)
-    state/            # Reactive state modules (.svelte.ts)
-    ipc/              # Tauri command wrappers
-    i18n/             # Internationalization
-src-tauri/            # Rust backend
-  src/
-    ssh/              # SSH client implementation
-    sftp/             # SFTP operations
-    vault/            # Encrypted vault & credential storage
-    tunnel/           # Port forwarding
-    pty/              # Local terminal (PTY)
-    serial/           # Serial port communication
-    monitoring/       # Remote system stats
-    playbook/         # Playbook execution engine
-    ipc/              # Tauri command handlers
+Reach/
+├── src/                          # Svelte frontend
+│   ├── routes/                   # SvelteKit pages
+│   ├── lib/
+│   │   ├── components/
+│   │   │   ├── layout/           # AppShell, TitleBar, Sidebar, TabBar
+│   │   │   ├── terminal/         # SSH terminal & multi-exec
+│   │   │   ├── explorer/         # SFTP file browser
+│   │   │   ├── sessions/         # Connection manager
+│   │   │   ├── tunnel/           # Port forwarding UI
+│   │   │   ├── playbook/         # Playbook editor & runner
+│   │   │   ├── vault/            # Encrypted secrets vault
+│   │   │   ├── ai/               # AI assistant panel
+│   │   │   ├── settings/         # App preferences
+│   │   │   └── shared/           # Button, Modal, Toast, etc.
+│   │   ├── state/                # Reactive state (.svelte.ts)
+│   │   ├── ipc/                  # Tauri command wrappers
+│   │   └── i18n/                 # Internationalization
+│   └── app.css                   # Design tokens & global styles
+│
+├── src-tauri/                    # Rust backend
+│   └── src/
+│       ├── ssh/                  # SSH client (russh)
+│       ├── sftp/                 # File transfer operations
+│       ├── vault/                # Encrypted storage & crypto
+│       ├── tunnel/               # Port forwarding engine
+│       ├── pty/                  # Local terminal (desktop)
+│       ├── serial/               # Serial port (desktop)
+│       ├── monitoring/           # Remote system stats
+│       ├── playbook/             # Playbook execution
+│       ├── ipc/                  # Tauri command handlers
+│       └── lib.rs                # App entry point & plugin setup
+│
+└── .github/workflows/            # CI/CD release pipeline
 ```
 
 ## Contributing
