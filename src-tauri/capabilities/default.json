@@ -19,12 +19,6 @@
     "dialog:allow-ask",
     "dialog:allow-confirm",
     "process:allow-restart",
-    "process:allow-exit",
-    "core:tray:default",
-    "autostart:allow-enable",
-    "autostart:allow-disable",
-    "autostart:allow-is-enabled",
-    "updater:allow-check",
-    "updater:allow-download-and-install"
+    "process:allow-exit"
   ]
 }
