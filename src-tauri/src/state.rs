@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 #[cfg(desktop)]
 use std::sync::Mutex;
@@ -142,6 +143,7 @@ pub struct AppState {
     #[cfg(desktop)]
     pub serial_manager: Arc<tokio::sync::Mutex<SerialManager>>,
     pub vault_manager: Arc<tokio::sync::Mutex<VaultManager>>,
+    pub close_to_tray: AtomicBool,
 }
 
 impl AppState {
@@ -163,6 +165,7 @@ impl AppState {
             #[cfg(desktop)]
             serial_manager: Arc::new(tokio::sync::Mutex::new(SerialManager::new())),
             vault_manager: Arc::new(tokio::sync::Mutex::new(VaultManager::new(app_dir))),
+            close_to_tray: AtomicBool::new(false),
         }
     }
 }

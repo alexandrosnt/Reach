@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core';
 import * as settingsIpc from '$lib/ipc/settings';
 import type { AppSettings } from '$lib/ipc/settings';
 
@@ -8,6 +9,8 @@ export interface Settings {
 	defaultShell: string;
 	openLastSession: boolean;
 	locale: string;
+	minimizeToTray: boolean;
+	startWithSystem: boolean;
 }
 
 /** Secure settings stored encrypted in vault (API keys etc.) */
@@ -25,7 +28,9 @@ const defaults: Settings = {
 	fontFamily: 'monospace',
 	defaultShell: '/bin/bash',
 	openLastSession: false,
-	locale: 'en'
+	locale: 'en',
+	minimizeToTray: false,
+	startWithSystem: false
 };
 
 let settings = $state<Settings>({ ...defaults });
@@ -62,6 +67,8 @@ export function loadSettings(): void {
 			settings.defaultShell = parsed.defaultShell ?? defaults.defaultShell;
 			settings.openLastSession = parsed.openLastSession ?? defaults.openLastSession;
 			settings.locale = parsed.locale ?? defaults.locale;
+			settings.minimizeToTray = parsed.minimizeToTray ?? defaults.minimizeToTray;
+			settings.startWithSystem = parsed.startWithSystem ?? defaults.startWithSystem;
 		}
 	} catch {
 		// If parsing fails, keep defaults
@@ -155,4 +162,55 @@ export function clearSecureSettings(): void {
 	secureSettings.openrouterApiKey = null;
 	secureSettings.openrouterUrl = null;
 	secureSettings.defaultAiModel = null;
+}
+
+/** Sync minimizeToTray setting to Rust backend AtomicBool. Call after loadSettings(). */
+export async function syncTraySettings(): Promise<void> {
+	try {
+		await invoke('set_close_to_tray', { enabled: settings.minimizeToTray });
+	} catch {
+		// Backend not ready yet
+	}
+}
+
+/** Restore local settings from vault AppSettings (after backup import + relaunch). */
+export async function restoreLocalSettingsFromVault(): Promise<void> {
+	try {
+		const vaultSettings = await invoke<Record<string, unknown>>('vault_get_settings');
+		let changed = false;
+		if (typeof vaultSettings.minimizeToTray === 'boolean') {
+			settings.minimizeToTray = vaultSettings.minimizeToTray;
+			changed = true;
+		}
+		if (typeof vaultSettings.startWithSystem === 'boolean') {
+			settings.startWithSystem = vaultSettings.startWithSystem;
+			changed = true;
+		}
+		if (typeof vaultSettings.defaultShell === 'string') {
+			settings.defaultShell = vaultSettings.defaultShell;
+			changed = true;
+		}
+		if (typeof vaultSettings.openLastSession === 'boolean') {
+			settings.openLastSession = vaultSettings.openLastSession;
+			changed = true;
+		}
+		if (typeof vaultSettings.fontSize === 'number') {
+			settings.fontSize = vaultSettings.fontSize;
+			changed = true;
+		}
+		if (typeof vaultSettings.fontFamily === 'string') {
+			settings.fontFamily = vaultSettings.fontFamily;
+			changed = true;
+		}
+		if (typeof vaultSettings.locale === 'string') {
+			settings.locale = vaultSettings.locale;
+			changed = true;
+		}
+		if (changed) {
+			saveSettings();
+			await syncTraySettings();
+		}
+	} catch {
+		// Vault not unlocked or settings not available
+	}
 }

@@ -2,9 +2,10 @@
 	import type { Snippet } from 'svelte';
 	import '../app.css';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
-	import { loadSettings, getSettings } from '$lib/state/settings.svelte';
+	import { loadSettings, getSettings, syncTraySettings } from '$lib/state/settings.svelte';
 	import { loadAISettings } from '$lib/state/ai.svelte';
 	import { initShortcuts, cleanupShortcuts } from '$lib/state/shortcuts.svelte';
+	import { startupUpdateCheck, startPeriodicChecks, stopPeriodicChecks } from '$lib/state/updater.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -12,8 +13,11 @@
 
 	$effect(() => {
 		loadSettings();
+		syncTraySettings();
 		loadAISettings();
 		initShortcuts();
+		startupUpdateCheck();
+		startPeriodicChecks();
 
 		// Dismiss the preloader once the app is mounted
 		const preloader = document.getElementById('preloader');
@@ -24,6 +28,7 @@
 
 		return () => {
 			cleanupShortcuts();
+			stopPeriodicChecks();
 		};
 	});
 

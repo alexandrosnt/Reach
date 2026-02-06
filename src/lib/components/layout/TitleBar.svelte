@@ -3,6 +3,7 @@
 	import { registerSettingsOpener } from '$lib/state/shortcuts.svelte';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { getAISettings } from '$lib/state/ai.svelte';
+	import { __APP_VERSION__ } from '$lib/version';
 	import { toggleAIPanel, getAIChatState } from '$lib/state/ai-chat.svelte';
 
 	let aiSettings = $derived(getAISettings());
@@ -36,7 +37,9 @@
 
 <header class="titlebar" data-tauri-drag-region>
 	<div class="titlebar-left" data-tauri-drag-region>
+		<img src="/favicon.png" alt="" class="app-icon" draggable="false" />
 		<span class="app-name">Reach</span>
+		<span class="app-version">v{__APP_VERSION__}</span>
 		<button class="settings-btn" onclick={openSettings} aria-label="Open settings">
 			<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
 				<circle cx="12" cy="12" r="3" />
@@ -96,11 +99,25 @@
 		gap: 8px;
 	}
 
+	.app-icon {
+		width: 18px;
+		height: 18px;
+		-webkit-app-region: no-drag;
+		pointer-events: none;
+	}
+
 	.app-name {
 		font-size: 0.8125rem;
 		font-weight: 600;
 		color: var(--color-text-primary);
 		letter-spacing: 0.02em;
+	}
+
+	.app-version {
+		font-size: 0.6875rem;
+		font-weight: 400;
+		color: var(--color-text-secondary);
+		letter-spacing: 0.01em;
 	}
 
 	.settings-btn {

@@ -5,8 +5,13 @@
 	import Sidebar from './Sidebar.svelte';
 	import StatusBar from './StatusBar.svelte';
 	import Toast from '$lib/components/shared/Toast.svelte';
+	import UpdateBanner from '$lib/components/shared/UpdateBanner.svelte';
+	import UpdateDialog from '$lib/components/shared/UpdateDialog.svelte';
+	import { getUpdaterState } from '$lib/state/updater.svelte';
 	import { getActiveTab } from '$lib/state/tabs.svelte';
 	import AIPanel from '$lib/components/ai/AIPanel.svelte';
+
+	const updater = getUpdaterState();
 
 	interface Props {
 		children: Snippet;
@@ -33,6 +38,8 @@
 
 	<StatusBar />
 	<Toast />
+	<UpdateBanner />
+	<UpdateDialog open={updater.startupBlocking} />
 </div>
 
 <style>

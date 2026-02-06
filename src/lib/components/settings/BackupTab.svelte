@@ -3,6 +3,8 @@
 	import Input from '$lib/components/shared/Input.svelte';
 	import { exportBackup, previewBackup, importBackup } from '$lib/state/vault.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { getSettings, syncTraySettings } from '$lib/state/settings.svelte';
+	import * as vaultIpc from '$lib/ipc/vault';
 	import { save, open, message } from '@tauri-apps/plugin-dialog';
 	import { relaunch } from '@tauri-apps/plugin-process';
 	import type { BackupPreview } from '$lib/ipc/vault';
@@ -59,6 +61,20 @@
 		exporting = true;
 
 		try {
+			// Save local settings into vault AppSettings so they're included in backup
+			const localSettings = getSettings();
+			const currentAppSettings = await vaultIpc.getSettings();
+			await vaultIpc.saveSettings({
+				...currentAppSettings,
+				minimizeToTray: localSettings.minimizeToTray,
+				startWithSystem: localSettings.startWithSystem,
+				defaultShell: localSettings.defaultShell,
+				openLastSession: localSettings.openLastSession,
+				fontSize: localSettings.fontSize,
+				fontFamily: localSettings.fontFamily,
+				locale: localSettings.locale
+			});
+
 			const filePath = await save({
 				filters: [{ name: 'Reach Backup', extensions: ['reachbackup'] }],
 				defaultPath: 'reach-backup.reachbackup'

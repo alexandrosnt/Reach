@@ -1,7 +1,9 @@
 <script lang="ts">
+	import { invoke } from '@tauri-apps/api/core';
+	import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
 	import Dropdown from '$lib/components/shared/Dropdown.svelte';
 	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
+	import { getSettings, updateSetting, syncTraySettings } from '$lib/state/settings.svelte';
 
 	const settings = getSettings();
 
@@ -18,6 +20,20 @@
 
 	function onLastSessionChange(checked: boolean) {
 		updateSetting('openLastSession', checked);
+	}
+
+	async function onMinimizeToTrayChange(checked: boolean) {
+		await invoke('set_close_to_tray', { enabled: checked });
+		updateSetting('minimizeToTray', checked);
+	}
+
+	async function onStartWithSystemChange(checked: boolean) {
+		if (checked) {
+			await enable();
+		} else {
+			await disable();
+		}
+		updateSetting('startWithSystem', checked);
 	}
 </script>
 
@@ -46,6 +62,34 @@
 				checked={settings.openLastSession}
 				label="Open with last session"
 				onchange={onLastSessionChange}
+			/>
+		</div>
+	</div>
+
+	<div class="setting-row">
+		<div class="setting-info">
+			<span class="setting-label">Minimize to Tray</span>
+			<span class="setting-description">Keep app running in the system tray when you close the window</span>
+		</div>
+		<div class="setting-control">
+			<Toggle
+				checked={settings.minimizeToTray}
+				label="Minimize to Tray"
+				onchange={onMinimizeToTrayChange}
+			/>
+		</div>
+	</div>
+
+	<div class="setting-row">
+		<div class="setting-info">
+			<span class="setting-label">Start with System</span>
+			<span class="setting-description">Launch Reach automatically when you log in</span>
+		</div>
+		<div class="setting-control">
+			<Toggle
+				checked={settings.startWithSystem}
+				label="Start with System"
+				onchange={onStartWithSystemChange}
 			/>
 		</div>
 	</div>

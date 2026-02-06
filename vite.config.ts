@@ -1,11 +1,16 @@
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig } from 'vite';
+import { readFileSync } from 'fs';
 
 const host = process.env.TAURI_DEV_HOST;
+const pkg = JSON.parse(readFileSync('package.json', 'utf-8'));
 
 export default defineConfig({
 	plugins: [tailwindcss(), sveltekit()],
+	define: {
+		APP_VERSION: JSON.stringify(pkg.version)
+	},
 	clearScreen: false,
 	build: {
 		chunkSizeWarningLimit: 1000

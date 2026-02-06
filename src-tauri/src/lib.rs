@@ -12,6 +12,8 @@ pub mod state;
 pub mod tunnel;
 pub mod vault;
 
+use std::sync::atomic::Ordering;
+
 use state::AppState;
 use tracing_subscriber::EnvFilter;
 
@@ -30,6 +32,16 @@ use ipc::ssh_commands::*;
 use ipc::tunnel_commands::*;
 use ipc::vault_commands::*;
 
+#[tauri::command]
+fn set_close_to_tray(state: tauri::State<'_, AppState>, enabled: bool) {
+    state.close_to_tray.store(enabled, Ordering::Relaxed);
+}
+
+#[tauri::command]
+fn get_close_to_tray(state: tauri::State<'_, AppState>) -> bool {
+    state.close_to_tray.load(Ordering::Relaxed)
+}
+
 /// Build and run the Tauri application.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -45,6 +57,11 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .manage(AppState::new());
 
     #[cfg(desktop)]
@@ -173,6 +190,9 @@ pub fn run() {
             vault_export_backup,
             vault_preview_backup,
             vault_import_backup,
+            // Tray commands
+            set_close_to_tray,
+            get_close_to_tray,
         ]);
     }
 
@@ -292,12 +312,66 @@ pub fn run() {
             vault_export_backup,
             vault_preview_backup,
             vault_import_backup,
+            // Tray commands
+            set_close_to_tray,
+            get_close_to_tray,
         ]);
     }
 
     builder
         .setup(|app| {
             use tauri::Manager;
+
+            // Build system tray
+            #[cfg(desktop)]
+            {
+                use tauri::menu::{MenuBuilder, MenuItemBuilder};
+                use tauri::tray::TrayIconBuilder;
+                use tauri::image::Image;
+
+                let show_item = MenuItemBuilder::with_id("show", "Show").build(app)?;
+                let quit_item = MenuItemBuilder::with_id("quit", "Quit").build(app)?;
+                let tray_menu = MenuBuilder::new(app)
+                    .item(&show_item)
+                    .separator()
+                    .item(&quit_item)
+                    .build()?;
+
+                let icon = Image::from_bytes(include_bytes!("../icons/32x32.png"))
+                    .expect("failed to load tray icon");
+
+                TrayIconBuilder::new()
+                    .icon(icon)
+                    .tooltip("Reach")
+                    .menu(&tray_menu)
+                    .on_menu_event(|app_handle, event| {
+                        match event.id().as_ref() {
+                            "show" => {
+                                if let Some(window) = app_handle.get_webview_window("main") {
+                                    let _ = window.show();
+                                    let _ = window.unminimize();
+                                    let _ = window.set_focus();
+                                }
+                            }
+                            "quit" => {
+                                app_handle.exit(0);
+                            }
+                            _ => {}
+                        }
+                    })
+                    .on_tray_icon_event(|tray, event| {
+                        if let tauri::tray::TrayIconEvent::Click { button: tauri::tray::MouseButton::Left, .. } = event {
+                            let app_handle = tray.app_handle();
+                            if let Some(window) = app_handle.get_webview_window("main") {
+                                let _ = window.show();
+                                let _ = window.unminimize();
+                                let _ = window.set_focus();
+                            }
+                        }
+                    })
+                    .build(app)?;
+            }
+
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 let app_data_dir = match handle.path().app_data_dir() {
@@ -313,12 +387,19 @@ pub fn run() {
                     return;
                 }
 
-                // All data (sessions, playbooks, credentials, settings) now loaded
-                // from encrypted vault on-demand after user unlocks with master password.
-                // No JSON file loading needed.
                 tracing::info!("App data directory ready: {:?}", app_data_dir);
             });
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                use tauri::Manager;
+                let app_state = window.state::<AppState>();
+                if app_state.close_to_tray.load(Ordering::Relaxed) {
+                    api.prevent_close();
+                    let _ = window.hide();
+                }
+            }
         })
         .run(tauri::generate_context!())
         .expect("error while running Reach application");

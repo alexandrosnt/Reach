@@ -1,6 +1,6 @@
 [package]
 name = "reach"
-version = "0.1.1"
+version = "0.1.2"
 description = "Cross-platform SSH & Remote Management Tool"
 authors = ["Reach Contributors"]
 edition = "2021"
@@ -14,7 +14,7 @@ crate-type = ["lib", "cdylib", "staticlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
@@ -54,6 +54,8 @@ keyring = { version = "3", features = ["windows-native", "apple-native", "linux-
 # HTTP (AI API proxy)
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
 tauri-plugin-process = "2.3.1"
+tauri-plugin-autostart = "2"
+tauri-plugin-updater = "2"
 
 # PTY & Serial (desktop only)
 [target.'cfg(not(target_os = "android"))'.dependencies]

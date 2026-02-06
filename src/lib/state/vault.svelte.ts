@@ -1,5 +1,6 @@
 import { SvelteMap } from 'svelte/reactivity';
 import * as vaultIpc from '$lib/ipc/vault';
+import { restoreLocalSettingsFromVault } from '$lib/state/settings.svelte';
 import type {
 	VaultInfo,
 	SecretMetadata,
@@ -111,6 +112,7 @@ export async function unlock(password: string): Promise<boolean> {
 		vaultState.userUuid = await vaultIpc.getUserUuid();
 		vaultState.publicKey = await vaultIpc.getPublicKey();
 		await refreshVaults();
+		restoreLocalSettingsFromVault();
 	}
 	return success;
 }
@@ -123,6 +125,7 @@ export async function autoUnlock(): Promise<boolean> {
 		vaultState.userUuid = await vaultIpc.getUserUuid();
 		vaultState.publicKey = await vaultIpc.getPublicKey();
 		await refreshVaults();
+		restoreLocalSettingsFromVault();
 	}
 	return success;
 }
@@ -176,6 +179,7 @@ export async function checkState(): Promise<void> {
 		vaultState.userUuid = await vaultIpc.getUserUuid();
 		vaultState.publicKey = await vaultIpc.getPublicKey();
 		await refreshVaults();
+		restoreLocalSettingsFromVault();
 	}
 }
 
