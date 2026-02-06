@@ -1,21 +1,55 @@
-MIT License
+Reach Source Available License
 
-Copyright (c) 2026 Reach Contributors
+Copyright (c) 2026 Reach Contributors. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+1. DEFINITIONS
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+   "Software" means the Reach application source code, binaries, documentation,
+   and all associated files in this repository.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+   "You" means the individual or entity exercising rights under this License.
+
+2. PERMITTED USES
+
+   You may:
+   (a) View, read, and study the source code for personal or educational purposes.
+   (b) Run the Software for personal, non-commercial use.
+   (c) Submit contributions (pull requests, issues, patches) to the official
+       repository. By contributing, you grant the copyright holders a perpetual,
+       worldwide, royalty-free license to use, modify, and distribute your
+       contributions as part of the Software.
+
+3. RESTRICTIONS
+
+   You may NOT:
+   (a) Sell, sublicense, rent, lease, or otherwise commercially distribute the
+       Software or any derivative works, in whole or in part.
+   (b) Modify, adapt, or create derivative works of the Software for any purpose
+       other than submitting contributions back to the official repository.
+   (c) Redistribute the Software, modified or unmodified, without prior written
+       permission from the copyright holders.
+   (d) Remove or alter any copyright notices, license text, or attribution in
+       the Software.
+   (e) Use the Software, its name, or its branding to imply endorsement of any
+       product or service.
+
+4. CONTRIBUTIONS
+
+   Contributions to the official repository are welcome and encouraged.
+   Contributors retain copyright of their individual contributions but agree
+   that such contributions are licensed under the same terms as this License.
+
+5. DISCLAIMER
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+   WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF
+   OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+   SOFTWARE.
+
+6. TERMINATION
+
+   This License is effective until terminated. Your rights under this License
+   terminate automatically if you fail to comply with any of its terms.
