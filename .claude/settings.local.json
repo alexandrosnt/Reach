@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run check:*)",
+      "Bash(npm run i18n:check:*)",
+      "Bash(grep:*)",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(npm run tauri:*)",
+      "Bash(/c/Program Files/GitHub CLI/gh.exe release list --limit 5)",
+      "Bash(where:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "Bash(git tag:*)",
+      "mcp__plugin_svelte_svelte__svelte-autofixer",
+      "Bash(netstat:*)",
+      "Bash(taskkill:*)",
+      "Bash(cargo check:*)",
+      "WebSearch",
+      "WebFetch(domain:v2.tauri.app)",
+      "WebFetch(domain:thatgurjot.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(node -e:*)"
+    ]
+  }
+}

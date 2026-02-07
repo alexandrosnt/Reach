@@ -13,7 +13,8 @@
 		{ label: 'Deutsch', value: 'de' },
 		{ label: 'Français', value: 'fr' },
 		{ label: 'Ελληνικά', value: 'el' },
-		{ label: 'Italiano', value: 'it' }
+		{ label: 'Italiano', value: 'it' },
+		{ label: 'Български', value: 'bg' }
 	];
 
 	function onLanguageChange(value: string) {
