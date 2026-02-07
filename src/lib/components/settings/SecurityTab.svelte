@@ -7,6 +7,7 @@
 		lock as lockCredentials,
 		isLocked as checkIsLocked
 	} from '$lib/ipc/credentials';
+	import { t } from '$lib/state/i18n.svelte';
 
 	let hasPassword = $state(false);
 	let locked = $state(false);
@@ -53,12 +54,12 @@
 		error = '';
 
 		if (newPassword.length < 8) {
-			error = 'Password must be at least 8 characters';
+			error = t('security.password_too_short');
 			return;
 		}
 
 		if (newPassword !== confirmPassword) {
-			error = "Passwords don't match";
+			error = t('security.passwords_mismatch');
 			return;
 		}
 
@@ -88,14 +89,14 @@
 <div class="tab-content">
 	<div class="setting-row">
 		<div class="setting-info">
-			<span class="setting-label">Master Password Status</span>
+			<span class="setting-label">{t('security.master_password_status')}</span>
 			<span class="setting-description">
 				{#if loading}
 					Checking...
 				{:else if hasPassword}
-					Password is set
+					{t('security.password_set')}
 				{:else}
-					No password configured
+					{t('security.no_password')}
 				{/if}
 			</span>
 		</div>
@@ -120,7 +121,7 @@
 
 	<div class="setting-row">
 		<div class="setting-info">
-			<span class="setting-label">Lock Status</span>
+			<span class="setting-label">{t('security.lock_status')}</span>
 			<span class="setting-description">
 				{#if locked}
 					Credentials are locked and encrypted
@@ -136,13 +137,13 @@
 						<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
 						<path d="M7 11V7a5 5 0 0 1 10 0v4" />
 					</svg>
-					Locked
+					{t('security.locked')}
 				{:else}
 					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
 						<path d="M7 11V7a5 5 0 0 1 9.9-1" />
 					</svg>
-					Unlocked
+					{t('security.unlocked')}
 				{/if}
 			</div>
 		</div>
@@ -155,7 +156,7 @@
 				size="sm"
 				onclick={openPasswordForm}
 			>
-				{hasPassword ? 'Change Password' : 'Set Password'}
+				{hasPassword ? t('security.change_password') : t('security.set_password')}
 			</Button>
 
 			{#if hasPassword && !locked}
@@ -164,7 +165,7 @@
 					size="sm"
 					onclick={handleLock}
 				>
-					Lock Now
+					{t('security.lock_now')}
 				</Button>
 			{/if}
 		{/if}
@@ -174,7 +175,7 @@
 		<div class="password-form">
 			<div class="form-field">
 				<Input
-					label="New Password"
+					label={t('security.new_password')}
 					type="password"
 					placeholder="Enter new password"
 					bind:value={newPassword}
@@ -183,7 +184,7 @@
 
 			<div class="form-field">
 				<Input
-					label="Confirm Password"
+					label={t('security.confirm_password')}
 					type="password"
 					placeholder="Re-enter password"
 					bind:value={confirmPassword}
@@ -200,7 +201,7 @@
 					size="sm"
 					onclick={cancelPasswordForm}
 				>
-					Cancel
+					{t('common.cancel')}
 				</Button>
 				<Button
 					variant="primary"
@@ -208,7 +209,7 @@
 					disabled={saving || newPassword.length === 0}
 					onclick={savePassword}
 				>
-					{saving ? 'Saving...' : 'Save Password'}
+					{saving ? t('security.saving') : t('security.save_password')}
 				</Button>
 			</div>
 		</div>

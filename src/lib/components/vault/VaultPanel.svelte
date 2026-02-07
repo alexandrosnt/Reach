@@ -17,6 +17,7 @@
 		type BackupPreview
 	} from '$lib/state/vault.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 	import { untrack } from 'svelte';
 	import { open, message } from '@tauri-apps/plugin-dialog';
 	import { relaunch } from '@tauri-apps/plugin-process';
@@ -63,7 +64,7 @@
 
 	async function handleUnlock(): Promise<void> {
 		if (!password) {
-			error = 'Password is required';
+			error = t('vault.password_required');
 			return;
 		}
 
@@ -74,9 +75,9 @@
 			const success = await unlock(password);
 			if (success) {
 				password = '';
-				addToast('Vault unlocked', 'success');
+				addToast(t('vault.unlocked_toast'), 'success');
 			} else {
-				error = 'Invalid password';
+				error = t('vault.invalid_password');
 			}
 		} catch (err) {
 			error = String(err);
@@ -87,17 +88,17 @@
 
 	async function handleCreateIdentity(): Promise<void> {
 		if (!password) {
-			error = 'Password is required';
+			error = t('vault.password_required');
 			return;
 		}
 
 		if (password.length < 8) {
-			error = 'Password must be at least 8 characters';
+			error = t('vault.password_min_chars');
 			return;
 		}
 
 		if (password !== confirmPassword) {
-			error = 'Passwords do not match';
+			error = t('vault.passwords_mismatch');
 			return;
 		}
 
@@ -108,7 +109,7 @@
 			await initIdentity(password);
 			password = '';
 			confirmPassword = '';
-			addToast('Identity created successfully', 'success');
+			addToast(t('vault.identity_created_toast'), 'success');
 		} catch (err) {
 			error = String(err);
 		} finally {
@@ -120,7 +121,7 @@
 		refreshing = true;
 		try {
 			await refreshVaults();
-			addToast('Vaults refreshed', 'success');
+			addToast(t('vault.vaults_refreshed_toast'), 'success');
 		} catch (err) {
 			addToast(`Failed to refresh: ${err}`, 'error');
 		} finally {
@@ -131,7 +132,7 @@
 	async function handleLock(): Promise<void> {
 		try {
 			await lock();
-			addToast('Vault locked', 'info');
+			addToast(t('vault.locked_toast'), 'info');
 		} catch (err) {
 			addToast(`Failed to lock: ${err}`, 'error');
 		}
@@ -149,7 +150,7 @@
 			newVaultName = '';
 			newVaultType = 'private';
 			showCreateVault = false;
-			addToast('Vault created', 'success');
+			addToast(t('vault.vault_created_toast'), 'success');
 		} catch (err) {
 			addToast(`Failed to create vault: ${err}`, 'error');
 		} finally {
@@ -204,7 +205,7 @@
 		importError = '';
 		try {
 			await importBackup(importFilePath, importExportPassword, importMasterPassword);
-			addToast('Backup restored successfully — restarting app', 'success');
+			addToast(t('vault.backup_restored_toast'), 'success');
 			await message('Backup restored successfully. The app will now restart to apply all settings.', { title: 'Import Complete', kind: 'info' });
 			await relaunch();
 		} catch (e) {
@@ -239,15 +240,15 @@
 
 			{#if hasIdentity}
 				<!-- Unlock existing identity -->
-				<h2 class="lock-title">Unlock Vault</h2>
-				<p class="lock-description">Enter your master password to access your secrets.</p>
+				<h2 class="lock-title">{t('vault.unlock')}</h2>
+				<p class="lock-description">{t('vault.enter_password')}</p>
 
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div class="lock-form" onkeydown={handleKeydown}>
 					<Input
 						type="password"
-						label="Master Password"
-						placeholder="Enter password"
+						label={t('vault.master_password')}
+						placeholder={t('vault.enter_password')}
 						bind:value={password}
 						disabled={loading}
 					/>
@@ -257,30 +258,30 @@
 					{/if}
 
 					<Button variant="primary" onclick={handleUnlock} disabled={loading || !password}>
-						{#if loading}Unlocking...{:else}Unlock{/if}
+						{#if loading}{t('vault.unlocking')}{:else}{t('vault.unlock')}{/if}
 					</Button>
 				</div>
 			{:else}
 				<!-- Create new identity -->
-				<h2 class="lock-title">Create Identity</h2>
+				<h2 class="lock-title">{t('vault.create_identity')}</h2>
 				<p class="lock-description">
-					Set up a master password to encrypt your secrets. This password cannot be recovered.
+					{t('vault.create_identity_desc')}
 				</p>
 
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<div class="lock-form" onkeydown={handleKeydown}>
 					<Input
 						type="password"
-						label="Master Password"
-						placeholder="Minimum 8 characters"
+						label={t('vault.master_password')}
+						placeholder={t('vault.min_chars')}
 						bind:value={password}
 						disabled={loading}
 					/>
 
 					<Input
 						type="password"
-						label="Confirm Password"
-						placeholder="Re-enter password"
+						label={t('vault.confirm_password')}
+						placeholder={t('vault.confirm_password')}
 						bind:value={confirmPassword}
 						disabled={loading}
 					/>
@@ -294,11 +295,11 @@
 						onclick={handleCreateIdentity}
 						disabled={loading || !password || !confirmPassword}
 					>
-						{#if loading}Creating...{:else}Create Identity{/if}
+						{#if loading}{t('vault.creating')}{:else}{t('vault.create_identity')}{/if}
 					</Button>
 
 					<button class="import-link" onclick={() => (showImportBackup = true)}>
-						Or restore from backup
+						{t('vault.or_restore')}
 					</button>
 				</div>
 			{/if}
@@ -307,7 +308,7 @@
 		<!-- Active Vault View -->
 		<div class="vault-view">
 			<div class="vault-header">
-				<button class="back-btn" onclick={handleBackToList} aria-label="Back to vault list">
+				<button class="back-btn" onclick={handleBackToList} aria-label={t('vault.back_to_list')}>
 					<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 						<path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 					</svg>
@@ -319,7 +320,7 @@
 					</span>
 				</div>
 				{#if activeVault.vaultType === 'shared'}
-					<button class="invite-btn" onclick={() => (showInviteDialog = true)} title="Manage Members">
+					<button class="invite-btn" onclick={() => (showInviteDialog = true)} title={t('vault.manage_members')}>
 						<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 							<path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 							<circle cx="8.5" cy="7" r="4" stroke="currentColor" stroke-width="1.5" />
@@ -338,15 +339,15 @@
 		<div class="vault-list-view">
 			<div class="list-header">
 				<div class="header-row">
-					<span class="header-title">Vaults</span>
+					<span class="header-title">{t('vault.vaults')}</span>
 					<div class="header-actions">
-						<button class="header-btn" onclick={handleRefresh} disabled={refreshing} title="Refresh vaults">
+						<button class="header-btn" onclick={handleRefresh} disabled={refreshing} title={t('vault.refresh_vaults')}>
 							<svg class:spinning={refreshing} width="14" height="14" viewBox="0 0 24 24" fill="none">
 								<path d="M1 4v6h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 								<path d="M3.51 15a9 9 0 105.64-9.94L1 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 							</svg>
 						</button>
-						<button class="header-btn" onclick={handleLock} title="Lock">
+						<button class="header-btn" onclick={handleLock} title={t('vault.lock')}>
 							<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 								<rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.5" />
 								<path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
@@ -358,14 +359,14 @@
 					<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
 						<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
 					</svg>
-					New Vault
+					{t('vault.new_vault')}
 				</button>
 			</div>
 
 			{#if vaultList.length === 0}
 				<div class="empty-state">
-					<p class="empty-text">No vaults yet.</p>
-					<p class="empty-hint">Create a vault to start storing secrets.</p>
+					<p class="empty-text">{t('vault.no_vaults')}</p>
+					<p class="empty-hint">{t('vault.create_prompt')}</p>
 				</div>
 			{:else}
 				<div class="vault-list">
@@ -393,21 +394,21 @@
 								<div class="vault-card-content">
 									<span class="vault-card-name">{vault.name}</span>
 									<span class="vault-card-meta">
-										{vault.secretCount} secret{vault.secretCount !== 1 ? 's' : ''}
+										{t('vault.n_secrets', { count: vault.secretCount })}
 										{#if vault.vaultType === 'shared' && vault.memberCount}
-											&middot; {vault.memberCount} member{vault.memberCount !== 1 ? 's' : ''}
+											&middot; {t('vault.n_members', { count: vault.memberCount })}
 										{/if}
 									</span>
 								</div>
 								<div class="vault-card-badge" class:shared={vault.vaultType === 'shared'}>
-									{vault.vaultType === 'shared' ? 'Shared' : 'Private'}
+									{vault.vaultType === 'shared' ? t('vault.shared') : t('vault.private')}
 								</div>
 							</button>
 							{#if vault.vaultType === 'shared'}
 								<button
 									class="vault-card-invite"
 									onclick={(e) => { e.stopPropagation(); handleSelectVault(vault).then(() => { showInviteDialog = true; }); }}
-									title="Invite Members"
+									title={t('vault.invite_members')}
 								>
 									<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
 										<path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
@@ -428,19 +429,19 @@
 <Modal
 	open={showCreateVault}
 	onclose={() => (showCreateVault = false)}
-	title="Create New Vault"
+	title={t('vault.create_new_vault')}
 >
 	<div class="create-vault-form">
 		<Input
-			label="Vault Name"
+			label={t('vault.vault_name')}
 			placeholder="My Secrets"
 			bind:value={newVaultName}
 			disabled={creatingVault}
 		/>
 
 		<div class="type-selector">
-			<span class="type-label">Vault Type</span>
-			<div class="type-options" role="radiogroup" aria-label="Vault type selection">
+			<span class="type-label">{t('vault.vault_type')}</span>
+			<div class="type-options" role="radiogroup" aria-label={t('vault.type_selection')}>
 				<button
 					class="type-option"
 					class:active={newVaultType === 'private'}
@@ -451,8 +452,8 @@
 						<rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.5" />
 						<path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
 					</svg>
-					<span class="type-name">Private</span>
-					<span class="type-desc">Only you can access</span>
+					<span class="type-name">{t('vault.private')}</span>
+					<span class="type-desc">{t('vault.type_private_desc')}</span>
 				</button>
 				<button
 					class="type-option"
@@ -465,8 +466,8 @@
 						<circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5" />
 						<path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 					</svg>
-					<span class="type-name">Shared</span>
-					<span class="type-desc">Invite team members</span>
+					<span class="type-name">{t('vault.shared')}</span>
+					<span class="type-desc">{t('vault.type_shared_desc')}</span>
 				</button>
 			</div>
 		</div>
@@ -474,14 +475,14 @@
 
 	{#snippet actions()}
 		<Button variant="ghost" onclick={() => (showCreateVault = false)} disabled={creatingVault}>
-			Cancel
+			{t('common.cancel')}
 		</Button>
 		<Button
 			variant="primary"
 			onclick={handleCreateVault}
 			disabled={creatingVault || !newVaultName.trim()}
 		>
-			{#if creatingVault}Creating...{:else}Create Vault{/if}
+			{#if creatingVault}{t('vault.creating')}{:else}{t('vault.create_vault')}{/if}
 		</Button>
 	{/snippet}
 </Modal>
@@ -500,15 +501,15 @@
 <Modal
 	open={showImportBackup}
 	onclose={() => (showImportBackup = false)}
-	title="Import Backup"
+	title={t('vault.import_backup')}
 >
 	{#snippet children()}
 		<div class="import-backup-form">
-			<p class="import-desc">Restore your Reach data from an encrypted backup file.</p>
+			<p class="import-desc">{t('vault.import_backup_desc')}</p>
 
 			<div class="import-step">
 				<Button variant="secondary" size="sm" onclick={handleSelectBackupFile}>
-					Select Backup File
+					{t('vault.select_backup_file')}
 				</Button>
 				{#if importFilePath}
 					<span class="import-file-path">{importFilePath.split(/[\\/]/).pop()}</span>
@@ -518,7 +519,7 @@
 			{#if importFilePath}
 				<Input
 					type="password"
-					label="Export Password"
+					label={t('vault.export_password')}
 					placeholder="Password used during export"
 					bind:value={importExportPassword}
 					disabled={importVerifying || importLoading}
@@ -531,7 +532,7 @@
 						onclick={handleVerifyBackup}
 						disabled={importVerifying || !importExportPassword}
 					>
-						{importVerifying ? 'Verifying...' : 'Verify Backup'}
+						{importVerifying ? t('vault.verifying') : t('vault.verify_backup')}
 					</Button>
 				{/if}
 			{/if}
@@ -539,32 +540,32 @@
 			{#if importPreview}
 				<div class="import-preview">
 					<div class="preview-row">
-						<span class="preview-label">Date</span>
+						<span class="preview-label">{t('vault.backup_preview_date')}</span>
 						<span class="preview-value">{new Date(importPreview.exportedAt * 1000).toLocaleString()}</span>
 					</div>
 					<div class="preview-row">
-						<span class="preview-label">Vaults</span>
+						<span class="preview-label">{t('vault.backup_preview_vaults')}</span>
 						<span class="preview-value">{importPreview.vaultCount}</span>
 					</div>
 					<div class="preview-row">
-						<span class="preview-label">Secrets</span>
+						<span class="preview-label">{t('vault.backup_preview_secrets')}</span>
 						<span class="preview-value">{importPreview.secretCount}</span>
 					</div>
 					<div class="preview-row">
-						<span class="preview-label">Sync Config</span>
-						<span class="preview-value">{importPreview.hasSyncConfig ? 'Yes' : 'No'}</span>
+						<span class="preview-label">{t('vault.backup_preview_sync')}</span>
+						<span class="preview-value">{importPreview.hasSyncConfig ? t('vault.yes') : t('vault.no')}</span>
 					</div>
 				</div>
 
 				<Input
 					type="password"
-					label="Master Password (optional)"
+					label={t('vault.master_password_optional')}
 					placeholder="Leave blank if you used TLS-style init"
 					bind:value={importMasterPassword}
 					disabled={importLoading}
 				/>
 
-				<p class="import-warning">This will reset your current data and restore from the backup.</p>
+				<p class="import-warning">{t('vault.import_warning')}</p>
 			{/if}
 
 			{#if importError}
@@ -575,7 +576,7 @@
 
 	{#snippet actions()}
 		<Button variant="ghost" onclick={() => (showImportBackup = false)} disabled={importLoading}>
-			Cancel
+			{t('common.cancel')}
 		</Button>
 		{#if importPreview}
 			<Button
@@ -583,7 +584,7 @@
 				onclick={handleImportBackup}
 				disabled={importLoading}
 			>
-				{importLoading ? 'Importing...' : 'Import Backup'}
+				{importLoading ? t('vault.importing') : t('vault.import_backup')}
 			</Button>
 		{/if}
 	{/snippet}

@@ -4,6 +4,7 @@
 	import PlaybookEditor from './PlaybookEditor.svelte';
 	import PlaybookRunner from './PlaybookRunner.svelte';
 	import { untrack } from 'svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		connectionId?: string;
@@ -51,7 +52,7 @@
 		e.stopPropagation();
 		try {
 			await playbookDelete(pb.id);
-			addToast('Playbook deleted', 'info');
+			addToast(t('playbook.deleted_toast'), 'info');
 			loadPlaybooks();
 		} catch (err) {
 			addToast(String(err), 'error');
@@ -110,7 +111,7 @@
 					stroke-linecap="round"
 				/>
 			</svg>
-			New Playbook
+			{t('playbook.new')}
 		</button>
 		<button class="run-btn" onclick={() => { runnerYaml = ''; showRunner = true; }}>
 			<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
@@ -122,17 +123,17 @@
 					stroke-linejoin="round"
 				/>
 			</svg>
-			Run
+			{t('playbook.run_short')}
 		</button>
 	</div>
 
 	{#if loading}
 		<div class="loading-state">
 			<span class="spinner"></span>
-			<span class="loading-text">Loading playbooks...</span>
+			<span class="loading-text">{t('playbook.loading')}</span>
 		</div>
 	{:else if saved.length === 0 && runs.length === 0}
-		<p class="empty-state">No playbooks yet. Create one to get started.</p>
+		<p class="empty-state">{t('playbook.no_playbooks_yet')}</p>
 	{:else}
 		{#if saved.length > 0}
 			<div class="divider"></div>
@@ -142,15 +143,15 @@
 					<div class="run-card" onclick={() => handleEditPlaybook(pb)} onkeydown={(e) => { if (e.key === 'Enter') handleEditPlaybook(pb); }} role="button" tabindex="0">
 						<div class="run-info">
 							<span class="run-name">{pb.name}</span>
-							<span class="run-progress">Saved</span>
+							<span class="run-progress">{t('playbook.saved')}</span>
 						</div>
 						<div class="card-actions">
-							<button class="card-action-btn play-btn" onclick={(e) => handleRunSaved(e, pb)} title="Run">
+							<button class="card-action-btn play-btn" onclick={(e) => handleRunSaved(e, pb)} title={t('playbook.run_short')}>
 								<svg width="10" height="10" viewBox="0 0 24 24" fill="none">
 									<path d="M5 3l14 9-14 9V3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 								</svg>
 							</button>
-							<button class="card-action-btn delete-btn" onclick={(e) => handleDeletePlaybook(e, pb)} title="Delete">
+							<button class="card-action-btn delete-btn" onclick={(e) => handleDeletePlaybook(e, pb)} title={t('playbook.delete')}>
 								<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
 									<path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
 								</svg>
@@ -161,14 +162,14 @@
 			</div>
 		{/if}
 		{#if runs.length > 0}
-			<div class="section-label">Recent Runs</div>
+			<div class="section-label">{t('playbook.recent_runs')}</div>
 			<div class="runs-scroll">
 				{#each runs as run (run.id)}
 					<div class="run-card">
 						<div class="run-info">
 							<span class="run-name">{run.playbook_name}</span>
 							<span class="run-progress">
-								Step {run.current_step}/{run.total_steps}
+								{t('playbook.step_n', { n: String(run.current_step), total: String(run.total_steps) })}
 							</span>
 						</div>
 						<span

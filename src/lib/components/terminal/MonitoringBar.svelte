@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getStats } from '$lib/state/monitoring.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		connectionId?: string;
@@ -33,9 +34,9 @@
 	});
 
 	let usersText = $derived.by(() => {
-		if (!stats || stats.users.length === 0) return 'No users';
-		if (stats.users.length === 1) return '1 user';
-		return `${stats.users.length} users`;
+		if (!stats || stats.users.length === 0) return t('monitoring.no_users');
+		if (stats.users.length === 1) return t('monitoring.one_user');
+		return t('monitoring.n_users', { count: stats.users.length });
 	});
 
 	// Format user entries for the tooltip: "root@pts/0 (you)" or "deploy@pts/1"
@@ -54,7 +55,7 @@
 {#if stats}
 	<div class="monitoring-bar">
 		<div class="gauge">
-			<span class="gauge-label">CPU</span>
+			<span class="gauge-label">{t('monitoring.cpu')}</span>
 			<div class="gauge-track">
 				<div
 					class="gauge-fill"
@@ -65,7 +66,7 @@
 		</div>
 
 		<div class="gauge">
-			<span class="gauge-label">RAM</span>
+			<span class="gauge-label">{t('monitoring.ram')}</span>
 			<div class="gauge-track">
 				<div
 					class="gauge-fill"
@@ -76,7 +77,7 @@
 		</div>
 
 		<div class="gauge">
-			<span class="gauge-label">Disk</span>
+			<span class="gauge-label">{t('monitoring.disk')}</span>
 			<div class="gauge-track">
 				<div
 					class="gauge-fill"
@@ -99,7 +100,7 @@
 						<div class="tooltip-user" class:is-you={isYou}>
 							<span class="tooltip-dot"></span>
 							<span>{entry}</span>
-							{#if isYou}<span class="you-tag">(you)</span>{/if}
+							{#if isYou}<span class="you-tag">{t('monitoring.you')}</span>{/if}
 						</div>
 					{/each}
 				</div>
@@ -108,7 +109,7 @@
 	</div>
 {:else}
 	<div class="monitoring-bar disconnected">
-		<span class="disconnected-text">Not connected</span>
+		<span class="disconnected-text">{t('monitoring.not_connected')}</span>
 	</div>
 {/if}
 

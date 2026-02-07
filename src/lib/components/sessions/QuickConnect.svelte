@@ -4,6 +4,7 @@
 	import Input from '$lib/components/shared/Input.svelte';
 	import { sshConnect } from '$lib/ipc/ssh';
 	import { createTab } from '$lib/state/tabs.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		open: boolean;
@@ -70,21 +71,21 @@
 	}
 </script>
 
-<Modal {open} onclose={handleClose} title="Quick Connect">
+<Modal {open} onclose={handleClose} title={t('session.quick_connect')}>
 	<form class="form" onsubmit={(e) => { e.preventDefault(); handleConnect(); }}>
 		<div class="row">
 			<div class="field-host">
-				<Input label="Host" bind:value={host} placeholder="192.168.1.1" disabled={connecting} />
+				<Input label={t('session.host')} bind:value={host} placeholder="192.168.1.1" disabled={connecting} />
 			</div>
 			<div class="field-port">
-				<Input label="Port" bind:value={portStr} type="number" placeholder="22" disabled={connecting} />
+				<Input label={t('session.port')} bind:value={portStr} type="number" placeholder="22" disabled={connecting} />
 			</div>
 		</div>
 
-		<Input label="Username" bind:value={username} placeholder="root" disabled={connecting} />
+		<Input label={t('session.username')} bind:value={username} placeholder="root" disabled={connecting} />
 
 		<div class="auth-section">
-			<span class="auth-label">Authentication</span>
+			<span class="auth-label">{t('session.auth_method')}</span>
 			<div class="auth-toggle">
 				<button
 					type="button"
@@ -93,7 +94,7 @@
 					disabled={connecting}
 					onclick={() => (authMethod = 'password')}
 				>
-					Password
+					{t('session.auth_password')}
 				</button>
 				<button
 					type="button"
@@ -102,16 +103,16 @@
 					disabled={connecting}
 					onclick={() => (authMethod = 'key')}
 				>
-					Key
+					{t('session.auth_key')}
 				</button>
 			</div>
 		</div>
 
 		{#if authMethod === 'password'}
-			<Input label="Password" bind:value={password} type="password" disabled={connecting} />
+			<Input label={t('session.password')} bind:value={password} type="password" disabled={connecting} />
 		{:else}
-			<Input label="Key Path" bind:value={keyPath} placeholder="~/.ssh/id_rsa" disabled={connecting} />
-			<Input label="Passphrase" bind:value={keyPassphrase} type="password" disabled={connecting} />
+			<Input label={t('session.key_path')} bind:value={keyPath} placeholder="~/.ssh/id_rsa" disabled={connecting} />
+			<Input label={t('session.passphrase_optional')} bind:value={keyPassphrase} type="password" disabled={connecting} />
 		{/if}
 
 		{#if error}
@@ -121,14 +122,14 @@
 
 	{#snippet actions()}
 		<Button variant="secondary" onclick={handleClose} disabled={connecting}>
-			Cancel
+			{t('common.cancel')}
 		</Button>
 		<Button variant="primary" onclick={handleConnect} disabled={!canConnect}>
 			{#if connecting}
 				<span class="spinner"></span>
-				Connecting...
+				{t('session.connecting')}
 			{:else}
-				Connect
+				{t('session.connect')}
 			{/if}
 		</Button>
 	{/snippet}

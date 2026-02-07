@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getTabs, getActiveTab, updateTabTitle } from '$lib/state/tabs.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 	import { ptySpawn, ptyClose } from '$lib/ipc/pty';
 	import { sshDisconnect } from '$lib/ipc/ssh';
 	import { monitoringStart, monitoringStop, monitoringGetStats } from '$lib/ipc/monitoring';
@@ -153,8 +154,8 @@
 					stroke-linecap="round"
 				/>
 			</svg>
-			<h2 class="empty-title">Terminal</h2>
-			<p class="empty-subtitle">Open a new tab to get started</p>
+			<h2 class="empty-title">{t('terminal.title')}</h2>
+			<p class="empty-subtitle">{t('terminal.empty_hint')}</p>
 		</div>
 	{:else}
 		<div class="terminal-area">

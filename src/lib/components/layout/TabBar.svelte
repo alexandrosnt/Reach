@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getTabs, getActiveTab, createTab, closeTab, activateTab } from '$lib/state/tabs.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	let tabs = $derived(getTabs());
 	let activeTab = $derived(getActiveTab());
@@ -45,7 +46,7 @@
 				<button
 					class="tab-close"
 					onclick={(e) => handleCloseTab(e, tab.id)}
-					aria-label="Close tab {tab.title}"
+					aria-label={t('common.close_tab', { title: tab.title })}
 				>
 					<svg width="8" height="8" viewBox="0 0 8 8" fill="none">
 						<path d="M1 1l6 6M7 1L1 7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
@@ -55,7 +56,7 @@
 		{/each}
 	</div>
 
-	<button class="new-tab-btn" onclick={handleNewTab} aria-label="New tab">
+	<button class="new-tab-btn" onclick={handleNewTab} aria-label={t('common.new_tab')}>
 		<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
 			<path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
 		</svg>

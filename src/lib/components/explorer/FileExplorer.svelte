@@ -1,6 +1,7 @@
 <script lang="ts">
 	function autoFocus(node: HTMLElement) { node.focus(); }
 
+	import { t } from '$lib/state/i18n.svelte';
 	import { getCurrentPath, getEntries, setCurrentPath, setEntries } from '$lib/state/explorer.svelte';
 	import { sftpListDir, sftpUpload, sftpDownload, sftpDelete, sftpRename, sftpMkdir, sftpTouch, sftpReadFile } from '$lib/ipc/sftp';
 	import { openEditor } from '$lib/state/editor.svelte';
@@ -146,7 +147,7 @@
 			const content = await sftpReadFile(connectionId, entry.path);
 			openEditor(connectionId, entry.path, entry.name, content);
 		} catch (err) {
-			addToast(`Failed to open file: ${err}`, 'error');
+			addToast(t('explorer.open_file_error', { error: String(err) }), 'error');
 		}
 	}
 
@@ -463,7 +464,7 @@
 				stroke-linejoin="round"
 			/>
 		</svg>
-		<span class="empty-text">Connect to browse files</span>
+		<span class="empty-text">{t('explorer.connect_to_browse')}</span>
 	</div>
 {:else}
 	<div class="explorer">
@@ -472,7 +473,7 @@
 				class="tool-btn"
 				onclick={navigateUp}
 				disabled={currentPath === '/'}
-				aria-label="Go to parent directory"
+				aria-label={t('explorer.go_parent')}
 				type="button"
 			>
 				<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -486,7 +487,7 @@
 				</svg>
 			</button>
 
-			<button class="tool-btn" onclick={refresh} aria-label="Refresh directory" type="button">
+			<button class="tool-btn" onclick={refresh} aria-label={t('explorer.refresh_dir')} type="button">
 				<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 					<path
 						d="M23 4v6h-6M1 20v-6h6"
@@ -525,7 +526,7 @@
 		{#if error}
 			<div class="error-message">
 				<span class="error-text">{error}</span>
-				<button class="retry-btn" onclick={refresh} type="button">Retry</button>
+				<button class="retry-btn" onclick={refresh} type="button">{t('explorer.retry')}</button>
 			</div>
 		{/if}
 
@@ -560,7 +561,7 @@
 								stroke-linejoin="round"
 							/>
 						</svg>
-						<span class="drop-text">Drop files to upload</span>
+						<span class="drop-text">{t('explorer.drop_to_upload')}</span>
 					</div>
 				</div>
 			{/if}
@@ -602,10 +603,10 @@
 
 			{#if deleteConfirm}
 				<div class="delete-confirm-bar">
-					<span class="delete-confirm-text">Delete "<strong>{deleteConfirm.entry.name}</strong>"?</span>
+					<span class="delete-confirm-text">{t('explorer.delete_confirm', { name: deleteConfirm.entry.name })}</span>
 					<div class="delete-confirm-actions">
-						<button class="delete-confirm-btn cancel" onclick={cancelDelete} type="button">Cancel</button>
-						<button class="delete-confirm-btn confirm" onclick={confirmDelete} type="button">Delete</button>
+						<button class="delete-confirm-btn cancel" onclick={cancelDelete} type="button">{t('common.cancel')}</button>
+						<button class="delete-confirm-btn confirm" onclick={confirmDelete} type="button">{t('common.delete')}</button>
 					</div>
 				</div>
 			{/if}
@@ -618,7 +619,7 @@
 					<input
 						class="rename-input"
 						type="text"
-						placeholder="Folder name"
+						placeholder={t('explorer.folder_name')}
 						value={creatingFolder}
 						oninput={(e) => { creatingFolder = e.currentTarget.value; }}
 						onkeydown={handleNewFolderKeydown}
@@ -637,7 +638,7 @@
 					<input
 						class="rename-input"
 						type="text"
-						placeholder="File name"
+						placeholder={t('explorer.file_name')}
 						value={creatingFile}
 						oninput={(e) => { creatingFile = e.currentTarget.value; }}
 						onkeydown={handleNewFileKeydown}
@@ -649,7 +650,7 @@
 
 			{#if sortedEntries.length === 0 && !loading && creatingFolder === undefined}
 				<div class="empty-dir">
-					<span class="empty-dir-text">Empty directory</span>
+					<span class="empty-dir-text">{t('explorer.empty')}</span>
 				</div>
 			{:else}
 				{#each sortedEntries as entry (entry.path)}
@@ -688,7 +689,7 @@
 						<line x1="16" y1="13" x2="8" y2="13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 						<line x1="16" y1="17" x2="8" y2="17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 					</svg>
-					Edit
+					{t('explorer.edit')}
 				</button>
 				<button class="context-item" onclick={handleDownload} type="button">
 					<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -696,21 +697,21 @@
 						<polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 						<line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 					</svg>
-					Download
+					{t('explorer.download')}
 				</button>
 			{/if}
 			<button class="context-item" onclick={startRename} type="button">
 				<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 					<path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 				</svg>
-				Rename
+				{t('explorer.rename')}
 			</button>
 			<button class="context-item danger" onclick={handleDelete} type="button">
 				<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 					<polyline points="3 6 5 6 21 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 					<path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 				</svg>
-				Delete
+				{t('explorer.delete')}
 			</button>
 			<div class="context-sep"></div>
 		{/if}
@@ -721,7 +722,7 @@
 				<line x1="12" y1="11" x2="12" y2="17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 				<line x1="9" y1="14" x2="15" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 			</svg>
-			New File
+			{t('explorer.new_file')}
 		</button>
 		<button class="context-item" onclick={handleNewFolder} type="button">
 			<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
@@ -729,7 +730,7 @@
 				<line x1="12" y1="11" x2="12" y2="17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 				<line x1="9" y1="14" x2="15" y2="14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 			</svg>
-			New Folder
+			{t('explorer.new_folder')}
 		</button>
 		<div class="context-sep"></div>
 		<button class="context-item" onclick={() => { closeContextMenu(); refresh(); }} type="button">
@@ -737,7 +738,7 @@
 				<path d="M23 4v6h-6M1 20v-6h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 				<path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 			</svg>
-			Refresh
+			{t('explorer.refresh')}
 		</button>
 	</div>
 {/if}

@@ -5,6 +5,7 @@
 	import { getAISettings } from '$lib/state/ai.svelte';
 	import { __APP_VERSION__ } from '$lib/version';
 	import { toggleAIPanel, getAIChatState } from '$lib/state/ai-chat.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	let aiSettings = $derived(getAISettings());
 	let aiConfigured = $derived(aiSettings.enabled && !!aiSettings.apiKey && !!aiSettings.selectedModel);
@@ -40,14 +41,14 @@
 		<img src="/app-icon.png" alt="" class="app-icon" draggable="false" />
 		<span class="app-name">Reach</span>
 		<span class="app-version">v{__APP_VERSION__}</span>
-		<button class="settings-btn" onclick={openSettings} aria-label="Open settings">
+		<button class="settings-btn" onclick={openSettings} aria-label={t('titlebar.open_settings')}>
 			<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
 				<circle cx="12" cy="12" r="3" />
 				<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
 			</svg>
 		</button>
 		{#if aiConfigured}
-			<button class="ai-btn" class:ai-active={aiPanelOpen} onclick={toggleAIPanel} aria-label="AI Assistant" title="AI Assistant (Ctrl+Shift+A)">
+			<button class="ai-btn" class:ai-active={aiPanelOpen} onclick={toggleAIPanel} aria-label={t('titlebar.ai_assistant')} title={t('titlebar.ai_assistant') + ' (Ctrl+Shift+A)'}>
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M12 2l2.09 6.26L20.18 10l-6.09 1.74L12 18l-2.09-6.26L3.82 10l6.09-1.74L12 2z" />
 					<path d="M20 16l.88 2.64L23.52 20l-2.64.76L20 23.4l-.88-2.64L16.48 20l2.64-.76L20 16z" />
@@ -57,19 +58,19 @@
 	</div>
 
 	<div class="titlebar-right">
-		<button class="window-btn" onclick={minimize} aria-label="Minimize">
+		<button class="window-btn" onclick={minimize} aria-label={t('titlebar.minimize')}>
 			<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
 				<path d="M1 5h8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
 			</svg>
 		</button>
 
-		<button class="window-btn" onclick={toggleMaximize} aria-label="Maximize">
+		<button class="window-btn" onclick={toggleMaximize} aria-label={t('titlebar.maximize')}>
 			<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
 				<rect x="1" y="1" width="8" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2" />
 			</svg>
 		</button>
 
-		<button class="window-btn window-btn-close" onclick={close} aria-label="Close">
+		<button class="window-btn window-btn-close" onclick={close} aria-label={t('titlebar.close')}>
 			<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
 				<path d="M1.5 1.5l7 7M8.5 1.5l-7 7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
 			</svg>

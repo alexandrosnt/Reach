@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getUpdaterState, downloadAndInstall, dismissUpdate } from '$lib/state/updater.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	const updater = getUpdaterState();
 
@@ -41,12 +42,12 @@
 	<div class="update-banner" class:dismissing role="banner" aria-live="polite">
 		<div class="banner-content">
 			<span class="banner-text">
-				Reach v{updater.updateVersion} is available
+				{t('updater.available', { version: updater.updateVersion ?? '' })}
 			</span>
 
 			<div class="banner-actions">
 				{#if updater.installing}
-					<span class="status-text">Installing...</span>
+					<span class="status-text">{t('updater.installing')}</span>
 				{:else if updater.downloading}
 					<div class="progress-area">
 						<div class="progress-track">
@@ -57,8 +58,8 @@
 				{:else if showError && updater.error}
 					<span class="error-text">{updater.error}</span>
 				{:else}
-					<button class="btn-update" onclick={downloadAndInstall}>Update Now</button>
-					<button class="btn-later" onclick={handleDismiss}>Later</button>
+					<button class="btn-update" onclick={downloadAndInstall}>{t('updater.update_now')}</button>
+					<button class="btn-later" onclick={handleDismiss}>{t('updater.later')}</button>
 				{/if}
 			</div>
 		</div>

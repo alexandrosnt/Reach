@@ -4,6 +4,7 @@
 	import PlaybookList from '$lib/components/playbook/PlaybookList.svelte';
 	import TunnelManager from '$lib/components/tunnel/TunnelManager.svelte';
 	import SnippetList from '$lib/components/snippets/SnippetList.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	type Section = 'sessions' | 'explorer' | 'playbooks' | 'tunnels' | 'snippets';
 
@@ -41,33 +42,33 @@
 		} catch {}
 	}
 
-	const sections: Array<{ id: Section; label: string; icon: string }> = [
+	let sections = $derived<Array<{ id: Section; label: string; icon: string }>>([
 		{
 			id: 'sessions',
-			label: 'Sessions',
+			label: t('sidebar.sessions'),
 			icon: 'M4 6h16M4 10h16M4 14h16M4 18h16'
 		},
 		{
 			id: 'explorer',
-			label: 'File Explorer',
+			label: t('sidebar.explorer'),
 			icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z'
 		},
 		{
 			id: 'playbooks',
-			label: 'Playbooks',
+			label: t('sidebar.playbooks'),
 			icon: 'M5 3l14 9-14 9V3z'
 		},
 		{
 			id: 'tunnels',
-			label: 'Tunnels',
+			label: t('sidebar.tunnels'),
 			icon: 'M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71'
 		},
 		{
 			id: 'snippets',
-			label: 'Snippets',
+			label: t('sidebar.snippets'),
 			icon: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01'
 		}
-	];
+	]);
 
 	function handleSectionClick(sectionId: Section): void {
 		if (collapsed) {
@@ -159,7 +160,7 @@
 		<button
 			class="toggle-btn"
 			onclick={toggleCollapsed}
-			aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+			aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
 		>
 			<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
 				{#if collapsed}

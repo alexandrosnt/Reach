@@ -11,6 +11,7 @@
 		loadSecureAISettings
 	} from '$lib/state/ai.svelte';
 	import { isLocked } from '$lib/state/vault.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	const aiSettings = getAISettings();
 
@@ -78,13 +79,13 @@
 	<!-- Enable AI row -->
 	<div class="setting-row">
 		<div class="setting-info">
-			<span class="setting-label">Enable AI Features</span>
-			<span class="setting-description">Connect to OpenRouter for AI-powered features</span>
+			<span class="setting-label">{t('ai_settings.enable')}</span>
+			<span class="setting-description">{t('ai_settings.enable_desc')}</span>
 		</div>
 		<div class="setting-control">
 			<Toggle
 				checked={aiSettings.enabled}
-				label="Enable"
+				label={t('ai_settings.enable')}
 				onchange={onEnabledChange}
 			/>
 		</div>
@@ -93,8 +94,8 @@
 	<!-- API Key section -->
 	<div class="ai-section" class:disabled-section={!aiSettings.enabled}>
 		<div class="api-key-section">
-			<span class="setting-label">API Key</span>
-			<span class="setting-description">Your OpenRouter API key for authentication</span>
+			<span class="setting-label">{t('ai_settings.api_key')}</span>
+			<span class="setting-description">{t('ai_settings.api_key_desc')}</span>
 			<div class="api-key-row">
 				<Input
 					type="password"
@@ -109,9 +110,9 @@
 					onclick={onValidate}
 				>
 					{#if getModelsLoading()}
-						Validating...
+						{t('ai_settings.validating')}
 					{:else}
-						Validate
+						{t('ai_settings.validate')}
 					{/if}
 				</button>
 			</div>
@@ -119,15 +120,15 @@
 				{#if apiKeyError}
 					<span class="status-error">{apiKeyError}</span>
 				{:else if savingApiKey}
-					<span class="status-hint">Saving encrypted...</span>
+					<span class="status-hint">{t('ai_settings.saving_encrypted')}</span>
 				{:else if getModelsError()}
 					<span class="status-error">{getModelsError()}</span>
 				{:else if getModels().length > 0}
-					<span class="status-success">{getModels().length} models available</span>
+					<span class="status-success">{t('ai_settings.model_count', { count: getModels().length })}</span>
 				{:else if isLocked()}
-					<span class="status-hint">Unlock vault to enter API key securely</span>
+					<span class="status-hint">{t('ai_settings.unlock_vault')}</span>
 				{:else}
-					<span class="status-hint">Enter your API key and click Validate to load models</span>
+					<span class="status-hint">{t('ai_settings.enter_api_key')}</span>
 				{/if}
 			</div>
 		</div>
@@ -136,14 +137,14 @@
 	<!-- Model Browser section -->
 	<div class="ai-section" class:disabled-section={!aiSettings.enabled}>
 		<div class="section-header">
-			<span class="setting-label">Model Browser</span>
+			<span class="setting-label">{t('ai_settings.model_browser')}</span>
 		</div>
 
 		<div class="model-search">
 			<input
 				class="search-input"
 				type="text"
-				placeholder="Search models..."
+				placeholder={t('ai_settings.search_models')}
 				disabled={!aiSettings.enabled}
 				bind:value={searchQuery}
 			/>
@@ -152,11 +153,11 @@
 		<div class="model-list">
 			{#if getModels().length === 0}
 				<div class="model-empty">
-					No models loaded. Validate your API key to browse models.
+					{t('ai_settings.no_models')}
 				</div>
 			{:else if filteredModels.length === 0}
 				<div class="model-empty">
-					No models match your search.
+					{t('ai_settings.no_match')}
 				</div>
 			{:else}
 				{#each filteredModels as model (model.id)}

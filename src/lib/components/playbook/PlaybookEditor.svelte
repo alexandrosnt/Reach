@@ -5,6 +5,7 @@
 	import { getAISettings } from '$lib/state/ai.svelte';
 	import { playbookSave } from '$lib/ipc/playbook';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 	import { EditorView } from '@codemirror/view';
 	import { EditorState } from '@codemirror/state';
 	import { basicSetup } from 'codemirror';
@@ -178,7 +179,7 @@ steps:
 		saving = true;
 		try {
 			await playbookSave(content, editId);
-			addToast('Playbook saved', 'success');
+			addToast(t('playbook.saved_toast'), 'success');
 			onsave?.();
 			onclose();
 		} catch (e) {
@@ -193,7 +194,7 @@ steps:
 	}
 </script>
 
-<Modal {open} onclose={handleClose} title="Playbook Editor">
+<Modal {open} onclose={handleClose} title={t('playbook.editor_title')}>
 	{#snippet children()}
 		<div class="editor-container">
 			{#if showAIPrompt}
@@ -201,19 +202,19 @@ steps:
 					<input
 						class="ai-prompt-input"
 						bind:value={aiPrompt}
-						placeholder="Describe what this playbook should do..."
+						placeholder={t('playbook.generate_prompt')}
 						onkeydown={(e) => { if (e.key === 'Enter') handleGenerate(); }}
 						disabled={aiGenerating}
 					/>
 					<div class="ai-prompt-actions">
-						<Button variant="ghost" onclick={() => { showAIPrompt = false; aiPrompt = ''; }}>Cancel</Button>
+						<Button variant="ghost" onclick={() => { showAIPrompt = false; aiPrompt = ''; }}>{t('common.cancel')}</Button>
 						<Button variant="primary" onclick={handleGenerate} disabled={aiGenerating || !aiPrompt.trim()}>
-							{aiGenerating ? 'Generating...' : 'Generate'}
+							{aiGenerating ? t('playbook.generating') : t('playbook.generate')}
 						</Button>
 					</div>
 				</div>
 			{/if}
-			<span class="editor-label">YAML Definition</span>
+			<span class="editor-label">{t('playbook.yaml_definition')}</span>
 			<div class="yaml-editor" use:mountEditor></div>
 		</div>
 	{/snippet}
@@ -224,15 +225,15 @@ steps:
 				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
 				</svg>
-				Generate with AI
+				{t('playbook.generate_ai')}
 			</Button>
 			<Button variant="ghost" onclick={handleFix} disabled={!aiEnabled || aiFixing}>
-				{aiFixing ? 'Fixing...' : 'Fix with AI'}
+				{aiFixing ? t('playbook.fixing') : t('playbook.fix_ai')}
 			</Button>
 		</div>
 		<div class="spacer"></div>
-		<Button variant="ghost" onclick={handleClose}>Cancel</Button>
-		<Button variant="secondary" onclick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
+		<Button variant="ghost" onclick={handleClose}>{t('common.cancel')}</Button>
+		<Button variant="secondary" onclick={handleSave} disabled={saving}>{saving ? t('playbook.saving') : t('playbook.save')}</Button>
 		<Button variant="primary" onclick={handleRun}>
 			<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 				<path
@@ -243,7 +244,7 @@ steps:
 					stroke-linejoin="round"
 				/>
 			</svg>
-			Run
+			{t('playbook.run_short')}
 		</Button>
 	{/snippet}
 </Modal>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { vaultState } from '$lib/state/vault.svelte';
 	import { sessionShare, type SessionConfig } from '$lib/ipc/sessions';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		session: SessionConfig;
@@ -23,7 +24,7 @@
 
 	async function handleShare() {
 		if (!recipientUuid.trim() || !recipientPublicKey.trim()) {
-			error = 'Recipient UUID and public key are required';
+			error = t('session.recipient_required');
 			return;
 		}
 
@@ -31,11 +32,11 @@
 		try {
 			const decoded = atob(recipientPublicKey.trim());
 			if (decoded.length !== 32) {
-				error = 'Invalid public key: must be 32 bytes (X25519)';
+				error = t('session.invalid_public_key_length');
 				return;
 			}
 		} catch {
-			error = 'Invalid public key: must be valid base64';
+			error = t('session.invalid_public_key_base64');
 			return;
 		}
 
@@ -68,8 +69,8 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div class="share-dialog" onclick={(e) => e.stopPropagation()} onkeydown={() => {}} role="dialog" aria-modal="true" tabindex="-1">
 		<div class="dialog-header">
-			<h3>Share Session</h3>
-			<button class="close-btn" onclick={onclose} aria-label="Close">
+			<h3>{t('session.share_session')}</h3>
+			<button class="close-btn" onclick={onclose} aria-label={t('common.close')}>
 				<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path d="M18 6L6 18M6 6l12 12"/>
 				</svg>
@@ -83,21 +84,21 @@
 						<path d="M20 6L9 17l-5-5"/>
 					</svg>
 				</div>
-				<p class="success-text">Session shared successfully!</p>
-				<p class="share-id">Share ID: <code>{shareResult.shareId}</code></p>
-				<p class="share-hint">The recipient can now accept this share using your vault's sync URL.</p>
-				<button class="primary-btn" onclick={onclose}>Done</button>
+				<p class="success-text">{t('session.share_success')}</p>
+				<p class="share-id">{t('session.share_id')} <code>{shareResult.shareId}</code></p>
+				<p class="share-hint">{t('session.share_hint')}</p>
+				<button class="primary-btn" onclick={onclose}>{t('session.done')}</button>
 			</div>
 		{:else}
 			<div class="dialog-content">
-				<p class="share-info">Sharing: <strong>{session.name}</strong></p>
+				<p class="share-info">{t('session.sharing_name')} <strong>{session.name}</strong></p>
 
 				<div class="my-info">
-					<p class="info-label">Your identity (share this with recipient):</p>
+					<p class="info-label">{t('session.your_identity')}</p>
 					<div class="info-row">
-						<span class="info-key">UUID:</span>
+						<span class="info-key">{t('session.uuid')}</span>
 						<code class="info-value">{myUuid}</code>
-						<button class="copy-btn" onclick={() => copyToClipboard(myUuid)} title="Copy">
+						<button class="copy-btn" onclick={() => copyToClipboard(myUuid)} title={t('common.copy')}>
 							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 								<rect x="9" y="9" width="13" height="13" rx="2"/>
 								<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -105,9 +106,9 @@
 						</button>
 					</div>
 					<div class="info-row">
-						<span class="info-key">Public Key:</span>
+						<span class="info-key">{t('session.public_key')}</span>
 						<code class="info-value">{myPublicKey}</code>
-						<button class="copy-btn" onclick={() => copyToClipboard(myPublicKey)} title="Copy">
+						<button class="copy-btn" onclick={() => copyToClipboard(myPublicKey)} title={t('common.copy')}>
 							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 								<rect x="9" y="9" width="13" height="13" rx="2"/>
 								<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
@@ -117,7 +118,7 @@
 				</div>
 
 				<div class="form-group">
-					<label for="recipient-uuid">Recipient UUID</label>
+					<label for="recipient-uuid">{t('session.recipient_uuid')}</label>
 					<input
 						id="recipient-uuid"
 						type="text"
@@ -128,7 +129,7 @@
 				</div>
 
 				<div class="form-group">
-					<label for="recipient-key">Recipient Public Key (base64)</label>
+					<label for="recipient-key">{t('session.recipient_public_key')}</label>
 					<input
 						id="recipient-key"
 						type="text"
@@ -139,7 +140,7 @@
 				</div>
 
 				<div class="form-group">
-					<label for="expires">Expires in (hours, optional)</label>
+					<label for="expires">{t('session.expires_hours')}</label>
 					<input
 						id="expires"
 						type="number"
@@ -156,9 +157,9 @@
 			</div>
 
 			<div class="dialog-actions">
-				<button class="secondary-btn" onclick={onclose} disabled={sharing}>Cancel</button>
+				<button class="secondary-btn" onclick={onclose} disabled={sharing}>{t('common.cancel')}</button>
 				<button class="primary-btn" onclick={handleShare} disabled={sharing}>
-					{#if sharing}Sharing...{:else}Share{/if}
+					{#if sharing}{t('session.sharing')}{:else}{t('session.share')}{/if}
 				</button>
 			</div>
 		{/if}

@@ -6,6 +6,7 @@
 	import { loadAISettings } from '$lib/state/ai.svelte';
 	import { initShortcuts, cleanupShortcuts } from '$lib/state/shortcuts.svelte';
 	import { startupUpdateCheck, startPeriodicChecks, stopPeriodicChecks } from '$lib/state/updater.svelte';
+	import { changeLocale } from '$lib/state/i18n.svelte';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -30,6 +31,10 @@
 			cleanupShortcuts();
 			stopPeriodicChecks();
 		};
+	});
+
+	$effect(() => {
+		changeLocale(settings.locale);
 	});
 
 	$effect(() => {

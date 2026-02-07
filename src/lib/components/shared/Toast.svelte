@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getToasts, dismissToast, type ToastType } from '$lib/state/toasts.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	let toasts = $derived(getToasts());
 
@@ -21,7 +22,7 @@
 			>
 				<span class="toast-dot" style="background-color: {dotColors[toast.type]}"></span>
 				<span class="toast-message">{toast.message}</span>
-				<button class="toast-close" onclick={() => dismissToast(toast.id)} aria-label="Dismiss notification">
+				<button class="toast-close" onclick={() => dismissToast(toast.id)} aria-label={t('common.dismiss')}>
 					<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
 						<path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
 					</svg>
