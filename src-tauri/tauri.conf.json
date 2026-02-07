@@ -32,7 +32,7 @@
       "endpoints": [
         "https://github.com/alexandrosnt/Reach/releases/latest/download/latest.json"
       ],
-      "pubkey": "PASTE_PUBLIC_KEY_HERE"
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFCRkZFNDFCOTkzQTMxN0YKUldSL01UcVpHK1QvR3phYzY3VVVVWUlZYjIxdUh0bmprWDdCNUFRMG9kS052UlBwMm5kVXFwb1cK"
     }
   },
   "bundle": {
