@@ -18,7 +18,7 @@ jobs:
             target: x86_64-pc-windows-msvc
           - platform: macos-latest
             target: aarch64-apple-darwin
-          - platform: macos-15-intel
+          - platform: macos-13
             target: x86_64-apple-darwin
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
@@ -48,13 +48,8 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
 
       - name: Build Tauri app
         uses: tauri-apps/tauri-action@v0
@@ -101,16 +96,11 @@ jobs:
         with:
           node-version: '22'
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
 
       - name: Initialize Android project
-        run: pnpm tauri android init
+        run: npx tauri android init
 
       - name: Generate signing keystore
         run: |
@@ -143,7 +133,7 @@ jobs:
           GRADLE
 
       - name: Build Android APK
-        run: pnpm tauri android build --apk
+        run: npx tauri android build --apk
         env:
           NDK_HOME: ${{ env.ANDROID_NDK_HOME }}
 
