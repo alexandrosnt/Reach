@@ -61,6 +61,7 @@ portable-pty = "0.8"
 serialport = "4"
 tauri-plugin-autostart = "2"
 tauri-plugin-updater = "2"
+tauri-plugin-single-instance = "2"
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
