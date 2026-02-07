@@ -16,7 +16,8 @@
 		{ code: 'de', name: 'Deutsch', subtitle: 'German' },
 		{ code: 'fr', name: 'Français', subtitle: 'French' },
 		{ code: 'el', name: 'Ελληνικά', subtitle: 'Greek' },
-		{ code: 'it', name: 'Italiano', subtitle: 'Italian' }
+		{ code: 'it', name: 'Italiano', subtitle: 'Italian' },
+		{ code: 'bg', name: 'Български', subtitle: 'Bulgarian' }
 	];
 
 	let selected = $state(settings.locale || 'en');
@@ -74,6 +75,11 @@
 						<rect width="20" height="40" fill="#009246"/>
 						<rect x="20" width="20" height="40" fill="#fff"/>
 						<rect x="40" width="20" height="40" fill="#CE2B37"/>
+					{:else if lang.code === 'bg'}
+						<!-- Bulgaria -->
+						<rect width="60" height="13.33" fill="#fff"/>
+						<rect y="13.33" width="60" height="13.34" fill="#00966E"/>
+						<rect y="26.67" width="60" height="13.33" fill="#D62612"/>
 					{/if}
 				</svg>
 				<span class="lang-name">{lang.name}</span>
