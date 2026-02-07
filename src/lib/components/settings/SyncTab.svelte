@@ -7,6 +7,7 @@
 	import { vaultState } from '$lib/state/vault.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import { getSettings as getLocalSettings, updateSetting } from '$lib/state/settings.svelte';
 
 	let loading = $state(true);
 	let saving = $state(false);
@@ -45,6 +46,17 @@
 			personalDbUrl = settings.personalDbUrl ?? '';
 			personalDbToken = settings.personalDbToken ?? '';
 			syncEnabled = settings.syncEnabled ?? false;
+
+			// Pick up pending Turso creds from welcome screen setup
+			const local = getLocalSettings();
+			if (!tursoOrg && local.pendingTursoOrg) {
+				tursoOrg = local.pendingTursoOrg;
+				updateSetting('pendingTursoOrg', '');
+			}
+			if (!tursoApiToken && local.pendingTursoApiToken) {
+				tursoApiToken = local.pendingTursoApiToken;
+				updateSetting('pendingTursoApiToken', '');
+			}
 		} catch {
 			// Default values
 		}
