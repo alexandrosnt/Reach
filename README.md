@@ -17,6 +17,12 @@
 
 ---
 
+<p align="center">
+  <img src="assets/preview.png" alt="Reach Preview" width="900" />
+</p>
+
+---
+
 ## Why Reach?
 
 Most SSH tools feel like they were designed in 2005, because they were. MobaXterm is Windows-only and bloated, PuTTY hasn't changed in decades, and Termius wants a subscription for basic features.
