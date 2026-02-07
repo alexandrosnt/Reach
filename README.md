@@ -15,6 +15,10 @@
   <img src="https://img.shields.io/github/license/alexandrosnt/Reach?style=flat-square" alt="License" />
 </p>
 
+<p align="center">
+  <a href="https://alexandrosnt.github.io/Reach/"><strong>Documentation</strong></a> · <a href="https://github.com/alexandrosnt/Reach/releases">Download</a> · <a href="https://github.com/alexandrosnt/Reach/issues">Report a Bug</a>
+</p>
+
 ---
 
 <p align="center">
