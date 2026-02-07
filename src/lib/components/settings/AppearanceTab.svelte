@@ -1,16 +1,17 @@
 <script lang="ts">
 	import Dropdown from '$lib/components/shared/Dropdown.svelte';
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	const settings = getSettings();
 
 	type ThemeValue = 'dark' | 'light' | 'system';
 
-	const themes: { label: string; value: ThemeValue; icon: string }[] = [
-		{ label: 'Dark', value: 'dark', icon: 'moon' },
-		{ label: 'Light', value: 'light', icon: 'sun' },
-		{ label: 'System', value: 'system', icon: 'monitor' }
-	];
+	let themes = $derived([
+		{ label: t('settings.theme_dark'), value: 'dark' as ThemeValue, icon: 'moon' },
+		{ label: t('settings.theme_light'), value: 'light' as ThemeValue, icon: 'sun' },
+		{ label: t('settings.theme_system'), value: 'system' as ThemeValue, icon: 'monitor' },
+	]);
 
 	const fontOptions = [
 		{ label: 'JetBrains Mono', value: 'JetBrains Mono' },
@@ -49,7 +50,7 @@
 
 <div class="tab-content">
 	<div class="setting-section">
-		<span class="section-label">Theme</span>
+		<span class="section-label">{t('settings.theme')}</span>
 		<div class="theme-cards">
 			{#each themes as theme (theme.value)}
 				<button
@@ -90,8 +91,8 @@
 
 	<div class="setting-row">
 		<div class="setting-info">
-			<span class="setting-label">Font Size</span>
-			<span class="setting-description">Terminal text size ({settings.fontSize}px)</span>
+			<span class="setting-label">{t('settings.font_size')}</span>
+			<span class="setting-description">{t('settings.font_size_desc', { size: settings.fontSize })}</span>
 		</div>
 		<div class="setting-control slider-control">
 			<span class="range-value">{settings.fontSize}px</span>
@@ -109,8 +110,8 @@
 
 	<div class="setting-row">
 		<div class="setting-info">
-			<span class="setting-label">Terminal Font</span>
-			<span class="setting-description">Font used in the terminal emulator</span>
+			<span class="setting-label">{t('settings.terminal_font')}</span>
+			<span class="setting-description">{t('settings.font_desc')}</span>
 		</div>
 		<div class="setting-control">
 			<Dropdown

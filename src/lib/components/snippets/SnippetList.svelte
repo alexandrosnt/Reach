@@ -4,6 +4,7 @@
 	import { ptyWrite } from '$lib/ipc/pty';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { getActiveTab } from '$lib/state/tabs.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		connectionId?: string;
@@ -26,7 +27,7 @@
 	async function runSnippet(snippet: Snippet): Promise<void> {
 		const tab = activeTab;
 		if (!tab) {
-			addToast('No active terminal', 'error');
+			addToast(t('snippet.no_terminal'), 'error');
 			return;
 		}
 
@@ -39,10 +40,10 @@
 			} else if (tab.type === 'local') {
 				await ptyWrite(tab.id, encoded);
 			} else {
-				addToast('Cannot run snippet in this tab type', 'error');
+				addToast(t('snippet.wrong_tab_type'), 'error');
 				return;
 			}
-			addToast(`Inserted: ${snippet.name}`, 'info');
+			addToast(t('snippet.inserted', { name: snippet.name }), 'info');
 		} catch (err) {
 			addToast(`Failed to run snippet: ${err}`, 'error');
 		}
@@ -51,7 +52,7 @@
 	function copySnippet(e: MouseEvent, snippet: Snippet): void {
 		e.stopPropagation();
 		navigator.clipboard.writeText(snippet.command);
-		addToast('Copied to clipboard', 'info');
+		addToast(t('snippet.copied'), 'info');
 	}
 </script>
 
@@ -78,7 +79,7 @@
 					<button
 						class="copy-btn"
 						onclick={(e) => copySnippet(e, snippet)}
-						title="Copy to clipboard"
+						title={t('snippet.copy_tooltip')}
 					>
 						<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
 							<rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="2" />
@@ -92,7 +93,7 @@
 	</div>
 
 	<div class="snippet-hint">
-		Click to insert into terminal
+		{t('snippet.insert_tooltip')}
 	</div>
 </div>
 

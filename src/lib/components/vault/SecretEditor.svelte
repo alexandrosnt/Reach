@@ -5,6 +5,7 @@
 	import Dropdown from '$lib/components/shared/Dropdown.svelte';
 	import { createSecret, updateSecret, readSecret } from '$lib/state/vault.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		open: boolean;
@@ -27,14 +28,14 @@
 	}: Props = $props();
 
 	// Categories
-	const categories = [
-		{ value: 'password', label: 'Password' },
-		{ value: 'ssh_key', label: 'SSH Key' },
-		{ value: 'api_token', label: 'API Token' },
-		{ value: 'certificate', label: 'Certificate' },
-		{ value: 'note', label: 'Note' },
-		{ value: 'custom', label: 'Custom' }
-	];
+	let categories = $derived([
+		{ value: 'password', label: t('vault.category_password') },
+		{ value: 'ssh_key', label: t('vault.category_ssh_key') },
+		{ value: 'api_token', label: t('vault.category_api_token') },
+		{ value: 'certificate', label: t('vault.category_certificate') },
+		{ value: 'note', label: t('vault.category_note') },
+		{ value: 'custom', label: t('vault.category_custom') }
+	]);
 
 	// Form state
 	let name = $state('');
@@ -53,7 +54,7 @@
 	let canSave = $derived(
 		name.trim().length > 0 && value.trim().length > 0 && !saving && !loading
 	);
-	let modalTitle = $derived(isEditMode ? 'Edit Secret' : 'New Secret');
+	let modalTitle = $derived(isEditMode ? t('vault.edit_secret') : t('vault.new_secret'));
 
 	// Reset form when modal opens/mode changes
 	$effect(() => {
@@ -103,10 +104,10 @@
 		try {
 			if (isEditMode && secretId) {
 				await updateSecret(secretId, value.trim());
-				addToast('Secret updated', 'success');
+				addToast(t('vault.secret_updated_toast'), 'success');
 			} else {
 				await createSecret(name.trim(), category, value.trim());
-				addToast('Secret created', 'success');
+				addToast(t('vault.secret_created_toast'), 'success');
 			}
 			onsave();
 			onclose();
@@ -129,13 +130,13 @@
 		crypto.getRandomValues(array);
 		value = Array.from(array, (n) => chars[n % chars.length]).join('');
 		showValue = true;
-		addToast('Password generated', 'info');
+		addToast(t('vault.password_generated_toast'), 'info');
 	}
 
 	async function copyValue(): Promise<void> {
 		try {
 			await navigator.clipboard.writeText(value);
-			addToast('Copied to clipboard', 'success');
+			addToast(t('vault.copied_toast'), 'success');
 		} catch (err) {
 			addToast(`Failed to copy: ${err}`, 'error');
 		}
@@ -149,14 +150,14 @@
 <Modal {open} onclose={handleClose} title={modalTitle}>
 	<form class="form" onsubmit={(e) => { e.preventDefault(); handleSave(); }}>
 		<Input
-			label="Name"
+			label={t('vault.secret_name')}
 			placeholder="My Secret"
 			bind:value={name}
 			disabled={isEditMode || saving}
 		/>
 
 		<div class="form-field">
-			<span class="form-label">Category</span>
+			<span class="form-label">{t('vault.secret_category')}</span>
 			{#if isEditMode}
 				<span class="form-value">{categories.find(c => c.value === category)?.label ?? category}</span>
 			{:else}
@@ -169,7 +170,7 @@
 
 		<div class="form-field">
 			<div class="value-header">
-				<label class="form-label" for="secret-value">Value</label>
+				<label class="form-label" for="secret-value">{t('vault.secret_value')}</label>
 				<div class="value-actions">
 					{#if category === 'password'}
 						<button
@@ -177,12 +178,12 @@
 							class="action-btn"
 							onclick={generatePassword}
 							disabled={saving || loading}
-							title="Generate random password"
+							title={t('vault.generate_password')}
 						>
 							<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 								<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 							</svg>
-							Generate
+							{t('vault.generate')}
 						</button>
 					{/if}
 					<button
@@ -190,20 +191,20 @@
 						class="action-btn"
 						onclick={toggleShowValue}
 						disabled={saving || loading}
-						title={showValue ? 'Hide value' : 'Show value'}
+						title={showValue ? t('vault.hide') : t('vault.show')}
 					>
 						{#if showValue}
 							<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 								<path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 								<path d="M1 1l22 22" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 							</svg>
-							Hide
+							{t('vault.hide')}
 						{:else}
 							<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 								<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 								<circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 							</svg>
-							Show
+							{t('vault.show')}
 						{/if}
 					</button>
 					<button
@@ -211,20 +212,20 @@
 						class="action-btn"
 						onclick={copyValue}
 						disabled={!value || saving || loading}
-						title="Copy to clipboard"
+						title={t('vault.copy_clipboard')}
 					>
 						<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 							<rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 							<path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 						</svg>
-						Copy
+						{t('vault.copy')}
 					</button>
 				</div>
 			</div>
 			{#if loading}
 				<div class="loading-placeholder">
 					<span class="spinner"></span>
-					Loading secret...
+					{t('vault.loading_secret')}
 				</div>
 			{:else}
 				<textarea
@@ -232,7 +233,7 @@
 					class="value-textarea"
 					class:monospace={isMonospace}
 					class:masked={!showValue}
-					placeholder="Enter secret value..."
+					placeholder={t('vault.enter_secret_value')}
 					bind:value
 					bind:this={textareaEl}
 					disabled={saving}
@@ -244,14 +245,14 @@
 
 	{#snippet actions()}
 		<Button variant="secondary" onclick={handleClose} disabled={saving}>
-			Cancel
+			{t('common.cancel')}
 		</Button>
 		<Button variant="primary" onclick={handleSave} disabled={!canSave}>
 			{#if saving}
 				<span class="spinner"></span>
-				Saving...
+				{t('vault.secret_saving')}
 			{:else}
-				{isEditMode ? 'Update' : 'Save'}
+				{isEditMode ? t('vault.secret_update') : t('common.save')}
 			{/if}
 		</Button>
 	{/snippet}

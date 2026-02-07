@@ -5,6 +5,7 @@
 	import { inviteMember, listMembers, removeMember, type MemberInfo, type InviteInfo } from '$lib/ipc/vault';
 	import { vaultState } from '$lib/state/vault.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		open: boolean;
@@ -80,7 +81,7 @@
 		try {
 			const result = await inviteMember(vaultId, inviteePublicKey.trim(), inviteeUuid.trim(), inviteeRole);
 			inviteResult = result;
-			addToast('Member invited successfully', 'success');
+			addToast(t('vault.invited_toast'), 'success');
 			// Refresh members list
 			await loadMembers();
 		} catch (e) {
@@ -92,13 +93,13 @@
 
 	async function handleRemoveMember(memberUuid: string) {
 		if (memberUuid === userUuid) {
-			addToast('Cannot remove yourself', 'error');
+			addToast(t('vault.cannot_remove_self'), 'error');
 			return;
 		}
 
 		try {
 			await removeMember(vaultId, memberUuid);
-			addToast('Member removed', 'success');
+			addToast(t('vault.member_removed_toast'), 'success');
 			await loadMembers();
 		} catch (e) {
 			addToast(`Failed to remove member: ${e}`, 'error');
@@ -119,21 +120,21 @@ Token: ${inviteResult.token}
 
 To accept this invite, go to Settings > Vault > Accept Invite and paste the sync URL and token.`;
 		navigator.clipboard.writeText(info);
-		addToast('Invite info copied to clipboard', 'success');
+		addToast(t('vault.invite_copied_toast'), 'success');
 	}
 
 	function formatRole(role: string): string {
 		switch (role.toLowerCase()) {
-			case 'owner': return 'Owner';
-			case 'admin': return 'Admin';
-			case 'member': return 'Member';
-			case 'readonly': return 'Read Only';
+			case 'owner': return t('vault.role_owner');
+			case 'admin': return t('vault.role_admin');
+			case 'member': return t('vault.role_member');
+			case 'readonly': return t('vault.role_read_only');
 			default: return role;
 		}
 	}
 </script>
 
-<Modal {open} {onclose} title="Manage Members - {vaultName}">
+<Modal {open} {onclose} title={t('vault.manage_members_title', { name: vaultName })}>
 	<div class="dialog-content">
 		<!-- Tabs -->
 		<div class="tabs">
@@ -142,14 +143,14 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 				class:active={activeTab === 'invite'}
 				onclick={() => (activeTab = 'invite')}
 			>
-				Invite
+				{t('vault.tab_invite')}
 			</button>
 			<button
 				class="tab"
 				class:active={activeTab === 'members'}
 				onclick={() => { activeTab = 'members'; loadMembers(); }}
 			>
-				Members
+				{t('vault.tab_members')}
 			</button>
 		</div>
 
@@ -164,56 +165,56 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 								<path d="M22 11.08V12a10 10 0 11-5.93-9.14" stroke="var(--color-success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 								<polyline points="22,4 12,14.01 9,11.01" stroke="var(--color-success)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 							</svg>
-							<span>Invite Created!</span>
+							<span>{t('vault.invite_created')}</span>
 						</div>
 						<p class="result-description">
-							Share the following information with the invitee. They'll need to accept the invite in Settings.
+							{t('vault.invite_share_info')}
 						</p>
 
 						<div class="info-field">
-							<span class="info-label">Sync URL</span>
+							<span class="info-label">{t('vault.sync_url')}</span>
 							<div class="info-value-row">
 								<code class="info-value">{inviteResult.syncUrl}</code>
-								<button class="copy-btn" onclick={() => copyToClipboard(inviteResult!.syncUrl, 'Sync URL')}>Copy</button>
+								<button class="copy-btn" onclick={() => copyToClipboard(inviteResult!.syncUrl, 'Sync URL')}>{t('vault.copy')}</button>
 							</div>
 						</div>
 
 						<div class="info-field">
-							<span class="info-label">Token</span>
+							<span class="info-label">{t('vault.token')}</span>
 							<div class="info-value-row">
 								<code class="info-value truncate">{inviteResult.token}</code>
-								<button class="copy-btn" onclick={() => copyToClipboard(inviteResult!.token, 'Token')}>Copy</button>
+								<button class="copy-btn" onclick={() => copyToClipboard(inviteResult!.token, 'Token')}>{t('vault.copy')}</button>
 							</div>
 						</div>
 
 						<div class="result-actions">
 							<Button variant="primary" size="sm" onclick={copyInviteInfo}>
-								Copy All Invite Info
+								{t('vault.copy_all_invite')}
 							</Button>
 							<Button variant="ghost" size="sm" onclick={() => { inviteResult = null; inviteeUuid = ''; inviteePublicKey = ''; }}>
-								Invite Another
+								{t('vault.invite_another')}
 							</Button>
 						</div>
 					</div>
 				{:else}
 					<!-- Show invite form -->
 					<div class="section">
-						<h4 class="section-title">Your Identity (Share with invitee)</h4>
+						<h4 class="section-title">{t('vault.your_identity_invite')}</h4>
 						<div class="info-field">
-							<span class="info-label">Your UUID</span>
+							<span class="info-label">{t('vault.your_uuid')}</span>
 							<div class="info-value-row">
-								<code class="info-value">{userUuid ?? 'Not available'}</code>
+								<code class="info-value">{userUuid ?? t('vault.not_available')}</code>
 								{#if userUuid}
-									<button class="copy-btn" onclick={() => copyToClipboard(userUuid!, 'UUID')}>Copy</button>
+									<button class="copy-btn" onclick={() => copyToClipboard(userUuid!, 'UUID')}>{t('vault.copy')}</button>
 								{/if}
 							</div>
 						</div>
 						<div class="info-field">
-							<span class="info-label">Your Public Key</span>
+							<span class="info-label">{t('vault.your_public_key')}</span>
 							<div class="info-value-row">
-								<code class="info-value truncate">{publicKey ?? 'Not available'}</code>
+								<code class="info-value truncate">{publicKey ?? t('vault.not_available')}</code>
 								{#if publicKey}
-									<button class="copy-btn" onclick={() => copyToClipboard(publicKey!, 'Public Key')}>Copy</button>
+									<button class="copy-btn" onclick={() => copyToClipboard(publicKey!, 'Public Key')}>{t('vault.copy')}</button>
 								{/if}
 							</div>
 						</div>
@@ -222,10 +223,10 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 					<div class="divider"></div>
 
 					<div class="section">
-						<h4 class="section-title">Invitee Information (Get from them)</h4>
+						<h4 class="section-title">{t('vault.invitee_info')}</h4>
 						<div class="form-field">
 							<Input
-								label="Invitee UUID"
+								label={t('vault.invitee_uuid')}
 								placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
 								bind:value={inviteeUuid}
 								disabled={inviting}
@@ -234,7 +235,7 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 
 						<div class="form-field">
 							<Input
-								label="Invitee Public Key"
+								label={t('vault.invitee_public_key')}
 								placeholder="Base64 encoded public key"
 								bind:value={inviteePublicKey}
 								disabled={inviting}
@@ -242,7 +243,7 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 						</div>
 
 						<div class="form-field">
-							<span class="field-label">Role</span>
+							<span class="field-label">{t('vault.role')}</span>
 							<div class="role-options">
 								<button
 									class="role-option"
@@ -250,8 +251,8 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 									onclick={() => (inviteeRole = 'admin')}
 									disabled={inviting}
 								>
-									<span class="role-name">Admin</span>
-									<span class="role-desc">Can invite/remove members</span>
+									<span class="role-name">{t('vault.role_admin')}</span>
+									<span class="role-desc">{t('vault.role_admin_desc')}</span>
 								</button>
 								<button
 									class="role-option"
@@ -259,8 +260,8 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 									onclick={() => (inviteeRole = 'member')}
 									disabled={inviting}
 								>
-									<span class="role-name">Member</span>
-									<span class="role-desc">Read & write secrets</span>
+									<span class="role-name">{t('vault.role_member')}</span>
+									<span class="role-desc">{t('vault.role_member_desc')}</span>
 								</button>
 								<button
 									class="role-option"
@@ -268,8 +269,8 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 									onclick={() => (inviteeRole = 'readonly')}
 									disabled={inviting}
 								>
-									<span class="role-name">Read Only</span>
-									<span class="role-desc">View secrets only</span>
+									<span class="role-name">{t('vault.role_read_only')}</span>
+									<span class="role-desc">{t('vault.role_read_only_desc')}</span>
 								</button>
 							</div>
 						</div>
@@ -284,10 +285,10 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 			<!-- Members Tab -->
 			<div class="tab-content">
 				{#if loadingMembers}
-					<div class="loading">Loading members...</div>
+					<div class="loading">{t('vault.loading_members')}</div>
 				{:else if members.length === 0}
 					<div class="empty-state">
-						<p>No members yet. Invite someone to share this vault.</p>
+						<p>{t('vault.no_members')}</p>
 					</div>
 				{:else}
 					<div class="members-list">
@@ -298,7 +299,7 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 									<div class="member-meta">
 										<span class="member-role">{formatRole(member.role)}</span>
 										{#if member.userUuid === userUuid}
-											<span class="member-you">(You)</span>
+											<span class="member-you">{t('vault.you_tag')}</span>
 										{/if}
 									</div>
 								</div>
@@ -306,7 +307,7 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 									<button
 										class="remove-btn"
 										onclick={() => handleRemoveMember(member.userUuid)}
-										title="Remove member"
+										title={t('vault.remove_member')}
 									>
 										<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 											<path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -324,18 +325,18 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 	{#snippet actions()}
 		{#if activeTab === 'invite' && !inviteResult}
 			<Button variant="ghost" onclick={onclose} disabled={inviting}>
-				Cancel
+				{t('common.cancel')}
 			</Button>
 			<Button
 				variant="primary"
 				onclick={handleInvite}
 				disabled={inviting || !inviteeUuid.trim() || !inviteePublicKey.trim()}
 			>
-				{#if inviting}Inviting...{:else}Send Invite{/if}
+				{#if inviting}{t('vault.inviting')}{:else}{t('vault.send_invite')}{/if}
 			</Button>
 		{:else}
 			<Button variant="ghost" onclick={onclose}>
-				Close
+				{t('common.close')}
 			</Button>
 		{/if}
 	{/snippet}

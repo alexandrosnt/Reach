@@ -8,6 +8,7 @@
 	// Passwords are now stored encrypted in vault, not in memory cache
 	import { createTab } from '$lib/state/tabs.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 	import { untrack } from 'svelte';
 	import { vaultState, checkState, initIdentity, refreshVaults, importIdentity } from '$lib/state/vault.svelte';
 
@@ -120,7 +121,7 @@
 			});
 
 			createTab('ssh', `${session.username}@${session.host}`, id);
-			addToast(`Connected to ${session.name}`, 'success');
+			addToast(t('session.connected_toast', { name: session.name }), 'success');
 			connectSession = undefined;
 
 			// Detect OS in background and persist to session
@@ -190,7 +191,7 @@
 		try {
 			await initIdentity(''); // No password needed - TLS-style
 			await loadSessions();
-			addToast('Identity created. Your encryption key is stored securely in the OS keychain.', 'success');
+			addToast(t('session.identity_created_toast'), 'success');
 		} catch (err) {
 			initError = String(err);
 		} finally {
@@ -201,7 +202,7 @@
 	// Import identity from backup key
 	async function handleImport(): Promise<void> {
 		if (!importKey.trim()) {
-			initError = 'Please enter your backup key';
+			initError = t('session.enter_backup_key');
 			return;
 		}
 		importing = true;
@@ -210,7 +211,7 @@
 			await importIdentity(importKey.trim());
 			await loadSessions();
 			importKey = '';
-			addToast('Identity restored successfully.', 'success');
+			addToast(t('session.identity_restored_toast'), 'success');
 		} catch (err) {
 			initError = String(err);
 		} finally {
@@ -225,7 +226,7 @@
 			const { invoke } = await import('@tauri-apps/api/core');
 			await invoke('vault_reset');
 			await checkState();
-			addToast('Data cleared. You can now initialize.', 'info');
+			addToast(t('session.data_cleared_toast'), 'info');
 		} catch (err) {
 			initError = String(err);
 		}
@@ -255,13 +256,13 @@
 					<path d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 				</svg>
 			</div>
-			<p class="init-title">Secure Sessions</p>
-			<p class="init-desc">Your sessions are encrypted locally. Click to generate your encryption key (stored securely in OS keychain).</p>
+			<p class="init-title">{t('session.secure_sessions')}</p>
+			<p class="init-desc">{t('session.secure_sessions_desc')}</p>
 			{#if initError}
 				<p class="init-error">{initError}</p>
 			{/if}
 			<button class="init-btn" onclick={handleInitialize} disabled={initializing}>
-				{#if initializing}Initializing...{:else}Initialize{/if}
+				{#if initializing}{t('session.initializing')}{:else}{t('session.initialize')}{/if}
 			</button>
 		</div>
 	{:else if keychainError}
@@ -272,31 +273,31 @@
 					<path d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
 				</svg>
 			</div>
-			<p class="init-title">Keychain Access Failed</p>
-			<p class="init-desc">Your encrypted data exists but the OS keychain key is missing. Import your backup key to recover, or start fresh (data will be lost).</p>
+			<p class="init-title">{t('session.keychain_error')}</p>
+			<p class="init-desc">{t('session.keychain_error_desc')}</p>
 			{#if initError}
 				<p class="init-error">{initError}</p>
 			{/if}
 			<input
 				class="import-input"
 				type="password"
-				placeholder="Paste backup key here"
+				placeholder={t('session.paste_backup_key')}
 				bind:value={importKey}
 				disabled={importing}
 			/>
 			<div class="recovery-buttons">
 				<button class="init-btn" onclick={handleImport} disabled={importing || !importKey.trim()}>
-					{#if importing}Restoring...{:else}Restore Identity{/if}
+					{#if importing}{t('session.restoring')}{:else}{t('session.restore_identity')}{/if}
 				</button>
 				<button class="reset-btn" onclick={handleReset} disabled={importing}>
-					Start Fresh
+					{t('session.start_fresh')}
 				</button>
 			</div>
 		</div>
 	{:else if locked}
 		<!-- Locked but has identity - keychain access failed -->
 		<div class="init-section">
-			<p class="init-desc">Unable to access keychain. Please check OS permissions.</p>
+			<p class="init-desc">{t('session.keychain_locked_desc')}</p>
 		</div>
 	{:else}
 		<div class="actions-row">
@@ -310,7 +311,7 @@
 						stroke-linejoin="round"
 					/>
 				</svg>
-				Quick Connect
+				{t('session.quick_connect')}
 			</button>
 			<button class="save-session-btn" onclick={handleNewSession}>
 				<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
@@ -321,7 +322,7 @@
 						stroke-linecap="round"
 					/>
 				</svg>
-				Save Session
+				{t('session.save_session')}
 			</button>
 		</div>
 
@@ -330,22 +331,22 @@
 		{#if loading}
 			<div class="loading-state">
 				<span class="spinner"></span>
-				<span class="loading-text">Loading sessions...</span>
+				<span class="loading-text">{t('session.loading')}</span>
 			</div>
 		{:else if filteredSessions.length === 0}
-			<p class="empty-state">No sessions in this vault. Create one to get started.</p>
+			<p class="empty-state">{t('session.no_sessions_vault')}</p>
 		{:else}
 		<div class="divider"></div>
 		<div class="sessions-scroll">
 			{#each filteredSessions as session (session.id)}
 				{#if deleteConfirm === session.id}
 					<div class="delete-confirm">
-						<span class="delete-confirm-text">Delete "{session.name}"?</span>
+						<span class="delete-confirm-text">{t('session.delete_confirm', { name: session.name })}</span>
 						<button class="delete-confirm-btn" onclick={() => handleDelete(session)}>
-							Confirm
+							{t('common.confirm')}
 						</button>
 						<button class="delete-cancel-btn" onclick={() => (deleteConfirm = null)}>
-							Cancel
+							{t('common.cancel')}
 						</button>
 					</div>
 				{:else}
@@ -371,7 +372,7 @@
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="prompt-box" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
 			<div class="prompt-header">
-				<span class="prompt-title">Connect to {connectSession.name}</span>
+				<span class="prompt-title">{t('session.connect_to', { name: connectSession.name })}</span>
 				<span class="prompt-detail">{connectSession.username}@{connectSession.host}:{connectSession.port}</span>
 			</div>
 
@@ -380,7 +381,7 @@
 					<input
 						class="prompt-input"
 						type="password"
-						placeholder="Password"
+						placeholder={t('session.password')}
 						bind:value={connectPassword}
 						disabled={connecting}
 					/>
@@ -388,7 +389,7 @@
 					<input
 						class="prompt-input"
 						type="password"
-						placeholder="Key passphrase (optional)"
+						placeholder={t('session.key_passphrase_optional')}
 						bind:value={connectKeyPassphrase}
 						disabled={connecting}
 					/>
@@ -397,7 +398,7 @@
 				{#if connectSession.auth_method.type !== 'Agent'}
 					<label class="remember-label">
 						<input type="checkbox" class="remember-check" bind:checked={rememberPassword} disabled={connecting} />
-						<span class="remember-text">{hasSavedPassword ? 'Password saved' : 'Remember password'}</span>
+						<span class="remember-text">{hasSavedPassword ? t('session.password_saved') : t('session.remember_password')}</span>
 					</label>
 				{/if}
 
@@ -406,9 +407,9 @@
 				{/if}
 
 				<div class="prompt-actions">
-					<button type="button" class="prompt-btn prompt-cancel" onclick={cancelConnect} disabled={connecting}>Cancel</button>
+					<button type="button" class="prompt-btn prompt-cancel" onclick={cancelConnect} disabled={connecting}>{t('common.cancel')}</button>
 					<button type="submit" class="prompt-btn prompt-connect" disabled={connecting}>
-						{#if connecting}Connecting...{:else}Connect{/if}
+						{#if connecting}{t('session.connecting')}{:else}{t('session.connect')}{/if}
 					</button>
 				</div>
 			</form>

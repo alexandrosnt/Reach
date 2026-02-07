@@ -5,6 +5,7 @@
 		clearCompleted,
 		type Transfer
 	} from '$lib/state/transfers.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	let transfers = $derived(getTransfers());
 	let hasCompleted = $derived(transfers.some((t) => t.status !== 'uploading'));
@@ -28,11 +29,11 @@
 					stroke-linejoin="round"
 				/>
 			</svg>
-			<span class="transfer-text">No active transfers</span>
+			<span class="transfer-text">{t('transfer.no_active')}</span>
 		</div>
 	{:else}
 		{#if hasCompleted}
-			<button class="clear-btn" onclick={clearCompleted} type="button">Clear finished</button>
+			<button class="clear-btn" onclick={clearCompleted} type="button">{t('transfer.clear_finished')}</button>
 		{/if}
 		<div class="transfer-list">
 			{#each transfers as transfer (transfer.id)}
@@ -42,13 +43,13 @@
 						{#if transfer.status === 'uploading'}
 							<span class="transfer-percent">{Math.round(transfer.percent)}%</span>
 						{:else if transfer.status === 'completed'}
-							<button class="dismiss-btn" onclick={() => removeTransfer(transfer.id)} type="button" aria-label="Dismiss">
+							<button class="dismiss-btn" onclick={() => removeTransfer(transfer.id)} type="button" aria-label={t('transfer.dismiss')}>
 								<svg width="10" height="10" viewBox="0 0 24 24" fill="none">
 									<path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
 								</svg>
 							</button>
 						{:else}
-							<button class="dismiss-btn" onclick={() => removeTransfer(transfer.id)} type="button" aria-label="Dismiss">
+							<button class="dismiss-btn" onclick={() => removeTransfer(transfer.id)} type="button" aria-label={t('transfer.dismiss')}>
 								<svg width="10" height="10" viewBox="0 0 24 24" fill="none">
 									<path d="M18 6L6 18M6 6l12 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
 								</svg>
@@ -59,9 +60,9 @@
 						{#if transfer.status === 'uploading'}
 							<span class="transfer-size">{formatSize(transfer.bytesTransferred)} / {formatSize(transfer.totalBytes)}</span>
 						{:else if transfer.status === 'completed'}
-							<span class="transfer-done">Completed</span>
+							<span class="transfer-done">{t('transfer.completed')}</span>
 						{:else}
-							<span class="transfer-err">{transfer.error ?? 'Failed'}</span>
+							<span class="transfer-err">{transfer.error ?? t('transfer.failed')}</span>
 						{/if}
 					</div>
 					{#if transfer.status === 'uploading'}

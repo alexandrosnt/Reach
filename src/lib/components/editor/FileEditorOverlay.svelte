@@ -10,6 +10,7 @@
   } from '$lib/state/editor.svelte';
   import { sftpWriteFile } from '$lib/ipc/sftp';
   import { addToast } from '$lib/state/toasts.svelte';
+  import { t } from '$lib/state/i18n.svelte';
 
   const availableLanguages = [
     'text', 'javascript', 'typescript', 'python', 'rust', 'go', 'java', 'c', 'cpp',
@@ -28,7 +29,7 @@
     try {
       await sftpWriteFile(file.connectionId, file.path, file.content);
       markSaved();
-      addToast('File saved', 'success');
+      addToast(t('editor.file_saved_toast'), 'success');
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err);
       addToast(message, 'error');
@@ -39,7 +40,7 @@
 
   function handleClose() {
     if (dirty) {
-      const confirmed = window.confirm('You have unsaved changes. Close without saving?');
+      const confirmed = window.confirm(t('editor.unsaved_changes'));
       if (!confirmed) return;
     }
     closeEditor();
@@ -63,7 +64,7 @@
 {#if file}
   <div class="editor-overlay">
     <div class="editor-toolbar glass">
-      <button class="close-btn" onclick={handleClose} aria-label="Close editor">
+      <button class="close-btn" onclick={handleClose} aria-label={t('editor.close')}>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
           <path d="M1 1l12 12M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
         </svg>
@@ -87,7 +88,7 @@
       </select>
 
       <button class="save-btn" onclick={handleSave} disabled={saving || !dirty}>
-        {saving ? 'Saving...' : 'Save'}
+        {saving ? t('editor.saving') : t('editor.save')}
       </button>
 
       <span class="shortcut-hint">Ctrl+S</span>

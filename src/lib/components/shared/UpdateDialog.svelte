@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getUpdaterState, downloadAndInstall, skipStartupUpdate } from '$lib/state/updater.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		open: boolean;
@@ -10,10 +11,10 @@
 	const updater = getUpdaterState();
 
 	let buttonLabel = $derived.by(() => {
-		if (updater.installing) return 'Installing...';
-		if (updater.downloading) return `Downloading... ${updater.downloadProgress}%`;
-		if (updater.error) return 'Retry';
-		return 'Update Now';
+		if (updater.installing) return t('updater.installing');
+		if (updater.downloading) return t('updater.downloading', { progress: updater.downloadProgress });
+		if (updater.error) return t('updater.retry');
+		return t('updater.update_now');
 	});
 
 	let buttonDisabled = $derived(updater.downloading || updater.installing);
@@ -30,7 +31,7 @@
 
 {#if open}
 	<div class="update-backdrop" role="presentation">
-		<div class="update-card" role="alertdialog" aria-modal="true" aria-label="Update Available">
+		<div class="update-card" role="alertdialog" aria-modal="true" aria-label={t('updater.title')}>
 			<div class="card-header">
 				<div class="icon-container">
 					<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -39,7 +40,7 @@
 						<line x1="12" y1="21" x2="20" y2="21" stroke="var(--color-accent)" stroke-width="1.5" stroke-linecap="round"/>
 					</svg>
 				</div>
-				<h2 class="title">Update Available</h2>
+				<h2 class="title">{t('updater.title')}</h2>
 				{#if updater.updateVersion}
 					<span class="version-badge">v{updater.updateVersion}</span>
 				{/if}
@@ -47,7 +48,7 @@
 
 			{#if updater.updateNotes}
 				<div class="release-notes">
-					<h3 class="release-notes-heading">Release Notes</h3>
+					<h3 class="release-notes-heading">{t('updater.release_notes')}</h3>
 					<div class="release-notes-content">
 						<pre class="release-notes-text">{updater.updateNotes}</pre>
 					</div>
@@ -64,7 +65,7 @@
 						></div>
 					</div>
 					{#if updater.installing}
-						<p class="progress-label">Installing update, the app will restart shortly...</p>
+						<p class="progress-label">{t('updater.installing_desc')}</p>
 					{/if}
 				</div>
 			{/if}
@@ -82,7 +83,7 @@
 			<div class="actions">
 				{#if showEscapeHatch}
 					<button class="btn-ghost" onclick={handleSkip}>
-						Continue without updating
+						{t('updater.continue_without')}
 					</button>
 				{/if}
 				<button

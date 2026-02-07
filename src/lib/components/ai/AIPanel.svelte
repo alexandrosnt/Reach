@@ -5,6 +5,7 @@
 	import { readTerminalBuffer } from '$lib/state/terminal-buffer.svelte';
 	import { sshSend } from '$lib/ipc/ssh';
 	import { ptyWrite } from '$lib/ipc/pty';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		connectionId?: string;
@@ -112,10 +113,12 @@
 
 		const hasTerminal = !!(activeTabId || connectionId);
 
+		const runLabel = t('ai.run');
+		const copyLabel = t('ai.copy');
 		return escaped.replace(
 			/```(\w*)\n?([\s\S]*?)```/g,
 			(_, lang, code) =>
-				`<div class="code-block"><div class="code-header"><span>${lang || 'code'}</span><div class="code-actions">${hasTerminal ? `<button class="run-btn" data-code="${encodeURIComponent(code.trim())}">Run</button>` : ''}<button class="copy-btn" data-code="${encodeURIComponent(code.trim())}">Copy</button></div></div><pre><code>${code.trim()}</code></pre></div>`
+				`<div class="code-block"><div class="code-header"><span>${lang || 'code'}</span><div class="code-actions">${hasTerminal ? `<button class="run-btn" data-code="${encodeURIComponent(code.trim())}">${runLabel}</button>` : ''}<button class="copy-btn" data-code="${encodeURIComponent(code.trim())}">${copyLabel}</button></div></div><pre><code>${code.trim()}</code></pre></div>`
 		).replace(
 			/`([^`]+)`/g,
 			'<code class="inline-code">$1</code>'
@@ -127,14 +130,14 @@
 {#if chatState.panelOpen}
 	<aside class="ai-panel">
 		<div class="panel-header">
-			<span class="panel-title">AI Assistant</span>
+			<span class="panel-title">{t('ai.title')}</span>
 			<div class="header-actions">
-				<button class="icon-btn" onclick={clearChat} aria-label="Clear chat" title="Clear chat">
+				<button class="icon-btn" onclick={clearChat} aria-label={t('ai.clear_chat')} title={t('ai.clear_chat')}>
 					<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" />
 					</svg>
 				</button>
-				<button class="icon-btn" onclick={closeAIPanel} aria-label="Close panel" title="Close panel">
+				<button class="icon-btn" onclick={closeAIPanel} aria-label={t('ai.close_panel')} title={t('ai.close_panel')}>
 					<svg width="14" height="14" viewBox="0 0 10 10" fill="none">
 						<path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
 					</svg>
@@ -147,14 +150,14 @@
 				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
 					<path d="M12 2a10 10 0 1010 10A10 10 0 0012 2zm1 15h-2v-2h2zm0-4h-2V7h2z" />
 				</svg>
-				<p>AI is not configured.</p>
-				<p class="hint">Go to Settings &rarr; AI to set up your API key and model.</p>
+				<p>{t('ai.not_configured')}</p>
+				<p class="hint">{t('ai.go_to_settings')}</p>
 			</div>
 		{:else}
 			<div class="messages" bind:this={messagesContainer}>
 				{#if chatState.messages.length === 0}
 					<div class="empty-state">
-						<p>Ask anything about your server, SSH, networking, or shell commands.</p>
+						<p>{t('ai.empty_hint')}</p>
 					</div>
 				{/if}
 				{#each chatState.messages as msg (msg.id)}
@@ -177,11 +180,11 @@
 					class="chat-input"
 					bind:value={inputValue}
 					onkeydown={handleKeydown}
-					placeholder="Type a message..."
+					placeholder={t('ai.placeholder')}
 					rows="1"
 					disabled={chatState.loading}
 				></textarea>
-				<button class="send-btn" onclick={handleSend} disabled={chatState.loading || !inputValue.trim()} aria-label="Send message">
+				<button class="send-btn" onclick={handleSend} disabled={chatState.loading || !inputValue.trim()} aria-label={t('ai.send')}>
 					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 						<line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" />
 					</svg>

@@ -7,6 +7,7 @@
 		type TunnelConfig
 	} from '$lib/ipc/tunnel';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 	import TunnelCard from './TunnelCard.svelte';
 	import Input from '$lib/components/shared/Input.svelte';
 	import Button from '$lib/components/shared/Button.svelte';
@@ -52,7 +53,7 @@
 
 	async function handleCreateTunnel(): Promise<void> {
 		if (!connectionId) {
-			addToast('No active connection selected', 'error');
+			addToast(t('tunnel.no_connection'), 'error');
 			return;
 		}
 
@@ -60,17 +61,17 @@
 		const remotePort = parseInt(formRemotePort, 10);
 
 		if (isNaN(localPort) || localPort < 1 || localPort > 65535) {
-			addToast('Invalid local port (1-65535)', 'error');
+			addToast(t('tunnel.invalid_local_port'), 'error');
 			return;
 		}
 
 		if (isNaN(remotePort) || remotePort < 1 || remotePort > 65535) {
-			addToast('Invalid remote port (1-65535)', 'error');
+			addToast(t('tunnel.invalid_remote_port'), 'error');
 			return;
 		}
 
 		if (!formRemoteHost.trim()) {
-			addToast('Remote host is required', 'error');
+			addToast(t('tunnel.remote_host_required'), 'error');
 			return;
 		}
 
@@ -86,7 +87,7 @@
 			tunnels.push(tunnel);
 			tunnels = tunnels;
 			showForm = false;
-			addToast(`Tunnel created on port ${localPort}`, 'success');
+			addToast(t('tunnel.created_toast', { port: localPort }), 'success');
 		} catch (err) {
 			addToast(`Failed to create tunnel: ${err}`, 'error');
 		} finally {
@@ -101,7 +102,7 @@
 			if (idx >= 0) {
 				tunnels[idx] = { ...tunnels[idx], active: true };
 			}
-			addToast(`Tunnel on port ${tunnel.local_port} started`, 'success');
+			addToast(t('tunnel.started_toast', { port: tunnel.local_port }), 'success');
 		} catch (err) {
 			addToast(`Failed to start tunnel: ${err}`, 'error');
 		}
@@ -114,7 +115,7 @@
 			if (idx >= 0) {
 				tunnels[idx] = { ...tunnels[idx], active: false };
 			}
-			addToast(`Tunnel on port ${tunnel.local_port} stopped`, 'info');
+			addToast(t('tunnel.stopped_toast', { port: tunnel.local_port }), 'info');
 		} catch (err) {
 			addToast(`Failed to stop tunnel: ${err}`, 'error');
 		}
@@ -122,7 +123,7 @@
 
 	function handleDelete(tunnel: TunnelConfig): void {
 		tunnels = tunnels.filter((t) => t.id !== tunnel.id);
-		addToast('Tunnel removed', 'info');
+		addToast(t('tunnel.removed_toast'), 'info');
 	}
 
 	$effect(() => {
@@ -141,15 +142,15 @@
 					stroke-linecap="round"
 				/>
 			</svg>
-			New Tunnel
+			{t('tunnel.new')}
 		</button>
 	</div>
 
 	{#if showForm}
 		<div class="create-form">
 			<div class="form-header">
-				<span class="form-title">Create Tunnel</span>
-				<button class="form-close" onclick={handleCancelForm} aria-label="Close form">
+				<span class="form-title">{t('tunnel.create_tunnel')}</span>
+				<button class="form-close" onclick={handleCancelForm} aria-label={t('common.close')}>
 					<svg width="12" height="12" viewBox="0 0 14 14" fill="none">
 						<path d="M1 1L13 13M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
 					</svg>
@@ -169,17 +170,17 @@
 					{/each}
 				</div>
 
-				<Input label="Local Port" bind:value={formLocalPort} type="number" placeholder="8080" />
-				<Input label="Remote Host" bind:value={formRemoteHost} placeholder="localhost" />
+				<Input label={t('tunnel.local_port')} bind:value={formLocalPort} type="number" placeholder="8080" />
+				<Input label={t('tunnel.remote_host')} bind:value={formRemoteHost} placeholder="localhost" />
 
 				{#if formType !== 'Dynamic'}
-					<Input label="Remote Port" bind:value={formRemotePort} type="number" placeholder="80" />
+					<Input label={t('tunnel.remote_port')} bind:value={formRemotePort} type="number" placeholder="80" />
 				{/if}
 
 				<div class="form-actions">
-					<Button variant="ghost" size="sm" onclick={handleCancelForm}>Cancel</Button>
+					<Button variant="ghost" size="sm" onclick={handleCancelForm}>{t('common.cancel')}</Button>
 					<Button variant="primary" size="sm" onclick={handleCreateTunnel} disabled={creating}>
-						{creating ? 'Creating...' : 'Create'}
+						{creating ? t('tunnel.creating') : t('tunnel.create')}
 					</Button>
 				</div>
 			</div>
@@ -189,10 +190,10 @@
 	{#if loading}
 		<div class="loading-state">
 			<span class="spinner"></span>
-			<span class="loading-text">Loading tunnels...</span>
+			<span class="loading-text">{t('tunnel.loading')}</span>
 		</div>
 	{:else if tunnels.length === 0 && !showForm}
-		<p class="empty-state">No tunnels configured. Create one to get started.</p>
+		<p class="empty-state">{t('tunnel.no_tunnels')}</p>
 	{:else}
 		{#if tunnels.length > 0}
 			<div class="divider"></div>
@@ -207,8 +208,8 @@
 						<button
 							class="delete-btn"
 							onclick={() => handleDelete(tunnel)}
-							title="Remove tunnel"
-							aria-label="Remove tunnel"
+							title={t('tunnel.remove')}
+							aria-label={t('tunnel.remove')}
 						>
 							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 								<path d="M3 6h18" />

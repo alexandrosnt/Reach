@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		open: boolean;
@@ -47,11 +48,11 @@
 		onkeydown={() => {}}
 		onclick={onBackdropClick}
 	>
-		<div class="modal" role="dialog" aria-modal="true" aria-label={title || 'Dialog'}>
+		<div class="modal" role="dialog" aria-modal="true" aria-label={title || t('common.close_dialog')}>
 			{#if title}
 				<header class="modal-header">
 					<h2 class="modal-title">{title}</h2>
-					<button class="modal-close" onclick={onclose} aria-label="Close dialog">
+					<button class="modal-close" onclick={onclose} aria-label={t('common.close_dialog')}>
 						<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
 							<path d="M1 1L13 13M13 1L1 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
 						</svg>

@@ -8,6 +8,7 @@
 	import { save, open, message } from '@tauri-apps/plugin-dialog';
 	import { relaunch } from '@tauri-apps/plugin-process';
 	import type { BackupPreview } from '$lib/ipc/vault';
+	import { t } from '$lib/state/i18n.svelte';
 
 	// Export state
 	let exportPassword = $state('');
@@ -49,12 +50,12 @@
 		exportError = '';
 
 		if (exportPassword.length < 8) {
-			exportError = 'Password must be at least 8 characters';
+			exportError = t('backup.password_too_short');
 			return;
 		}
 
 		if (exportPassword !== exportConfirmPassword) {
-			exportError = 'Passwords do not match';
+			exportError = t('backup.passwords_mismatch');
 			return;
 		}
 
@@ -86,12 +87,12 @@
 			}
 
 			await exportBackup(exportPassword, filePath);
-			addToast('Backup exported successfully', 'success');
+			addToast(t('backup.exported_toast'), 'success');
 			exportPassword = '';
 			exportConfirmPassword = '';
 		} catch (e) {
 			exportError = e instanceof Error ? e.message : 'Failed to export backup';
-			addToast('Export failed', 'error');
+			addToast(t('backup.export_failed_toast'), 'error');
 		} finally {
 			exporting = false;
 		}
@@ -122,7 +123,7 @@
 
 		try {
 			preview = await previewBackup(importFilePath, importExportPassword);
-			addToast('Backup verified successfully', 'success');
+			addToast(t('backup.verified_toast'), 'success');
 		} catch (e) {
 			importError = e instanceof Error ? e.message : 'Failed to verify backup';
 		} finally {
@@ -138,12 +139,12 @@
 
 		try {
 			await importBackup(importFilePath, importExportPassword, importMasterPassword);
-			addToast('Backup imported successfully — restarting app', 'success');
+			addToast(t('backup.imported_toast'), 'success');
 			await message('Backup restored successfully. The app will now restart to apply all settings.', { title: 'Import Complete', kind: 'info' });
 			await relaunch();
 		} catch (e) {
 			importError = e instanceof Error ? e.message : 'Failed to import backup';
-			addToast('Import failed', 'error');
+			addToast(t('backup.import_failed_toast'), 'error');
 		} finally {
 			importing = false;
 		}
@@ -153,14 +154,14 @@
 <div class="tab-content">
 	<!-- Export Section -->
 	<div class="section">
-		<h3 class="section-title">Export Backup</h3>
+		<h3 class="section-title">{t('backup.export')}</h3>
 		<p class="section-desc">
-			Create an encrypted backup of your entire Reach state — identity, vaults, sessions, credentials, and settings.
+			{t('backup.export_desc')}
 		</p>
 
 		<div class="form-field">
 			<Input
-				label="Export Password"
+				label={t('backup.export_password')}
 				type="password"
 				placeholder="Minimum 8 characters"
 				bind:value={exportPassword}
@@ -170,7 +171,7 @@
 
 		<div class="form-field">
 			<Input
-				label="Confirm Password"
+				label={t('backup.confirm_password')}
 				type="password"
 				placeholder="Re-enter password"
 				bind:value={exportConfirmPassword}
@@ -184,35 +185,35 @@
 
 		<div class="action-row">
 			<Button variant="primary" size="sm" onclick={handleExport} disabled={!canExport}>
-				{exporting ? 'Exporting...' : 'Export Backup'}
+				{exporting ? t('backup.exporting') : t('backup.export_backup')}
 			</Button>
 		</div>
 	</div>
 
 	<!-- Import Section -->
 	<div class="section">
-		<h3 class="section-title">Import Backup</h3>
+		<h3 class="section-title">{t('backup.import')}</h3>
 		<p class="section-desc">
-			Restore from a previously exported backup file. This will replace your current data.
+			{t('backup.import_desc')}
 		</p>
 
 		<div class="action-row">
 			<Button variant="secondary" size="sm" onclick={handleSelectFile}>
-				Select Backup File
+				{t('backup.select_file')}
 			</Button>
 		</div>
 
 		{#if importFilePath}
 			<div class="setting-row">
 				<div class="setting-info">
-					<span class="setting-label">Selected File</span>
+					<span class="setting-label">{t('backup.selected_file')}</span>
 					<span class="setting-value mono truncate">{importFilePath}</span>
 				</div>
 			</div>
 
 			<div class="form-field">
 				<Input
-					label="Export Password"
+					label={t('backup.export_password')}
 					type="password"
 					placeholder="Password used during export"
 					bind:value={importExportPassword}
@@ -222,39 +223,39 @@
 
 			<div class="action-row">
 				<Button variant="secondary" size="sm" onclick={handleVerify} disabled={!canVerify}>
-					{verifying ? 'Verifying...' : 'Verify'}
+					{verifying ? t('vault.verifying') : t('backup.verify')}
 				</Button>
 			</div>
 		{/if}
 
 		{#if preview}
 			<div class="preview-box">
-				<h4 class="preview-title">Backup Preview</h4>
+				<h4 class="preview-title">{t('backup.preview')}</h4>
 
 				<div class="setting-row">
 					<div class="setting-info">
-						<span class="setting-label">Exported</span>
+						<span class="setting-label">{t('backup.preview_date')}</span>
 						<span class="setting-description">{formatDate(preview.exportedAt)}</span>
 					</div>
 				</div>
 
 				<div class="setting-row">
 					<div class="setting-info">
-						<span class="setting-label">Vaults</span>
+						<span class="setting-label">{t('backup.preview_vaults')}</span>
 						<span class="setting-description">{preview.vaultCount}</span>
 					</div>
 				</div>
 
 				<div class="setting-row">
 					<div class="setting-info">
-						<span class="setting-label">Secrets</span>
+						<span class="setting-label">{t('backup.preview_secrets')}</span>
 						<span class="setting-description">{preview.secretCount}</span>
 					</div>
 				</div>
 
 				<div class="setting-row">
 					<div class="setting-info">
-						<span class="setting-label">Sync Config</span>
+						<span class="setting-label">{t('backup.preview_sync')}</span>
 						<span class="setting-description">{preview.hasSyncConfig ? 'Included' : 'None'}</span>
 					</div>
 					<div class="status-badge" class:enabled={preview.hasSyncConfig}>
@@ -265,7 +266,7 @@
 
 			<div class="form-field">
 				<Input
-					label="Master Password (optional)"
+					label={t('backup.master_password_optional')}
 					type="password"
 					placeholder="Leave blank if you used TLS-style init"
 					bind:value={importMasterPassword}
@@ -274,7 +275,7 @@
 			</div>
 
 			<div class="import-warning">
-				This will reset your current data and restore from the backup.
+				{t('backup.import_warning')}
 			</div>
 
 			{#if importError}
@@ -283,7 +284,7 @@
 
 			<div class="action-row">
 				<Button variant="danger" size="sm" onclick={handleImport} disabled={!canImport}>
-					{importing ? 'Importing...' : 'Import Backup'}
+					{importing ? t('backup.importing') : t('backup.import_backup')}
 				</Button>
 			</div>
 		{:else if importError}

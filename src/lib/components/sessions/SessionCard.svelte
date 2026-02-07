@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { SessionConfig } from '$lib/ipc/sessions';
 	import DistroIcon from './DistroIcon.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		session: SessionConfig;
@@ -12,33 +13,33 @@
 	let { session, onconnect, onedit, ondelete }: Props = $props();
 
 	let authLabel = $derived(
-		session.auth_method.type === 'Password' ? 'PW' :
-		session.auth_method.type === 'Key' ? 'Key' : 'Agent'
+		session.auth_method.type === 'Password' ? t('session.auth_pw_label') :
+		session.auth_method.type === 'Key' ? t('session.auth_key') : t('session.auth_agent')
 	);
 </script>
 
 <div class="session-card">
-	<button class="card-main" onclick={onconnect} title="Connect to {session.name}">
+	<button class="card-main" onclick={onconnect} title={t('session.connect_to', { name: session.name })}>
 		<DistroIcon osId={session.detected_os} size={18} />
 		<div class="session-info">
 			<span class="session-name">{session.name}</span>
 			<span class="session-detail">{session.username}@{session.host}:{session.port}</span>
 		</div>
-		<span class="auth-badge" title="{session.auth_method.type} authentication">{authLabel}</span>
+		<span class="auth-badge" title={t('session.auth_type', { type: session.auth_method.type })}>{authLabel}</span>
 	</button>
 
 	<div class="session-actions">
-		<button class="action-btn connect-btn" onclick={onconnect} title="Connect" aria-label="Connect to {session.name}">
+		<button class="action-btn connect-btn" onclick={onconnect} title={t('session.connect')} aria-label={t('session.connect_to', { name: session.name })}>
 			<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
 				<path d="M8 5v14l11-7z"/>
 			</svg>
 		</button>
-		<button class="action-btn edit-btn" onclick={onedit} title="Edit" aria-label="Edit {session.name}">
+		<button class="action-btn edit-btn" onclick={onedit} title={t('session.edit')} aria-label={t('session.edit_name', { name: session.name })}>
 			<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 				<path d="M17 3a2.85 2.85 0 0 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
 			</svg>
 		</button>
-		<button class="action-btn delete-btn" onclick={ondelete} title="Delete" aria-label="Delete {session.name}">
+		<button class="action-btn delete-btn" onclick={ondelete} title={t('session.delete')} aria-label={t('session.delete_name', { name: session.name })}>
 			<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 				<path d="M3 6h18"/>
 				<path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/>

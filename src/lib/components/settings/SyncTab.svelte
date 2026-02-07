@@ -6,6 +6,7 @@
 	import { createTursoDatabase, createTursoDatabaseToken, setPersonalSync, acceptInvite } from '$lib/ipc/vault';
 	import { vaultState } from '$lib/state/vault.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	let loading = $state(true);
 	let saving = $state(false);
@@ -64,7 +65,7 @@
 			// 3. THEN update settings with the new DB URL/token
 			if (tursoOrg && tursoApiToken && !personalDbUrl) {
 				// Step 1: Save Turso credentials FIRST (without DB URL)
-				addToast('Saving Turso credentials...', 'info');
+				addToast(t('sync.saving_credentials'), 'info');
 				const initialSettings: AppSettings = {
 					tursoOrg: tursoOrg,
 					tursoApiToken: tursoApiToken,
@@ -74,7 +75,7 @@
 				await saveSettings(initialSettings);
 
 				// Step 2: Now create the database (backend will read saved credentials)
-				addToast('Creating personal database...', 'info');
+				addToast(t('sync.creating_database'), 'info');
 				const dbName = `reach-personal-${userUuid?.substring(0, 8) || Date.now()}`;
 				const dbInfo = await createTursoDatabase(dbName);
 				const token = await createTursoDatabaseToken(dbInfo.name);
@@ -84,7 +85,7 @@
 				personalDbUrl = newPersonalDbUrl;
 				personalDbToken = token;
 
-				addToast('Personal database created', 'success');
+				addToast(t('sync.database_created'), 'success');
 			}
 
 			// Step 3: Save complete settings (with DB URL if created)
@@ -102,9 +103,9 @@
 			// Step 4: Set personal sync config in identity file so ALL data syncs to cloud
 			if (newPersonalDbUrl && newPersonalDbToken) {
 				await setPersonalSync(newPersonalDbUrl, newPersonalDbToken);
-				addToast('Cloud sync enabled for all data', 'success');
+				addToast(t('sync.cloud_sync_enabled'), 'success');
 			} else {
-				addToast('Sync settings saved', 'success');
+				addToast(t('sync.settings_saved'), 'success');
 			}
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Failed to save';
@@ -123,12 +124,12 @@
 
 	function copyToClipboard(text: string) {
 		navigator.clipboard.writeText(text);
-		addToast('Copied to clipboard', 'success');
+		addToast(t('sync.copied_toast'), 'success');
 	}
 
 	async function handleAcceptInvite() {
 		if (!inviteSyncUrl.trim() || !inviteToken.trim()) {
-			error = 'Both Sync URL and Token are required';
+			error = t('sync.url_token_required');
 			return;
 		}
 
@@ -150,57 +151,57 @@
 
 <div class="tab-content">
 	{#if loading}
-		<div class="loading">Loading...</div>
+		<div class="loading">{t('common.loading')}</div>
 	{:else}
 		<!-- Identity Section -->
 		<div class="section">
-			<h3 class="section-title">Identity</h3>
+			<h3 class="section-title">{t('sync.identity')}</h3>
 			<div class="setting-row">
 				<div class="setting-info">
-					<span class="setting-label">User UUID</span>
-					<span class="setting-value mono">{userUuid ?? 'Not initialized'}</span>
+					<span class="setting-label">{t('sync.user_uuid')}</span>
+					<span class="setting-value mono">{userUuid ?? t('sync.not_initialized')}</span>
 				</div>
 				{#if userUuid}
-					<button class="copy-btn" onclick={() => copyToClipboard(userUuid!)}>Copy</button>
+					<button class="copy-btn" onclick={() => copyToClipboard(userUuid!)}>{t('sync.copy')}</button>
 				{/if}
 			</div>
 			<div class="setting-row">
 				<div class="setting-info">
-					<span class="setting-label">Public Key</span>
-					<span class="setting-value mono truncate">{publicKey ?? 'Not initialized'}</span>
+					<span class="setting-label">{t('sync.public_key')}</span>
+					<span class="setting-value mono truncate">{publicKey ?? t('sync.not_initialized')}</span>
 				</div>
 				{#if publicKey}
-					<button class="copy-btn" onclick={() => copyToClipboard(publicKey!)}>Copy</button>
+					<button class="copy-btn" onclick={() => copyToClipboard(publicKey!)}>{t('sync.copy')}</button>
 				{/if}
 			</div>
 			<div class="action-row">
 				<Button variant="secondary" size="sm" onclick={handleExportKey}>
-					Export Backup Key
+					{t('sync.export_backup_key')}
 				</Button>
 			</div>
 		</div>
 
 		{#if showExportKey}
 			<div class="export-box">
-				<p class="export-warning">Keep this key safe! Anyone with it can decrypt your data.</p>
+				<p class="export-warning">{t('sync.backup_key_warning')}</p>
 				<div class="export-key">
 					<code>{exportedKey}</code>
-					<button class="copy-btn" onclick={() => copyToClipboard(exportedKey)}>Copy</button>
+					<button class="copy-btn" onclick={() => copyToClipboard(exportedKey)}>{t('sync.copy')}</button>
 				</div>
 				<Button variant="ghost" size="sm" onclick={() => { showExportKey = false; exportedKey = ''; }}>
-					Close
+					{t('common.close')}
 				</Button>
 			</div>
 		{/if}
 
 		<!-- Turso Sync Section -->
 		<div class="section">
-			<h3 class="section-title">Cloud Sync</h3>
-			<p class="section-desc">Sync your data to Turso for backup and multi-device access. Get credentials from <a href="https://turso.tech/app" target="_blank" rel="noopener">turso.tech</a>.</p>
+			<h3 class="section-title">{t('sync.cloud_sync')}</h3>
+			<p class="section-desc">{t('sync.cloud_sync_desc')}</p>
 
 			<div class="form-field">
 				<Input
-					label="Organization"
+					label={t('sync.organization')}
 					placeholder="my-org"
 					bind:value={tursoOrg}
 				/>
@@ -208,7 +209,7 @@
 
 			<div class="form-field">
 				<Input
-					label="Platform API Token"
+					label={t('sync.platform_api_token')}
 					type="password"
 					placeholder="eyJhbG..."
 					bind:value={tursoApiToken}
@@ -217,7 +218,7 @@
 
 			<div class="form-field">
 				<Input
-					label="Group"
+					label={t('sync.group')}
 					placeholder="default"
 					bind:value={tursoGroup}
 				/>
@@ -225,33 +226,33 @@
 
 			<div class="setting-row">
 				<div class="setting-info">
-					<span class="setting-label">Personal Database</span>
+					<span class="setting-label">{t('sync.personal_database')}</span>
 					<span class="setting-description">
 						{#if personalDbUrl}
 							{personalDbUrl}
 						{:else}
-							Will be created on save
+							{t('sync.will_be_created')}
 						{/if}
 					</span>
 				</div>
 				<div class="status-badge" class:enabled={!!personalDbUrl}>
-					{personalDbUrl ? 'Ready' : 'Pending'}
+					{personalDbUrl ? t('sync.ready') : t('sync.pending')}
 				</div>
 			</div>
 
 			<div class="setting-row">
 				<div class="setting-info">
-					<span class="setting-label">Sync Status</span>
+					<span class="setting-label">{t('sync.sync_status')}</span>
 					<span class="setting-description">
 						{#if syncEnabled}
-							All your data syncs to cloud
+							{t('sync.cloud_sync_active')}
 						{:else}
-							Data stored locally only
+							{t('sync.local_only')}
 						{/if}
 					</span>
 				</div>
 				<div class="status-badge" class:enabled={syncEnabled}>
-					{syncEnabled ? 'Enabled' : 'Disabled'}
+					{syncEnabled ? t('sync.enabled') : t('sync.disabled')}
 				</div>
 			</div>
 
@@ -261,19 +262,19 @@
 
 			<div class="action-row">
 				<Button variant="primary" size="sm" onclick={handleSave} disabled={saving}>
-					{saving ? 'Setting up...' : 'Save & Setup'}
+					{saving ? t('sync.setting_up') : t('sync.save_setup')}
 				</Button>
 			</div>
 		</div>
 
 		<!-- Accept Invite Section -->
 		<div class="section">
-			<h3 class="section-title">Accept Vault Invite</h3>
-			<p class="section-desc">Join a shared vault using an invite from another user.</p>
+			<h3 class="section-title">{t('sync.accept_invite')}</h3>
+			<p class="section-desc">{t('sync.accept_invite_desc')}</p>
 
 			<div class="form-field">
 				<Input
-					label="Sync URL"
+					label={t('vault.sync_url')}
 					placeholder="libsql://vault-xxx.turso.io"
 					bind:value={inviteSyncUrl}
 					disabled={acceptingInvite}
@@ -297,7 +298,7 @@
 					onclick={handleAcceptInvite}
 					disabled={acceptingInvite || !inviteSyncUrl.trim() || !inviteToken.trim()}
 				>
-					{acceptingInvite ? 'Joining...' : 'Accept Invite'}
+					{acceptingInvite ? t('sync.joining') : t('sync.accept')}
 				</Button>
 			</div>
 		</div>

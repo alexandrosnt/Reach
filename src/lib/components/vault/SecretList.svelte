@@ -12,16 +12,17 @@
 		type SecretMetadata
 	} from '$lib/state/vault.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	// Categories with their display names
-	const categories = [
-		{ value: 'password', label: 'Password' },
-		{ value: 'ssh_key', label: 'SSH Key' },
-		{ value: 'api_token', label: 'API Token' },
-		{ value: 'certificate', label: 'Certificate' },
-		{ value: 'note', label: 'Note' },
-		{ value: 'custom', label: 'Custom' }
-	];
+	let categories = $derived([
+		{ value: 'password', label: t('vault.category_password') },
+		{ value: 'ssh_key', label: t('vault.category_ssh_key') },
+		{ value: 'api_token', label: t('vault.category_api_token') },
+		{ value: 'certificate', label: t('vault.category_certificate') },
+		{ value: 'note', label: t('vault.category_note') },
+		{ value: 'custom', label: t('vault.category_custom') }
+	]);
 
 	// State
 	let secretList = $derived(getSecretList());
@@ -68,7 +69,7 @@
 	// Handle add secret
 	async function handleAddSecret(): Promise<void> {
 		if (!newName.trim() || !newValue.trim()) {
-			addToast('Name and value are required', 'error');
+			addToast(t('vault.name_value_required'), 'error');
 			return;
 		}
 
@@ -80,7 +81,7 @@
 			newCategory = 'password';
 			newValue = '';
 			showAddModal = false;
-			addToast('Secret created', 'success');
+			addToast(t('vault.secret_created_toast'), 'success');
 		} catch (err) {
 			addToast(`Failed to create secret: ${err}`, 'error');
 		} finally {
@@ -122,7 +123,7 @@
 				value = await readSecret(selectedSecret.id);
 			}
 			await navigator.clipboard.writeText(value);
-			addToast('Copied to clipboard', 'success');
+			addToast(t('vault.copied_toast'), 'success');
 		} catch (err) {
 			addToast(`Failed to copy: ${err}`, 'error');
 		}
@@ -144,7 +145,7 @@
 	// Handle update secret
 	async function handleUpdateSecret(): Promise<void> {
 		if (!selectedSecret || !editValue.trim()) {
-			addToast('Value is required', 'error');
+			addToast(t('vault.value_required'), 'error');
 			return;
 		}
 
@@ -155,7 +156,7 @@
 			showEditModal = false;
 			selectedSecret = null;
 			editValue = '';
-			addToast('Secret updated', 'success');
+			addToast(t('vault.secret_updated_toast'), 'success');
 		} catch (err) {
 			addToast(`Failed to update secret: ${err}`, 'error');
 		} finally {
@@ -179,7 +180,7 @@
 			await deleteSecret(selectedSecret.id);
 			showDeleteModal = false;
 			selectedSecret = null;
-			addToast('Secret deleted', 'success');
+			addToast(t('vault.secret_deleted_toast'), 'success');
 		} catch (err) {
 			addToast(`Failed to delete secret: ${err}`, 'error');
 		} finally {
@@ -202,12 +203,12 @@
 
 <div class="secret-list">
 	<div class="list-header">
-		<span class="header-title">Secrets</span>
+		<span class="header-title">{t('vault.secrets')}</span>
 		<button class="add-btn" onclick={() => (showAddModal = true)}>
 			<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
 				<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
 			</svg>
-			Add Secret
+			{t('vault.add_secret')}
 		</button>
 	</div>
 
@@ -220,8 +221,8 @@
 					<rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.5" />
 				</svg>
 			</div>
-			<p class="empty-text">No secrets yet</p>
-			<p class="empty-hint">Add your first secret to get started.</p>
+			<p class="empty-text">{t('vault.no_secrets')}</p>
+			<p class="empty-hint">{t('vault.add_first_secret')}</p>
 		</div>
 	{:else}
 		<div class="secrets">
@@ -271,17 +272,17 @@
 </div>
 
 <!-- Add Secret Modal -->
-<Modal open={showAddModal} onclose={() => (showAddModal = false)} title="Add Secret">
+<Modal open={showAddModal} onclose={() => (showAddModal = false)} title={t('vault.add_secret')}>
 	<div class="form">
 		<Input
-			label="Name"
+			label={t('vault.secret_name')}
 			placeholder="My API Key"
 			bind:value={newName}
 			disabled={creating}
 		/>
 
 		<div class="form-field">
-			<span class="form-label">Category</span>
+			<span class="form-label">{t('vault.secret_category')}</span>
 			<Dropdown
 				options={categories}
 				bind:selected={newCategory}
@@ -289,11 +290,11 @@
 		</div>
 
 		<div class="form-field">
-			<label class="form-label" for="secret-value">Value</label>
+			<label class="form-label" for="secret-value">{t('vault.secret_value')}</label>
 			<textarea
 				id="secret-value"
 				class="value-textarea"
-				placeholder="Enter secret value..."
+				placeholder={t('vault.enter_secret_value')}
 				bind:value={newValue}
 				disabled={creating}
 				rows="4"
@@ -303,14 +304,14 @@
 
 	{#snippet actions()}
 		<Button variant="ghost" onclick={() => (showAddModal = false)} disabled={creating}>
-			Cancel
+			{t('common.cancel')}
 		</Button>
 		<Button
 			variant="primary"
 			onclick={handleAddSecret}
 			disabled={creating || !newName.trim() || !newValue.trim()}
 		>
-			{#if creating}Creating...{:else}Save{/if}
+			{#if creating}{t('vault.creating')}{:else}{t('common.save')}{/if}
 		</Button>
 	{/snippet}
 </Modal>
@@ -320,22 +321,22 @@
 	{#if selectedSecret}
 		<div class="view-secret">
 			<div class="secret-detail">
-				<span class="detail-label">Category</span>
+				<span class="detail-label">{t('vault.secret_category')}</span>
 				<span class="detail-value">{getCategoryLabel(selectedSecret.category)}</span>
 			</div>
 
 			<div class="secret-detail">
-				<span class="detail-label">Last Updated</span>
+				<span class="detail-label">{t('vault.last_updated')}</span>
 				<span class="detail-value">{formatRelativeTime(selectedSecret.updatedAt)}</span>
 			</div>
 
 			<div class="secret-detail">
-				<span class="detail-label">Value</span>
+				<span class="detail-label">{t('vault.secret_value')}</span>
 				<div class="value-container">
 					{#if showSecretValue}
 						<pre class="secret-value-display">{secretValue}</pre>
 					{:else}
-						<span class="secret-hidden">Click "Show" to reveal</span>
+						<span class="secret-hidden">{t('vault.click_show')}</span>
 					{/if}
 					<div class="value-actions">
 						<button
@@ -344,15 +345,15 @@
 							disabled={loadingSecret}
 						>
 							{#if loadingSecret}
-								Loading...
+								{t('common.loading')}
 							{:else if showSecretValue}
-								Hide
+								{t('vault.hide')}
 							{:else}
-								Show
+								{t('vault.show')}
 							{/if}
 						</button>
 						<button class="action-btn" onclick={copySecretValue}>
-							Copy
+							{t('vault.copy')}
 						</button>
 					</div>
 				</div>
@@ -362,28 +363,28 @@
 
 	{#snippet actions()}
 		<Button variant="danger" onclick={openDeleteModal}>
-			Delete
+			{t('common.delete')}
 		</Button>
 		<Button variant="secondary" onclick={openEditModal}>
-			Edit
+			{t('session.edit')}
 		</Button>
 		<Button variant="ghost" onclick={() => (showViewModal = false)}>
-			Close
+			{t('common.close')}
 		</Button>
 	{/snippet}
 </Modal>
 
 <!-- Edit Secret Modal -->
-<Modal open={showEditModal} onclose={() => (showEditModal = false)} title="Edit Secret">
+<Modal open={showEditModal} onclose={() => (showEditModal = false)} title={t('vault.edit_secret')}>
 	{#if selectedSecret}
 		<div class="form">
 			<div class="form-field">
-				<span class="form-label">Name</span>
+				<span class="form-label">{t('vault.secret_name')}</span>
 				<span class="form-value">{selectedSecret.name}</span>
 			</div>
 
 			<div class="form-field">
-				<label class="form-label" for="edit-value">Value</label>
+				<label class="form-label" for="edit-value">{t('vault.secret_value')}</label>
 				<textarea
 					id="edit-value"
 					class="value-textarea"
@@ -397,33 +398,33 @@
 
 	{#snippet actions()}
 		<Button variant="ghost" onclick={() => (showEditModal = false)} disabled={updating}>
-			Cancel
+			{t('common.cancel')}
 		</Button>
 		<Button
 			variant="primary"
 			onclick={handleUpdateSecret}
 			disabled={updating || !editValue.trim()}
 		>
-			{#if updating}Saving...{:else}Save Changes{/if}
+			{#if updating}{t('vault.secret_saving')}{:else}{t('vault.save_changes')}{/if}
 		</Button>
 	{/snippet}
 </Modal>
 
 <!-- Delete Confirmation Modal -->
-<Modal open={showDeleteModal} onclose={() => (showDeleteModal = false)} title="Delete Secret">
+<Modal open={showDeleteModal} onclose={() => (showDeleteModal = false)} title={t('vault.delete_secret')}>
 	<div class="delete-confirm">
 		<p class="delete-message">
-			Are you sure you want to delete <strong>{selectedSecret?.name}</strong>?
+			{t('vault.delete_secret_confirm')} <strong>{selectedSecret?.name}</strong>
 		</p>
-		<p class="delete-warning">This action cannot be undone.</p>
+		<p class="delete-warning">{t('vault.delete_irreversible')}</p>
 	</div>
 
 	{#snippet actions()}
 		<Button variant="ghost" onclick={() => (showDeleteModal = false)} disabled={deleting}>
-			Cancel
+			{t('common.cancel')}
 		</Button>
 		<Button variant="danger" onclick={handleDeleteSecret} disabled={deleting}>
-			{#if deleting}Deleting...{:else}Delete{/if}
+			{#if deleting}{t('vault.deleting')}{:else}{t('common.delete')}{/if}
 		</Button>
 	{/snippet}
 </Modal>

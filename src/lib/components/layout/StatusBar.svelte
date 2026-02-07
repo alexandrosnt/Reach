@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { getActiveTab } from '$lib/state/tabs.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	let activeTab = $derived(getActiveTab());
 
@@ -27,11 +28,11 @@
 	});
 
 	let connectionStatus = $derived.by(() => {
-		if (!activeTab) return 'No session';
+		if (!activeTab) return t('statusbar.no_session');
 		if (activeTab.type === 'ssh' && activeTab.connectionId) {
-			return `Connected to ${activeTab.title}`;
+			return t('statusbar.connected_to', { title: activeTab.title });
 		}
-		return 'Local';
+		return t('statusbar.local');
 	});
 </script>
 
@@ -42,7 +43,7 @@
 	</div>
 
 	<div class="statusbar-center">
-		<span>Reach v0.1.0</span>
+		<span>{t('app.name')} v0.1.0</span>
 	</div>
 
 	<div class="statusbar-right">

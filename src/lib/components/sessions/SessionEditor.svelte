@@ -3,6 +3,7 @@
 	import Button from '$lib/components/shared/Button.svelte';
 	import Input from '$lib/components/shared/Input.svelte';
 	import { sessionCreate, sessionUpdate, type SessionConfig, type AuthMethod } from '$lib/ipc/sessions';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		open: boolean;
@@ -106,23 +107,23 @@
 	}
 </script>
 
-<Modal {open} onclose={handleClose} title={isEditing ? 'Edit Session' : 'New Session'}>
+<Modal {open} onclose={handleClose} title={isEditing ? t('session.edit_session') : t('session.new')}>
 	<form class="form" onsubmit={(e) => { e.preventDefault(); handleSave(); }}>
-		<Input label="Session Name" bind:value={name} placeholder="My Server" disabled={saving} />
+		<Input label={t('session.name')} bind:value={name} placeholder="My Server" disabled={saving} />
 
 		<div class="row">
 			<div class="field-host">
-				<Input label="Host" bind:value={host} placeholder="192.168.1.1" disabled={saving} />
+				<Input label={t('session.host')} bind:value={host} placeholder="192.168.1.1" disabled={saving} />
 			</div>
 			<div class="field-port">
-				<Input label="Port" bind:value={portStr} type="number" placeholder="22" disabled={saving} />
+				<Input label={t('session.port')} bind:value={portStr} type="number" placeholder="22" disabled={saving} />
 			</div>
 		</div>
 
-		<Input label="Username" bind:value={username} placeholder="root" disabled={saving} />
+		<Input label={t('session.username')} bind:value={username} placeholder="root" disabled={saving} />
 
 		<div class="auth-section">
-			<span class="auth-label">Authentication</span>
+			<span class="auth-label">{t('session.auth_method')}</span>
 			<div class="auth-toggle">
 				<button
 					type="button"
@@ -131,7 +132,7 @@
 					disabled={saving}
 					onclick={() => (authType = 'Password')}
 				>
-					Password
+					{t('session.auth_password')}
 				</button>
 				<button
 					type="button"
@@ -140,7 +141,7 @@
 					disabled={saving}
 					onclick={() => (authType = 'Key')}
 				>
-					Key
+					{t('session.auth_key')}
 				</button>
 				<button
 					type="button"
@@ -149,19 +150,19 @@
 					disabled={saving}
 					onclick={() => (authType = 'Agent')}
 				>
-					Agent
+					{t('session.auth_agent')}
 				</button>
 			</div>
 		</div>
 
 		{#if authType === 'Password'}
-			<Input label="Password (optional)" bind:value={password} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
+			<Input label={t('session.password_optional')} bind:value={password} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
 		{:else if authType === 'Key'}
-			<Input label="Key Path" bind:value={keyPath} placeholder="~/.ssh/id_rsa" disabled={saving} />
-			<Input label="Passphrase (optional)" bind:value={keyPassphrase} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
+			<Input label={t('session.key_path')} bind:value={keyPath} placeholder="~/.ssh/id_rsa" disabled={saving} />
+			<Input label={t('session.passphrase_optional')} bind:value={keyPassphrase} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
 		{/if}
 
-		<Input label="Tags (comma-separated)" bind:value={tagsStr} placeholder="production, web, linux" disabled={saving} />
+		<Input label={t('session.tags')} bind:value={tagsStr} placeholder="production, web, linux" disabled={saving} />
 
 		{#if error}
 			<div class="error-message">{error}</div>
@@ -170,14 +171,14 @@
 
 	{#snippet actions()}
 		<Button variant="secondary" onclick={handleClose} disabled={saving}>
-			Cancel
+			{t('common.cancel')}
 		</Button>
 		<Button variant="primary" onclick={handleSave} disabled={!canSave}>
 			{#if saving}
 				<span class="spinner"></span>
-				Saving...
+				{t('session.saving')}
 			{:else}
-				{isEditing ? 'Update Session' : 'Save Session'}
+				{isEditing ? t('session.update_session') : t('session.save_session')}
 			{/if}
 		</Button>
 	{/snippet}

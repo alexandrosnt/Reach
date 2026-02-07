@@ -4,6 +4,7 @@
 	import Dropdown from '$lib/components/shared/Dropdown.svelte';
 	import Toggle from '$lib/components/shared/Toggle.svelte';
 	import { getSettings, updateSetting, syncTraySettings } from '$lib/state/settings.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	const settings = getSettings();
 
@@ -40,8 +41,8 @@
 <div class="tab-content">
 	<div class="setting-row">
 		<div class="setting-info">
-			<span class="setting-label">Default Shell</span>
-			<span class="setting-description">Shell used when opening new local terminals</span>
+			<span class="setting-label">{t('settings.default_shell')}</span>
+			<span class="setting-description">{t('settings.shell_desc')}</span>
 		</div>
 		<div class="setting-control">
 			<Dropdown
@@ -54,13 +55,13 @@
 
 	<div class="setting-row">
 		<div class="setting-info">
-			<span class="setting-label">Startup Behavior</span>
-			<span class="setting-description">Restore tabs from your previous session on launch</span>
+			<span class="setting-label">{t('settings.startup_behavior')}</span>
+			<span class="setting-description">{t('settings.restore_tabs_desc')}</span>
 		</div>
 		<div class="setting-control">
 			<Toggle
 				checked={settings.openLastSession}
-				label="Open with last session"
+				label={t('settings.open_last_session')}
 				onchange={onLastSessionChange}
 			/>
 		</div>
@@ -68,13 +69,13 @@
 
 	<div class="setting-row">
 		<div class="setting-info">
-			<span class="setting-label">Minimize to Tray</span>
-			<span class="setting-description">Keep app running in the system tray when you close the window</span>
+			<span class="setting-label">{t('settings.minimize_to_tray')}</span>
+			<span class="setting-description">{t('settings.tray_desc')}</span>
 		</div>
 		<div class="setting-control">
 			<Toggle
 				checked={settings.minimizeToTray}
-				label="Minimize to Tray"
+				label={t('settings.minimize_to_tray')}
 				onchange={onMinimizeToTrayChange}
 			/>
 		</div>
@@ -82,13 +83,13 @@
 
 	<div class="setting-row">
 		<div class="setting-info">
-			<span class="setting-label">Start with System</span>
-			<span class="setting-description">Launch Reach automatically when you log in</span>
+			<span class="setting-label">{t('settings.start_with_system')}</span>
+			<span class="setting-description">{t('settings.system_startup_desc')}</span>
 		</div>
 		<div class="setting-control">
 			<Toggle
 				checked={settings.startWithSystem}
-				label="Start with System"
+				label={t('settings.start_with_system')}
 				onchange={onStartWithSystemChange}
 			/>
 		</div>

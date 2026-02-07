@@ -8,6 +8,7 @@
 		type PlaybookStepEvent
 	} from '$lib/ipc/playbook';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { sendMessage, openAIPanel } from '$lib/state/ai-chat.svelte';
 	import { getAISettings } from '$lib/state/ai.svelte';
@@ -43,12 +44,12 @@
 
 	async function handleRun(): Promise<void> {
 		if (!yamlInput.trim()) {
-			addToast('Please enter a playbook YAML definition', 'error');
+			addToast(t('playbook.enter_yaml'), 'error');
 			return;
 		}
 
 		if (!connectionId) {
-			addToast('No active connection selected', 'error');
+			addToast(t('playbook.no_connection'), 'error');
 			return;
 		}
 
@@ -103,7 +104,7 @@
 			await playbookStop(currentRun.id);
 			running = false;
 			finished = true;
-			addToast('Playbook stopped', 'warning');
+			addToast(t('playbook.stopped_toast'), 'warning');
 		} catch (err) {
 			addToast(`Failed to stop playbook: ${err}`, 'error');
 		}
@@ -159,7 +160,7 @@
 	let summaryLabel = $derived(
 		currentRun
 			? `${currentRun.playbook_name} - ${currentRun.status}`
-			: 'Playbook Runner'
+			: t('playbook.runner_title')
 	);
 
 	let completedCount = $derived(
@@ -203,17 +204,17 @@
 	}
 </script>
 
-<Modal open={open} onclose={handleClose} title="Playbook Runner">
+<Modal open={open} onclose={handleClose} title={t('playbook.runner_title')}>
 	{#snippet children()}
 		<div class="runner-container">
 			{#if !running && !finished}
 				<div class="yaml-section">
-					<label class="section-label" for="runner-yaml">Playbook YAML</label>
+					<label class="section-label" for="runner-yaml">{t('playbook.yaml_definition')}</label>
 					<textarea
 						id="runner-yaml"
 						class="yaml-input"
 						bind:value={yamlInput}
-						placeholder="Paste your playbook YAML here..."
+						placeholder={t('playbook.yaml_placeholder')}
 						spellcheck="false"
 					></textarea>
 				</div>
@@ -296,10 +297,10 @@
 
 					{#if finished}
 						<div class="summary">
-							<span class="summary-label">Summary:</span>
-							<span class="summary-completed">{completedCount} completed</span>
+							<span class="summary-label">{t('playbook.summary')}</span>
+							<span class="summary-completed">{t('playbook.completed', { count: String(completedCount) })}</span>
 							{#if failedCount > 0}
-								<span class="summary-failed">{failedCount} failed</span>
+								<span class="summary-failed">{t('playbook.failed', { count: String(failedCount) })}</span>
 							{/if}
 						</div>
 					{/if}
@@ -309,13 +310,13 @@
 	{/snippet}
 
 	{#snippet actions()}
-		<Button variant="ghost" onclick={handleClose}>Close</Button>
+		<Button variant="ghost" onclick={handleClose}>{t('common.close')}</Button>
 		{#if finished && aiEnabled}
 			<Button variant="secondary" onclick={handleAnalyzeWithAI}>
 				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 					<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
 				</svg>
-				Analyze with AI
+				{t('playbook.analyze_ai')}
 			</Button>
 		{/if}
 		{#if running}
@@ -323,14 +324,14 @@
 				<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
 					<rect x="6" y="6" width="12" height="12" rx="1" />
 				</svg>
-				Stop
+				{t('playbook.stop')}
 			</Button>
 		{:else if !finished}
 			<Button variant="primary" onclick={handleRun} disabled={!yamlInput.trim()}>
 				<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 					<path d="M5 3l14 9-14 9V3z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 				</svg>
-				Run
+				{t('playbook.run_short')}
 			</Button>
 		{/if}
 	{/snippet}

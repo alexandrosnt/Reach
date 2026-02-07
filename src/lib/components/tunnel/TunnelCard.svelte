@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { t } from '$lib/state/i18n.svelte';
 	import type { TunnelConfig } from '$lib/ipc/tunnel';
 
 	interface Props {
@@ -32,7 +33,7 @@
 			class="type-badge"
 			style:color={typeColor}
 			style:border-color={typeColor}
-			title="{tunnel.tunnel_type} tunnel"
+			title={t('tunnel.type_title', { type: tunnel.tunnel_type })}
 		>
 			{typeLabel}
 		</span>
@@ -45,27 +46,27 @@
 				</svg>
 				{tunnel.remote_host}:{tunnel.remote_port}
 			</span>
-			<span class="tunnel-type">{tunnel.tunnel_type} Tunnel</span>
+			<span class="tunnel-type">{t('tunnel.type_tunnel', { type: tunnel.tunnel_type })}</span>
 		</div>
 
 		<div class="tunnel-status">
 			<span
 				class="status-dot"
 				class:active={tunnel.active}
-				title={tunnel.active ? 'Active' : 'Inactive'}
+				title={tunnel.active ? t('tunnel.active') : t('tunnel.inactive')}
 			></span>
 		</div>
 	</div>
 
 	<div class="tunnel-actions">
 		{#if tunnel.active}
-			<button class="action-btn stop-btn" onclick={onstop} title="Stop tunnel" aria-label="Stop tunnel">
+			<button class="action-btn stop-btn" onclick={onstop} title={t('tunnel.stop_tunnel')} aria-label={t('tunnel.stop_tunnel')}>
 				<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
 					<rect x="6" y="6" width="12" height="12" rx="1" />
 				</svg>
 			</button>
 		{:else}
-			<button class="action-btn start-btn" onclick={onstart} title="Start tunnel" aria-label="Start tunnel">
+			<button class="action-btn start-btn" onclick={onstart} title={t('tunnel.start_tunnel')} aria-label={t('tunnel.start_tunnel')}>
 				<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
 					<path d="M8 5v14l11-7z" />
 				</svg>

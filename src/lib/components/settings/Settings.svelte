@@ -6,6 +6,7 @@
 	import SyncTab from './SyncTab.svelte';
 	import BackupTab from './BackupTab.svelte';
 	import AITab from './AITab.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		open: boolean;
@@ -16,19 +17,19 @@
 
 	type TabId = 'general' | 'appearance' | 'security' | 'sync' | 'backup' | 'ai';
 
-	const tabs: { id: TabId; label: string }[] = [
-		{ id: 'general', label: 'General' },
-		{ id: 'appearance', label: 'Appearance' },
-		{ id: 'security', label: 'Security' },
-		{ id: 'sync', label: 'Sync' },
-		{ id: 'backup', label: 'Backup' },
-		{ id: 'ai', label: 'AI' }
-	];
+	let tabs = $derived([
+		{ id: 'general' as TabId, label: t('settings.general') },
+		{ id: 'appearance' as TabId, label: t('settings.appearance') },
+		{ id: 'security' as TabId, label: t('settings.security') },
+		{ id: 'sync' as TabId, label: t('settings.sync') },
+		{ id: 'backup' as TabId, label: t('settings.backup') },
+		{ id: 'ai' as TabId, label: t('settings.ai') },
+	]);
 
 	let activeTabId = $state<TabId>('general');
 </script>
 
-<Modal {open} {onclose} title="Settings">
+<Modal {open} {onclose} title={t('settings.title')}>
 	{#snippet children()}
 		<div class="settings-tabs">
 			{#each tabs as tab (tab.id)}

@@ -2,6 +2,7 @@
 	import { vaultState, createVault, deleteVault, refreshVaults, type VaultInfo } from '$lib/state/vault.svelte';
 	import { inviteMember, listMembers, removeMember, type MemberInfo, type InviteInfo } from '$lib/ipc/vault';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		onvaultselect?: (vaultId: string | null) => void;
@@ -124,7 +125,7 @@
 		try {
 			const result = await inviteMember(inviteVault.id, inviteePublicKey.trim(), inviteeUuid.trim(), inviteeRole);
 			inviteResult = result;
-			addToast('Member invited successfully', 'success');
+			addToast(t('vault.invited_toast'), 'success');
 			await loadMembers(inviteVault.id);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
@@ -147,7 +148,7 @@ Token: ${inviteResult.token}
 
 Go to Settings > Sync > Accept Vault Invite`;
 		navigator.clipboard.writeText(info);
-		addToast('Invite info copied', 'success');
+		addToast(t('vault.invite_copied_toast'), 'success');
 	}
 
 	async function handleDelete() {
@@ -171,15 +172,15 @@ Go to Settings > Sync > Accept Vault Invite`;
 
 <div class="vault-selector">
 	<div class="vault-header">
-		<span class="vault-title">Vaults</span>
+		<span class="vault-title">{t('vault.vaults')}</span>
 		<div class="header-actions">
-			<button class="header-btn" onclick={handleRefresh} disabled={refreshing} title="Refresh vaults">
+			<button class="header-btn" onclick={handleRefresh} disabled={refreshing} title={t('vault.refresh_vaults')}>
 				<svg class:spinning={refreshing} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
 					<path d="M1 4v6h6" stroke-linecap="round" stroke-linejoin="round" />
 					<path d="M3.51 15a9 9 0 105.64-9.94L1 10" stroke-linecap="round" stroke-linejoin="round" />
 				</svg>
 			</button>
-			<button class="add-vault-btn" onclick={() => (showCreateDialog = true)} title="Create Vault">
+			<button class="add-vault-btn" onclick={() => (showCreateDialog = true)} title={t('vault.create_vault')}>
 				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 					<path d="M12 5v14M5 12h14"/>
 				</svg>
@@ -198,7 +199,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 				<rect x="3" y="11" width="18" height="11" rx="2"/>
 				<path d="M7 11V7a5 5 0 0 1 10 0v4"/>
 			</svg>
-			<span class="vault-name">Private</span>
+			<span class="vault-name">{t('vault.private')}</span>
 		</button>
 
 		<!-- User vaults -->
@@ -229,7 +230,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 					{/if}
 				</button>
 				{#if vault.vaultType === 'shared'}
-					<button class="invite-btn" onclick={(e) => openInviteDialog(vault, e)} title="Invite members">
+					<button class="invite-btn" onclick={(e) => openInviteDialog(vault, e)} title={t('vault.invite_members_short')}>
 						<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 							<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
 							<circle cx="8.5" cy="7" r="4"/>
@@ -237,7 +238,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 						</svg>
 					</button>
 				{/if}
-				<button class="delete-btn" onclick={(e) => confirmDelete(vault, e)} title="Delete vault">
+				<button class="delete-btn" onclick={(e) => confirmDelete(vault, e)} title={t('vault.delete_vault_short')}>
 					<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 						<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
 					</svg>
@@ -253,10 +254,10 @@ Go to Settings > Sync > Accept Vault Invite`;
 	<div class="dialog-overlay" onclick={() => (showCreateDialog = false)} onkeydown={(e) => { if (e.key === 'Escape') showCreateDialog = false; }}>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="dialog" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
-			<h3>Create Vault</h3>
+			<h3>{t('vault.create_vault_short')}</h3>
 
 			<div class="form-group">
-				<label for="vault-name">Name</label>
+				<label for="vault-name">{t('vault.secret_name')}</label>
 				<input
 					id="vault-name"
 					type="text"
@@ -267,7 +268,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 			</div>
 
 			<div class="form-group" role="group" aria-labelledby="vault-type-label">
-				<span id="vault-type-label" class="field-label">Type</span>
+				<span id="vault-type-label" class="field-label">{t('vault.type')}</span>
 				<div class="type-toggle">
 					<button
 						type="button"
@@ -276,7 +277,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 						disabled={creating}
 						onclick={() => (newVaultType = 'private')}
 					>
-						Private
+						{t('vault.private')}
 					</button>
 					<button
 						type="button"
@@ -285,14 +286,14 @@ Go to Settings > Sync > Accept Vault Invite`;
 						disabled={creating}
 						onclick={() => (newVaultType = 'shared')}
 					>
-						Shared
+						{t('vault.shared')}
 					</button>
 				</div>
 				<p class="type-hint">
 					{#if newVaultType === 'private'}
-						Only you can access this vault.
+						{t('vault.type_private_hint')}
 					{:else}
-						Team members can be invited to access this vault.
+						{t('vault.type_shared_hint')}
 					{/if}
 				</p>
 			</div>
@@ -303,10 +304,10 @@ Go to Settings > Sync > Accept Vault Invite`;
 
 			<div class="dialog-actions">
 				<button class="btn-secondary" onclick={() => (showCreateDialog = false)} disabled={creating}>
-					Cancel
+					{t('common.cancel')}
 				</button>
 				<button class="btn-primary" onclick={handleCreateVault} disabled={creating || !newVaultName.trim()}>
-					{#if creating}Creating...{:else}Create{/if}
+					{#if creating}{t('vault.creating')}{:else}{t('vault.create_short')}{/if}
 				</button>
 			</div>
 		</div>
@@ -319,64 +320,64 @@ Go to Settings > Sync > Accept Vault Invite`;
 	<div class="dialog-overlay" onclick={() => (showInviteDialog = false)} onkeydown={(e) => { if (e.key === 'Escape') showInviteDialog = false; }}>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="dialog invite-dialog" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
-			<h3>Invite to {inviteVault.name}</h3>
+			<h3>{t('vault.invite_to', { name: inviteVault.name })}</h3>
 
 			{#if inviteResult}
 				<!-- Show result -->
 				<div class="invite-success">
-					<p class="success-msg">Invite created! Share this info with the invitee:</p>
+					<p class="success-msg">{t('vault.invite_created_msg')}</p>
 					<div class="invite-field">
-						<span class="field-label">Sync URL</span>
+						<span class="field-label">{t('vault.sync_url')}</span>
 						<div class="field-row">
 							<code class="field-value">{inviteResult.syncUrl}</code>
-							<button class="copy-btn" onclick={() => copyToClipboard(inviteResult!.syncUrl, 'URL')}>Copy</button>
+							<button class="copy-btn" onclick={() => copyToClipboard(inviteResult!.syncUrl, 'URL')}>{t('vault.copy')}</button>
 						</div>
 					</div>
 					<div class="invite-field">
-						<span class="field-label">Token</span>
+						<span class="field-label">{t('vault.token')}</span>
 						<div class="field-row">
 							<code class="field-value truncate">{inviteResult.token}</code>
-							<button class="copy-btn" onclick={() => copyToClipboard(inviteResult!.token, 'Token')}>Copy</button>
+							<button class="copy-btn" onclick={() => copyToClipboard(inviteResult!.token, 'Token')}>{t('vault.copy')}</button>
 						</div>
 					</div>
 					<div class="dialog-actions">
-						<button class="btn-primary" onclick={copyInviteInfo}>Copy All</button>
-						<button class="btn-secondary" onclick={() => { inviteResult = null; inviteeUuid = ''; inviteePublicKey = ''; }}>Invite Another</button>
+						<button class="btn-primary" onclick={copyInviteInfo}>{t('vault.copy_all')}</button>
+						<button class="btn-secondary" onclick={() => { inviteResult = null; inviteeUuid = ''; inviteePublicKey = ''; }}>{t('vault.invite_another')}</button>
 					</div>
 				</div>
 			{:else}
 				<!-- Show form -->
 				<div class="invite-section">
-					<p class="section-label">Your info (share with invitee)</p>
+					<p class="section-label">{t('vault.your_info_share')}</p>
 					<div class="info-row">
 						<span class="info-label">UUID:</span>
 						<code class="info-value">{vaultState.userUuid ?? 'N/A'}</code>
 						{#if vaultState.userUuid}
-							<button class="copy-btn-sm" onclick={() => copyToClipboard(vaultState.userUuid!, 'UUID')}>Copy</button>
+							<button class="copy-btn-sm" onclick={() => copyToClipboard(vaultState.userUuid!, 'UUID')}>{t('vault.copy')}</button>
 						{/if}
 					</div>
 					<div class="info-row">
 						<span class="info-label">Key:</span>
 						<code class="info-value truncate">{vaultState.publicKey ?? 'N/A'}</code>
 						{#if vaultState.publicKey}
-							<button class="copy-btn-sm" onclick={() => copyToClipboard(vaultState.publicKey!, 'Key')}>Copy</button>
+							<button class="copy-btn-sm" onclick={() => copyToClipboard(vaultState.publicKey!, 'Key')}>{t('vault.copy')}</button>
 						{/if}
 					</div>
 				</div>
 
 				<div class="invite-section">
-					<p class="section-label">Invitee info (get from them)</p>
+					<p class="section-label">{t('vault.invitee_info_get')}</p>
 					<div class="form-group">
-						<input type="text" placeholder="Invitee UUID" bind:value={inviteeUuid} disabled={inviting} />
+						<input type="text" placeholder={t('vault.invitee_uuid')} bind:value={inviteeUuid} disabled={inviting} />
 					</div>
 					<div class="form-group">
-						<input type="text" placeholder="Invitee Public Key" bind:value={inviteePublicKey} disabled={inviting} />
+						<input type="text" placeholder={t('vault.invitee_public_key')} bind:value={inviteePublicKey} disabled={inviting} />
 					</div>
 					<div class="form-group">
 						<select bind:value={inviteeRole} disabled={inviting}>
-							<option value="member">Member (read/write)</option>
-							<option value="admin">Admin (can invite)</option>
-							<option value="readonly">Read Only</option>
+							<option value="member">{t('vault.member_rw')}</option>
+							<option value="admin">{t('vault.admin_can_invite')}</option>
+							<option value="readonly">{t('vault.role_read_only')}</option>
 						</select>
 					</div>
 				</div>
@@ -386,9 +387,9 @@ Go to Settings > Sync > Accept Vault Invite`;
 				{/if}
 
 				<div class="dialog-actions">
-					<button class="btn-secondary" onclick={() => (showInviteDialog = false)} disabled={inviting}>Cancel</button>
+					<button class="btn-secondary" onclick={() => (showInviteDialog = false)} disabled={inviting}>{t('common.cancel')}</button>
 					<button class="btn-primary" onclick={handleInvite} disabled={inviting || !inviteeUuid.trim() || !inviteePublicKey.trim()}>
-						{#if inviting}Inviting...{:else}Send Invite{/if}
+						{#if inviting}{t('vault.inviting')}{:else}{t('vault.send_invite')}{/if}
 					</button>
 				</div>
 			{/if}
@@ -402,20 +403,19 @@ Go to Settings > Sync > Accept Vault Invite`;
 	<div class="dialog-overlay" onclick={() => (showDeleteDialog = false)} onkeydown={(e) => { if (e.key === 'Escape') showDeleteDialog = false; }}>
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="dialog" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
-			<h3>Delete Vault</h3>
+			<h3>{t('vault.delete_vault')}</h3>
 			<p class="delete-warning">
-				Are you sure you want to delete <strong>{vaultToDelete.name}</strong>?
-				This will permanently delete all secrets in this vault.
+				{t('vault.delete_vault_confirm')}
 			</p>
 			{#if error}
 				<p class="error">{error}</p>
 			{/if}
 			<div class="dialog-actions">
 				<button class="btn-secondary" onclick={() => (showDeleteDialog = false)} disabled={deleting}>
-					Cancel
+					{t('common.cancel')}
 				</button>
 				<button class="btn-danger" onclick={handleDelete} disabled={deleting}>
-					{#if deleting}Deleting...{:else}Delete{/if}
+					{#if deleting}{t('vault.deleting')}{:else}{t('common.delete')}{/if}
 				</button>
 			</div>
 		</div>
