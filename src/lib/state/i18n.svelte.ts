@@ -1,5 +1,15 @@
+import enLocale from '../i18n/locales/en.json';
+
 let locale: string = $state('en');
 let translations: Map<string, string> = $state(new Map());
+
+function loadEntries(entries: Record<string, string>): void {
+	const newMap = new Map<string, string>();
+	for (const key of Object.keys(entries)) {
+		newMap.set(key, entries[key]);
+	}
+	translations = newMap;
+}
 
 /**
  * Translate a key with optional template interpolation.
@@ -22,24 +32,18 @@ export function t(key: string, params?: Record<string, string | number>): string
 }
 
 /**
- * Change the active locale. Dynamically imports the locale JSON file
- * and replaces the translations Map, triggering reactive updates
- * across all components that call t().
+ * Change the active locale. Uses static import for English,
+ * dynamic import for other locales. Replaces the translations Map,
+ * triggering reactive updates across all components that call t().
  */
 export async function changeLocale(newLocale: string): Promise<void> {
-	if (newLocale === locale) {
-		return;
+	if (newLocale === 'en') {
+		loadEntries(enLocale);
+	} else {
+		const module = await import(`../i18n/locales/${newLocale}.json`);
+		const entries: Record<string, string> = module.default ?? module;
+		loadEntries(entries);
 	}
-
-	const module = await import(`../i18n/locales/${newLocale}.json`);
-	const entries: Record<string, string> = module.default ?? module;
-
-	const newMap = new Map<string, string>();
-	for (const key of Object.keys(entries)) {
-		newMap.set(key, entries[key]);
-	}
-
-	translations = newMap;
 	locale = newLocale;
 }
 
@@ -50,19 +54,5 @@ export function getLocale(): string {
 	return locale;
 }
 
-/**
- * Eagerly load the default English locale at module initialization.
- */
-async function init(): Promise<void> {
-	const module = await import('../i18n/locales/en.json');
-	const entries: Record<string, string> = module.default ?? module;
-
-	const newMap = new Map<string, string>();
-	for (const key of Object.keys(entries)) {
-		newMap.set(key, entries[key]);
-	}
-
-	translations = newMap;
-}
-
-init();
+// Load English on startup
+loadEntries(enLocale);
