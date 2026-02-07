@@ -129,17 +129,17 @@ graph LR
 ## Changelog
 
 ### v0.1.8
-- Added Bulgarian language support
-- Now supporting 6 languages: English, German, French, Greek, Italian, Bulgarian
+- Added Bulgarian language
+- 6 languages supported now: English, German, French, Greek, Italian, Bulgarian
 
 ### v0.1.7
-- Single-instance mode — reopening the app focuses the existing window instead of launching a duplicate
-- Fixed auto-updater: the app now properly generates update artifacts and signature files
+- Single-instance mode, reopening the app focuses the existing window instead of opening a new one
+- Fixed the auto-updater so it actually generates update artifacts and signatures
 - Fixed release workflow for all platforms
 
 ### v0.1.6
-- First-run welcome wizard with language selection and optional Turso cloud sync setup
-- Full internationalization — added German, French, Greek, and Italian translations
+- Welcome wizard on first run with language selection and optional Turso cloud sync setup
+- Added German, French, Greek and Italian translations
 - Language selector in Settings > General
 - Language picker with flag icons during setup
 
