@@ -126,6 +126,23 @@ graph LR
   taurisrc --> tipc["📄 ipc · Tauri command handlers"]
 ```
 
+## Changelog
+
+### v0.1.8
+- Added Bulgarian language support
+- Now supporting 6 languages: English, German, French, Greek, Italian, Bulgarian
+
+### v0.1.7
+- Single-instance mode — reopening the app focuses the existing window instead of launching a duplicate
+- Fixed auto-updater: the app now properly generates update artifacts and signature files
+- Fixed release workflow for all platforms
+
+### v0.1.6
+- First-run welcome wizard with language selection and optional Turso cloud sync setup
+- Full internationalization — added German, French, Greek, and Italian translations
+- Language selector in Settings > General
+- Language picker with flag icons during setup
+
 ## Contributing
 
 Contributions are welcome. Bug reports, feature ideas, and pull requests all help. If you're picking up a larger feature, open an issue first so we can talk about the approach.
