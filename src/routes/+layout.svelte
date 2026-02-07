@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import '../app.css';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
+	import WelcomeScreen from '$lib/components/setup/WelcomeScreen.svelte';
 	import { loadSettings, getSettings, syncTraySettings } from '$lib/state/settings.svelte';
 	import { loadAISettings } from '$lib/state/ai.svelte';
 	import { initShortcuts, cleanupShortcuts } from '$lib/state/shortcuts.svelte';
@@ -50,6 +51,10 @@
 		}
 	});
 </script>
+
+{#if !settings.setupComplete}
+	<WelcomeScreen />
+{/if}
 
 <AppShell>
 	{@render children()}

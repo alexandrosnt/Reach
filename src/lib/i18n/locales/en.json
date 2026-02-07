@@ -533,5 +533,23 @@
   "common.save": "Save",
   "common.delete": "Delete",
   "common.copy": "Copy",
-  "common.dismiss": "Dismiss notification"
+  "common.dismiss": "Dismiss notification",
+
+  "setup.welcome_title": "Welcome to Reach",
+  "setup.welcome_subtitle": "Let's get you set up",
+  "setup.language_title": "Choose your language",
+  "setup.language_subtitle": "You can change this later in Settings",
+  "setup.turso_title": "Cloud Sync",
+  "setup.turso_subtitle": "Sync your data across devices",
+  "setup.turso_description": "Connect your Turso account to enable encrypted cloud sync for sessions, credentials, and vault secrets.",
+  "setup.turso_org_label": "Organization",
+  "setup.turso_org_placeholder": "my-org",
+  "setup.turso_token_label": "Platform API Token",
+  "setup.turso_token_placeholder": "eyJhbG...",
+  "setup.skip": "Skip",
+  "setup.next": "Next",
+  "setup.back": "Back",
+  "setup.get_started": "Get Started",
+  "setup.complete_title": "You're all set!",
+  "setup.complete_subtitle": "Reach is ready to use"
 }

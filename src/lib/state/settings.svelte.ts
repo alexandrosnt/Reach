@@ -11,6 +11,9 @@ export interface Settings {
 	locale: string;
 	minimizeToTray: boolean;
 	startWithSystem: boolean;
+	setupComplete: boolean;
+	pendingTursoOrg: string;
+	pendingTursoApiToken: string;
 }
 
 /** Secure settings stored encrypted in vault (API keys etc.) */
@@ -30,7 +33,10 @@ const defaults: Settings = {
 	openLastSession: false,
 	locale: 'en',
 	minimizeToTray: false,
-	startWithSystem: false
+	startWithSystem: false,
+	setupComplete: false,
+	pendingTursoOrg: '',
+	pendingTursoApiToken: ''
 };
 
 let settings = $state<Settings>({ ...defaults });
@@ -69,6 +75,10 @@ export function loadSettings(): void {
 			settings.locale = parsed.locale ?? defaults.locale;
 			settings.minimizeToTray = parsed.minimizeToTray ?? defaults.minimizeToTray;
 			settings.startWithSystem = parsed.startWithSystem ?? defaults.startWithSystem;
+			settings.pendingTursoOrg = parsed.pendingTursoOrg ?? defaults.pendingTursoOrg;
+			settings.pendingTursoApiToken = parsed.pendingTursoApiToken ?? defaults.pendingTursoApiToken;
+			// Migration: existing users who already have localStorage data get setupComplete: true
+			settings.setupComplete = parsed.setupComplete ?? true;
 		}
 	} catch {
 		// If parsing fails, keep defaults

@@ -4,9 +4,22 @@
 	import Dropdown from '$lib/components/shared/Dropdown.svelte';
 	import Toggle from '$lib/components/shared/Toggle.svelte';
 	import { getSettings, updateSetting, syncTraySettings } from '$lib/state/settings.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { t, changeLocale } from '$lib/state/i18n.svelte';
 
 	const settings = getSettings();
+
+	const languageOptions = [
+		{ label: 'English', value: 'en' },
+		{ label: 'Deutsch', value: 'de' },
+		{ label: 'Français', value: 'fr' },
+		{ label: 'Ελληνικά', value: 'el' },
+		{ label: 'Italiano', value: 'it' }
+	];
+
+	function onLanguageChange(value: string) {
+		changeLocale(value);
+		updateSetting('locale', value);
+	}
 
 	const shellOptions = [
 		{ label: 'Bash', value: '/bin/bash' },
@@ -39,6 +52,19 @@
 </script>
 
 <div class="tab-content">
+	<div class="setting-row">
+		<div class="setting-info">
+			<span class="setting-label">{t('settings.language')}</span>
+		</div>
+		<div class="setting-control">
+			<Dropdown
+				options={languageOptions}
+				selected={settings.locale}
+				onchange={onLanguageChange}
+			/>
+		</div>
+	</div>
+
 	<div class="setting-row">
 		<div class="setting-info">
 			<span class="setting-label">{t('settings.default_shell')}</span>
