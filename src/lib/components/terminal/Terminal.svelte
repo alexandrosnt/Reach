@@ -116,6 +116,27 @@
 			const bytes = Array.from(data, (c) => c.charCodeAt(0));
 			sendData(bytes);
 		});
+
+		// Ctrl+C copies when text is selected, otherwise sends SIGINT as normal.
+		// Ctrl+V pastes from clipboard.
+		term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
+			if (event.type !== 'keydown') return true;
+
+			if (event.ctrlKey && event.key === 'c' && term.hasSelection()) {
+				navigator.clipboard.writeText(term.getSelection());
+				term.clearSelection();
+				return false;
+			}
+
+			if (event.ctrlKey && event.key === 'v') {
+				navigator.clipboard.readText().then((text) => {
+					if (text) term.paste(text);
+				});
+				return false;
+			}
+
+			return true;
+		});
 	}
 
 	async function setupEventListeners(term: Terminal): Promise<void> {
@@ -186,6 +207,16 @@
 			onTitleChange?.(title);
 		});
 
+		// Right-click pastes from clipboard
+		const termEl = containerEl;
+		function onContextMenu(e: MouseEvent) {
+			e.preventDefault();
+			navigator.clipboard.readText().then((text) => {
+				if (text) term.paste(text);
+			});
+		}
+		termEl.addEventListener('contextmenu', onContextMenu);
+
 		terminal = term;
 		fitAddon = fit;
 
@@ -210,6 +241,7 @@
 			unlistenData?.();
 			unlistenExit?.();
 			resizeObserver?.disconnect();
+			termEl.removeEventListener('contextmenu', onContextMenu);
 			term.dispose();
 			terminal = undefined;
 			fitAddon = undefined;
