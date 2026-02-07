@@ -1,0 +1,40 @@
+---
+title: Reach Documentation
+description: Docs for Reach, the cross-platform SSH client built with Tauri and Svelte.
+template: splash
+hero:
+  tagline: Everything you need to know about Reach, the SSH client that doesn't suck.
+  actions:
+    - text: Get Started
+      link: /Reach/getting-started/introduction/
+      icon: right-arrow
+    - text: Download
+      link: https://github.com/alexandrosnt/Reach/releases
+      icon: external
+      variant: minimal
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## What's inside
+
+<CardGrid>
+	<Card title="SSH Terminal" icon="laptop">
+		Tabbed terminals with split panes, search, and per-session shell history.
+	</Card>
+	<Card title="File Explorer" icon="document">
+		Browse remote filesystems over SFTP with drag-and-drop uploads and downloads.
+	</Card>
+	<Card title="Encrypted Vault" icon="approve-check-circle">
+		Store passwords and secrets locally with XChaCha20-Poly1305 encryption, unlocked by your OS keychain.
+	</Card>
+	<Card title="Cloud Sync" icon="rocket">
+		Sync sessions and shared vaults across devices using Turso (SQLite edge database).
+	</Card>
+	<Card title="AI Assistant" icon="star">
+		Ask questions about your servers, get command suggestions, and troubleshoot issues with a built-in AI chat.
+	</Card>
+	<Card title="Playbooks" icon="list-format">
+		Automate multi-step tasks across sessions with scripted playbooks.
+	</Card>
+</CardGrid>
