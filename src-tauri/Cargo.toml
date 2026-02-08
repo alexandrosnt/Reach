@@ -1,6 +1,6 @@
 [package]
 name = "reach"
-version = "0.1.8"
+version = "0.1.9"
 description = "Cross-platform SSH & Remote Management Tool"
 authors = ["Reach Contributors"]
 edition = "2021"
@@ -21,6 +21,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
 tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.7", features = ["rt"] }
 thiserror = "2"
 anyhow = "1"
 tracing = "0.1"
@@ -51,8 +52,12 @@ sha2 = "0.10"
 # NOTE: Not available on Android - needs tauri-plugin-biometric for Android Keystore
 keyring = { version = "3", features = ["windows-native", "apple-native", "linux-native"] }
 
+# Toolchain detection & installation
+which = "7"
+zip = "2"
+
 # HTTP (AI API proxy)
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
 tauri-plugin-process = "2.3.1"
 
 # PTY, Serial, Autostart, Updater (desktop only)
