@@ -15,7 +15,13 @@ The installer registers Reach in your Start Menu and optionally creates a deskto
 
 Download the `.dmg` file. Open it and drag Reach to your Applications folder. Both Intel and Apple Silicon Macs are supported.
 
-On first launch, macOS will probably warn you that the app is from an unidentified developer. Right-click the app, select Open, and confirm. You only need to do this once.
+**Important:** macOS will block the app because it's not signed with an Apple Developer certificate. You'll see a message saying the app is "damaged" or can't be opened. To fix this, open Terminal and run:
+
+```bash
+sudo xattr -cr /Applications/Reach.app
+```
+
+This strips the quarantine flag that macOS adds to downloaded apps. You only need to do this once after installing (or after updating).
 
 ## Linux
 
