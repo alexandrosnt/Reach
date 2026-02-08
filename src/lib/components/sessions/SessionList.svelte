@@ -4,7 +4,7 @@
 	import SessionCard from './SessionCard.svelte';
 	import VaultSelector from '$lib/components/vault/VaultSelector.svelte';
 	import { sessionList, sessionDelete, sessionUpdate, type SessionConfig } from '$lib/ipc/sessions';
-	import { sshConnect, sshDetectOs } from '$lib/ipc/ssh';
+	import { sshConnect, sshDisconnect, sshDetectOs } from '$lib/ipc/ssh';
 	// Passwords are now stored encrypted in vault, not in memory cache
 	import { createTab } from '$lib/state/tabs.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
@@ -48,6 +48,7 @@
 	let connectPassword = $state('');
 	let connectKeyPassphrase = $state('');
 	let connecting = $state(false);
+	let connectingId = $state<string | undefined>();
 	let connectError = $state<string | undefined>();
 	let rememberPassword = $state(false);
 	let hasSavedPassword = $state(false);
@@ -102,6 +103,7 @@
 
 		const session = connectSession;
 		const id = crypto.randomUUID();
+		connectingId = id;
 		const authType = session.auth_method.type;
 
 		const passwordToSave = authType === 'Password' ? connectPassword : connectKeyPassphrase;
@@ -146,9 +148,13 @@
 	}
 
 	function cancelConnect(): void {
-		if (!connecting) {
-			connectSession = undefined;
+		if (connecting && connectingId) {
+			// Try to clean up the in-flight connection on the backend
+			sshDisconnect(connectingId).catch(() => {});
 		}
+		connecting = false;
+		connectingId = undefined;
+		connectSession = undefined;
 	}
 
 	function handleEdit(session: SessionConfig): void {
@@ -407,7 +413,7 @@
 				{/if}
 
 				<div class="prompt-actions">
-					<button type="button" class="prompt-btn prompt-cancel" onclick={cancelConnect} disabled={connecting}>{t('common.cancel')}</button>
+					<button type="button" class="prompt-btn prompt-cancel" onclick={cancelConnect}>{t('common.cancel')}</button>
 					<button type="submit" class="prompt-btn prompt-connect" disabled={connecting}>
 						{#if connecting}{t('session.connecting')}{:else}{t('session.connect')}{/if}
 					</button>
