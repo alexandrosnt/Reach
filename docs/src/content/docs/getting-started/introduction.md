@@ -23,7 +23,7 @@ Here's what you get:
 
 **Port Tunneling** for local and remote forwards. Set them up once and they persist with your session config.
 
-**Playbooks** let you script multi-step tasks and run them across one or more sessions. Useful for deployments, maintenance routines, or anything you find yourself typing over and over.
+**Playbooks** let you automate server tasks using Ansible-compatible YAML. The playbook engine runs natively in Rust over SSH — no Python or Ansible installation needed. Supports 8 modules including shell, copy, apt, systemd, and more.
 
 **System Monitoring** shows CPU, memory, disk, and network stats for connected hosts. The data updates in real time while you're connected.
 

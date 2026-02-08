@@ -26,7 +26,7 @@ The last screen shows a summary of your choices and a "Get Started" button. Clic
 After the wizard, you'll land on the main app screen. Here's the layout:
 
 - **Title bar** at the top with the app name, settings gear, and AI assistant button.
-- **Sidebar** on the left. This is where you find your sessions list, file explorer, playbooks, tunnels, and snippets. Click the icons to switch between panels.
+- **Sidebar** on the left. This is where you find your sessions list, file explorer, playbooks, and tunnels. Click the icons to switch between panels.
 - **Terminal area** in the center. This is where your SSH sessions and local terminals live. You can open multiple tabs and split them horizontally or vertically.
 
 ## Your first connection

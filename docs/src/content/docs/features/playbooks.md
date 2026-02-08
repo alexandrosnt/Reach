@@ -1,59 +1,107 @@
 ---
 title: Playbooks
-description: Automate server tasks with YAML scripts.
+description: Automate server tasks with Ansible-compatible YAML playbooks.
 ---
 
-Playbooks let you define a sequence of shell commands to run on a remote server. Think of it as a lightweight version of Ansible, built right into Reach. You write some YAML, point it at a server, and hit run.
+Playbooks let you automate multi-step tasks on remote servers using Ansible-compatible YAML. The execution engine is built directly into Reach in Rust — no Python, no Ansible installation, no external tools. It works on Windows, macOS, and Linux out of the box.
+
+You write a playbook, select an SSH connection, and hit Run. Each task is translated into shell commands and executed over your existing SSH session.
 
 ## Format
 
-Each playbook is a YAML file with a name, optional description, optional variables, and a list of steps.
+Playbooks use the same YAML format as Ansible. A playbook contains one or more plays, each with a list of tasks. Each task uses a module to perform an action.
 
-A step can have:
+A task can have:
 
-- **name** - What this step does (shows up in the UI)
-- **command** - The shell command to run
-- **timeout** - Seconds before the step is killed (optional)
-- **expect_exit_code** - What exit code counts as success (optional)
-- **expect_output** - A regex pattern the output must match (optional)
-- **retries** and **retry_delay** - Retry on failure (optional)
-- **on_failure** - Either `stop` (halt the playbook) or `continue` (keep going)
+- **name** — What this task does (shows up in the output)
+- **module** — One of the 8 supported modules (see below)
+- **when** — A condition that must be true for the task to run
+- **register** — Store the output in a variable for later tasks
+- **become** — Run this task with sudo
+- **ignore_errors** — Keep going even if this task fails
+
+## Supported Modules
+
+| Module | What it does |
+|--------|-------------|
+| `shell` | Run a shell command (with shell expansion) |
+| `command` | Run a command (no shell expansion) |
+| `copy` | Write content to a file on the remote server |
+| `file` | Create directories, set permissions, delete files |
+| `apt` | Install or remove packages (Debian/Ubuntu) |
+| `systemd` / `service` | Start, stop, enable, or restart services |
+| `lineinfile` | Add or replace a line in a file |
+| `template` | Write content to a file with variable substitution |
 
 ## Variables
 
-Define variables at the top of the playbook and reference them in commands with `{{ variable_name }}`. This keeps your playbooks reusable across different servers and environments.
+Define variables in the `vars` section of a play and reference them in task arguments with `{{ variable_name }}`. Variables from `register` are also available to later tasks.
 
 ## Example
 
 ```yaml
-name: "Deploy App"
-description: "Pull code and restart service"
-variables:
-  APP_HOME: "/opt/myapp"
-  SERVICE: "myapp"
-steps:
-  - name: "Pull latest code"
-    command: "cd {{ APP_HOME }} && git pull origin main"
-    timeout: 60
-    on_failure: stop
-  - name: "Restart service"
-    command: "systemctl restart {{ SERVICE }}"
-    expect_exit_code: 0
-  - name: "Check status"
-    command: "systemctl status {{ SERVICE }}"
-    expect_output: "active (running)"
+- name: Deploy and restart app
+  become: true
+  vars:
+    app_dir: /opt/myapp
+    service_name: myapp
+  tasks:
+    - name: Pull latest code
+      shell: cd {{ app_dir }} && git pull origin main
+
+    - name: Install dependencies
+      apt:
+        name: nginx
+        state: present
+
+    - name: Write config file
+      copy:
+        content: |
+          server {
+            listen 80;
+            location / { proxy_pass http://localhost:3000; }
+          }
+        dest: /etc/nginx/sites-available/myapp
+
+    - name: Restart the service
+      systemd:
+        name: "{{ service_name }}"
+        state: restarted
+
+    - name: Check service status
+      shell: systemctl is-active {{ service_name }}
+      register: status_result
+
+    - name: Verify it's running
+      shell: echo "Service is {{ status_result.stdout }}"
 ```
-
-This pulls the latest code, restarts the service, and checks that it came back up. If the git pull fails, the whole thing stops. If the restart or status check fails, you'll see it in the output.
-
-## AI Generation
-
-If you have an AI provider configured in settings, you can describe what you want the playbook to do in plain English and Reach will generate the YAML for you. There's also a "Fix with AI" button that shows up when your YAML has syntax errors or other issues. It's a nice shortcut when you don't want to look up the exact format.
 
 ## Running a Playbook
 
-Select a playbook from the list, make sure you're connected to a server, and hit Run. Each step runs in order and you see the output as it goes. If a step fails and `on_failure` is set to `stop`, the playbook halts there. Otherwise it keeps going and you can review what failed afterward.
+1. Open the Playbook panel from the sidebar
+2. Select an active SSH connection from the dropdown
+3. Paste or type your YAML playbook (or load a saved project)
+4. Optionally enable **Become (sudo)** and add extra variables
+5. Click **Run**
 
-## Storage
+Output streams in real time as each task executes. You'll see the task name, stdout/stderr, and whether it passed or failed. If a task fails and `ignore_errors` isn't set, the playbook stops there.
 
-Playbooks are saved encrypted in the vault, same as sessions and credentials. They don't sit around as plaintext YAML files on disk.
+You can also click **Validate** to check your YAML syntax without running anything. It parses the playbook and shows you the list of tasks it found.
+
+## Cancellation
+
+Click **Cancel** while a playbook is running to stop it. The current task finishes and no further tasks are executed.
+
+## Saved Projects
+
+You can save playbook configurations (YAML content, connection, become setting) as named projects. They're stored encrypted in the vault, same as sessions and credentials. Load a saved project from the dropdown to quickly re-run it.
+
+## Differences from Ansible
+
+This is a lightweight engine, not a full Ansible replacement. Key differences:
+
+- **No inventory files** — you select an SSH connection from the app
+- **No roles, includes, or handlers** — tasks run sequentially in order
+- **8 modules** — shell, command, copy, file, apt, systemd, lineinfile, template
+- **Simple `when` conditions** — supports `is defined`, `==`, `!=`, and `.rc` checks
+- **No local execution** — everything runs on the remote server over SSH
