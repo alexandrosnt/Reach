@@ -184,6 +184,8 @@
   "explorer.folder_name": "Nom du dossier",
   "explorer.file_name": "Nom du fichier",
   "explorer.open_file_error": "Echec de l'ouverture du fichier : {{error}}",
+  "explorer.upload_failed": "Echec du transfert : {{error}}",
+  "explorer.drop_no_files": "Aucun fichier detecte. Glissez des fichiers depuis votre gestionnaire de fichiers.",
 
   "editor.close": "Fermer l'editeur",
   "editor.saving": "Enregistrement...",
@@ -232,6 +234,8 @@
   "ai.send": "Envoyer le message",
   "ai.run": "Executer",
   "ai.copy": "Copier",
+  "ai.copy_message": "Copier le message",
+  "ai.copied": "Copie !",
 
   "vault.unlock": "Deverrouiller le coffre",
   "vault.enter_password": "Entrez votre mot de passe principal...",

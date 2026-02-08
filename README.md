@@ -132,6 +132,13 @@ graph LR
 
 ## Changelog
 
+### v0.2.0
+- Fixed drag-and-drop file uploads stacking and freezing — uploads now run sequentially instead of flooding the SSH connection
+- Fixed silent upload failures — errors now show a toast notification instead of being swallowed
+- Added feedback when dragging files from browsers or apps that don't provide file paths
+- Added copy button to every AI chat message (appears on hover)
+- Updated docs for the native playbook engine and removed snippets page
+
 ### v0.1.9
 - Replaced Ansible integration with a native Rust playbook engine — no Python or external tools required
 - Playbooks use Ansible-compatible YAML and execute directly over SSH from any platform including Windows
