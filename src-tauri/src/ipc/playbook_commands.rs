@@ -1,67 +1,129 @@
-//! Playbook commands using encrypted vault storage.
-//!
-//! Saved playbooks are stored encrypted in SQLite using XChaCha20-Poly1305.
-//! Playbook runs are ephemeral (in-memory only during execution).
+use crate::playbook::engine;
+use crate::playbook::parser::{extract_tasks, parse_playbook};
+use crate::playbook::schema::{
+    PlaybookCompleteEvent, PlaybookRun, PlaybookRunStatus, PlaybookValidation,
+    SavedPlaybookProject,
+};
+use crate::playbook::storage;
+use crate::state::AppState;
+use tauri::{Emitter, State};
 
-use crate::playbook::{engine, parser};
-use crate::state::{AppState, PlaybookRun, PlaybookStatus, SavedPlaybook};
-use crate::vault::types::SecretCategory;
-use secrecy::SecretBox;
-use tauri::State;
-
-const PLAYBOOKS_VAULT_NAME: &str = "__playbooks__";
-
-/// Parse and execute a playbook from YAML content against a specific SSH connection.
+/// Start a playbook run over SSH.
 /// Returns immediately with a Running status; execution happens in a background task.
 #[tauri::command]
-#[tracing::instrument(skip(state, yaml_content))]
+#[tracing::instrument(skip(state))]
 pub async fn playbook_run(
     state: State<'_, AppState>,
     app_handle: tauri::AppHandle,
-    yaml_content: String,
+    run_id: Option<String>,
+    playbook_content: String,
     connection_id: String,
+    use_become: Option<bool>,
+    extra_vars: Option<String>,
 ) -> Result<PlaybookRun, String> {
-    let playbook = parser::parse_yaml(&yaml_content).map_err(|e| e.to_string())?;
+    let run_id = run_id.unwrap_or_else(|| uuid::Uuid::new_v4().to_string());
 
-    // Get the SSH handle for the target connection
-    let handle = {
-        let ssh_manager = state.ssh_manager.lock().await;
-        ssh_manager
-            .get_handle(&connection_id)
-            .map_err(|e| e.to_string())?
-    };
+    // Validate that the content parses before starting the background task
+    let plays = parse_playbook(&playbook_content)?;
+    let first_name = plays
+        .first()
+        .and_then(|p| p.name.clone());
 
-    let run_id = uuid::Uuid::new_v4().to_string();
-
-    // Create the initial run with Running status
     let run = PlaybookRun {
         id: run_id.clone(),
-        playbook_name: playbook.name.clone(),
-        status: PlaybookStatus::Running,
-        current_step: 0,
-        total_steps: playbook.steps.len(),
+        name: first_name,
+        connection_id: connection_id.clone(),
+        status: PlaybookRunStatus::Running,
     };
 
-    // Store in state immediately (ephemeral, in-memory)
     {
         let mut runs = state.playbook_runs.write().await;
         runs.insert(run.id.clone(), run.clone());
     }
 
-    // Spawn execution in background so the frontend can set up listeners first
+    // Create cancellation token
+    let cancel_token = tokio_util::sync::CancellationToken::new();
+    {
+        let mut tokens = state.playbook_cancel_tokens.lock().await;
+        tokens.insert(run_id.clone(), cancel_token.clone());
+    }
+
     let bg_runs = state.playbook_runs.clone();
+    let bg_tokens = state.playbook_cancel_tokens.clone();
+    let ssh_manager = state.ssh_manager.clone();
     let bg_app = app_handle.clone();
+    let use_become = use_become.unwrap_or(false);
+
     tauri::async_runtime::spawn(async move {
-        match engine::execute(&playbook, &handle, &run_id, &bg_app).await {
-            Ok(finished_run) => {
-                let mut runs = bg_runs.write().await;
-                runs.insert(finished_run.id.clone(), finished_run);
+        let complete_event = format!("playbook-complete-{}", run_id);
+
+        // Get SSH handle
+        let handle = {
+            let mgr = ssh_manager.lock().await;
+            match mgr.get_handle(&connection_id) {
+                Ok(h) => h,
+                Err(e) => {
+                    tracing::error!("Playbook run {} SSH error: {}", run_id, e);
+                    let mut runs = bg_runs.write().await;
+                    if let Some(r) = runs.get_mut(&run_id) {
+                        r.status = PlaybookRunStatus::Failed;
+                    }
+                    let _ = bg_app.emit(
+                        &complete_event,
+                        PlaybookCompleteEvent {
+                            run_id: run_id.clone(),
+                            status: PlaybookRunStatus::Failed,
+                            exit_code: None,
+                            tasks_ok: 0,
+                            tasks_failed: 0,
+                        },
+                    );
+                    return;
+                }
             }
-            Err(e) => {
-                tracing::error!("Playbook run {} failed: {}", run_id, e);
-                let mut runs = bg_runs.write().await;
-                if let Some(r) = runs.get_mut(&run_id) {
-                    r.status = PlaybookStatus::Failed;
+        };
+
+        let result = engine::run_playbook(
+            &playbook_content,
+            &run_id,
+            &handle,
+            use_become,
+            extra_vars.as_deref(),
+            &cancel_token,
+            &bg_app,
+        )
+        .await;
+
+        // Clean up cancel token
+        {
+            let mut tokens = bg_tokens.lock().await;
+            tokens.remove(&run_id);
+        }
+
+        // Update run status
+        let mut runs = bg_runs.write().await;
+        if let Some(r) = runs.get_mut(&run_id) {
+            match &result {
+                Ok((_, failed)) if *failed == 0 => {
+                    r.status = PlaybookRunStatus::Completed;
+                }
+                Ok(_) => {
+                    r.status = PlaybookRunStatus::Failed;
+                }
+                Err(ref e) => {
+                    tracing::error!("Playbook run {} error: {}", run_id, e);
+                    r.status = PlaybookRunStatus::Failed;
+                    // Engine may not have emitted complete event on error
+                    let _ = bg_app.emit(
+                        &complete_event,
+                        PlaybookCompleteEvent {
+                            run_id: run_id.clone(),
+                            status: PlaybookRunStatus::Failed,
+                            exit_code: None,
+                            tasks_ok: 0,
+                            tasks_failed: 0,
+                        },
+                    );
                 }
             }
         }
@@ -70,7 +132,29 @@ pub async fn playbook_run(
     Ok(run)
 }
 
-/// Get a specific playbook run by ID. O(1) lookup.
+/// Cancel a running playbook via CancellationToken.
+#[tauri::command]
+#[tracing::instrument(skip(state))]
+pub async fn playbook_cancel(
+    state: State<'_, AppState>,
+    run_id: String,
+) -> Result<(), String> {
+    {
+        let tokens = state.playbook_cancel_tokens.lock().await;
+        if let Some(token) = tokens.get(&run_id) {
+            token.cancel();
+        }
+    }
+
+    let mut runs = state.playbook_runs.write().await;
+    if let Some(r) = runs.get_mut(&run_id) {
+        r.status = PlaybookRunStatus::Cancelled;
+    }
+
+    Ok(())
+}
+
+/// Get a specific playbook run by ID.
 #[tauri::command]
 #[tracing::instrument(skip(state))]
 pub async fn playbook_get_run(
@@ -83,208 +167,152 @@ pub async fn playbook_get_run(
         .ok_or_else(|| format!("Playbook run not found: {}", run_id))
 }
 
-/// Stop a running playbook by run ID.
+/// Validate a playbook (parse only, no execution).
+/// Returns the list of task names and whether the playbook is valid.
 #[tauri::command]
-#[tracing::instrument(skip(state))]
-pub async fn playbook_stop(
-    state: State<'_, AppState>,
-    run_id: String,
-) -> Result<(), String> {
-    engine::stop(&run_id)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let mut runs = state.playbook_runs.write().await;
-    if let Some(run) = runs.get_mut(&run_id) {
-        run.status = PlaybookStatus::Stopped;
+#[tracing::instrument(skip_all)]
+pub async fn playbook_validate(
+    playbook_content: String,
+) -> Result<PlaybookValidation, String> {
+    match parse_playbook(&playbook_content) {
+        Ok(plays) => {
+            let mut task_names = Vec::new();
+            for play in &plays {
+                match extract_tasks(&play.tasks) {
+                    Ok(tasks) => {
+                        for task in &tasks {
+                            let name = task
+                                .name
+                                .as_deref()
+                                .unwrap_or(&task.module);
+                            task_names.push(name.to_string());
+                        }
+                    }
+                    Err(e) => {
+                        return Ok(PlaybookValidation {
+                            valid: false,
+                            tasks: task_names,
+                            error: Some(e),
+                        });
+                    }
+                }
+            }
+            Ok(PlaybookValidation {
+                valid: true,
+                tasks: task_names,
+                error: None,
+            })
+        }
+        Err(e) => Ok(PlaybookValidation {
+            valid: false,
+            tasks: Vec::new(),
+            error: Some(e),
+        }),
     }
-
-    Ok(())
 }
 
-/// List all playbook runs (active and completed). O(n).
+/// Save a playbook project configuration to the vault.
 #[tauri::command]
 #[tracing::instrument(skip(state))]
-pub async fn playbook_list(state: State<'_, AppState>) -> Result<Vec<PlaybookRun>, String> {
-    let runs = state.playbook_runs.read().await;
-    Ok(runs.values().cloned().collect())
-}
-
-/// Save a playbook definition to encrypted vault. O(1) upsert.
-#[tauri::command]
-#[tracing::instrument(skip(state, yaml_content))]
-pub async fn playbook_save(
+pub async fn playbook_save_project(
     state: State<'_, AppState>,
     id: Option<String>,
-    yaml_content: String,
-) -> Result<SavedPlaybook, String> {
-    // Validate YAML before saving
-    let playbook = parser::parse_yaml(&yaml_content).map_err(|e| e.to_string())?;
-
+    name: String,
+    playbook_content: String,
+    connection_id: Option<String>,
+    use_become: Option<bool>,
+) -> Result<SavedPlaybookProject, String> {
     let mut manager = state.vault_manager.lock().await;
 
     if manager.is_locked() {
         return Err("Vault is locked. Set a master password first.".to_string());
     }
 
-    let vault_id = ensure_playbooks_vault(&mut manager).await?;
-
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap_or_default()
         .as_millis() as u64;
 
-    let saved = if let Some(existing_id) = id {
-        // Check if exists (O(1))
-        if !manager.secret_exists(&vault_id, &existing_id).await {
-            return Err(format!("Playbook not found: {}", existing_id));
+    if let Some(ref existing_id) = id {
+        // Update existing project
+        let vault_id = storage::ensure_playbook_vault(&mut manager).await?;
+
+        if !manager.secret_exists(&vault_id, existing_id).await {
+            return Err(format!("Project not found: {}", existing_id));
         }
 
-        // Read existing to get created_at
         let existing_plaintext = manager
-            .read_secret(&vault_id, &existing_id)
+            .read_secret(&vault_id, existing_id)
             .await
             .map_err(|e| e.to_string())?;
 
         use secrecy::ExposeSecret;
         let existing_json = String::from_utf8(existing_plaintext.expose_secret().clone())
             .map_err(|e| e.to_string())?;
-        let existing: SavedPlaybook =
+        let existing: SavedPlaybookProject =
             serde_json::from_str(&existing_json).map_err(|e| e.to_string())?;
 
-        let updated = SavedPlaybook {
+        let updated = SavedPlaybookProject {
             id: existing_id.clone(),
-            name: playbook.name.clone(),
-            yaml_content,
+            name,
+            playbook_content,
+            connection_id,
+            use_become: use_become.unwrap_or(false),
             created_at: existing.created_at,
             updated_at: now,
         };
 
-        let json = serde_json::to_string(&updated).map_err(|e| e.to_string())?;
-        let plaintext = SecretBox::new(Box::new(json.into_bytes()));
-
-        // O(1) update
-        manager
-            .update_secret(&vault_id, &existing_id, plaintext)
-            .await
-            .map_err(|e| e.to_string())?;
-
-        updated
+        storage::save_project(&mut manager, &updated, Some(existing_id)).await?;
+        tracing::info!("Updated playbook project: {}", updated.id);
+        Ok(updated)
     } else {
+        // Create new project
         let new_id = uuid::Uuid::new_v4().to_string();
-        let saved = SavedPlaybook {
-            id: new_id.clone(),
-            name: playbook.name.clone(),
-            yaml_content,
+        let project = SavedPlaybookProject {
+            id: new_id,
+            name: name.clone(),
+            playbook_content,
+            connection_id,
+            use_become: use_become.unwrap_or(false),
             created_at: now,
             updated_at: now,
         };
 
-        let json = serde_json::to_string(&saved).map_err(|e| e.to_string())?;
-        let plaintext = SecretBox::new(Box::new(json.into_bytes()));
-
-        // O(1) insert
-        manager
-            .create_secret_with_id(
-                &vault_id,
-                &new_id,
-                &saved.name,
-                SecretCategory::Custom("playbook".to_string()),
-                plaintext,
-            )
-            .await
-            .map_err(|e| e.to_string())?;
-
-        saved
-    };
-
-    tracing::info!("Saved playbook: {}", saved.id);
-    Ok(saved)
+        storage::save_project(&mut manager, &project, None).await?;
+        tracing::info!("Saved playbook project: {}", project.id);
+        Ok(project)
+    }
 }
 
-/// List all saved playbook definitions. O(n).
+/// List saved playbook project configurations.
 #[tauri::command]
 #[tracing::instrument(skip(state))]
-pub async fn playbook_list_saved(state: State<'_, AppState>) -> Result<Vec<SavedPlaybook>, String> {
+pub async fn playbook_list_projects(
+    state: State<'_, AppState>,
+) -> Result<Vec<SavedPlaybookProject>, String> {
     let manager = state.vault_manager.lock().await;
 
     if manager.is_locked() {
         return Ok(Vec::new());
     }
 
-    let vault_id = match get_playbooks_vault_id_if_exists(&manager) {
-        Some(id) => id,
-        None => return Ok(Vec::new()),
-    };
-
-    let secrets = manager
-        .list_secrets(&vault_id)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let mut playbooks = Vec::with_capacity(secrets.len());
-    for secret in secrets {
-        if let Ok(plaintext) = manager.read_secret(&vault_id, &secret.id).await {
-            use secrecy::ExposeSecret;
-            if let Ok(json) = String::from_utf8(plaintext.expose_secret().clone()) {
-                if let Ok(pb) = serde_json::from_str::<SavedPlaybook>(&json) {
-                    playbooks.push(pb);
-                }
-            }
-        }
-    }
-
-    Ok(playbooks)
+    storage::list_projects(&manager).await
 }
 
-/// Delete a saved playbook definition. O(1) delete.
+/// Delete a saved playbook project configuration.
 #[tauri::command]
 #[tracing::instrument(skip(state))]
-pub async fn playbook_delete(state: State<'_, AppState>, id: String) -> Result<(), String> {
+pub async fn playbook_delete_project(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<(), String> {
     let manager = state.vault_manager.lock().await;
 
     if manager.is_locked() {
         return Err("Vault is locked".to_string());
     }
 
-    let vault_id = match get_playbooks_vault_id_if_exists(&manager) {
-        Some(id) => id,
-        None => return Ok(()),
-    };
-
-    // O(1) delete by primary key
-    manager
-        .delete_secret(&vault_id, &id)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    tracing::info!("Deleted playbook: {}", id);
+    storage::delete_project(&manager, &id).await?;
+    tracing::info!("Deleted playbook project: {}", id);
     Ok(())
-}
-
-// --- Helper functions (all O(1)) ---
-
-/// Ensure the playbooks vault exists. O(1).
-async fn ensure_playbooks_vault(
-    manager: &mut crate::vault::VaultManager,
-) -> Result<String, String> {
-    if let Some(vault_id) = manager.get_vault_id_by_name(PLAYBOOKS_VAULT_NAME) {
-        let _ = manager.open_vault(&vault_id, None, None).await;
-        manager
-            .unlock_vault(&vault_id)
-            .await
-            .map_err(|e| e.to_string())?;
-        Ok(vault_id)
-    } else {
-        let vault = manager
-            .create_vault(PLAYBOOKS_VAULT_NAME, crate::vault::types::VaultType::Private, None, None)
-            .await
-            .map_err(|e| e.to_string())?;
-        Ok(vault.id)
-    }
-}
-
-/// Get playbooks vault ID if exists. O(1).
-fn get_playbooks_vault_id_if_exists(manager: &crate::vault::VaultManager) -> Option<String> {
-    manager.get_vault_id_by_name(PLAYBOOKS_VAULT_NAME)
 }

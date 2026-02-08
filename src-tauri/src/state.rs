@@ -7,12 +7,14 @@ use std::sync::Mutex;
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 
+use crate::playbook::schema::PlaybookRun;
 use crate::monitoring::collector::MonitoringCollector;
 #[cfg(desktop)]
 use crate::pty::manager::PtyManager;
 #[cfg(desktop)]
 use crate::serial::port::SerialManager;
 use crate::ssh::client::SshManager;
+use crate::terraform::types::TerraformRun;
 use crate::tunnel::manager::TunnelManager;
 use crate::vault::VaultManager;
 
@@ -94,35 +96,6 @@ pub struct SystemStats {
     pub users: Vec<String>,
 }
 
-/// A saved playbook definition (persisted to disk).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SavedPlaybook {
-    pub id: String,
-    pub name: String,
-    pub yaml_content: String,
-    pub created_at: u64,
-    pub updated_at: u64,
-}
-
-/// Tracks the execution state of a playbook run.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PlaybookRun {
-    pub id: String,
-    pub playbook_name: String,
-    pub status: PlaybookStatus,
-    pub current_step: usize,
-    pub total_steps: usize,
-}
-
-/// Status of a playbook execution.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum PlaybookStatus {
-    Running,
-    Completed,
-    Failed,
-    Stopped,
-}
-
 /// Main application state.
 ///
 /// All collections are behind `Arc<RwLock<_>>` for safe concurrent access
@@ -136,6 +109,8 @@ pub struct AppState {
     pub monitoring: Arc<RwLock<HashMap<String, SystemStats>>>,
     /// Ephemeral playbook run state (not persisted)
     pub playbook_runs: Arc<RwLock<HashMap<String, PlaybookRun>>>,
+    /// Cancellation tokens for running playbooks
+    pub playbook_cancel_tokens: Arc<tokio::sync::Mutex<HashMap<String, tokio_util::sync::CancellationToken>>>,
     #[cfg(desktop)]
     pub pty_manager: Arc<Mutex<PtyManager>>,
     pub monitoring_collector: Arc<tokio::sync::Mutex<MonitoringCollector>>,
@@ -143,6 +118,10 @@ pub struct AppState {
     #[cfg(desktop)]
     pub serial_manager: Arc<tokio::sync::Mutex<SerialManager>>,
     pub vault_manager: Arc<tokio::sync::Mutex<VaultManager>>,
+    /// Ephemeral terraform run state (not persisted)
+    pub terraform_runs: Arc<RwLock<HashMap<String, TerraformRun>>>,
+    /// Handles for local terraform child processes (for cancellation)
+    pub terraform_processes: Arc<tokio::sync::Mutex<HashMap<String, tokio::process::Child>>>,
     pub close_to_tray: AtomicBool,
 }
 
@@ -158,6 +137,7 @@ impl AppState {
             tunnels: Arc::new(RwLock::new(HashMap::new())),
             monitoring: Arc::new(RwLock::new(HashMap::new())),
             playbook_runs: Arc::new(RwLock::new(HashMap::new())),
+            playbook_cancel_tokens: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             #[cfg(desktop)]
             pty_manager: Arc::new(Mutex::new(PtyManager::new())),
             monitoring_collector: Arc::new(tokio::sync::Mutex::new(MonitoringCollector::new())),
@@ -165,6 +145,8 @@ impl AppState {
             #[cfg(desktop)]
             serial_manager: Arc::new(tokio::sync::Mutex::new(SerialManager::new())),
             vault_manager: Arc::new(tokio::sync::Mutex::new(VaultManager::new(app_dir))),
+            terraform_runs: Arc::new(RwLock::new(HashMap::new())),
+            terraform_processes: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             close_to_tray: AtomicBool::new(false),
         }
     }

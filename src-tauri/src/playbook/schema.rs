@@ -1,53 +1,79 @@
-use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-/// A playbook is a sequence of steps to execute on a remote host via SSH.
-///
-/// The YAML format uses flat fields per step rather than nested enums.
-/// Hosts are selected at runtime in the frontend, not in the YAML.
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Playbook {
-    pub name: String,
+/// A single play in a playbook.
+#[derive(Debug, Clone, Deserialize)]
+pub struct Play {
+    pub name: Option<String>,
+    #[serde(default, rename = "become")]
+    pub use_become: Option<bool>,
     #[serde(default)]
-    pub description: Option<String>,
+    pub vars: HashMap<String, serde_yaml::Value>,
     #[serde(default)]
-    pub version: Option<u32>,
-    #[serde(default)]
-    pub variables: HashMap<String, String>,
-    pub steps: Vec<PlaybookStep>,
+    pub tasks: Vec<serde_yaml::Value>,
 }
 
-/// A single step within a playbook.
-///
-/// Uses flat fields for simplicity in YAML authoring:
-/// ```yaml
-/// - name: Check disk space
-///   command: df -h
-///   timeout: 30
-///   retries: 2
-///   retry_delay: 5
-///   on_failure: continue
-/// ```
+/// A parsed task ready for execution.
+#[derive(Debug, Clone)]
+pub struct Task {
+    pub name: Option<String>,
+    pub module: String,
+    pub args: serde_yaml::Value,
+    pub when: Option<String>,
+    pub register: Option<String>,
+    pub use_become: Option<bool>,
+    pub ignore_errors: bool,
+}
+
+/// Status of a playbook run.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum PlaybookRunStatus {
+    Running,
+    Completed,
+    Failed,
+    Cancelled,
+}
+
+/// Tracks the state of a playbook run.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PlaybookStep {
+#[serde(rename_all = "camelCase")]
+pub struct PlaybookRun {
+    pub id: String,
+    pub name: Option<String>,
+    pub connection_id: String,
+    pub status: PlaybookRunStatus,
+}
+
+/// Payload emitted when a playbook run completes.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaybookCompleteEvent {
+    pub run_id: String,
+    pub status: PlaybookRunStatus,
+    pub exit_code: Option<i32>,
+    pub tasks_ok: u32,
+    pub tasks_failed: u32,
+}
+
+/// Validation result returned by playbook_validate.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PlaybookValidation {
+    pub valid: bool,
+    pub tasks: Vec<String>,
+    pub error: Option<String>,
+}
+
+/// A saved playbook project configuration (persisted in vault).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SavedPlaybookProject {
+    pub id: String,
     pub name: String,
-    pub command: String,
-    /// Timeout in seconds for this step. None means no timeout.
-    #[serde(default)]
-    pub timeout: Option<u64>,
-    /// Expected exit code. None means any exit code is accepted.
-    #[serde(default)]
-    pub expect_exit_code: Option<i32>,
-    /// Regex pattern to match against command output.
-    #[serde(default)]
-    pub expect_output: Option<String>,
-    /// Number of times to retry on failure.
-    #[serde(default)]
-    pub retries: Option<u32>,
-    /// Delay in seconds between retries.
-    #[serde(default)]
-    pub retry_delay: Option<u64>,
-    /// What to do on failure: "stop" (default) or "continue".
-    #[serde(default)]
-    pub on_failure: Option<String>,
+    pub playbook_content: String,
+    pub connection_id: Option<String>,
+    #[serde(rename = "become")]
+    pub use_become: bool,
+    pub created_at: u64,
+    pub updated_at: u64,
 }

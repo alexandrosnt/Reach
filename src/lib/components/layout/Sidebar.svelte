@@ -1,12 +1,12 @@
 <script lang="ts">
 	import FileExplorer from '$lib/components/explorer/FileExplorer.svelte';
 	import SessionList from '$lib/components/sessions/SessionList.svelte';
-	import PlaybookList from '$lib/components/playbook/PlaybookList.svelte';
+	import PlaybookPanel from '$lib/components/playbook/PlaybookPanel.svelte';
 	import TunnelManager from '$lib/components/tunnel/TunnelManager.svelte';
-	import SnippetList from '$lib/components/snippets/SnippetList.svelte';
+	import TerraformPanel from '$lib/components/terraform/TerraformPanel.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
-	type Section = 'sessions' | 'explorer' | 'playbooks' | 'tunnels' | 'snippets';
+	type Section = 'sessions' | 'explorer' | 'playbook' | 'tunnels' | 'terraform';
 
 	const STORAGE_KEY = 'reach-sidebar-width';
 	const MIN_WIDTH = 160;
@@ -42,7 +42,7 @@
 		} catch {}
 	}
 
-	let sections = $derived<Array<{ id: Section; label: string; icon: string }>>([
+	let sections = $derived<Array<{ id: Section; label: string; icon: string; beta?: boolean }>>([
 		{
 			id: 'sessions',
 			label: t('sidebar.sessions'),
@@ -54,9 +54,10 @@
 			icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z'
 		},
 		{
-			id: 'playbooks',
-			label: t('sidebar.playbooks'),
-			icon: 'M5 3l14 9-14 9V3z'
+			id: 'playbook',
+			label: t('sidebar.playbook'),
+			icon: 'M5 3l14 9-14 9V3z',
+			beta: true
 		},
 		{
 			id: 'tunnels',
@@ -64,9 +65,10 @@
 			icon: 'M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71'
 		},
 		{
-			id: 'snippets',
-			label: t('sidebar.snippets'),
-			icon: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01'
+			id: 'terraform',
+			label: t('sidebar.terraform'),
+			icon: 'M1 3.5l9.5 5.5v11L1 14.5V3.5zM20.5 3.5L11 9v11l9.5-5.5V3.5zM1 3.5L10.5 9 20.5 3.5 11 0 1 3.5z',
+			beta: true
 		}
 	]);
 
@@ -130,6 +132,9 @@
 
 				{#if !collapsed}
 					<span class="nav-label">{section.label}</span>
+					{#if section.beta}
+						<span class="beta-badge">BETA</span>
+					{/if}
 				{/if}
 			</button>
 		{/each}
@@ -145,12 +150,12 @@
 					<SessionList />
 				{:else if activeSection === 'explorer'}
 					<FileExplorer {connectionId} />
-				{:else if activeSection === 'playbooks'}
-					<PlaybookList {connectionId} />
+				{:else if activeSection === 'playbook'}
+					<PlaybookPanel {connectionId} />
 				{:else if activeSection === 'tunnels'}
 					<TunnelManager {connectionId} />
-				{:else if activeSection === 'snippets'}
-					<SnippetList {connectionId} />
+				{:else if activeSection === 'terraform'}
+					<TerraformPanel />
 				{/if}
 			</div>
 		</div>
@@ -236,6 +241,20 @@
 	.nav-label {
 		overflow: hidden;
 		text-overflow: ellipsis;
+	}
+
+	.beta-badge {
+		margin-left: auto;
+		padding: 1px 4px;
+		font-size: 0.5rem;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+		color: rgb(255, 159, 10);
+		background-color: rgba(255, 159, 10, 0.12);
+		border: 1px solid rgba(255, 159, 10, 0.25);
+		border-radius: 3px;
+		line-height: 1.2;
+		flex-shrink: 0;
 	}
 
 	.sidebar-content {

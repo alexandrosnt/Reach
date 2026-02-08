@@ -1,263 +1,252 @@
+use crate::playbook::modules::{translate_module, wrap_become};
+use crate::playbook::parser::{evaluate_when, extract_tasks, interpolate_vars, parse_playbook};
+use crate::playbook::schema::{PlaybookCompleteEvent, PlaybookRunStatus};
+use crate::ssh::client::{exec_on_connection_with_exit_code, SharedHandle, StreamingOutputEvent};
 use std::collections::HashMap;
-use std::time::Duration;
-
-use serde::Serialize;
 use tauri::Emitter;
-use thiserror::Error;
+use tokio_util::sync::CancellationToken;
 
-use super::schema::Playbook;
-use crate::ssh::client::{exec_on_connection, SharedHandle};
-use crate::state::{PlaybookRun, PlaybookStatus};
+/// Run a playbook over SSH.
+/// Emits streaming output events and a final complete event.
+pub async fn run_playbook(
+    playbook_content: &str,
+    run_id: &str,
+    handle: &SharedHandle,
+    use_become: bool,
+    extra_vars: Option<&str>,
+    cancel_token: &CancellationToken,
+    app_handle: &tauri::AppHandle,
+) -> Result<(u32, u32), String> {
+    let output_event = format!("playbook-output-{}", run_id);
+    let complete_event = format!("playbook-complete-{}", run_id);
 
-#[derive(Debug, Error)]
-pub enum EngineError {
-    #[error("Execution failed at step {step}: {message}")]
-    StepFailed { step: usize, message: String },
-    #[error("Playbook not found: {0}")]
-    NotFound(String),
-    #[error("Already running: {0}")]
-    AlreadyRunning(String),
-    #[error("Connection error: {0}")]
-    ConnectionError(String),
-    #[error("Timeout at step {step}: exceeded {timeout_secs}s")]
-    Timeout { step: usize, timeout_secs: u64 },
-}
+    let plays = parse_playbook(playbook_content)?;
 
-/// Payload emitted for each step event.
-#[derive(Debug, Clone, Serialize)]
-struct StepEvent {
-    step_index: usize,
-    step_name: String,
-    status: String,
-    output: String,
-}
-
-/// Payload emitted when the playbook completes.
-#[derive(Debug, Clone, Serialize)]
-struct CompleteEvent {
-    run_id: String,
-    playbook_name: String,
-    status: String,
-    total_steps: usize,
-    completed_steps: usize,
-    failed_steps: usize,
-}
-
-/// Replace `{{ varname }}` patterns in a command string with variable values.
-fn interpolate_variables(command: &str, variables: &HashMap<String, String>) -> String {
-    let mut result = command.to_string();
-    for (key, value) in variables {
-        // Match {{ varname }} with optional whitespace inside braces
-        let patterns = [
-            format!("{{{{ {} }}}}", key),   // {{ key }}
-            format!("{{{{{}}}}}", key),      // {{key}}
-        ];
-        for pattern in &patterns {
-            result = result.replace(pattern, value);
+    // Parse extra vars (key=value format, space-separated)
+    let mut global_vars: HashMap<String, String> = HashMap::new();
+    if let Some(ev) = extra_vars {
+        for pair in ev.split_whitespace() {
+            if let Some(eq_pos) = pair.find('=') {
+                let key = pair[..eq_pos].to_string();
+                let val = pair[eq_pos + 1..].to_string();
+                global_vars.insert(key, val);
+            }
         }
     }
-    result
-}
 
-/// Execute a playbook against an SSH connection, emitting Tauri events for progress.
-///
-/// Steps are executed sequentially. Each step supports:
-/// - Variable interpolation in commands
-/// - Timeout via `tokio::time::timeout`
-/// - Retry with configurable delay
-/// - Error strategies: "stop" (default) aborts on failure, "continue" moves on
-pub async fn execute(
-    playbook: &Playbook,
-    handle: &SharedHandle,
-    run_id: &str,
-    app_handle: &tauri::AppHandle,
-) -> Result<PlaybookRun, EngineError> {
-    let total_steps = playbook.steps.len();
-    tracing::info!(
-        "Starting playbook '{}' (run {}) with {} steps",
-        playbook.name,
-        run_id,
-        total_steps
-    );
+    let mut total_ok: u32 = 0;
+    let mut total_failed: u32 = 0;
 
-    let step_event_name = format!("playbook-step-{}", run_id);
-    let complete_event_name = format!("playbook-complete-{}", run_id);
+    for play in &plays {
+        // Merge play vars with global vars (play vars take precedence)
+        let mut vars = global_vars.clone();
+        for (key, val) in &play.vars {
+            if let Some(s) = val.as_str() {
+                vars.insert(key.clone(), s.to_string());
+            } else {
+                vars.insert(key.clone(), serde_yaml::to_string(val).unwrap_or_default());
+            }
+        }
 
-    let mut run = PlaybookRun {
-        id: run_id.to_string(),
-        playbook_name: playbook.name.clone(),
-        status: PlaybookStatus::Running,
-        current_step: 0,
-        total_steps,
-    };
+        let play_become = play.use_become.unwrap_or(false) || use_become;
 
-    let mut completed_steps = 0usize;
-    let mut failed_steps = 0usize;
-    let mut aborted = false;
+        if let Some(name) = &play.name {
+            emit_output(app_handle, &output_event, run_id, &format!("\nPLAY [{}] ***", name));
+        }
 
-    for (i, step) in playbook.steps.iter().enumerate() {
-        run.current_step = i;
+        let tasks = extract_tasks(&play.tasks)?;
 
-        // Interpolate variables into the command
-        let command = interpolate_variables(&step.command, &playbook.variables);
-
-        tracing::info!("Run {}: step {}/{} '{}': {}", run_id, i + 1, total_steps, step.name, command);
-
-        // Emit "running" event
-        let _ = app_handle.emit(
-            &step_event_name,
-            StepEvent {
-                step_index: i,
-                step_name: step.name.clone(),
-                status: "running".to_string(),
-                output: String::new(),
-            },
-        );
-
-        let max_attempts = step.retries.unwrap_or(0) + 1;
-        let retry_delay = Duration::from_secs(step.retry_delay.unwrap_or(1));
-        let on_failure = step
-            .on_failure
-            .as_deref()
-            .unwrap_or("stop");
-
-        let mut last_error: Option<String> = None;
-        let mut step_succeeded = false;
-        let mut step_output = String::new();
-
-        for attempt in 1..=max_attempts {
-            if attempt > 1 {
-                tracing::info!(
-                    "Run {}: retrying step '{}' (attempt {}/{})",
-                    run_id,
-                    step.name,
-                    attempt,
-                    max_attempts
+        for task in &tasks {
+            // Check cancellation between tasks
+            if cancel_token.is_cancelled() {
+                emit_output(app_handle, &output_event, run_id, "\n*** CANCELLED ***");
+                let _ = app_handle.emit(
+                    &complete_event,
+                    PlaybookCompleteEvent {
+                        run_id: run_id.to_string(),
+                        status: PlaybookRunStatus::Cancelled,
+                        exit_code: None,
+                        tasks_ok: total_ok,
+                        tasks_failed: total_failed,
+                    },
                 );
-                tokio::time::sleep(retry_delay).await;
+                return Ok((total_ok, total_failed));
             }
 
-            // Execute with optional timeout
-            let exec_result = if let Some(timeout_secs) = step.timeout {
-                match tokio::time::timeout(
-                    Duration::from_secs(timeout_secs),
-                    exec_on_connection(handle, &command),
-                )
-                .await
-                {
-                    Ok(inner) => inner,
-                    Err(_) => {
-                        last_error = Some(format!("Timeout after {}s", timeout_secs));
-                        continue;
-                    }
+            let task_name = task
+                .name
+                .as_deref()
+                .unwrap_or(&task.module);
+            emit_output(
+                app_handle,
+                &output_event,
+                run_id,
+                &format!("\nTASK [{}] ***", task_name),
+            );
+
+            // Evaluate `when` condition
+            if let Some(ref condition) = task.when {
+                let resolved = interpolate_vars(condition, &vars);
+                if !evaluate_when(&resolved, &vars) {
+                    emit_output(
+                        app_handle,
+                        &output_event,
+                        run_id,
+                        &format!("skipping: [{}]", task_name),
+                    );
+                    continue;
                 }
-            } else {
-                exec_on_connection(handle, &command).await
+            }
+
+            // Translate module to shell commands
+            let task_become = task.use_become.unwrap_or(play_become);
+            let commands = match translate_module(&task.module, &task.args, &vars) {
+                Ok(cmds) => wrap_become(cmds, task_become),
+                Err(e) => {
+                    emit_output(
+                        app_handle,
+                        &output_event,
+                        run_id,
+                        &format!("fatal: [{}]: MODULE ERROR: {}", task_name, e),
+                    );
+                    total_failed += 1;
+                    if !task.ignore_errors {
+                        let _ = app_handle.emit(
+                            &complete_event,
+                            PlaybookCompleteEvent {
+                                run_id: run_id.to_string(),
+                                status: PlaybookRunStatus::Failed,
+                                exit_code: None,
+                                tasks_ok: total_ok,
+                                tasks_failed: total_failed,
+                            },
+                        );
+                        return Ok((total_ok, total_failed));
+                    }
+                    continue;
+                }
             };
 
-            match exec_result {
-                Ok(output) => {
-                    step_output = output;
-                    step_succeeded = true;
-                    last_error = None;
-                    break;
+            // Execute each command
+            let mut task_ok = true;
+            for cmd in &commands {
+                let (stdout, stderr, exit_code) =
+                    exec_on_connection_with_exit_code(handle, cmd).await.map_err(|e| {
+                        format!("SSH execution error: {}", e)
+                    })?;
+
+                // Emit stdout/stderr
+                if !stdout.is_empty() {
+                    emit_output(app_handle, &output_event, run_id, &stdout);
                 }
-                Err(e) => {
-                    last_error = Some(e.to_string());
+                if !stderr.is_empty() {
+                    emit_output(app_handle, &output_event, run_id, &stderr);
                 }
-            }
-        }
 
-        if step_succeeded {
-            completed_steps += 1;
-            tracing::info!("Run {}: step '{}' completed", run_id, step.name);
-
-            let _ = app_handle.emit(
-                &step_event_name,
-                StepEvent {
-                    step_index: i,
-                    step_name: step.name.clone(),
-                    status: "completed".to_string(),
-                    output: step_output,
-                },
-            );
-        } else {
-            failed_steps += 1;
-            let err_msg = last_error.unwrap_or_else(|| "Unknown error".to_string());
-            tracing::error!("Run {}: step '{}' failed: {}", run_id, step.name, err_msg);
-
-            let _ = app_handle.emit(
-                &step_event_name,
-                StepEvent {
-                    step_index: i,
-                    step_name: step.name.clone(),
-                    status: "failed".to_string(),
-                    output: err_msg.clone(),
-                },
-            );
-
-            match on_failure {
-                "continue" => {
-                    tracing::info!(
-                        "Run {}: on_failure=continue, moving to next step",
-                        run_id
+                if exit_code != 0 {
+                    emit_output(
+                        app_handle,
+                        &output_event,
+                        run_id,
+                        &format!("fatal: [{}]: non-zero return code (rc={})", task_name, exit_code),
                     );
-                }
-                _ => {
-                    // "stop" or default
-                    tracing::info!("Run {}: on_failure=stop, aborting playbook", run_id);
-                    aborted = true;
+                    task_ok = false;
+
+                    // Store rc for registered vars
+                    if let Some(ref reg) = task.register {
+                        vars.insert(format!("{}.rc", reg), exit_code.to_string());
+                        vars.insert(format!("{}.stdout", reg), stdout.clone());
+                        vars.insert(format!("{}.stderr", reg), stderr.clone());
+                        vars.insert(format!("{}.failed", reg), "true".to_string());
+                    }
+
                     break;
+                } else if let Some(ref reg) = task.register {
+                    vars.insert(format!("{}.rc", reg), "0".to_string());
+                    vars.insert(format!("{}.stdout", reg), stdout.trim().to_string());
+                    vars.insert(format!("{}.stderr", reg), stderr.trim().to_string());
+                    vars.insert(format!("{}.failed", reg), "false".to_string());
+                    // Also store stdout as the register var directly (common pattern)
+                    vars.insert(reg.clone(), stdout.trim().to_string());
                 }
+            }
+
+            if task_ok {
+                emit_output(
+                    app_handle,
+                    &output_event,
+                    run_id,
+                    &format!("ok: [{}]", task_name),
+                );
+                total_ok += 1;
+            } else {
+                total_failed += 1;
+                if !task.ignore_errors {
+                    let _ = app_handle.emit(
+                        &complete_event,
+                        PlaybookCompleteEvent {
+                            run_id: run_id.to_string(),
+                            status: PlaybookRunStatus::Failed,
+                            exit_code: Some(1),
+                            tasks_ok: total_ok,
+                            tasks_failed: total_failed,
+                        },
+                    );
+                    return Ok((total_ok, total_failed));
+                }
+                emit_output(
+                    app_handle,
+                    &output_event,
+                    run_id,
+                    "...ignoring",
+                );
             }
         }
     }
 
-    // Determine final status
-    if aborted {
-        run.status = PlaybookStatus::Failed;
-    } else if failed_steps > 0 {
-        // Some steps failed but we continued through them
-        run.status = PlaybookStatus::Completed;
-    } else {
-        run.status = PlaybookStatus::Completed;
-    }
-    run.current_step = total_steps;
-
-    let status_str = match &run.status {
-        PlaybookStatus::Completed => "completed",
-        PlaybookStatus::Failed => "failed",
-        PlaybookStatus::Stopped => "stopped",
-        PlaybookStatus::Running => "running",
-    };
-
-    tracing::info!(
-        "Run {}: playbook '{}' finished with status={}, completed={}, failed={}",
+    // Summary
+    emit_output(
+        app_handle,
+        &output_event,
         run_id,
-        playbook.name,
-        status_str,
-        completed_steps,
-        failed_steps
+        &format!(
+            "\nPLAY RECAP ***\nok={}\tfailed={}",
+            total_ok, total_failed
+        ),
     );
 
+    let final_status = if total_failed > 0 {
+        PlaybookRunStatus::Failed
+    } else {
+        PlaybookRunStatus::Completed
+    };
+
     let _ = app_handle.emit(
-        &complete_event_name,
-        CompleteEvent {
+        &complete_event,
+        PlaybookCompleteEvent {
             run_id: run_id.to_string(),
-            playbook_name: playbook.name.clone(),
-            status: status_str.to_string(),
-            total_steps,
-            completed_steps,
-            failed_steps,
+            status: final_status,
+            exit_code: Some(if total_failed > 0 { 1 } else { 0 }),
+            tasks_ok: total_ok,
+            tasks_failed: total_failed,
         },
     );
 
-    Ok(run)
+    Ok((total_ok, total_failed))
 }
 
-/// Stop a running playbook (placeholder for cancellation support).
-pub async fn stop(run_id: &str) -> Result<(), EngineError> {
-    tracing::info!("Stopping playbook run {}", run_id);
-    // Future: use a CancellationToken per run to signal abort
-    Ok(())
+fn emit_output(
+    app_handle: &tauri::AppHandle,
+    event: &str,
+    run_id: &str,
+    data: &str,
+) {
+    let _ = app_handle.emit(
+        event,
+        StreamingOutputEvent {
+            run_id: run_id.to_string(),
+            stream: "stdout".to_string(),
+            data: data.to_string(),
+        },
+    );
 }
