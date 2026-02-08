@@ -33,7 +33,6 @@ export default defineConfig({
 						{ label: 'System Monitoring', slug: 'features/monitoring' },
 						{ label: 'Serial Console', slug: 'features/serial' },
 						{ label: 'AI Assistant', slug: 'features/ai-assistant' },
-						{ label: 'Snippets', slug: 'features/snippets' },
 					],
 				},
 				{

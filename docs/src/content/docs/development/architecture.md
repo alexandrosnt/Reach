@@ -31,7 +31,6 @@ SvelteKit with SSR disabled. It's a static SPA using `@sveltejs/adapter-static`.
 | `shared/` | Reusable UI bits (buttons, modals, etc.) |
 | `layout/` | App shell, sidebar, title bar |
 | `editor/` | File editor overlay |
-| `snippets/` | Code snippet manager |
 
 **i18n** uses a simple `t(key, params?)` function with JSON locale files. 6 languages are supported.
 
