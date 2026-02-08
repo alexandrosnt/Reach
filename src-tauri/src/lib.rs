@@ -1,6 +1,6 @@
+pub mod playbook;
 pub mod ipc;
 pub mod monitoring;
-pub mod playbook;
 #[cfg(desktop)]
 pub mod pty;
 #[cfg(desktop)]
@@ -9,6 +9,8 @@ pub mod session;
 pub mod sftp;
 pub mod ssh;
 pub mod state;
+pub mod terraform;
+pub mod toolchain;
 pub mod tunnel;
 pub mod vault;
 
@@ -18,10 +20,10 @@ use state::AppState;
 use tracing_subscriber::EnvFilter;
 
 use ipc::ai_commands::*;
+use ipc::playbook_commands::*;
 use ipc::credential_commands::*;
 use ipc::settings_commands::*;
 use ipc::monitoring_commands::*;
-use ipc::playbook_commands::*;
 #[cfg(desktop)]
 use ipc::pty_commands::*;
 #[cfg(desktop)]
@@ -29,6 +31,8 @@ use ipc::serial_commands::*;
 use ipc::session_commands::*;
 use ipc::sftp_commands::*;
 use ipc::ssh_commands::*;
+use ipc::terraform_commands::*;
+use ipc::toolchain_commands::*;
 use ipc::tunnel_commands::*;
 use ipc::vault_commands::*;
 
@@ -110,12 +114,12 @@ pub fn run() {
             session_share,
             // Playbook commands
             playbook_run,
+            playbook_cancel,
             playbook_get_run,
-            playbook_stop,
-            playbook_list,
-            playbook_save,
-            playbook_list_saved,
-            playbook_delete,
+            playbook_validate,
+            playbook_save_project,
+            playbook_list_projects,
+            playbook_delete_project,
             // Tunnel commands
             tunnel_create,
             tunnel_start,
@@ -204,6 +208,20 @@ pub fn run() {
             vault_export_backup,
             vault_preview_backup,
             vault_import_backup,
+            // Terraform commands
+            terraform_run,
+            terraform_cancel,
+            terraform_get_run,
+            terraform_state_list,
+            terraform_state_show,
+            terraform_output,
+            terraform_check,
+            terraform_save_workspace,
+            terraform_list_workspaces,
+            terraform_delete_workspace,
+            // Toolchain commands
+            toolchain_check,
+            toolchain_install,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
@@ -242,12 +260,12 @@ pub fn run() {
             session_share,
             // Playbook commands
             playbook_run,
+            playbook_cancel,
             playbook_get_run,
-            playbook_stop,
-            playbook_list,
-            playbook_save,
-            playbook_list_saved,
-            playbook_delete,
+            playbook_validate,
+            playbook_save_project,
+            playbook_list_projects,
+            playbook_delete_project,
             // Tunnel commands
             tunnel_create,
             tunnel_start,
@@ -326,6 +344,20 @@ pub fn run() {
             vault_export_backup,
             vault_preview_backup,
             vault_import_backup,
+            // Terraform commands
+            terraform_run,
+            terraform_cancel,
+            terraform_get_run,
+            terraform_state_list,
+            terraform_state_show,
+            terraform_output,
+            terraform_check,
+            terraform_save_workspace,
+            terraform_list_workspaces,
+            terraform_delete_workspace,
+            // Toolchain commands
+            toolchain_check,
+            toolchain_install,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
@@ -384,6 +416,22 @@ pub fn run() {
                         }
                     })
                     .build(app)?;
+            }
+
+            // Prepend tools dir to PATH so installed tools are found
+            {
+                let data_dir = dirs::data_dir()
+                    .unwrap_or_else(|| std::path::PathBuf::from("."))
+                    .join("com.reach.app");
+                let tools_dir = data_dir.join("tools");
+                let _ = std::fs::create_dir_all(&tools_dir);
+                let current_path = std::env::var("PATH").unwrap_or_default();
+                let sep = if cfg!(windows) { ";" } else { ":" };
+                std::env::set_var(
+                    "PATH",
+                    format!("{}{}{}", tools_dir.display(), sep, current_path),
+                );
+                tracing::info!("Tools directory added to PATH: {:?}", tools_dir);
             }
 
             let handle = app.handle().clone();

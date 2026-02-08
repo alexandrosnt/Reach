@@ -21,11 +21,14 @@
 		startupUpdateCheck();
 		startPeriodicChecks();
 
-		// Dismiss the preloader once the app is mounted
+		// Dismiss the preloader after a minimum display time so the
+		// splash screen is actually visible during startup.
 		const preloader = document.getElementById('preloader');
 		if (preloader) {
-			preloader.classList.add('hidden');
-			setTimeout(() => preloader.remove(), 500);
+			setTimeout(() => {
+				preloader.classList.add('hidden');
+				setTimeout(() => preloader.remove(), 500);
+			}, 800);
 		}
 
 		return () => {

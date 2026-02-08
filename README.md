@@ -132,6 +132,14 @@ graph LR
 
 ## Changelog
 
+### v0.1.9
+- Replaced Ansible integration with a native Rust playbook engine — no Python or external tools required
+- Playbooks use Ansible-compatible YAML and execute directly over SSH from any platform including Windows
+- Supports 8 modules: shell, command, copy, file, apt, systemd/service, lineinfile, template
+- Streaming output, cancellation, variable interpolation, conditional execution (when), and register support
+- Save and load playbook projects from the encrypted vault
+- Updated app preloader to use the actual app icon
+
 ### v0.1.8
 - Added Bulgarian language
 - 6 languages supported now: English, German, French, Greek, Italian, Bulgarian

@@ -72,46 +72,55 @@ impl SshManager {
     ) -> Result<ConnectionInfo, SshError> {
         tracing::info!("SSH connecting to {}@{}:{}", username, host, port);
 
-        let config = Arc::new(russh::client::Config::default());
-        let handler = SshClientHandler;
+        let timeout_duration = std::time::Duration::from_secs(15);
+        let connect_future = async {
+            let config = Arc::new(russh::client::Config::default());
+            let handler = SshClientHandler;
 
-        let mut handle = russh::client::connect(config, (host, port), handler)
-            .await
-            .map_err(|e| SshError::ConnectionFailed(format!("{}", e)))?;
+            let mut handle = russh::client::connect(config, (host, port), handler)
+                .await
+                .map_err(|e| SshError::ConnectionFailed(format!("{}", e)))?;
 
-        // Authenticate
-        let authenticated = match auth {
-            AuthParams::Password(ref password) => {
-                handle.authenticate_password(username, password).await
-                    .map_err(|e| SshError::ConnectionFailed(format!("Auth error: {}", e)))?
+            // Authenticate
+            let authenticated = match auth {
+                AuthParams::Password(ref password) => {
+                    handle.authenticate_password(username, password).await
+                        .map_err(|e| SshError::ConnectionFailed(format!("Auth error: {}", e)))?
+                }
+                AuthParams::Key { ref path, ref passphrase } => {
+                    let key = russh_keys::load_secret_key(path, passphrase.as_deref())
+                        .map_err(|e| SshError::ConnectionFailed(format!("Key load error: {}", e)))?;
+                    handle.authenticate_publickey(username, Arc::new(key)).await
+                        .map_err(|e| SshError::ConnectionFailed(format!("Auth error: {}", e)))?
+                }
+                AuthParams::Agent => {
+                    return Err(SshError::ConnectionFailed("Agent auth not yet implemented".into()));
+                }
+            };
+
+            if !authenticated {
+                return Err(SshError::AuthFailed);
             }
-            AuthParams::Key { ref path, ref passphrase } => {
-                let key = russh_keys::load_secret_key(path, passphrase.as_deref())
-                    .map_err(|e| SshError::ConnectionFailed(format!("Key load error: {}", e)))?;
-                handle.authenticate_publickey(username, Arc::new(key)).await
-                    .map_err(|e| SshError::ConnectionFailed(format!("Auth error: {}", e)))?
-            }
-            AuthParams::Agent => {
-                return Err(SshError::ConnectionFailed("Agent auth not yet implemented".into()));
-            }
+
+            tracing::info!("SSH authenticated for {}@{}:{}", username, host, port);
+
+            let channel = handle.channel_open_session().await
+                .map_err(|e| SshError::ChannelError(format!("Failed to open session: {}", e)))?;
+
+            channel.request_pty(false, "xterm-256color", cols as u32, rows as u32, 0, 0, &[]).await
+                .map_err(|e| SshError::ChannelError(format!("PTY request failed: {}", e)))?;
+
+            channel.request_shell(false).await
+                .map_err(|e| SshError::ChannelError(format!("Shell request failed: {}", e)))?;
+
+            tracing::info!("SSH shell opened for {}@{}:{}", username, host, port);
+
+            Ok((handle, channel))
         };
 
-        if !authenticated {
-            return Err(SshError::AuthFailed);
-        }
-
-        tracing::info!("SSH authenticated for {}@{}:{}", username, host, port);
-
-        let channel = handle.channel_open_session().await
-            .map_err(|e| SshError::ChannelError(format!("Failed to open session: {}", e)))?;
-
-        channel.request_pty(false, "xterm-256color", cols as u32, rows as u32, 0, 0, &[]).await
-            .map_err(|e| SshError::ChannelError(format!("PTY request failed: {}", e)))?;
-
-        channel.request_shell(false).await
-            .map_err(|e| SshError::ChannelError(format!("Shell request failed: {}", e)))?;
-
-        tracing::info!("SSH shell opened for {}@{}:{}", username, host, port);
+        let (handle, channel) = tokio::time::timeout(timeout_duration, connect_future)
+            .await
+            .map_err(|_| SshError::ConnectionFailed("Connection timed out".into()))??;
 
         // Inject color initialization for remote shells that may lack color config
         // (e.g. root on Debian/Ubuntu ships with a minimal .bashrc without colors).
@@ -242,6 +251,133 @@ pub async fn exec_on_connection(
         }
     }
     Ok(output)
+}
+
+/// Execute a command on an existing SSH connection and return (stdout, stderr, exit_code).
+/// Unlike `exec_on_connection`, this captures stderr separately and returns the exit code.
+pub async fn exec_on_connection_with_exit_code(
+    handle: &SharedHandle,
+    command: &str,
+) -> Result<(String, String, i32), SshError> {
+    let mut channel = {
+        let guard = handle.lock().await;
+        guard.channel_open_session().await
+            .map_err(|e| SshError::ChannelError(format!("{}", e)))?
+    };
+    channel.exec(true, command).await
+        .map_err(|e| SshError::ChannelError(format!("{}", e)))?;
+
+    let mut stdout = String::new();
+    let mut stderr = String::new();
+    let mut exit_code: i32 = -1;
+    let mut got_eof = false;
+    let mut got_exit = false;
+
+    loop {
+        let msg = tokio::time::timeout(
+            std::time::Duration::from_secs(300),
+            channel.wait(),
+        ).await;
+
+        match msg {
+            Ok(Some(ChannelMsg::Data { ref data })) => {
+                stdout.push_str(&String::from_utf8_lossy(data));
+            }
+            Ok(Some(ChannelMsg::ExtendedData { ref data, .. })) => {
+                stderr.push_str(&String::from_utf8_lossy(data));
+            }
+            Ok(Some(ChannelMsg::Eof)) => {
+                got_eof = true;
+                if got_exit { break; }
+            }
+            Ok(Some(ChannelMsg::ExitStatus { exit_status })) => {
+                exit_code = exit_status as i32;
+                got_exit = true;
+                if got_eof { break; }
+            }
+            Ok(None) | Err(_) => break,
+            _ => {}
+        }
+    }
+
+    Ok((stdout, stderr, exit_code))
+}
+
+/// Generic streaming output event used by all remote streaming commands.
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct StreamingOutputEvent {
+    pub run_id: String,
+    pub stream: String,
+    pub data: String,
+}
+
+/// Streaming variant of `exec_on_connection`.
+/// Emits each chunk as a `{event_prefix}-{run_id}` Tauri event.
+/// Returns the exit code (defaults to -1 if not received).
+pub async fn exec_on_connection_streaming(
+    handle: &SharedHandle,
+    command: &str,
+    run_id: &str,
+    event_prefix: &str,
+    app_handle: &tauri::AppHandle,
+) -> Result<i32, SshError> {
+    let mut channel = {
+        let guard = handle.lock().await;
+        guard.channel_open_session().await
+            .map_err(|e| SshError::ChannelError(format!("{}", e)))?
+    };
+    channel.exec(true, command).await
+        .map_err(|e| SshError::ChannelError(format!("{}", e)))?;
+
+    let output_event = format!("{}-{}", event_prefix, run_id);
+    let mut exit_code: i32 = -1;
+    let mut got_eof = false;
+    let mut got_exit = false;
+
+    loop {
+        let msg = tokio::time::timeout(
+            std::time::Duration::from_secs(300),
+            channel.wait(),
+        ).await;
+
+        match msg {
+            Ok(Some(ChannelMsg::Data { ref data })) => {
+                let text = String::from_utf8_lossy(data).to_string();
+                let _ = app_handle.emit(
+                    &output_event,
+                    StreamingOutputEvent {
+                        run_id: run_id.to_string(),
+                        stream: "stdout".to_string(),
+                        data: text,
+                    },
+                );
+            }
+            Ok(Some(ChannelMsg::ExtendedData { ref data, .. })) => {
+                let text = String::from_utf8_lossy(data).to_string();
+                let _ = app_handle.emit(
+                    &output_event,
+                    StreamingOutputEvent {
+                        run_id: run_id.to_string(),
+                        stream: "stderr".to_string(),
+                        data: text,
+                    },
+                );
+            }
+            Ok(Some(ChannelMsg::Eof)) => {
+                got_eof = true;
+                if got_exit { break; }
+            }
+            Ok(Some(ChannelMsg::ExitStatus { exit_status })) => {
+                exit_code = exit_status as i32;
+                got_exit = true;
+                if got_eof { break; }
+            }
+            Ok(None) | Err(_) => break,
+            _ => {}
+        }
+    }
+
+    Ok(exit_code)
 }
 
 pub struct SshClientHandler;
