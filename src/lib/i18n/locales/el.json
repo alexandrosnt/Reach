@@ -184,6 +184,8 @@
   "explorer.folder_name": "Όνομα φακέλου",
   "explorer.file_name": "Όνομα αρχείου",
   "explorer.open_file_error": "Αποτυχία ανοίγματος αρχείου: {{error}}",
+  "explorer.upload_failed": "Αποτυχία μεταφόρτωσης: {{error}}",
+  "explorer.drop_no_files": "Δεν εντοπίστηκαν αρχεία. Σύρετε αρχεία από τον διαχειριστή αρχείων.",
 
   "editor.close": "Κλείσιμο επεξεργαστή",
   "editor.saving": "Αποθήκευση...",
@@ -232,6 +234,8 @@
   "ai.send": "Αποστολή μηνύματος",
   "ai.run": "Εκτέλεση",
   "ai.copy": "Αντιγραφή",
+  "ai.copy_message": "Αντιγραφή μηνύματος",
+  "ai.copied": "Αντιγράφηκε!",
 
   "vault.unlock": "Ξεκλείδωμα Θησαυροφυλακίου",
   "vault.enter_password": "Εισάγετε τον κύριο κωδικό πρόσβασης...",

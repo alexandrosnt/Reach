@@ -184,6 +184,8 @@
   "explorer.folder_name": "Име на папката",
   "explorer.file_name": "Име на файла",
   "explorer.open_file_error": "Неуспешно отваряне на файл: {{error}}",
+  "explorer.upload_failed": "Неуспешно качване: {{error}}",
+  "explorer.drop_no_files": "Не са открити файлове. Плъзнете файлове от файловия мениджър.",
 
   "editor.close": "Затвори редактора",
   "editor.saving": "Запазване...",
@@ -232,6 +234,8 @@
   "ai.send": "Изпрати съобщение",
   "ai.run": "Стартирай",
   "ai.copy": "Копирай",
+  "ai.copy_message": "Копирай съобщение",
+  "ai.copied": "Копирано!",
 
   "vault.unlock": "Отключи трезора",
   "vault.enter_password": "Въведете вашата главна парола...",

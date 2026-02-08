@@ -184,6 +184,8 @@
   "explorer.folder_name": "Ordnername",
   "explorer.file_name": "Dateiname",
   "explorer.open_file_error": "Datei konnte nicht geöffnet werden: {{error}}",
+  "explorer.upload_failed": "Upload fehlgeschlagen: {{error}}",
+  "explorer.drop_no_files": "Keine Dateien erkannt. Ziehen Sie Dateien aus Ihrem Dateimanager.",
 
   "editor.close": "Editor schließen",
   "editor.saving": "Wird gespeichert...",
@@ -232,6 +234,8 @@
   "ai.send": "Nachricht senden",
   "ai.run": "Ausführen",
   "ai.copy": "Kopieren",
+  "ai.copy_message": "Nachricht kopieren",
+  "ai.copied": "Kopiert!",
 
   "vault.unlock": "Tresor entsperren",
   "vault.enter_password": "Master-Passwort eingeben...",

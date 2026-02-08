@@ -184,6 +184,8 @@
   "explorer.folder_name": "Folder name",
   "explorer.file_name": "File name",
   "explorer.open_file_error": "Failed to open file: {{error}}",
+  "explorer.upload_failed": "Upload failed: {{error}}",
+  "explorer.drop_no_files": "No files detected. Drag files from your file manager.",
 
   "editor.close": "Close editor",
   "editor.saving": "Saving...",
@@ -232,6 +234,8 @@
   "ai.send": "Send message",
   "ai.run": "Run",
   "ai.copy": "Copy",
+  "ai.copy_message": "Copy message",
+  "ai.copied": "Copied!",
 
   "vault.unlock": "Unlock Vault",
   "vault.enter_password": "Enter your master password...",
