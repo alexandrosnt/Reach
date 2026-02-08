@@ -184,6 +184,8 @@
   "explorer.folder_name": "Nome cartella",
   "explorer.file_name": "Nome file",
   "explorer.open_file_error": "Impossibile aprire il file: {{error}}",
+  "explorer.upload_failed": "Caricamento fallito: {{error}}",
+  "explorer.drop_no_files": "Nessun file rilevato. Trascina i file dal tuo gestore file.",
 
   "editor.close": "Chiudi editor",
   "editor.saving": "Salvataggio...",
@@ -232,6 +234,8 @@
   "ai.send": "Invia messaggio",
   "ai.run": "Esegui",
   "ai.copy": "Copia",
+  "ai.copy_message": "Copia messaggio",
+  "ai.copied": "Copiato!",
 
   "vault.unlock": "Sblocca Vault",
   "vault.enter_password": "Inserisci la tua password principale...",

@@ -32,6 +32,7 @@
 	let error = $state<string | undefined>();
 	let prevConnectionId = $state<string | undefined>();
 	let dragging = $state(false);
+	let uploading = $state(false);
 
 	// Context menu state — entry is undefined for background (empty space) clicks
 	let contextMenu = $state<{ x: number; y: number; entry?: FileEntry } | undefined>();
@@ -96,13 +97,15 @@
 			transferId = await sftpDownload(connectionId, entry.path, localPath);
 			addTransfer(transferId, entry.name, entry.size, 'downloading');
 
+			const tid = transferId;
+
 			progressUnlisten = await listen<{
 				id: string;
 				filename: string;
 				bytesTransferred: number;
 				totalBytes: number;
 				percent: number;
-			}>(`transfer-progress-${transferId}`, (event) => {
+			}>(`transfer-progress-${tid}`, (event) => {
 				updateTransferProgress(
 					event.payload.id,
 					event.payload.bytesTransferred,
@@ -111,21 +114,27 @@
 				);
 			});
 
-			await new Promise<void>((resolve, reject) => {
-				listen(`transfer-complete-${transferId}`, () => {
-					if (transferId) completeTransfer(transferId);
-					resolve();
-				}).then((fn) => {
-					completeUnlisten = fn;
-				});
+			completeUnlisten = await listen(`transfer-complete-${tid}`, () => {
+				completeTransfer(tid);
+			});
 
-				listen<string>(`transfer-error-${transferId}`, (event) => {
-					const errMsg = typeof event.payload === 'string' ? event.payload : 'Download failed';
-					if (transferId) failTransfer(transferId, errMsg);
-					reject(new Error(errMsg));
-				}).then((fn) => {
-					errorUnlisten = fn;
-				});
+			errorUnlisten = await listen<string>(`transfer-error-${tid}`, (event) => {
+				const errMsg = typeof event.payload === 'string' ? event.payload : 'Download failed';
+				failTransfer(tid, errMsg);
+			});
+
+			await new Promise<void>((resolve, reject) => {
+				const checkInterval = setInterval(() => {
+					const transfers = getTransfers();
+					const tr = transfers.find((x: Transfer) => x.id === tid);
+					if (!tr || tr.status === 'completed') {
+						clearInterval(checkInterval);
+						resolve();
+					} else if (tr.status === 'error') {
+						clearInterval(checkInterval);
+						reject(new Error(tr.error ?? 'Download failed'));
+					}
+				}, 200);
 			});
 		} catch (err) {
 			if (transferId) {
@@ -346,13 +355,15 @@
 			transferId = await sftpUpload(connectionId, localPath, remotePath);
 			addTransfer(transferId, filename, 0);
 
+			const tid = transferId;
+
 			progressUnlisten = await listen<{
 				id: string;
 				filename: string;
 				bytesTransferred: number;
 				totalBytes: number;
 				percent: number;
-			}>(`transfer-progress-${transferId}`, (event) => {
+			}>(`transfer-progress-${tid}`, (event) => {
 				updateTransferProgress(
 					event.payload.id,
 					event.payload.bytesTransferred,
@@ -361,26 +372,33 @@
 				);
 			});
 
-			await new Promise<void>((resolve, reject) => {
-				listen(`transfer-complete-${transferId}`, () => {
-					if (transferId) completeTransfer(transferId);
-					resolve();
-				}).then((fn) => {
-					completeUnlisten = fn;
-				});
+			completeUnlisten = await listen(`transfer-complete-${tid}`, () => {
+				completeTransfer(tid);
+			});
 
-				listen<string>(`transfer-error-${transferId}`, (event) => {
-					const errMsg = typeof event.payload === 'string' ? event.payload : 'Upload failed';
-					if (transferId) failTransfer(transferId, errMsg);
-					reject(new Error(errMsg));
-				}).then((fn) => {
-					errorUnlisten = fn;
-				});
+			errorUnlisten = await listen<string>(`transfer-error-${tid}`, (event) => {
+				const errMsg = typeof event.payload === 'string' ? event.payload : 'Upload failed';
+				failTransfer(tid, errMsg);
+			});
+
+			await new Promise<void>((resolve, reject) => {
+				const checkInterval = setInterval(() => {
+					const transfers = getTransfers();
+					const tr = transfers.find((x: Transfer) => x.id === tid);
+					if (!tr || tr.status === 'completed') {
+						clearInterval(checkInterval);
+						resolve();
+					} else if (tr.status === 'error') {
+						clearInterval(checkInterval);
+						reject(new Error(tr.error ?? 'Upload failed'));
+					}
+				}, 200);
 			});
 		} catch (err) {
 			if (transferId) {
 				failTransfer(transferId, String(err));
 			}
+			addToast(t('explorer.upload_failed', { error: String(err) }), 'error');
 		} finally {
 			progressUnlisten?.();
 			completeUnlisten?.();
@@ -389,12 +407,24 @@
 	}
 
 	async function handleDrop(paths: string[]): Promise<void> {
-		if (!connectionId || paths.length === 0) return;
+		if (!connectionId) return;
 
-		const uploads = paths.map((localPath) => uploadFile(localPath));
-		await Promise.allSettled(uploads);
+		if (paths.length === 0) {
+			addToast(t('explorer.drop_no_files'), 'error');
+			return;
+		}
 
-		refresh();
+		if (uploading) return;
+		uploading = true;
+
+		try {
+			for (const localPath of paths) {
+				await uploadFile(localPath);
+			}
+		} finally {
+			uploading = false;
+			refresh();
+		}
 	}
 
 	// Load initial directory only when connectionId changes.

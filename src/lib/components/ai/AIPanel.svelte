@@ -21,6 +21,13 @@
 
 	let inputValue = $state('');
 	let messagesContainer: HTMLDivElement | undefined = $state();
+	let copiedId = $state<string | undefined>();
+
+	function copyMessage(id: string, content: string): void {
+		navigator.clipboard.writeText(content);
+		copiedId = id;
+		setTimeout(() => { copiedId = undefined; }, 1500);
+	}
 
 	$effect(() => {
 		if (chatState.messages.length && messagesContainer) {
@@ -161,12 +168,32 @@
 					</div>
 				{/if}
 				{#each chatState.messages as msg (msg.id)}
-					<div class="message message-{msg.role}">
-						{@html renderContent(msg.content)}
-						{#if msg.role === 'assistant' && !msg.content && chatState.loading}
-							<span class="typing-indicator">
-								<span></span><span></span><span></span>
-							</span>
+					<div class="message-wrapper">
+						<div class="message message-{msg.role}">
+							{@html renderContent(msg.content)}
+							{#if msg.role === 'assistant' && !msg.content && chatState.loading}
+								<span class="typing-indicator">
+									<span></span><span></span><span></span>
+								</span>
+							{/if}
+						</div>
+						{#if msg.content}
+							<button
+								class="msg-copy-btn"
+								class:copied={copiedId === msg.id}
+								onclick={() => copyMessage(msg.id, msg.content)}
+								title={t('ai.copy_message')}
+							>
+								{#if copiedId === msg.id}
+									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<polyline points="20 6 9 17 4 12" />
+									</svg>
+								{:else}
+									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<rect x="9" y="9" width="13" height="13" rx="2" ry="2" /><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" />
+									</svg>
+								{/if}
+							</button>
 						{/if}
 					</div>
 				{/each}
@@ -291,34 +318,76 @@
 		margin: 0;
 	}
 
+	.message-wrapper {
+		display: flex;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 2px;
+		max-width: 90%;
+	}
+
+	.message-wrapper:has(.message-user) {
+		align-self: flex-end;
+		align-items: flex-end;
+	}
+
+	.message-wrapper:has(.message-assistant) {
+		align-self: flex-start;
+		align-items: flex-start;
+	}
+
+	.msg-copy-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 22px;
+		height: 22px;
+		border: none;
+		border-radius: 4px;
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		opacity: 0;
+		transition: opacity 150ms ease, background-color 150ms ease;
+	}
+
+	.message-wrapper:hover .msg-copy-btn {
+		opacity: 1;
+	}
+
+	.msg-copy-btn:hover {
+		background-color: rgba(255, 255, 255, 0.08);
+		color: var(--color-text-primary);
+	}
+
+	.msg-copy-btn.copied {
+		opacity: 1;
+		color: var(--color-success, #30d158);
+	}
+
 	.message {
 		padding: 8px 12px;
 		border-radius: 12px;
 		font-size: 0.8125rem;
 		line-height: 1.5;
 		word-break: break-word;
-		max-width: 90%;
 	}
 
 	.message-user {
-		align-self: flex-end;
 		background-color: var(--color-accent);
 		color: #fff;
 	}
 
 	.message-assistant {
-		align-self: flex-start;
 		background-color: var(--color-bg-secondary);
 		color: var(--color-text-primary);
 	}
 
 	.message-error {
-		align-self: center;
 		background-color: rgba(255, 59, 48, 0.1);
 		color: var(--color-danger);
 		font-size: 0.75rem;
 		text-align: center;
-		max-width: 100%;
 	}
 
 	.message :global(.code-block) {
