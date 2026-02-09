@@ -8,12 +8,13 @@
 	import { initShortcuts, cleanupShortcuts } from '$lib/state/shortcuts.svelte';
 	import { startupUpdateCheck, startPeriodicChecks, stopPeriodicChecks } from '$lib/state/updater.svelte';
 	import { changeLocale } from '$lib/state/i18n.svelte';
+	import { onMount } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
 
 	const settings = getSettings();
 
-	$effect(() => {
+	onMount(() => {
 		loadSettings();
 		syncTraySettings();
 		loadAISettings();

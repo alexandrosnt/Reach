@@ -1,5 +1,15 @@
 import { invoke } from '@tauri-apps/api/core';
 
+export interface JumpHostConnectParams {
+  host: string;
+  port: number;
+  username: string;
+  authMethod: string;
+  password?: string;
+  keyPath?: string;
+  keyPassphrase?: string;
+}
+
 export interface SshConnectParams {
   id: string;
   host: string;
@@ -11,6 +21,7 @@ export interface SshConnectParams {
   keyPassphrase?: string;
   cols: number;
   rows: number;
+  jumpChain?: JumpHostConnectParams[];
 }
 
 export interface ConnectionInfo {
@@ -32,6 +43,7 @@ export async function sshConnect(params: SshConnectParams): Promise<string> {
     keyPassphrase: params.keyPassphrase,
     cols: params.cols,
     rows: params.rows,
+    jumpChain: params.jumpChain ?? null,
   });
 }
 
