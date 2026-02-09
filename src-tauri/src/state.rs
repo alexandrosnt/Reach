@@ -17,6 +17,16 @@ use crate::ssh::client::SshManager;
 use crate::terraform::types::TerraformRun;
 use crate::tunnel::manager::TunnelManager;
 use crate::vault::VaultManager;
+use crate::plugin::manager::PluginManager;
+
+/// Configuration for a jump host in a ProxyJump chain.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JumpHostConfig {
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub auth_method: AuthMethod,
+}
 
 /// Configuration for a saved session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,6 +44,9 @@ pub struct SessionConfig {
     /// Which vault this session belongs to (None = private __sessions__ vault)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vault_id: Option<String>,
+    /// ProxyJump chain: ordered list of jump hosts to tunnel through
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub jump_chain: Option<Vec<JumpHostConfig>>,
 }
 
 /// Authentication method for an SSH session.
@@ -122,6 +135,7 @@ pub struct AppState {
     pub terraform_runs: Arc<RwLock<HashMap<String, TerraformRun>>>,
     /// Handles for local terraform child processes (for cancellation)
     pub terraform_processes: Arc<tokio::sync::Mutex<HashMap<String, tokio::process::Child>>>,
+    pub plugin_manager: Arc<tokio::sync::Mutex<PluginManager>>,
     pub close_to_tray: AtomicBool,
 }
 
@@ -144,7 +158,8 @@ impl AppState {
             tunnel_manager: Arc::new(tokio::sync::Mutex::new(TunnelManager::new())),
             #[cfg(desktop)]
             serial_manager: Arc::new(tokio::sync::Mutex::new(SerialManager::new())),
-            vault_manager: Arc::new(tokio::sync::Mutex::new(VaultManager::new(app_dir))),
+            vault_manager: Arc::new(tokio::sync::Mutex::new(VaultManager::new(app_dir.clone()))),
+            plugin_manager: Arc::new(tokio::sync::Mutex::new(PluginManager::new(app_dir.join("plugins")))),
             terraform_runs: Arc::new(RwLock::new(HashMap::new())),
             terraform_processes: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             close_to_tray: AtomicBool::new(false),

@@ -2,6 +2,7 @@ use tracing::info;
 use tauri::Emitter;
 use crate::state::AppState;
 use crate::sftp::browser::{self, RemoteEntry};
+use crate::plugin::hooks;
 
 /// List the contents of a remote directory.
 #[tauri::command]
@@ -44,6 +45,9 @@ pub async fn sftp_upload(
     };
     let transfer_id = uuid::Uuid::new_v4().to_string();
     let tid = transfer_id.clone();
+    let plugin_mgr = state.plugin_manager.clone();
+    let conn_id = connection_id.clone();
+    let rpath = remote_path.clone();
 
     tokio::spawn(async move {
         if let Err(e) = crate::sftp::transfer::upload_file(
@@ -51,6 +55,10 @@ pub async fn sftp_upload(
         ).await {
             tracing::error!("Upload failed for {}: {}", tid, e);
             let _ = app.emit(&format!("transfer-error-{}", tid), e.to_string());
+        } else {
+            let hook = hooks::sftp_upload_complete(&conn_id, &rpath);
+            let mut mgr = plugin_mgr.lock().await;
+            mgr.dispatch_hook(&hook, Some(&app));
         }
     });
 
@@ -73,6 +81,10 @@ pub async fn sftp_download(
     };
     let transfer_id = uuid::Uuid::new_v4().to_string();
     let tid = transfer_id.clone();
+    let plugin_mgr = state.plugin_manager.clone();
+    let conn_id = connection_id.clone();
+    let rpath = remote_path.clone();
+    let lpath = local_path.clone();
 
     tokio::spawn(async move {
         if let Err(e) = crate::sftp::transfer::download_file(
@@ -80,6 +92,10 @@ pub async fn sftp_download(
         ).await {
             tracing::error!("Download failed for {}: {}", tid, e);
             let _ = app.emit(&format!("transfer-error-{}", tid), e.to_string());
+        } else {
+            let hook = hooks::sftp_download_complete(&conn_id, &rpath, &lpath);
+            let mut mgr = plugin_mgr.lock().await;
+            mgr.dispatch_hook(&hook, Some(&app));
         }
     });
 

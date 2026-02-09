@@ -6,6 +6,7 @@
 		open: boolean;
 		onclose: () => void;
 		title?: string;
+		maxWidth?: string;
 		children: Snippet;
 		actions?: Snippet;
 	}
@@ -14,6 +15,7 @@
 		open,
 		onclose,
 		title = '',
+		maxWidth,
 		children,
 		actions
 	}: Props = $props();
@@ -48,7 +50,7 @@
 		onkeydown={() => {}}
 		onclick={onBackdropClick}
 	>
-		<div class="modal" role="dialog" aria-modal="true" aria-label={title || t('common.close_dialog')}>
+		<div class="modal" role="dialog" aria-modal="true" aria-label={title || t('common.close_dialog')} style:max-width={maxWidth}>
 			{#if title}
 				<header class="modal-header">
 					<h2 class="modal-title">{title}</h2>

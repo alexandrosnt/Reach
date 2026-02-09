@@ -2,7 +2,7 @@
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import Button from '$lib/components/shared/Button.svelte';
 	import Input from '$lib/components/shared/Input.svelte';
-	import { sshConnect } from '$lib/ipc/ssh';
+	import { sshConnect, type JumpHostConnectParams } from '$lib/ipc/ssh';
 	import { createTab } from '$lib/state/tabs.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
@@ -19,6 +19,14 @@
 	let password = $state('');
 	let keyPath = $state('');
 	let keyPassphrase = $state('');
+	let jumpEnabled = $state(false);
+	let jumpHost = $state('');
+	let jumpPortStr = $state('22');
+	let jumpUsername = $state('root');
+	let jumpAuthMethod = $state<'password' | 'key'>('password');
+	let jumpPassword = $state('');
+	let jumpKeyPath = $state('');
+	let jumpKeyPassphrase = $state('');
 	let connecting = $state(false);
 	let error = $state<string | undefined>();
 
@@ -33,6 +41,18 @@
 		const id = crypto.randomUUID();
 
 		try {
+			const jumpChain: JumpHostConnectParams[] | undefined = jumpEnabled && jumpHost.trim()
+				? [{
+					host: jumpHost.trim(),
+					port: parseInt(jumpPortStr, 10) || 22,
+					username: jumpUsername.trim(),
+					authMethod: jumpAuthMethod,
+					password: jumpAuthMethod === 'password' ? jumpPassword : undefined,
+					keyPath: jumpAuthMethod === 'key' ? jumpKeyPath : undefined,
+					keyPassphrase: jumpAuthMethod === 'key' && jumpKeyPassphrase ? jumpKeyPassphrase : undefined,
+				}]
+				: undefined;
+
 			await sshConnect({
 				id,
 				host: host.trim(),
@@ -43,7 +63,8 @@
 				keyPath: authMethod === 'key' ? keyPath : undefined,
 				keyPassphrase: authMethod === 'key' && keyPassphrase ? keyPassphrase : undefined,
 				cols: 80,
-				rows: 24
+				rows: 24,
+				jumpChain,
 			});
 
 			createTab('ssh', `${username.trim()}@${host.trim()}`, id);
@@ -55,6 +76,13 @@
 			password = '';
 			keyPath = '';
 			keyPassphrase = '';
+			jumpEnabled = false;
+			jumpHost = '';
+			jumpPortStr = '22';
+			jumpUsername = 'root';
+			jumpPassword = '';
+			jumpKeyPath = '';
+			jumpKeyPassphrase = '';
 			error = undefined;
 			open = false;
 		} catch (err) {
@@ -114,6 +142,48 @@
 			<Input label={t('session.key_path')} bind:value={keyPath} placeholder="~/.ssh/id_rsa" disabled={connecting} />
 			<Input label={t('session.passphrase_optional')} bind:value={keyPassphrase} type="password" disabled={connecting} />
 		{/if}
+
+		<div class="jump-section">
+			<label class="jump-toggle">
+				<input type="checkbox" bind:checked={jumpEnabled} disabled={connecting} />
+				<span class="jump-toggle-text">{t('session.jump_host_enable')}</span>
+				<span class="beta-badge">BETA</span>
+			</label>
+
+			{#if jumpEnabled}
+				<p class="jump-hint">{t('session.jump_host_hint')}</p>
+				<div class="jump-fields">
+					<div class="row">
+						<div class="field-host">
+							<Input label={t('session.jump_host')} bind:value={jumpHost} placeholder="bastion.example.com" disabled={connecting} />
+						</div>
+						<div class="field-port">
+							<Input label={t('session.port')} bind:value={jumpPortStr} type="number" placeholder="22" disabled={connecting} />
+						</div>
+					</div>
+					<Input label={t('session.username')} bind:value={jumpUsername} placeholder="root" disabled={connecting} />
+
+					<div class="auth-section">
+						<span class="auth-label">{t('session.auth_method')}</span>
+						<div class="auth-toggle">
+							<button type="button" class="auth-btn" class:active={jumpAuthMethod === 'password'} disabled={connecting} onclick={() => (jumpAuthMethod = 'password')}>
+								{t('session.auth_password')}
+							</button>
+							<button type="button" class="auth-btn" class:active={jumpAuthMethod === 'key'} disabled={connecting} onclick={() => (jumpAuthMethod = 'key')}>
+								{t('session.auth_key')}
+							</button>
+						</div>
+					</div>
+
+					{#if jumpAuthMethod === 'password'}
+						<Input label={t('session.password')} bind:value={jumpPassword} type="password" disabled={connecting} />
+					{:else}
+						<Input label={t('session.key_path')} bind:value={jumpKeyPath} placeholder="~/.ssh/id_rsa" disabled={connecting} />
+						<Input label={t('session.passphrase_optional')} bind:value={jumpKeyPassphrase} type="password" disabled={connecting} />
+					{/if}
+				</div>
+			{/if}
+		</div>
 
 		{#if error}
 			<div class="error-message">{error}</div>
@@ -236,5 +306,58 @@
 		to {
 			transform: rotate(360deg);
 		}
+	}
+
+	.jump-section {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding-top: 4px;
+	}
+
+	.jump-toggle {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		cursor: pointer;
+	}
+
+	.jump-toggle input {
+		width: 14px;
+		height: 14px;
+		accent-color: var(--color-accent);
+	}
+
+	.jump-toggle-text {
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: var(--color-text-primary);
+	}
+
+	.beta-badge {
+		padding: 1px 5px;
+		font-size: 0.5rem;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+		color: #fff;
+		background: linear-gradient(135deg, #ff6b35, #f7c948);
+		border-radius: 3px;
+		line-height: 1.4;
+	}
+
+	.jump-hint {
+		margin: 0;
+		font-size: 0.6875rem;
+		color: var(--color-text-secondary);
+	}
+
+	.jump-fields {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding: 10px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-btn);
+		background-color: rgba(255, 255, 255, 0.02);
 	}
 </style>

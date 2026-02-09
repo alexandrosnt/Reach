@@ -25,6 +25,22 @@ If you just need to connect once without saving anything, use **Quick Connect** 
 
 **Tags** are comma-separated labels you can add to any session. Use them for filtering when your session list gets long.
 
+## Jump Hosts (ProxyJump)
+
+If your servers sit behind a bastion host, you can configure a jump chain. When creating or editing a session, check "Connect via Jump Host" and add one or more hops. Each hop has its own host, port, username, and auth method.
+
+Reach chains the hops using SSH tunneling (`direct-tcpip` channels) — it connects to the first jump host, opens a tunnel to the next, and so on until it reaches the target. This is the same thing OpenSSH does with `ProxyJump`, but built into the app with no external dependencies.
+
+Quick Connect also supports a single jump host for one-off connections through a bastion.
+
+## Importing from SSH Config
+
+If you already have hosts defined in `~/.ssh/config`, you can import them instead of re-entering everything. Click the "Import SSH Config" button in the Sessions sidebar. Reach parses your config file and shows all named hosts with their resolved settings.
+
+Select the hosts you want, hit Import, and they'll be saved as sessions in your vault. ProxyJump chains are imported automatically — if host A jumps through host B, the full chain is preserved. IdentityFile paths are resolved too.
+
+This works cross-platform: `~/.ssh/config` on Linux/macOS, `C:\Users\<you>\.ssh\config` on Windows.
+
 ## Connecting
 
 Click a session card to connect. If you have a saved password or key, it connects right away. If not, you'll get a password prompt. There's a "Remember password" checkbox that stores the password encrypted in the vault for next time.

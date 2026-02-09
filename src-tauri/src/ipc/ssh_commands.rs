@@ -1,5 +1,38 @@
 use crate::state::AppState;
-use crate::ssh::client::{AuthParams, ConnectionInfo, exec_on_connection};
+use crate::ssh::client::{AuthParams, ConnectionInfo, JumpHostParams, exec_on_connection};
+use crate::plugin::hooks;
+
+/// Parameters for a jump host received from the frontend.
+#[derive(Debug, Clone, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct JumpHostConnectParams {
+    pub host: String,
+    pub port: u16,
+    pub username: String,
+    pub auth_method: String,
+    pub password: Option<String>,
+    pub key_path: Option<String>,
+    pub key_passphrase: Option<String>,
+}
+
+fn build_auth(
+    auth_method: &str,
+    password: Option<String>,
+    key_path: Option<String>,
+    key_passphrase: Option<String>,
+) -> Result<AuthParams, String> {
+    match auth_method {
+        "password" => Ok(AuthParams::Password(
+            password.ok_or("Password required for password auth")?,
+        )),
+        "key" => Ok(AuthParams::Key {
+            path: key_path.ok_or("Key path required for key auth")?,
+            passphrase: key_passphrase,
+        }),
+        "agent" => Ok(AuthParams::Agent),
+        _ => Err(format!("Unknown auth method: {}", auth_method)),
+    }
+}
 
 #[tauri::command]
 pub async fn ssh_connect(
@@ -15,21 +48,65 @@ pub async fn ssh_connect(
     key_passphrase: Option<String>,
     cols: u16,
     rows: u16,
+    jump_chain: Option<Vec<JumpHostConnectParams>>,
 ) -> Result<String, String> {
-    let auth = match auth_method.as_str() {
-        "password" => AuthParams::Password(password.ok_or("Password required for password auth")?),
-        "key" => AuthParams::Key {
-            path: key_path.ok_or("Key path required for key auth")?,
-            passphrase: key_passphrase,
-        },
-        "agent" => AuthParams::Agent,
-        _ => return Err(format!("Unknown auth method: {}", auth_method)),
-    };
+    let auth = build_auth(&auth_method, password, key_path, key_passphrase)?;
 
     let mut manager = state.ssh_manager.lock().await;
-    let info = manager.connect(&id, &host, port, &username, auth, cols, rows, app)
-        .await
-        .map_err(|e| e.to_string())?;
+
+    let info = if let Some(chain) = jump_chain {
+        if chain.is_empty() {
+            // No jump hosts, connect directly
+            manager
+                .connect(&id, &host, port, &username, auth, cols, rows, app.clone())
+                .await
+                .map_err(|e| e.to_string())?
+        } else {
+            // Build jump host params
+            let jump_params: Result<Vec<JumpHostParams>, String> = chain
+                .into_iter()
+                .map(|j| {
+                    let jauth = build_auth(
+                        &j.auth_method,
+                        j.password,
+                        j.key_path,
+                        j.key_passphrase,
+                    )?;
+                    Ok(JumpHostParams {
+                        host: j.host,
+                        port: j.port,
+                        username: j.username,
+                        auth: jauth,
+                    })
+                })
+                .collect();
+
+            manager
+                .connect_via_jump(
+                    &id,
+                    &host,
+                    port,
+                    &username,
+                    auth,
+                    jump_params?,
+                    cols,
+                    rows,
+                    app.clone(),
+                )
+                .await
+                .map_err(|e| e.to_string())?
+        }
+    } else {
+        manager
+            .connect(&id, &host, port, &username, auth, cols, rows, app.clone())
+            .await
+            .map_err(|e| e.to_string())?
+    };
+
+    // Dispatch plugin hook
+    let hook = hooks::session_connected(&info.id, &host, &username);
+    let mut plugin_mgr = state.plugin_manager.lock().await;
+    plugin_mgr.dispatch_hook(&hook, Some(&app));
 
     Ok(info.id)
 }
@@ -57,11 +134,20 @@ pub async fn ssh_resize(
 
 #[tauri::command]
 pub async fn ssh_disconnect(
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     connection_id: String,
 ) -> Result<(), String> {
     let mut manager = state.ssh_manager.lock().await;
-    manager.disconnect(&connection_id).map_err(|e| e.to_string())
+    manager.disconnect(&connection_id).map_err(|e| e.to_string())?;
+    drop(manager);
+
+    // Dispatch plugin hook
+    let hook = hooks::session_disconnected(&connection_id);
+    let mut plugin_mgr = state.plugin_manager.lock().await;
+    plugin_mgr.dispatch_hook(&hook, Some(&app));
+
+    Ok(())
 }
 
 #[tauri::command]
