@@ -66,6 +66,13 @@
 					(p) => p.manifest.id === manifest.id
 				);
 				if (!alreadyLoaded) {
+					// Grant manifest permissions before loading so APIs are injected
+					const config: PluginConfig = {
+						id: manifest.id,
+						enabled: true,
+						grantedPermissions: manifest.permissions ?? []
+					};
+					await pluginSetConfig(config);
 					await pluginLoad(manifest.id);
 				}
 			}
