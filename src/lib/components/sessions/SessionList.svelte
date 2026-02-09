@@ -1,10 +1,11 @@
 <script lang="ts">
 	import QuickConnect from './QuickConnect.svelte';
 	import SessionEditor from './SessionEditor.svelte';
+	import SshConfigImport from './SshConfigImport.svelte';
 	import SessionCard from './SessionCard.svelte';
 	import VaultSelector from '$lib/components/vault/VaultSelector.svelte';
 	import { sessionList, sessionDelete, sessionUpdate, type SessionConfig } from '$lib/ipc/sessions';
-	import { sshConnect, sshDisconnect, sshDetectOs } from '$lib/ipc/ssh';
+	import { sshConnect, sshDisconnect, sshDetectOs, type JumpHostConnectParams } from '$lib/ipc/ssh';
 	// Passwords are now stored encrypted in vault, not in memory cache
 	import { createTab } from '$lib/state/tabs.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
@@ -14,6 +15,7 @@
 
 	let showQuickConnect = $state(false);
 	let showEditor = $state(false);
+	let showImport = $state(false);
 	let editingSession = $state<SessionConfig | undefined>();
 	let sessions = $state<SessionConfig[]>([]);
 	let loading = $state(true);
@@ -108,6 +110,19 @@
 
 		const passwordToSave = authType === 'Password' ? connectPassword : connectKeyPassphrase;
 
+		// Build jump chain from session config if present
+		const jumpChain: JumpHostConnectParams[] | undefined = session.jump_chain && session.jump_chain.length > 0
+			? session.jump_chain.map(j => ({
+				host: j.host,
+				port: j.port,
+				username: j.username,
+				authMethod: j.auth_method.type === 'Key' ? 'key' : j.auth_method.type.toLowerCase(),
+				password: j.auth_method.type === 'Password' ? j.auth_method.password : undefined,
+				keyPath: j.auth_method.type === 'Key' ? j.auth_method.path : undefined,
+				keyPassphrase: j.auth_method.type === 'Key' ? j.auth_method.passphrase : undefined,
+			}))
+			: undefined;
+
 		try {
 			await sshConnect({
 				id,
@@ -120,6 +135,7 @@
 				keyPassphrase: authType === 'Key' && connectKeyPassphrase ? connectKeyPassphrase : undefined,
 				cols: 80,
 				rows: 24,
+				jumpChain,
 			});
 
 			createTab('ssh', `${session.username}@${session.host}`, id);
@@ -330,6 +346,19 @@
 				</svg>
 				{t('session.save_session')}
 			</button>
+			<button class="save-session-btn" onclick={() => (showImport = true)} title={t('session.import_ssh_config')}>
+				<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+					<path
+						d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"
+						stroke="currentColor"
+						stroke-width="2"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+				</svg>
+				{t('session.import_ssh_config')}
+				<span class="beta-badge">BETA</span>
+			</button>
 		</div>
 
 		<VaultSelector onvaultselect={(id) => (selectedVaultId = id)} onrefresh={() => loadSessions()} />
@@ -371,6 +400,7 @@
 
 <QuickConnect bind:open={showQuickConnect} />
 <SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={selectedVaultId} onsave={handleEditorSave} />
+<SshConfigImport bind:open={showImport} onsave={handleEditorSave} />
 
 {#if showConnectPrompt && connectSession}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -435,6 +465,17 @@
 	.actions-row {
 		display: flex;
 		gap: 4px;
+	}
+
+	.beta-badge {
+		padding: 1px 4px;
+		font-size: 0.45rem;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+		color: #fff;
+		background: linear-gradient(135deg, #ff6b35, #f7c948);
+		border-radius: 3px;
+		line-height: 1.4;
 	}
 
 	.quick-connect-btn,

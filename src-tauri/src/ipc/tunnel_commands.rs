@@ -1,5 +1,6 @@
 use crate::state::{AppState, TunnelConfig, TunnelType};
 use crate::tunnel::manager::TunnelManager;
+use crate::plugin::hooks;
 
 /// Create a new tunnel configuration.
 #[tauri::command]
@@ -29,6 +30,7 @@ pub async fn tunnel_create(
 /// Start an existing tunnel, establishing the actual port forwarding.
 #[tauri::command]
 pub async fn tunnel_start(
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     tunnel_id: String,
 ) -> Result<(), String> {
@@ -57,10 +59,17 @@ pub async fn tunnel_start(
     }
 
     // Update tunnel config in state to mark it active
+    let local_port = tunnel_config.local_port;
     let mut tunnels = state.tunnels.write().await;
     if let Some(t) = tunnels.get_mut(&tunnel_id) {
         t.active = true;
     }
+    drop(tunnels);
+
+    // Dispatch plugin hook
+    let hook = hooks::tunnel_started(&tunnel_id, local_port);
+    let mut plugin_mgr = state.plugin_manager.lock().await;
+    plugin_mgr.dispatch_hook(&hook, Some(&app));
 
     Ok(())
 }
@@ -68,6 +77,7 @@ pub async fn tunnel_start(
 /// Stop an active tunnel.
 #[tauri::command]
 pub async fn tunnel_stop(
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     tunnel_id: String,
 ) -> Result<(), String> {
@@ -92,6 +102,12 @@ pub async fn tunnel_stop(
     if let Some(t) = tunnels.get_mut(&tunnel_id) {
         t.active = false;
     }
+    drop(tunnels);
+
+    // Dispatch plugin hook
+    let hook = hooks::tunnel_stopped(&tunnel_id);
+    let mut plugin_mgr = state.plugin_manager.lock().await;
+    plugin_mgr.dispatch_hook(&hook, Some(&app));
 
     Ok(())
 }

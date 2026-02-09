@@ -1,6 +1,6 @@
 [package]
 name = "reach"
-version = "0.2.0"
+version = "0.3.0"
 description = "Cross-platform SSH & Remote Management Tool"
 authors = ["Reach Contributors"]
 edition = "2021"
@@ -32,6 +32,7 @@ uuid = { version = "1", features = ["v4"] }
 russh = { version = "0.46", default-features = false }
 russh-keys = { version = "0.46", default-features = false }
 async-trait = "0.1"
+ssh2-config = "0.7"
 
 # Encryption
 aes-gcm = "0.10"
@@ -58,6 +59,10 @@ zip = "2"
 
 # HTTP (AI API proxy)
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+
+# Lua plugin engine
+mlua = { version = "0.10", features = ["luau", "vendored", "async", "serialize", "send"] }
+toml = "0.8"
 tauri-plugin-process = "2.3.1"
 
 # PTY, Serial, Autostart, Updater (desktop only)

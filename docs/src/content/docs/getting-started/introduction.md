@@ -15,7 +15,7 @@ Reach tries to be the SSH client you actually want to use. It's free, it's fast,
 
 Here's what you get:
 
-**SSH Terminals** with tabs and split panes. You can have multiple sessions open at once, search through output, and resize panes however you like. Shell history is saved per session.
+**SSH Terminals** with tabs and split panes. You can have multiple sessions open at once, search through output, and resize panes however you like. Shell history is saved per session. Jump host (ProxyJump) support lets you connect through bastion servers with multi-hop chains.
 
 **SFTP File Explorer** that lets you browse remote file systems, upload and download files, edit text files in a built-in editor, and manage permissions. It works like a regular file manager.
 

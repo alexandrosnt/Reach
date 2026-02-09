@@ -3,7 +3,7 @@
 //! All sessions are stored encrypted in SQLite using XChaCha20-Poly1305.
 //! Lookups are O(1) using session_id as the primary key.
 
-use crate::state::{AppState, AuthMethod, Folder, SessionConfig};
+use crate::state::{AppState, AuthMethod, Folder, JumpHostConfig, SessionConfig};
 use crate::vault::types::SecretCategory;
 use secrecy::SecretBox;
 use tauri::State;
@@ -131,6 +131,7 @@ pub async fn session_create(
     folder_id: Option<String>,
     tags: Vec<String>,
     vault_id: Option<String>,
+    jump_chain: Option<Vec<JumpHostConfig>>,
 ) -> Result<SessionConfig, String> {
     let mut manager = state.vault_manager.lock().await;
 
@@ -168,6 +169,7 @@ pub async fn session_create(
         } else {
             None
         },
+        jump_chain,
     };
 
     let json = serde_json::to_string(&session).map_err(|e| e.to_string())?;

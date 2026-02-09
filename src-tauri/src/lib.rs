@@ -1,4 +1,5 @@
 pub mod playbook;
+pub mod plugin;
 pub mod ipc;
 pub mod monitoring;
 #[cfg(desktop)]
@@ -21,6 +22,7 @@ use tracing_subscriber::EnvFilter;
 
 use ipc::ai_commands::*;
 use ipc::playbook_commands::*;
+use ipc::plugin_commands::*;
 use ipc::credential_commands::*;
 use ipc::settings_commands::*;
 use ipc::monitoring_commands::*;
@@ -31,6 +33,7 @@ use ipc::serial_commands::*;
 use ipc::session_commands::*;
 use ipc::sftp_commands::*;
 use ipc::ssh_commands::*;
+use ipc::sshconfig_commands::*;
 use ipc::terraform_commands::*;
 use ipc::toolchain_commands::*;
 use ipc::tunnel_commands::*;
@@ -92,6 +95,10 @@ pub fn run() {
             ssh_resize,
             ssh_list_connections,
             ssh_detect_os,
+            // SSH Config commands
+            sshconfig_list_hosts,
+            sshconfig_resolve_host,
+            sshconfig_exists,
             // SFTP commands
             sftp_list_dir,
             sftp_upload,
@@ -222,6 +229,19 @@ pub fn run() {
             // Toolchain commands
             toolchain_check,
             toolchain_install,
+            // Plugin commands
+            plugin_discover,
+            plugin_load,
+            plugin_unload,
+            plugin_reload,
+            plugin_list,
+            plugin_call_action,
+            plugin_get_ui,
+            plugin_get_config,
+            plugin_set_config,
+            plugin_get_dir,
+            plugin_set_dir,
+            plugin_dispatch_hook,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
@@ -238,6 +258,10 @@ pub fn run() {
             ssh_resize,
             ssh_list_connections,
             ssh_detect_os,
+            // SSH Config commands
+            sshconfig_list_hosts,
+            sshconfig_resolve_host,
+            sshconfig_exists,
             // SFTP commands
             sftp_list_dir,
             sftp_upload,
@@ -358,6 +382,19 @@ pub fn run() {
             // Toolchain commands
             toolchain_check,
             toolchain_install,
+            // Plugin commands
+            plugin_discover,
+            plugin_load,
+            plugin_unload,
+            plugin_reload,
+            plugin_list,
+            plugin_call_action,
+            plugin_get_ui,
+            plugin_get_config,
+            plugin_set_config,
+            plugin_get_dir,
+            plugin_set_dir,
+            plugin_dispatch_hook,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,

@@ -4,9 +4,10 @@
 	import PlaybookPanel from '$lib/components/playbook/PlaybookPanel.svelte';
 	import TunnelManager from '$lib/components/tunnel/TunnelManager.svelte';
 	import TerraformPanel from '$lib/components/terraform/TerraformPanel.svelte';
+	import PluginPanel from '$lib/components/plugin/PluginPanel.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
-	type Section = 'sessions' | 'explorer' | 'playbook' | 'tunnels' | 'terraform';
+	type Section = 'sessions' | 'explorer' | 'playbook' | 'tunnels' | 'terraform' | 'plugins';
 
 	const STORAGE_KEY = 'reach-sidebar-width';
 	const MIN_WIDTH = 160;
@@ -42,7 +43,7 @@
 		} catch {}
 	}
 
-	let sections = $derived<Array<{ id: Section; label: string; icon: string; beta?: boolean }>>([
+	let sections = $derived<Array<{ id: Section; label: string; icon: string; beta?: boolean; isNew?: boolean }>>([
 		{
 			id: 'sessions',
 			label: t('sidebar.sessions'),
@@ -69,6 +70,13 @@
 			label: t('sidebar.terraform'),
 			icon: 'M1 3.5l9.5 5.5v11L1 14.5V3.5zM20.5 3.5L11 9v11l9.5-5.5V3.5zM1 3.5L10.5 9 20.5 3.5 11 0 1 3.5z',
 			beta: true
+		},
+		{
+			id: 'plugins',
+			label: t('sidebar.plugins'),
+			icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z',
+			beta: true,
+			isNew: true
 		}
 	]);
 
@@ -132,8 +140,11 @@
 
 				{#if !collapsed}
 					<span class="nav-label">{section.label}</span>
-					{#if section.beta}
-						<span class="beta-badge">BETA</span>
+					{#if section.beta || section.isNew}
+						<span class="badge-group">
+							{#if section.beta}<span class="beta-badge">BETA</span>{/if}
+							{#if section.isNew}<span class="new-badge">NEW</span>{/if}
+						</span>
 					{/if}
 				{/if}
 			</button>
@@ -156,6 +167,8 @@
 					<TunnelManager {connectionId} />
 				{:else if activeSection === 'terraform'}
 					<TerraformPanel />
+				{:else if activeSection === 'plugins'}
+					<PluginPanel {connectionId} />
 				{/if}
 			</div>
 		</div>
@@ -243,8 +256,14 @@
 		text-overflow: ellipsis;
 	}
 
-	.beta-badge {
+	.badge-group {
 		margin-left: auto;
+		display: flex;
+		gap: 3px;
+		flex-shrink: 0;
+	}
+
+	.beta-badge {
 		padding: 1px 4px;
 		font-size: 0.5rem;
 		font-weight: 700;
@@ -252,6 +271,19 @@
 		color: rgb(255, 159, 10);
 		background-color: rgba(255, 159, 10, 0.12);
 		border: 1px solid rgba(255, 159, 10, 0.25);
+		border-radius: 3px;
+		line-height: 1.2;
+		flex-shrink: 0;
+	}
+
+	.new-badge {
+		padding: 1px 4px;
+		font-size: 0.5rem;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+		color: rgb(48, 209, 88);
+		background-color: rgba(48, 209, 88, 0.12);
+		border: 1px solid rgba(48, 209, 88, 0.25);
 		border-radius: 3px;
 		line-height: 1.2;
 		flex-shrink: 0;

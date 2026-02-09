@@ -7,6 +7,13 @@ export interface AuthMethod {
   passphrase?: string; // for Key type - stored encrypted in vault
 }
 
+export interface JumpHostConfig {
+  host: string;
+  port: number;
+  username: string;
+  auth_method: AuthMethod;
+}
+
 export interface SessionConfig {
   id: string;
   name: string;
@@ -18,6 +25,7 @@ export interface SessionConfig {
   tags: string[];
   detected_os?: string | null;
   vault_id?: string | null; // Which vault this session belongs to
+  jump_chain?: JumpHostConfig[] | null; // ProxyJump chain
 }
 
 export interface Folder {
@@ -43,6 +51,7 @@ export async function sessionCreate(params: {
   folderId: string | null;
   tags: string[];
   vaultId?: string | null;
+  jumpChain?: JumpHostConfig[] | null;
 }): Promise<SessionConfig> {
   return invoke<SessionConfig>('session_create', {
     name: params.name,
@@ -53,6 +62,7 @@ export async function sessionCreate(params: {
     folderId: params.folderId,
     tags: params.tags,
     vaultId: params.vaultId ?? null,
+    jumpChain: params.jumpChain ?? null,
   });
 }
 
