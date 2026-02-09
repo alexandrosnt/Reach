@@ -32,7 +32,9 @@ export default defineConfig({
 						{ label: 'Playbooks', slug: 'features/playbooks' },
 						{ label: 'System Monitoring', slug: 'features/monitoring' },
 						{ label: 'Serial Console', slug: 'features/serial' },
-						{ label: 'AI Assistant', slug: 'features/ai-assistant' },
+						{ label: 'Jump Hosts & SSH Config', slug: 'features/jump-hosts' },
+					{ label: 'Plugins', slug: 'features/plugins' },
+					{ label: 'AI Assistant', slug: 'features/ai-assistant' },
 					],
 				},
 				{
