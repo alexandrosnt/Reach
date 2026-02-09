@@ -134,6 +134,12 @@ graph LR
 
 ## Changelog
 
+### v0.2.2
+- Fixed plugin button actions (e.g. Refresh) failing when calling async host API functions like `reach.ssh.exec()`
+- Fixed plugin hooks not awaiting async Lua calls, causing `reach.ssh.exec()` to silently return errors
+- Plugins now auto-load on app startup instead of requiring manual activation via Settings > Plugins
+- Fixed SFTP upload/download completion hooks not awaiting async plugin dispatch
+
 ### v0.2.1
 - Jump host (ProxyJump) support — connect through bastion servers with multi-hop SSH tunneling via russh direct-tcpip channels
 - SSH config import — parse and import hosts from `~/.ssh/config` with automatic ProxyJump chain resolution (cross-platform)
