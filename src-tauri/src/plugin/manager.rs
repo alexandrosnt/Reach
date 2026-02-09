@@ -220,7 +220,7 @@ impl PluginManager {
     }
 
     /// Call an action function in a plugin's Lua VM.
-    pub fn call_action(
+    pub async fn call_action(
         &mut self,
         plugin_id: &str,
         action: &str,
@@ -241,7 +241,7 @@ impl PluginManager {
             Ok(func) => {
                 let lua_val = mlua::LuaSerdeExt::to_value(lua, &params)
                     .map_err(|e| e.to_string())?;
-                match func.call::<mlua::Value>(lua_val) {
+                match func.call_async::<mlua::Value>(lua_val).await {
                     Ok(result) => {
                         // Check if result is a table (UI elements)
                         if let mlua::Value::Table(_) = &result {
@@ -275,7 +275,7 @@ impl PluginManager {
     }
 
     /// Dispatch a hook event to all registered plugins.
-    pub fn dispatch_hook(
+    pub async fn dispatch_hook(
         &mut self,
         event: &HookEvent,
         app_handle: Option<&tauri::AppHandle>,
@@ -296,7 +296,7 @@ impl PluginManager {
                     if let Ok(func) = lua.globals().get::<mlua::Function>(&*func_name) {
                         let lua_val = mlua::LuaSerdeExt::to_value(lua, &event.data).ok();
                         if let Some(val) = lua_val {
-                            if let Err(e) = func.call::<()>(val) {
+                            if let Err(e) = func.call_async::<()>(val).await {
                                 tracing::warn!(
                                     "Plugin '{}' hook '{}' error: {}",
                                     plugin_id,

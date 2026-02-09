@@ -103,12 +103,18 @@ pub async fn ssh_connect(
             .map_err(|e| e.to_string())?
     };
 
-    // Dispatch plugin hook
-    let hook = hooks::session_connected(&info.id, &host, &username);
-    let mut plugin_mgr = state.plugin_manager.lock().await;
-    plugin_mgr.dispatch_hook(&hook, Some(&app));
+    let connection_id = info.id.clone();
 
-    Ok(info.id)
+    // Drop ssh_manager lock BEFORE dispatching plugin hooks
+    // (plugins may call reach.ssh.exec which needs the lock)
+    drop(manager);
+
+    // Dispatch plugin hook
+    let hook = hooks::session_connected(&connection_id, &host, &username);
+    let mut plugin_mgr = state.plugin_manager.lock().await;
+    plugin_mgr.dispatch_hook(&hook, Some(&app)).await;
+
+    Ok(connection_id)
 }
 
 #[tauri::command]
@@ -145,7 +151,7 @@ pub async fn ssh_disconnect(
     // Dispatch plugin hook
     let hook = hooks::session_disconnected(&connection_id);
     let mut plugin_mgr = state.plugin_manager.lock().await;
-    plugin_mgr.dispatch_hook(&hook, Some(&app));
+    plugin_mgr.dispatch_hook(&hook, Some(&app)).await;
 
     Ok(())
 }

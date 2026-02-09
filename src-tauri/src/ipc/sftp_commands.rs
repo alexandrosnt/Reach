@@ -58,7 +58,7 @@ pub async fn sftp_upload(
         } else {
             let hook = hooks::sftp_upload_complete(&conn_id, &rpath);
             let mut mgr = plugin_mgr.lock().await;
-            mgr.dispatch_hook(&hook, Some(&app));
+            mgr.dispatch_hook(&hook, Some(&app)).await;
         }
     });
 
@@ -95,7 +95,7 @@ pub async fn sftp_download(
         } else {
             let hook = hooks::sftp_download_complete(&conn_id, &rpath, &lpath);
             let mut mgr = plugin_mgr.lock().await;
-            mgr.dispatch_hook(&hook, Some(&app));
+            mgr.dispatch_hook(&hook, Some(&app)).await;
         }
     });
 
