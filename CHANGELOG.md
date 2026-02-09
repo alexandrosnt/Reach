@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.2.2
+
+### Bug Fixes
+
+- **Plugin async actions** — Fixed plugin button actions (e.g. Refresh) failing when calling async host API functions like `reach.ssh.exec()`. Actions now properly await async operations.
+- **Plugin async hooks** — Fixed plugin hooks (`session:connected`, `session:disconnected`, etc.) not awaiting async Lua calls, causing `reach.ssh.exec()` to silently fail in hook handlers.
+- **Plugin auto-loading** — Plugins now automatically discover and load on app startup instead of requiring manual activation via Settings > Plugins.
+- **SFTP hook dispatch** — Fixed upload/download completion hooks not awaiting async plugin dispatch.
+
+---
+
 ## v0.2.1
 
 ### New Features

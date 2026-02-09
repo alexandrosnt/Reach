@@ -69,7 +69,7 @@ pub async fn tunnel_start(
     // Dispatch plugin hook
     let hook = hooks::tunnel_started(&tunnel_id, local_port);
     let mut plugin_mgr = state.plugin_manager.lock().await;
-    plugin_mgr.dispatch_hook(&hook, Some(&app));
+    plugin_mgr.dispatch_hook(&hook, Some(&app)).await;
 
     Ok(())
 }
@@ -107,7 +107,7 @@ pub async fn tunnel_stop(
     // Dispatch plugin hook
     let hook = hooks::tunnel_stopped(&tunnel_id);
     let mut plugin_mgr = state.plugin_manager.lock().await;
-    plugin_mgr.dispatch_hook(&hook, Some(&app));
+    plugin_mgr.dispatch_hook(&hook, Some(&app)).await;
 
     Ok(())
 }

@@ -472,6 +472,14 @@ pub fn run() {
             }
 
             let handle = app.handle().clone();
+
+            // Clone state arcs for plugin auto-loading
+            let app_state = app.state::<AppState>();
+            let ssh_mgr = app_state.ssh_manager.clone();
+            let tunnel_mgr = app_state.tunnel_manager.clone();
+            let vault_mgr = app_state.vault_manager.clone();
+            let plugin_mgr = app_state.plugin_manager.clone();
+
             tauri::async_runtime::spawn(async move {
                 let app_data_dir = match handle.path().app_data_dir() {
                     Ok(dir) => dir,
@@ -487,6 +495,60 @@ pub fn run() {
                 }
 
                 tracing::info!("App data directory ready: {:?}", app_data_dir);
+
+                // Auto-load plugins on startup
+                let saved_configs = {
+                    let vm = vault_mgr.lock().await;
+                    plugin::storage::load_plugin_configs(&vm)
+                        .await
+                        .unwrap_or_default()
+                };
+
+                let config_map: std::collections::HashMap<String, plugin::schema::PluginConfig> =
+                    saved_configs
+                        .into_iter()
+                        .map(|c| (c.id.clone(), c))
+                        .collect();
+
+                let mut pm = plugin_mgr.lock().await;
+                if let Ok(manifests) = pm.discover_plugins() {
+                    for manifest in manifests {
+                        let config =
+                            config_map.get(&manifest.id).cloned().unwrap_or_else(|| {
+                                plugin::schema::PluginConfig {
+                                    id: manifest.id.clone(),
+                                    enabled: true,
+                                    granted_permissions: manifest.permissions.clone(),
+                                }
+                            });
+                        if config.enabled {
+                            match pm.load_plugin(
+                                &manifest.id,
+                                config,
+                                ssh_mgr.clone(),
+                                tunnel_mgr.clone(),
+                                vault_mgr.clone(),
+                                Some(handle.clone()),
+                            ) {
+                                Ok(info) => {
+                                    tracing::info!(
+                                        "Auto-loaded plugin: {} ({}) [{:?}]",
+                                        info.manifest.name,
+                                        info.manifest.id,
+                                        info.status,
+                                    );
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "Failed to auto-load plugin {}: {}",
+                                        manifest.id,
+                                        e,
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }
             });
             Ok(())
         })

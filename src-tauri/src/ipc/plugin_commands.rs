@@ -107,7 +107,7 @@ pub async fn plugin_call_action(
     params: serde_json::Value,
 ) -> Result<Option<PluginUiState>, String> {
     let mut manager = state.plugin_manager.lock().await;
-    let result = manager.call_action(&plugin_id, &action, params)?;
+    let result = manager.call_action(&plugin_id, &action, params).await?;
 
     // Emit UI update event if there's a new UI state
     if let Some(ref ui_state) = result {
@@ -178,6 +178,6 @@ pub async fn plugin_dispatch_hook(
 ) -> Result<(), String> {
     let event = HookEvent { event_name, data };
     let mut manager = state.plugin_manager.lock().await;
-    manager.dispatch_hook(&event, Some(&app));
+    manager.dispatch_hook(&event, Some(&app)).await;
     Ok(())
 }
