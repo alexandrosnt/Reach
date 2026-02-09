@@ -40,6 +40,7 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 - **SSH Terminal** · Full interactive shell with WebGL rendering. Tabs, split views, and resize that actually works.
 - **SFTP File Explorer** · Browse remote filesystems, drag-and-drop transfers, inline editing. Feels like a local file manager.
 - **Session Manager** · Save connections with folders and tags. Credentials are encrypted at rest, not stored in plaintext configs.
+- **Jump Host (ProxyJump)** · Connect through bastion servers with multi-hop SSH tunneling. Import hosts directly from `~/.ssh/config`.
 
 ### Productivity
 
@@ -53,6 +54,7 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 - **Serial Console** · Talk to routers, switches, and embedded devices over COM/TTY.
 - **AI Assistant** · Optional AI integration for command suggestions and troubleshooting (bring your own API key).
 - **Encrypted Vault** · Store secrets, credentials, and SSH keys in an encrypted vault with cloud sync support.
+- **Lua Plugins** · Extend Reach with sandboxed Lua scripts. Access SSH, storage, and UI hooks through the host API.
 - **Auto-Updates** · The app checks for updates on startup and periodically while running. No manual downloads.
 
 ## Tech
@@ -131,6 +133,14 @@ graph LR
 ```
 
 ## Changelog
+
+### v0.2.1
+- Jump host (ProxyJump) support — connect through bastion servers with multi-hop SSH tunneling via russh direct-tcpip channels
+- SSH config import — parse and import hosts from `~/.ssh/config` with automatic ProxyJump chain resolution (cross-platform)
+- Lua plugin system (beta) — sandboxed Lua VMs with host API for SSH commands, storage, and UI hooks
+- Session editor and Quick Connect now support jump host configuration with per-hop auth settings
+- New Plugins tab in Settings for managing Lua plugins
+- 19 new i18n keys across all 6 locales
 
 ### v0.2.0
 - Fixed drag-and-drop file uploads stacking and freezing — uploads now run sequentially instead of flooding the SSH connection
