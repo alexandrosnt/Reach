@@ -183,5 +183,5 @@ graph LR
 Contributions are welcome. Bug reports, feature ideas, and pull requests all help. If you're picking up a larger feature, open an issue first so we can talk about the approach.
 
 ## License
-
-Source-available. You can view the code, use it personally, and contribute back. Commercial use and redistribution require permission. See [LICENSE](LICENSE) for the full terms.
+Licensed under the MIT License.
+This project is free software: you are allowed to use, modify, and redistribute it for personal, academic, or commercial purposes under the terms of the MIT license. See the [LICENSE](LICENSE) file for full details.
