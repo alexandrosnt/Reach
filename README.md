@@ -12,7 +12,7 @@
 <p align="center">
   <img src="https://img.shields.io/github/v/release/alexandrosnt/Reach?style=flat-square&color=0a84ff" alt="Release" />
   <img src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-333?style=flat-square" alt="Platforms" />
-  <img src="https://img.shields.io/github/license/alexandrosnt/Reach?style=flat-square" alt="License" />
+  <img src="https://img.shields.io/github/license/alexandrosnt/Reach?style=flat-square?cacheSeconds=60" alt="License" />
 </p>
 
 <p align="center">
