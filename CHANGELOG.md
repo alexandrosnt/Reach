@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.2.3
+
+### Bug Fixes
+
+- **Linux Wayland crash** — Fixed app failing to launch on Wayland with `Error 71 (Protocol error)` by disabling the WebKitGTK DMA-BUF renderer on Linux. Affects KDE Plasma, GNOME, Sway, and other Wayland compositors, especially with NVIDIA proprietary drivers.
+
+---
+
 ## v0.2.2
 
 ### Bug Fixes

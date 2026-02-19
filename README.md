@@ -134,6 +134,9 @@ graph LR
 
 ## Changelog
 
+### v0.2.3
+- Fixed app failing to launch on Linux Wayland (Error 71 Protocol error) by disabling the WebKitGTK DMA-BUF renderer. Affects KDE Plasma, GNOME, Sway, especially with NVIDIA drivers.
+
 ### v0.2.2
 - Fixed plugin button actions (e.g. Refresh) failing when calling async host API functions like `reach.ssh.exec()`
 - Fixed plugin hooks not awaiting async Lua calls, causing `reach.ssh.exec()` to silently return errors
