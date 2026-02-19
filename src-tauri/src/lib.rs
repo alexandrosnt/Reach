@@ -60,6 +60,15 @@ pub fn run() {
 
     tracing::info!("Starting Reach application");
 
+    // Work around WebKitGTK DMA-BUF protocol errors on Wayland (KDE Plasma, etc.)
+    #[cfg(target_os = "linux")]
+    {
+        if std::env::var("WEBKIT_DISABLE_DMABUF_RENDERER").is_err() {
+            std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
+            tracing::info!("Set WEBKIT_DISABLE_DMABUF_RENDERER=1 for Wayland compatibility");
+        }
+    }
+
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())

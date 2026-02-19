@@ -1,6 +1,6 @@
 [package]
 name = "reach"
-version = "0.2.2"
+version = "0.2.3"
 description = "Cross-platform SSH & Remote Management Tool"
 authors = ["Reach Contributors"]
 edition = "2021"
