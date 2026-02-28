@@ -48,6 +48,11 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 - **Multi-Exec** · Broadcast the same command to 10 servers at once. Handy for fleet updates.
 - **System Monitoring** · Live CPU, memory, and disk stats from connected hosts without installing agents.
 
+### Infrastructure as Code
+
+- **Ansible** · Manage playbooks, inventories, roles, and collections. Run playbooks and ad-hoc commands with streaming output. Encrypts/decrypts files with ansible-vault. On Windows, automatically runs through WSL.
+- **OpenTofu** · Plan, apply, and destroy infrastructure. Browse state, manage providers and modules. Full workspace with file editor and streaming command output.
+
 ### Extras
 
 - **Serial Console** · Talk to routers, switches, and embedded devices over COM/TTY.
@@ -115,6 +120,8 @@ graph LR
   components --> tunnel["📄 tunnel · Port forwarding UI"]
   components --> vault["📄 vault · Encrypted secrets"]
   components --> ai["📄 ai · AI assistant panel"]
+  components --> ansible["📄 ansible · Ansible automation"]
+  components --> tofu["📄 tofu · OpenTofu IaC"]
   components --> settings["📄 settings · App preferences"]
   components --> shared["📄 shared · Button, Modal, Toast"]
 
@@ -126,10 +133,20 @@ graph LR
   taurisrc --> pty["📄 pty · Local terminal (desktop)"]
   taurisrc --> serial["📄 serial · Serial port (desktop)"]
   taurisrc --> monitoring["📄 monitoring · Remote system stats"]
+  taurisrc --> ansible["📄 ansible · Ansible project & runner"]
+  taurisrc --> tofu["📄 tofu · OpenTofu project & runner"]
   taurisrc --> tipc["📄 ipc · Tauri command handlers"]
 ```
 
 ## Changelog
+
+### v0.3.0
+- **Ansible integration** — Full Ansible UI with project management, playbook execution, inventory editor, roles/collections management, ad-hoc commands, and vault encrypt/decrypt
+- **OpenTofu integration** — Infrastructure-as-Code workspace with project management, plan/apply/destroy, state inspection, and provider/module management
+- **WSL auto-detection** — On Windows, Ansible commands automatically route through WSL with two-step status checks (WSL available + Ansible installed)
+- **Toolchain installer** — One-click install for Ansible (via pip/pipx, or through WSL on Windows) and OpenTofu (direct binary download)
+- Streaming command output with color-coded stdout/stderr for both Ansible and OpenTofu operations
+- Vault-backed project storage — all IaC projects are encrypted at rest alongside sessions and credentials
 
 ### v0.2.3
 - Fixed app failing to launch on Linux Wayland (Error 71 Protocol error) by disabling the WebKitGTK DMA-BUF renderer. Affects KDE Plasma, GNOME, Sway, especially with NVIDIA drivers.

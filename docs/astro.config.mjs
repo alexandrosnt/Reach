@@ -29,12 +29,13 @@ export default defineConfig({
 						{ label: 'Session Manager', slug: 'features/sessions' },
 						{ label: 'File Explorer (SFTP)', slug: 'features/file-explorer' },
 						{ label: 'Port Tunneling', slug: 'features/tunnels' },
-	
 						{ label: 'System Monitoring', slug: 'features/monitoring' },
 						{ label: 'Serial Console', slug: 'features/serial' },
 						{ label: 'Jump Hosts & SSH Config', slug: 'features/jump-hosts' },
-					{ label: 'Plugins', slug: 'features/plugins' },
-					{ label: 'AI Assistant', slug: 'features/ai-assistant' },
+						{ label: 'Ansible', slug: 'features/ansible' },
+						{ label: 'OpenTofu', slug: 'features/opentofu' },
+						{ label: 'Plugins', slug: 'features/plugins' },
+						{ label: 'AI Assistant', slug: 'features/ai-assistant' },
 					],
 				},
 				{
