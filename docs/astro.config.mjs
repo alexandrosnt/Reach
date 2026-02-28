@@ -9,6 +9,7 @@ export default defineConfig({
 	integrations: [
 		starlight({
 			title: 'Reach Docs',
+			customCss: ['./src/styles/custom.css'],
 			logo: {
 				src: './src/assets/reach-logo.png',
 			},
