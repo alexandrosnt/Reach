@@ -44,7 +44,6 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 
 ### Productivity
 
-- **Playbooks** · Write YAML scripts to automate deployments and maintenance across multiple servers. Think Ansible-lite, built in.
 - **Port Tunneling** · Local, remote, and dynamic SOCKS forwarding. Set it up once, save it with the session.
 - **Multi-Exec** · Broadcast the same command to 10 servers at once. Handy for fleet updates.
 - **System Monitoring** · Live CPU, memory, and disk stats from connected hosts without installing agents.
@@ -114,7 +113,6 @@ graph LR
   components --> explorer["📄 explorer · SFTP file browser"]
   components --> sessions["📄 sessions · Connection manager"]
   components --> tunnel["📄 tunnel · Port forwarding UI"]
-  components --> playbook["📄 playbook · Editor and runner"]
   components --> vault["📄 vault · Encrypted secrets"]
   components --> ai["📄 ai · AI assistant panel"]
   components --> settings["📄 settings · App preferences"]
@@ -128,7 +126,6 @@ graph LR
   taurisrc --> pty["📄 pty · Local terminal (desktop)"]
   taurisrc --> serial["📄 serial · Serial port (desktop)"]
   taurisrc --> monitoring["📄 monitoring · Remote system stats"]
-  taurisrc --> tplaybook["📄 playbook · Execution engine"]
   taurisrc --> tipc["📄 ipc · Tauri command handlers"]
 ```
 
@@ -156,14 +153,9 @@ graph LR
 - Fixed silent upload failures — errors now show a toast notification instead of being swallowed
 - Added feedback when dragging files from browsers or apps that don't provide file paths
 - Added copy button to every AI chat message (appears on hover)
-- Updated docs for the native playbook engine and removed snippets page
+- Updated docs and removed snippets page
 
 ### v0.1.9
-- Replaced Ansible integration with a native Rust playbook engine — no Python or external tools required
-- Playbooks use Ansible-compatible YAML and execute directly over SSH from any platform including Windows
-- Supports 8 modules: shell, command, copy, file, apt, systemd/service, lineinfile, template
-- Streaming output, cancellation, variable interpolation, conditional execution (when), and register support
-- Save and load playbook projects from the encrypted vault
 - Updated app preloader to use the actual app icon
 
 ### v0.1.8

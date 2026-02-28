@@ -7,14 +7,15 @@ use std::sync::Mutex;
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 
-use crate::playbook::schema::PlaybookRun;
 use crate::monitoring::collector::MonitoringCollector;
 #[cfg(desktop)]
 use crate::pty::manager::PtyManager;
 #[cfg(desktop)]
 use crate::serial::port::SerialManager;
 use crate::ssh::client::SshManager;
-use crate::terraform::types::TerraformRun;
+use crate::ansible::project::AnsibleProjectManager;
+use crate::tofu::project::TofuProjectManager;
+use crate::tofu::types::SchemaCache;
 use crate::tunnel::manager::TunnelManager;
 use crate::vault::VaultManager;
 use crate::plugin::manager::PluginManager;
@@ -114,16 +115,12 @@ pub struct SystemStats {
 /// All collections are behind `Arc<RwLock<_>>` for safe concurrent access
 /// from multiple Tauri command handlers.
 ///
-/// Note: Sessions, folders, playbooks, credentials, and settings are all
+/// Note: Sessions, folders, credentials, and settings are all
 /// stored encrypted in the vault (SQLite + XChaCha20-Poly1305).
 pub struct AppState {
     pub ssh_manager: Arc<tokio::sync::Mutex<SshManager>>,
     pub tunnels: Arc<RwLock<HashMap<String, TunnelConfig>>>,
     pub monitoring: Arc<RwLock<HashMap<String, SystemStats>>>,
-    /// Ephemeral playbook run state (not persisted)
-    pub playbook_runs: Arc<RwLock<HashMap<String, PlaybookRun>>>,
-    /// Cancellation tokens for running playbooks
-    pub playbook_cancel_tokens: Arc<tokio::sync::Mutex<HashMap<String, tokio_util::sync::CancellationToken>>>,
     #[cfg(desktop)]
     pub pty_manager: Arc<Mutex<PtyManager>>,
     pub monitoring_collector: Arc<tokio::sync::Mutex<MonitoringCollector>>,
@@ -131,11 +128,10 @@ pub struct AppState {
     #[cfg(desktop)]
     pub serial_manager: Arc<tokio::sync::Mutex<SerialManager>>,
     pub vault_manager: Arc<tokio::sync::Mutex<VaultManager>>,
-    /// Ephemeral terraform run state (not persisted)
-    pub terraform_runs: Arc<RwLock<HashMap<String, TerraformRun>>>,
-    /// Handles for local terraform child processes (for cancellation)
-    pub terraform_processes: Arc<tokio::sync::Mutex<HashMap<String, tokio::process::Child>>>,
     pub plugin_manager: Arc<tokio::sync::Mutex<PluginManager>>,
+    pub ansible_project_manager: Arc<tokio::sync::Mutex<AnsibleProjectManager>>,
+    pub tofu_project_manager: Arc<tokio::sync::Mutex<TofuProjectManager>>,
+    pub tofu_schema_cache: Arc<tokio::sync::Mutex<SchemaCache>>,
     pub close_to_tray: AtomicBool,
 }
 
@@ -150,8 +146,6 @@ impl AppState {
             ssh_manager: Arc::new(tokio::sync::Mutex::new(SshManager::new())),
             tunnels: Arc::new(RwLock::new(HashMap::new())),
             monitoring: Arc::new(RwLock::new(HashMap::new())),
-            playbook_runs: Arc::new(RwLock::new(HashMap::new())),
-            playbook_cancel_tokens: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
             #[cfg(desktop)]
             pty_manager: Arc::new(Mutex::new(PtyManager::new())),
             monitoring_collector: Arc::new(tokio::sync::Mutex::new(MonitoringCollector::new())),
@@ -160,8 +154,9 @@ impl AppState {
             serial_manager: Arc::new(tokio::sync::Mutex::new(SerialManager::new())),
             vault_manager: Arc::new(tokio::sync::Mutex::new(VaultManager::new(app_dir.clone()))),
             plugin_manager: Arc::new(tokio::sync::Mutex::new(PluginManager::new(app_dir.join("plugins")))),
-            terraform_runs: Arc::new(RwLock::new(HashMap::new())),
-            terraform_processes: Arc::new(tokio::sync::Mutex::new(HashMap::new())),
+            ansible_project_manager: Arc::new(tokio::sync::Mutex::new(AnsibleProjectManager::new())),
+            tofu_project_manager: Arc::new(tokio::sync::Mutex::new(TofuProjectManager::new())),
+            tofu_schema_cache: Arc::new(tokio::sync::Mutex::new(SchemaCache::default())),
             close_to_tray: AtomicBool::new(false),
         }
     }

@@ -28,6 +28,8 @@ pub const CREDENTIALS_VAULT: &str = "__credentials__";
 pub const FOLDERS_VAULT: &str = "__folders__";
 pub const PLAYBOOKS_VAULT: &str = "__playbooks__";
 pub const SETTINGS_VAULT: &str = "__settings__";
+pub const TOFU_PROJECTS_VAULT: &str = "__tofu_projects__";
+pub const ANSIBLE_PROJECTS_VAULT: &str = "__ansible_projects__";
 
 /// Vault connection state.
 pub struct VaultConnection {
@@ -435,7 +437,7 @@ impl VaultManager {
             // Ensure we're unlocked to decrypt local secrets
             let _ = self.kek.as_ref().ok_or(VaultError::Locked)?;
             let internal_names =
-                [SESSIONS_VAULT, CREDENTIALS_VAULT, FOLDERS_VAULT, PLAYBOOKS_VAULT, SETTINGS_VAULT];
+                [SESSIONS_VAULT, CREDENTIALS_VAULT, FOLDERS_VAULT, PLAYBOOKS_VAULT, SETTINGS_VAULT, TOFU_PROJECTS_VAULT, ANSIBLE_PROJECTS_VAULT];
 
             // Step 1: Read and decrypt all secrets from local vaults
             let mut all_secrets: Vec<(String, String, SecretCategory, SecretBox<Vec<u8>>)> =
@@ -600,6 +602,8 @@ impl VaultManager {
                     FOLDERS_VAULT,
                     PLAYBOOKS_VAULT,
                     SETTINGS_VAULT,
+                    TOFU_PROJECTS_VAULT,
+                    ANSIBLE_PROJECTS_VAULT,
                 ] {
                     self.vault_names.insert(name.to_string(), vault_id.clone());
                 }
@@ -680,6 +684,8 @@ impl VaultManager {
                 FOLDERS_VAULT,
                 PLAYBOOKS_VAULT,
                 SETTINGS_VAULT,
+                TOFU_PROJECTS_VAULT,
+                ANSIBLE_PROJECTS_VAULT,
             ] {
                 self.vault_names.insert(name.to_string(), unified_id.clone());
             }
@@ -700,6 +706,8 @@ impl VaultManager {
             FOLDERS_VAULT,
             PLAYBOOKS_VAULT,
             SETTINGS_VAULT,
+            TOFU_PROJECTS_VAULT,
+            ANSIBLE_PROJECTS_VAULT,
         ] {
             if self.vault_names.get(name).is_some() {
                 continue; // Already open
@@ -2262,6 +2270,8 @@ impl VaultManager {
                 FOLDERS_VAULT,
                 PLAYBOOKS_VAULT,
                 SETTINGS_VAULT,
+                TOFU_PROJECTS_VAULT,
+                ANSIBLE_PROJECTS_VAULT,
             ] {
                 internal_vault_ids.insert(name.to_string(), uid.clone());
             }

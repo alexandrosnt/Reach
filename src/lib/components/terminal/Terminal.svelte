@@ -129,6 +129,7 @@
 			}
 
 			if (event.ctrlKey && event.key === 'v') {
+				event.preventDefault();
 				navigator.clipboard.readText().then((text) => {
 					if (text) term.paste(text);
 				});
