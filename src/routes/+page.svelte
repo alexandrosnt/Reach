@@ -1,14 +1,18 @@
 <script lang="ts">
 	import { getTabs, getActiveTab, updateTabTitle } from '$lib/state/tabs.svelte';
+	import { getActivePage } from '$lib/state/navigation.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { ptySpawn, ptyClose } from '$lib/ipc/pty';
 	import { sshDisconnect } from '$lib/ipc/ssh';
 	import { monitoringStart, monitoringStop, monitoringGetStats } from '$lib/ipc/monitoring';
 	import { updateStats, removeStats } from '$lib/state/monitoring.svelte';
-	import { getEditorFile } from '$lib/state/editor.svelte';
 	import Terminal from '$lib/components/terminal/Terminal.svelte';
 	import MonitoringBar from '$lib/components/terminal/MonitoringBar.svelte';
-	import FileEditorOverlay from '$lib/components/editor/FileEditorOverlay.svelte';
+	import AnsiblePage from '$lib/components/ansible/AnsiblePage.svelte';
+	import TofuPage from '$lib/components/tofu/TofuPage.svelte';
+	import EditorWindow from '$lib/components/editor/EditorWindow.svelte';
+
+	const isEditorWindow = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('editor');
 
 	/**
 	 * Handle terminal title changes from OSC 2 escape sequences.
@@ -41,7 +45,7 @@
 
 	let tabs = $derived(getTabs());
 	let activeTab = $derived(getActiveTab());
-	let editorFile = $derived(getEditorFile());
+	let activePage = $derived(getActivePage());
 
 	let spawnedPtys = $state(new Set<string>());
 	let connectedSsh = $state(new Set<string>());
@@ -136,48 +140,56 @@
 	});
 </script>
 
-<div class="page-container">
-	{#if tabs.length === 0}
-		<div class="empty-state">
-			<svg width="48" height="48" viewBox="0 0 24 24" fill="none" class="empty-icon">
-				<path
-					d="M4 17l6-5-6-5"
-					stroke="currentColor"
-					stroke-width="1.5"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-				/>
-				<path
-					d="M12 19h8"
-					stroke="currentColor"
-					stroke-width="1.5"
-					stroke-linecap="round"
-				/>
-			</svg>
-			<h2 class="empty-title">{t('terminal.title')}</h2>
-			<p class="empty-subtitle">{t('terminal.empty_hint')}</p>
-		</div>
-	{:else}
-		<div class="terminal-area">
-			{#each tabs as tab (tab.id)}
-				<div class="terminal-wrapper" class:active={tab.id === activeTab?.id}>
-					<Terminal
-						ptyId={tab.id}
-						type={tab.type}
-						connectionId={tab.connectionId}
-						active={tab.id === activeTab?.id}
-						onTitleChange={(title) => handleTerminalTitleChange(tab.id, title)}
-					/>
+{#if isEditorWindow}
+	<EditorWindow />
+{:else}
+	<div class="page-container">
+		<div class="page-view" class:active={activePage === 'terminal'}>
+			{#if tabs.length === 0}
+				<div class="empty-state">
+					<svg width="48" height="48" viewBox="0 0 24 24" fill="none" class="empty-icon">
+						<path
+							d="M4 17l6-5-6-5"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+						<path
+							d="M12 19h8"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+						/>
+					</svg>
+					<h2 class="empty-title">{t('terminal.title')}</h2>
+					<p class="empty-subtitle">{t('terminal.empty_hint')}</p>
 				</div>
-			{/each}
+			{:else}
+				<div class="terminal-area">
+					{#each tabs as tab (tab.id)}
+						<div class="terminal-wrapper" class:active={tab.id === activeTab?.id}>
+							<Terminal
+								ptyId={tab.id}
+								type={tab.type}
+								connectionId={tab.connectionId}
+								active={tab.id === activeTab?.id}
+								onTitleChange={(title) => handleTerminalTitleChange(tab.id, title)}
+							/>
+						</div>
+					{/each}
+				</div>
+				<MonitoringBar connectionId={activeTab?.connectionId} sshUser={activeTab?.title?.split('@')[0]} />
+			{/if}
 		</div>
-		<MonitoringBar connectionId={activeTab?.connectionId} sshUser={activeTab?.title?.split('@')[0]} />
-	{/if}
 
-	{#if editorFile}
-		<FileEditorOverlay />
-	{/if}
-</div>
+		{#if activePage === 'ansible'}
+			<AnsiblePage />
+		{:else if activePage === 'tofu'}
+			<TofuPage />
+		{/if}
+	</div>
+{/if}
 
 <style>
 	.page-container {
@@ -186,6 +198,18 @@
 		width: 100%;
 		height: 100%;
 		overflow: hidden;
+		position: relative;
+	}
+
+	.page-view {
+		position: absolute;
+		inset: 0;
+		display: none;
+		flex-direction: column;
+	}
+
+	.page-view.active {
+		display: flex;
 	}
 
 	.empty-state {

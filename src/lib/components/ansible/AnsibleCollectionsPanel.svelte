@@ -1,0 +1,147 @@
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { t } from '$lib/state/i18n.svelte';
+	import { getCollections, isCollectionsLoading, loadCollections, getActiveProject, isCommandRunning, runCommand } from '$lib/state/ansible.svelte';
+	import type { AnsibleExecutionTarget } from '$lib/ipc/ansible';
+	import Button from '$lib/components/shared/Button.svelte';
+
+	interface Props {
+		target: AnsibleExecutionTarget;
+	}
+
+	let { target }: Props = $props();
+
+	let collectionsList = $derived(getCollections());
+	let loading = $derived(isCollectionsLoading());
+	let running = $derived(isCommandRunning());
+	let project = $derived(getActiveProject());
+
+	let installName = $state('');
+
+	onMount(() => {
+		loadCollections();
+	});
+
+	async function handleInstall() {
+		if (!project || !installName.trim()) return;
+		await runCommand({
+			projectId: project.id,
+			command: 'galaxyCollectionInstall',
+			target,
+			collectionName: installName.trim(),
+			extraArgs: []
+		});
+		installName = '';
+		await loadCollections();
+	}
+</script>
+
+<div class="collections-panel">
+	<div class="install-row">
+		<input
+			type="text"
+			class="field-input"
+			bind:value={installName}
+			placeholder={t('ansible.collection_name_placeholder')}
+		/>
+		<Button
+			variant="primary"
+			size="sm"
+			disabled={running || !installName.trim()}
+			onclick={handleInstall}
+		>
+			{t('ansible.install_collection')}
+		</Button>
+	</div>
+
+	{#if loading}
+		<p class="loading-text">{t('common.loading')}</p>
+	{:else if collectionsList.length === 0}
+		<p class="empty-text">{t('ansible.no_collections')}</p>
+	{:else}
+		<div class="item-list">
+			{#each collectionsList as coll (coll.name)}
+				<div class="item-row">
+					<div class="item-info">
+						<span class="item-name">{coll.name}</span>
+						{#if coll.version}
+							<span class="item-version">{coll.version}</span>
+						{/if}
+					</div>
+				</div>
+			{/each}
+		</div>
+	{/if}
+</div>
+
+<style>
+	.collections-panel {
+		padding: 16px;
+		display: flex;
+		flex-direction: column;
+		gap: 16px;
+	}
+
+	.install-row {
+		display: flex;
+		gap: 8px;
+		align-items: center;
+	}
+
+	.field-input {
+		flex: 1;
+		padding: 8px 10px;
+		border-radius: var(--radius-btn);
+		border: 1px solid var(--color-border);
+		background: var(--color-bg-primary);
+		color: var(--color-text-primary);
+		font-size: 0.8125rem;
+		font-family: inherit;
+	}
+
+	.field-input:focus {
+		outline: none;
+		border-color: var(--color-accent);
+	}
+
+	.loading-text,
+	.empty-text {
+		margin: 0;
+		font-size: 0.8125rem;
+		color: var(--color-text-secondary);
+		font-style: italic;
+	}
+
+	.item-list {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.item-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 10px 12px;
+		border-radius: var(--radius-btn);
+		border: 1px solid var(--color-border);
+		background: var(--color-bg-primary);
+	}
+
+	.item-info {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
+
+	.item-name {
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: var(--color-text-primary);
+	}
+
+	.item-version {
+		font-size: 0.75rem;
+		color: var(--color-text-secondary);
+	}
+</style>

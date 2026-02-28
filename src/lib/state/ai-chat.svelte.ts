@@ -298,20 +298,6 @@ export async function sendMessage(
 	}
 }
 
-export async function generatePlaybook(description: string): Promise<string> {
-	return aiInvoke([
-		{ role: 'system', content: 'Generate a YAML playbook for the Reach SSH tool. Format: name, description, variables, steps[{name, command, timeout}]. Output ONLY valid YAML, no markdown fences or explanation.' },
-		{ role: 'user', content: description }
-	]);
-}
-
-export async function fixPlaybook(yaml: string): Promise<string> {
-	return aiInvoke([
-		{ role: 'system', content: 'Fix and improve this YAML playbook for the Reach SSH tool. Correct any syntax errors, improve commands, add missing fields. Output ONLY valid YAML, no markdown fences or explanation.' },
-		{ role: 'user', content: yaml }
-	]);
-}
-
 export async function executeCommand(
 	command: string,
 	bufferId: string,

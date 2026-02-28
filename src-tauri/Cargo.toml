@@ -1,6 +1,6 @@
 [package]
 name = "reach"
-version = "0.2.3"
+version = "0.3.0"
 description = "Cross-platform SSH & Remote Management Tool"
 authors = ["Reach Contributors"]
 edition = "2021"
@@ -19,9 +19,7 @@ tauri-plugin-shell = "2"
 tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_yaml = "0.9"
 tokio = { version = "1", features = ["full"] }
-tokio-util = { version = "0.7", features = ["rt"] }
 thiserror = "2"
 anyhow = "1"
 tracing = "0.1"
@@ -55,10 +53,12 @@ keyring = { version = "3", features = ["windows-native", "apple-native", "linux-
 
 # Toolchain detection & installation
 which = "7"
-zip = "2"
 
 # HTTP (AI API proxy)
 reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+
+# Regex (dependency graph)
+regex = "1"
 
 # Lua plugin engine
 mlua = { version = "0.10", features = ["luau", "vendored", "async", "serialize", "send"] }

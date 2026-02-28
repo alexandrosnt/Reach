@@ -7,20 +7,27 @@ pub struct ToolStatus {
     pub version: Option<String>,
     pub path: Option<String>,
     pub warning: Option<String>,
-    /// If true, the tool cannot run locally on this platform (e.g. Ansible on Windows).
+    /// If true, the tool cannot run locally on this platform (e.g. Ansible on Windows without WSL).
     pub local_unsupported: bool,
+    /// If true, the tool runs through WSL on Windows.
+    pub wsl: bool,
 }
 
 /// Check whether a tool is installed, get its version, and verify it actually works.
 pub fn check_tool(tool: &str) -> ToolStatus {
-    // For ansible, ensure Python scripts directories are in PATH before checking.
-    // This handles the case where ansible was installed via pip but its scripts dir
-    // (e.g. %APPDATA%\Python\Python3X\Scripts) isn't in PATH.
+    // Ansible on Windows: ALWAYS check WSL first. Native ansible is broken on Windows
+    // (os.get_blocking / OSError) so we never try to run it directly.
+    #[cfg(windows)]
+    {
+        if tool == "ansible" {
+            return check_ansible_windows();
+        }
+    }
+
+    // For ansible on non-Windows, ensure Python scripts directories are in PATH.
     if tool == "ansible" {
         ensure_ansible_in_path();
     }
-
-    let ansible_on_windows = tool == "ansible" && cfg!(windows);
 
     let bin = match which::which(tool) {
         Ok(p) => p,
@@ -32,12 +39,9 @@ pub fn check_tool(tool: &str) -> ToolStatus {
                         installed: true,
                         version: Some(version),
                         path: None,
-                        warning: if ansible_on_windows {
-                            Some("Ansible does not support Windows as a control node. Use remote mode to run playbooks on a Linux server via SSH.".into())
-                        } else {
-                            Some("ansible is installed but binaries were not found in PATH. Playbook execution may fail.".into())
-                        },
-                        local_unsupported: ansible_on_windows,
+                        warning: Some("ansible is installed but binaries were not found in PATH. Playbook execution may fail.".into()),
+                        local_unsupported: false,
+                        wsl: false,
                     };
                 }
             }
@@ -47,6 +51,7 @@ pub fn check_tool(tool: &str) -> ToolStatus {
                 path: None,
                 warning: None,
                 local_unsupported: false,
+                wsl: false,
             };
         }
     };
@@ -67,6 +72,7 @@ pub fn check_tool(tool: &str) -> ToolStatus {
                 path,
                 warning: None,
                 local_unsupported: false,
+                wsl: false,
             }
         }
         Ok(out) => {
@@ -88,6 +94,7 @@ pub fn check_tool(tool: &str) -> ToolStatus {
                 path,
                 warning,
                 local_unsupported: local_broken,
+                wsl: false,
             }
         }
         Err(e) => ToolStatus {
@@ -96,7 +103,118 @@ pub fn check_tool(tool: &str) -> ToolStatus {
             path,
             warning: Some(format!("Failed to run {}: {}", tool, e)),
             local_unsupported: false,
+            wsl: false,
         },
+    }
+}
+
+/// Check Ansible on Windows. Native ansible is broken on Windows, so we check WSL first.
+/// Only if WSL is not available do we fall back to reporting the native (broken) status.
+#[cfg(windows)]
+fn check_ansible_windows() -> ToolStatus {
+    // Step 1: Check if WSL is available
+    let wsl_list = Command::new("wsl.exe")
+        .args(["--list", "--quiet"])
+        .output();
+
+    let wsl_available = wsl_list
+        .as_ref()
+        .map(|out| {
+            out.status.success()
+                && String::from_utf8_lossy(&out.stdout)
+                    .lines()
+                    .any(|l| !l.trim().trim_matches('\u{feff}').is_empty())
+        })
+        .unwrap_or(false);
+
+    if wsl_available {
+        // Step 2: Check if ansible is installed inside WSL.
+        // Use login shell (-l) so ~/.profile / ~/.bashrc PATH additions are loaded
+        // (pip --user installs to ~/.local/bin which is often only in interactive PATH).
+        let ansible_check = Command::new("wsl.exe")
+            .args(["--", "bash", "-lc", "which ansible 2>/dev/null || command -v ansible 2>/dev/null"])
+            .output();
+
+        if let Ok(ref out) = ansible_check {
+            if out.status.success() {
+                let wsl_path = String::from_utf8_lossy(&out.stdout).trim().to_string();
+                if !wsl_path.is_empty() {
+                    // WSL has ansible — get version
+                    let version = Command::new("wsl.exe")
+                        .args(["--", "bash", "-lc", "ansible --version 2>/dev/null"])
+                        .output()
+                        .ok()
+                        .and_then(|o| {
+                            if o.status.success() {
+                                let s = String::from_utf8_lossy(&o.stdout).to_string();
+                                let first = s.lines().next().unwrap_or("").trim().to_string();
+                                if first.is_empty() { None } else { Some(first) }
+                            } else {
+                                None
+                            }
+                        });
+
+                    return ToolStatus {
+                        installed: true,
+                        version,
+                        path: Some(format!("WSL: {}", wsl_path)),
+                        warning: None,
+                        local_unsupported: false,
+                        wsl: true,
+                    };
+                }
+            }
+        }
+
+        // WSL exists but no ansible installed
+        return ToolStatus {
+            installed: false,
+            version: None,
+            path: None,
+            warning: None,
+            local_unsupported: false,
+            wsl: true,
+        };
+    }
+
+    // No WSL available — report native status (which is always broken on Windows)
+    ensure_ansible_in_path();
+    let version = ansible_version_from_metadata();
+    ToolStatus {
+        installed: version.is_some(),
+        version,
+        path: None,
+        warning: Some("Ansible does not support Windows as a control node. Install WSL or use an SSH connection to run Ansible on a remote Linux host.".into()),
+        local_unsupported: true,
+        wsl: false,
+    }
+}
+
+/// Check if WSL is available on this Windows system.
+#[cfg(windows)]
+pub fn is_wsl_available() -> bool {
+    Command::new("wsl.exe")
+        .args(["--list", "--quiet"])
+        .output()
+        .map(|out| {
+            out.status.success()
+                && String::from_utf8_lossy(&out.stdout)
+                    .lines()
+                    .any(|l| !l.trim().trim_matches('\u{feff}').is_empty())
+        })
+        .unwrap_or(false)
+}
+
+/// Convert a Windows path to a WSL /mnt/ path.
+/// e.g. "C:\Users\foo\project" -> "/mnt/c/Users/foo/project"
+pub fn windows_to_wsl_path(win_path: &str) -> String {
+    let path = win_path.replace('\\', "/");
+    // Match drive letter: "C:/..." -> "/mnt/c/..."
+    if path.len() >= 2 && path.as_bytes()[1] == b':' {
+        let drive = (path.as_bytes()[0] as char).to_lowercase().next().unwrap();
+        format!("/mnt/{}{}", drive, &path[2..])
+    } else {
+        path
     }
 }
 
@@ -104,10 +222,10 @@ pub fn check_tool(tool: &str) -> ToolStatus {
 fn diagnose_ansible_failure(stderr: &str) -> (Option<String>, Option<String>, bool) {
     let version = ansible_version_from_metadata();
 
-    if stderr.contains("os.get_blocking") || (cfg!(windows) && stderr.contains("OSError")) {
+    if stderr.contains("os.get_blocking") || stderr.contains("OSError") {
         (
             version,
-            Some("Ansible does not support Windows as a control node. Use remote mode to run playbooks on a Linux server via SSH.".into()),
+            Some("Ansible does not support this platform as a control node.".into()),
             true,
         )
     } else if stderr.contains("ModuleNotFoundError") || stderr.contains("ImportError") {
