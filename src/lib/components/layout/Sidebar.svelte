@@ -1,13 +1,11 @@
 <script lang="ts">
 	import FileExplorer from '$lib/components/explorer/FileExplorer.svelte';
 	import SessionList from '$lib/components/sessions/SessionList.svelte';
-	import PlaybookPanel from '$lib/components/playbook/PlaybookPanel.svelte';
 	import TunnelManager from '$lib/components/tunnel/TunnelManager.svelte';
-	import TerraformPanel from '$lib/components/terraform/TerraformPanel.svelte';
 	import PluginPanel from '$lib/components/plugin/PluginPanel.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
-	type Section = 'sessions' | 'explorer' | 'playbook' | 'tunnels' | 'terraform' | 'plugins';
+	type Section = 'sessions' | 'explorer' | 'tunnels' | 'plugins';
 
 	const STORAGE_KEY = 'reach-sidebar-width';
 	const MIN_WIDTH = 160;
@@ -55,21 +53,9 @@
 			icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z'
 		},
 		{
-			id: 'playbook',
-			label: t('sidebar.playbook'),
-			icon: 'M5 3l14 9-14 9V3z',
-			beta: true
-		},
-		{
 			id: 'tunnels',
 			label: t('sidebar.tunnels'),
 			icon: 'M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71'
-		},
-		{
-			id: 'terraform',
-			label: t('sidebar.terraform'),
-			icon: 'M1 3.5l9.5 5.5v11L1 14.5V3.5zM20.5 3.5L11 9v11l9.5-5.5V3.5zM1 3.5L10.5 9 20.5 3.5 11 0 1 3.5z',
-			beta: true
 		},
 		{
 			id: 'plugins',
@@ -161,12 +147,8 @@
 					<SessionList />
 				{:else if activeSection === 'explorer'}
 					<FileExplorer {connectionId} />
-				{:else if activeSection === 'playbook'}
-					<PlaybookPanel {connectionId} />
 				{:else if activeSection === 'tunnels'}
 					<TunnelManager {connectionId} />
-				{:else if activeSection === 'terraform'}
-					<TerraformPanel />
 				{:else if activeSection === 'plugins'}
 					<PluginPanel {connectionId} />
 				{/if}

@@ -154,7 +154,7 @@
 
 		try {
 			const content = await sftpReadFile(connectionId, entry.path);
-			openEditor(connectionId, entry.path, entry.name, content);
+			await openEditor(connectionId, entry.path, entry.name, content);
 		} catch (err) {
 			addToast(t('explorer.open_file_error', { error: String(err) }), 'error');
 		}

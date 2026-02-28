@@ -6,6 +6,7 @@ export interface ToolStatus {
 	path: string | null;
 	warning: string | null;
 	localUnsupported: boolean;
+	wsl: boolean;
 }
 
 export interface ToolInstallEvent {

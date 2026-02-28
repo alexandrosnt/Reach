@@ -12,6 +12,7 @@
 
 	let { children }: { children: Snippet } = $props();
 
+	const isEditorWindow = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('editor');
 	const settings = getSettings();
 
 	onMount(() => {
@@ -56,10 +57,14 @@
 	});
 </script>
 
-{#if !settings.setupComplete}
-	<WelcomeScreen />
-{/if}
-
-<AppShell>
+{#if isEditorWindow}
 	{@render children()}
-</AppShell>
+{:else}
+	{#if !settings.setupComplete}
+		<WelcomeScreen />
+	{/if}
+
+	<AppShell>
+		{@render children()}
+	</AppShell>
+{/if}

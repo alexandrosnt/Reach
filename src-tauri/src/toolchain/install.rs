@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::Stdio;
 
 use serde::Serialize;
@@ -37,146 +37,219 @@ fn emit_done(app_handle: &tauri::AppHandle, tool: &str, success: bool, message: 
     );
 }
 
-/// Get the tools directory inside the app data dir.
-pub fn tools_dir(data_dir: &Path) -> PathBuf {
-    data_dir.join("tools")
-}
+/// Install OpenTofu CLI.
+///
+/// - Windows: downloads the binary from GitHub releases into the tools directory.
+/// - Linux/macOS: uses the official install script from get.opentofu.org.
+pub async fn install_tofu(app_handle: &tauri::AppHandle) -> Result<String, String> {
+    let tool = "tofu";
+    emit_progress(app_handle, tool, "Installing OpenTofu...");
 
-/// Determine platform and arch for Terraform download URLs.
-fn terraform_platform() -> Result<(&'static str, &'static str), String> {
-    let os = if cfg!(target_os = "windows") {
-        "windows"
-    } else if cfg!(target_os = "macos") {
-        "darwin"
-    } else if cfg!(target_os = "linux") {
-        "linux"
-    } else {
-        return Err("Unsupported operating system".to_string());
-    };
-
-    let arch = if cfg!(target_arch = "x86_64") {
-        "amd64"
-    } else if cfg!(target_arch = "aarch64") {
-        "arm64"
-    } else {
-        return Err("Unsupported architecture".to_string());
-    };
-
-    Ok((os, arch))
-}
-
-/// Install Terraform by downloading the official binary.
-pub async fn install_terraform(
-    app_handle: &tauri::AppHandle,
-    data_dir: &Path,
-) -> Result<String, String> {
-    let tool = "terraform";
-    let (os, arch) = terraform_platform()?;
-
-    emit_progress(app_handle, tool, "Fetching latest version...");
-
-    // Get latest version from checkpoint API
-    let client = reqwest::Client::new();
-    let checkpoint: serde_json::Value = client
-        .get("https://checkpoint-api.hashicorp.com/v1/check/terraform")
-        .send()
-        .await
-        .map_err(|e| format!("Failed to check latest version: {}", e))?
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse version response: {}", e))?;
-
-    let version = checkpoint["current_version"]
-        .as_str()
-        .ok_or_else(|| "Could not determine latest Terraform version".to_string())?
-        .to_string();
-
-    emit_progress(
-        app_handle,
-        tool,
-        &format!("Downloading Terraform v{}...", version),
-    );
-
-    let ext = if cfg!(target_os = "windows") {
-        "terraform.exe"
-    } else {
-        "terraform"
-    };
-
-    let zip_url = format!(
-        "https://releases.hashicorp.com/terraform/{}/terraform_{}_{}_{}.zip",
-        version, version, os, arch
-    );
-
-    let response = client
-        .get(&zip_url)
-        .send()
-        .await
-        .map_err(|e| format!("Failed to download Terraform: {}", e))?;
-
-    if !response.status().is_success() {
-        return Err(format!(
-            "Download failed with status: {}",
-            response.status()
-        ));
+    #[cfg(windows)]
+    {
+        install_tofu_windows(app_handle).await
     }
 
-    let bytes = response
-        .bytes()
-        .await
-        .map_err(|e| format!("Failed to read download: {}", e))?;
-
-    emit_progress(app_handle, tool, "Extracting...");
-
-    let dest_dir = tools_dir(data_dir);
-    std::fs::create_dir_all(&dest_dir)
-        .map_err(|e| format!("Failed to create tools directory: {}", e))?;
-
-    // Extract the zip in a blocking task
-    let dest_dir_clone = dest_dir.clone();
-    let ext_name = ext.to_string();
-    tokio::task::spawn_blocking(move || {
-        let cursor = std::io::Cursor::new(bytes);
-        let mut archive =
-            zip::ZipArchive::new(cursor).map_err(|e| format!("Failed to open zip: {}", e))?;
-
-        for i in 0..archive.len() {
-            let mut file = archive
-                .by_index(i)
-                .map_err(|e| format!("Failed to read zip entry: {}", e))?;
-            let name = file.name().to_string();
-            if name.ends_with(&ext_name) || name == ext_name {
-                let dest_path = dest_dir_clone.join(&ext_name);
-                let mut out = std::fs::File::create(&dest_path)
-                    .map_err(|e| format!("Failed to create file: {}", e))?;
-                std::io::copy(&mut file, &mut out)
-                    .map_err(|e| format!("Failed to extract file: {}", e))?;
-
-                // Make executable on Unix
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    std::fs::set_permissions(&dest_path, std::fs::Permissions::from_mode(0o755))
-                        .map_err(|e| format!("Failed to set permissions: {}", e))?;
-                }
-                break;
-            }
-        }
-        Ok::<(), String>(())
-    })
-    .await
-    .map_err(|e| format!("Extract task failed: {}", e))?
-    .map_err(|e: String| e)?;
-
-    let version_str = format!("Terraform v{}", version);
-    emit_done(app_handle, tool, true, &version_str);
-
-    Ok(version_str)
+    #[cfg(not(windows))]
+    {
+        install_tofu_unix(app_handle).await
+    }
 }
 
-/// Install Ansible via pipx or pip.
+#[cfg(windows)]
+async fn install_tofu_windows(app_handle: &tauri::AppHandle) -> Result<String, String> {
+    let tool = "tofu";
+    let tools_dir = dirs::data_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("com.reach.app")
+        .join("tools");
+    let _ = std::fs::create_dir_all(&tools_dir);
+
+    emit_progress(app_handle, tool, "Downloading OpenTofu from GitHub...");
+
+    // Use PowerShell to download and extract the latest release
+    let ps_script = format!(
+        r#"
+$ErrorActionPreference = 'Stop'
+$toolsDir = '{}'
+$arch = if ([System.Environment]::Is64BitOperatingSystem) {{ 'amd64' }} else {{ '386' }}
+$apiUrl = 'https://api.github.com/repos/opentofu/opentofu/releases/latest'
+$headers = @{{ 'User-Agent' = 'Reach-App' }}
+$release = Invoke-RestMethod -Uri $apiUrl -Headers $headers
+$tag = $release.tag_name -replace '^v',''
+$zipName = "tofu_{0}_windows_$arch.zip" -f $tag
+$asset = $release.assets | Where-Object {{ $_.name -eq $zipName }} | Select-Object -First 1
+if (-not $asset) {{ throw "Could not find release asset: $zipName" }}
+$zipPath = Join-Path $env:TEMP $zipName
+Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath -Headers $headers
+Expand-Archive -Path $zipPath -DestinationPath $toolsDir -Force
+Remove-Item $zipPath -Force
+$tofuPath = Join-Path $toolsDir 'tofu.exe'
+if (Test-Path $tofuPath) {{ Write-Output "OK:$tofuPath" }} else {{ throw 'tofu.exe not found after extraction' }}
+"#,
+        tools_dir.display()
+    );
+
+    let mut child = tokio::process::Command::new("powershell")
+        .args(["-NoProfile", "-NonInteractive", "-Command", &ps_script])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn PowerShell: {}", e))?;
+
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+
+    if let Some(stderr) = stderr {
+        let handle = app_handle.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                emit_progress(&handle, "tofu", &line);
+            }
+        });
+    }
+
+    let mut output_lines = Vec::new();
+    if let Some(stdout) = stdout {
+        let reader = BufReader::new(stdout);
+        let mut lines = reader.lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            output_lines.push(line);
+        }
+    }
+
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("Failed to wait for installer: {}", e))?;
+
+    if !status.success() {
+        let msg = "OpenTofu installation failed".to_string();
+        emit_done(app_handle, tool, false, &msg);
+        return Err(msg);
+    }
+
+    emit_progress(app_handle, tool, "Verifying installation...");
+    let check = super::detect::check_tool("tofu");
+    if check.installed {
+        let version = check.version.unwrap_or_else(|| "unknown".to_string());
+        emit_done(app_handle, tool, true, &version);
+        Ok(version)
+    } else {
+        let msg = "OpenTofu was downloaded but could not be found. Try restarting the app.".to_string();
+        emit_done(app_handle, tool, false, &msg);
+        Err(msg)
+    }
+}
+
+#[cfg(not(windows))]
+async fn install_tofu_unix(app_handle: &tauri::AppHandle) -> Result<String, String> {
+    let tool = "tofu";
+
+    // Use the official install script, installing to the app's tools dir
+    let tools_dir = dirs::data_dir()
+        .unwrap_or_else(|| PathBuf::from("."))
+        .join("com.reach.app")
+        .join("tools");
+    let _ = std::fs::create_dir_all(&tools_dir);
+
+    emit_progress(app_handle, tool, "Downloading OpenTofu via install script...");
+
+    // Try the official cosign-verified method first, fall back to direct download
+    let install_cmd = format!(
+        "curl -fsSL https://get.opentofu.org/install-opentofu.sh | sh -s -- --install-method standalone --install-path {}",
+        tools_dir.display()
+    );
+
+    let mut child = tokio::process::Command::new("sh")
+        .args(["-c", &install_cmd])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to run install script: {}", e))?;
+
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+
+    let event_name = format!("toolchain-install-{}", tool);
+
+    if let Some(stdout) = stdout {
+        let event = event_name.clone();
+        let handle = app_handle.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = handle.emit(
+                    &event,
+                    ToolInstallEvent {
+                        tool: "tofu".to_string(),
+                        message: line,
+                        done: false,
+                        success: false,
+                    },
+                );
+            }
+        });
+    }
+
+    if let Some(stderr) = stderr {
+        let event = event_name.clone();
+        let handle = app_handle.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = handle.emit(
+                    &event,
+                    ToolInstallEvent {
+                        tool: "tofu".to_string(),
+                        message: line,
+                        done: false,
+                        success: false,
+                    },
+                );
+            }
+        });
+    }
+
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("Failed to wait for installer: {}", e))?;
+
+    if !status.success() {
+        let msg = "OpenTofu install script failed".to_string();
+        emit_done(app_handle, tool, false, &msg);
+        return Err(msg);
+    }
+
+    emit_progress(app_handle, tool, "Verifying installation...");
+    let check = super::detect::check_tool("tofu");
+    if check.installed {
+        let version = check.version.unwrap_or_else(|| "unknown".to_string());
+        emit_done(app_handle, tool, true, &version);
+        Ok(version)
+    } else {
+        let msg = "OpenTofu was installed but could not be found in PATH. Try restarting the app.".to_string();
+        emit_done(app_handle, tool, false, &msg);
+        Err(msg)
+    }
+}
+
+/// Install Ansible via pipx or pip (or through WSL on Windows).
 pub async fn install_ansible(app_handle: &tauri::AppHandle) -> Result<String, String> {
     let tool = "ansible";
+
+    // On Windows, try installing through WSL if available
+    #[cfg(windows)]
+    {
+        if super::detect::is_wsl_available() {
+            return install_ansible_wsl(app_handle).await;
+        }
+    }
 
     // Try pipx first, then pip3, then pip
     let (installer, args) = if which::which("pipx").is_ok() {
@@ -563,5 +636,118 @@ fn add_python_scripts_to_path(installer: &str) {
         let additions: Vec<String> = new_dirs.iter().map(|p| p.to_string_lossy().to_string()).collect();
         let new_path = format!("{}{}{}", additions.join(sep), sep, current_path);
         std::env::set_var("PATH", new_path);
+    }
+}
+
+/// Install Ansible inside WSL (Windows only).
+#[cfg(windows)]
+async fn install_ansible_wsl(app_handle: &tauri::AppHandle) -> Result<String, String> {
+    let tool = "ansible";
+
+    emit_progress(app_handle, tool, "Installing Ansible via WSL...");
+    emit_progress(app_handle, tool, "Detecting package manager inside WSL...");
+
+    // Detect which package manager/pip is available in WSL
+    let has_pip3 = std::process::Command::new("wsl.exe")
+        .args(["--", "which", "pip3"])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    let has_apt = std::process::Command::new("wsl.exe")
+        .args(["--", "which", "apt-get"])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+
+    // Build the install command
+    let install_cmd = if has_pip3 {
+        emit_progress(app_handle, tool, "Using pip3 to install Ansible in WSL...");
+        "pip3 install --user ansible".to_string()
+    } else if has_apt {
+        emit_progress(app_handle, tool, "Using apt to install Ansible in WSL...");
+        "sudo apt-get update -y && sudo apt-get install -y ansible".to_string()
+    } else {
+        let msg = "WSL has no supported package manager (pip3 or apt). Install Python 3 in WSL first.";
+        emit_done(app_handle, tool, false, msg);
+        return Err(msg.to_string());
+    };
+
+    let mut child = tokio::process::Command::new("wsl.exe")
+        .args(["--", "bash", "-c", &install_cmd])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn wsl.exe: {}", e))?;
+
+    let stdout = child.stdout.take();
+    let stderr = child.stderr.take();
+    let event_name = format!("toolchain-install-{}", tool);
+
+    if let Some(stdout) = stdout {
+        let event = event_name.clone();
+        let handle = app_handle.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = handle.emit(
+                    &event,
+                    ToolInstallEvent {
+                        tool: "ansible".to_string(),
+                        message: line,
+                        done: false,
+                        success: false,
+                    },
+                );
+            }
+        });
+    }
+
+    if let Some(stderr) = stderr {
+        let event = event_name.clone();
+        let handle = app_handle.clone();
+        tokio::spawn(async move {
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            while let Ok(Some(line)) = lines.next_line().await {
+                let _ = handle.emit(
+                    &event,
+                    ToolInstallEvent {
+                        tool: "ansible".to_string(),
+                        message: line,
+                        done: false,
+                        success: false,
+                    },
+                );
+            }
+        });
+    }
+
+    let status = child
+        .wait()
+        .await
+        .map_err(|e| format!("Failed to wait for WSL installer: {}", e))?;
+
+    if !status.success() {
+        let msg = format!(
+            "WSL install failed with exit code {}",
+            status.code().unwrap_or(-1)
+        );
+        emit_done(app_handle, tool, false, &msg);
+        return Err(msg);
+    }
+
+    // Verify ansible is now available in WSL
+    emit_progress(app_handle, tool, "Verifying Ansible installation in WSL...");
+    let check = super::detect::check_tool("ansible");
+    if check.installed {
+        let version = check.version.unwrap_or_else(|| "installed via WSL".to_string());
+        emit_done(app_handle, tool, true, &version);
+        Ok(version)
+    } else {
+        let msg = "Ansible was installed in WSL but could not be verified.";
+        emit_done(app_handle, tool, false, msg);
+        Err(msg.to_string())
     }
 }

@@ -1,118 +1,61 @@
+import { WebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { emitTo } from '@tauri-apps/api/event';
+
 export interface EditorFile {
 	connectionId: string;
 	path: string;
 	filename: string;
 	content: string;
-	originalContent: string;
-	language: string;
 }
 
-let editorFile = $state<EditorFile | undefined>();
+let editorLabel: string | null = null;
 
-export function getEditorFile(): EditorFile | undefined {
-	return editorFile;
-}
-
-export function openEditor(
+export async function openEditor(
 	connectionId: string,
 	path: string,
 	filename: string,
 	content: string
-): void {
-	editorFile = {
-		connectionId,
-		path,
-		filename,
-		content,
-		originalContent: content,
-		language: detectLanguage(filename)
-	};
-}
+): Promise<void> {
+	const payload = { connectionId, path, filename, content };
 
-export function closeEditor(): void {
-	editorFile = undefined;
-}
-
-export function updateEditorContent(content: string): void {
-	if (editorFile) {
-		editorFile.content = content;
+	// Try to reuse existing editor window
+	if (editorLabel) {
+		try {
+			// setFocus + emitTo — if either throws, the window is dead
+			await emitTo(editorLabel, 'editor-open-file', payload);
+			const win = await WebviewWindow.getByLabel(editorLabel);
+			if (win) await win.setFocus();
+			return;
+		} catch {
+			// Window is gone — clean up and create a new one
+			editorLabel = null;
+		}
 	}
-}
 
-export function updateEditorLanguage(language: string): void {
-	if (editorFile) {
-		editorFile.language = language;
-	}
-}
+	// Create a new editor window with a unique label to avoid registry collisions
+	const label = `editor-${Date.now()}`;
+	editorLabel = label;
 
-export function markSaved(): void {
-	if (editorFile) {
-		editorFile.originalContent = editorFile.content;
-	}
-}
+	const win = new WebviewWindow(label, {
+		url: '/?editor=true',
+		title: 'Editor',
+		width: 900,
+		height: 700,
+		decorations: false,
+		center: true,
+	});
 
-export function isEditorDirty(): boolean {
-	if (!editorFile) return false;
-	return editorFile.content !== editorFile.originalContent;
-}
+	win.once('tauri://created', async () => {
+		setTimeout(async () => {
+			try {
+				await emitTo(label, 'editor-open-file', payload);
+			} catch {
+				// ignore — window might have been closed immediately
+			}
+		}, 500);
+	});
 
-function detectLanguage(filename: string): string {
-	const ext = filename.includes('.') ? filename.slice(filename.lastIndexOf('.')).toLowerCase() : '';
-	const map: Record<string, string> = {
-		'.js': 'javascript',
-		'.jsx': 'javascript',
-		'.mjs': 'javascript',
-		'.cjs': 'javascript',
-		'.ts': 'typescript',
-		'.tsx': 'typescript',
-		'.py': 'python',
-		'.rs': 'rust',
-		'.html': 'html',
-		'.htm': 'html',
-		'.css': 'css',
-		'.scss': 'scss',
-		'.less': 'less',
-		'.json': 'json',
-		'.md': 'markdown',
-		'.markdown': 'markdown',
-		'.yaml': 'yaml',
-		'.yml': 'yaml',
-		'.sh': 'shell',
-		'.bash': 'shell',
-		'.zsh': 'shell',
-		'.c': 'c',
-		'.h': 'c',
-		'.cpp': 'cpp',
-		'.hpp': 'cpp',
-		'.cc': 'cpp',
-		'.cxx': 'cpp',
-		'.java': 'java',
-		'.php': 'php',
-		'.sql': 'sql',
-		'.xml': 'xml',
-		'.svg': 'xml',
-		'.go': 'go',
-		'.rb': 'ruby',
-		'.conf': 'shell',
-		'.ini': 'shell',
-		'.toml': 'toml',
-		'.lua': 'lua',
-		'.r': 'r',
-		'.swift': 'swift',
-		'.kt': 'kotlin',
-		'.kts': 'kotlin',
-		'.dart': 'dart',
-		'.vue': 'vue',
-		'.svelte': 'html',
-		'.dockerfile': 'dockerfile',
-		'.tf': 'hcl',
-	};
-
-	// Check for dotfiles like Dockerfile, Makefile
-	const basename = filename.toLowerCase();
-	if (basename === 'dockerfile') return 'dockerfile';
-	if (basename === 'makefile') return 'shell';
-	if (basename === '.env' || basename.startsWith('.env.')) return 'shell';
-
-	return map[ext] || 'text';
+	win.once('tauri://error', () => {
+		if (editorLabel === label) editorLabel = null;
+	});
 }

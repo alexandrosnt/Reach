@@ -1,4 +1,4 @@
-pub mod playbook;
+pub mod ansible;
 pub mod plugin;
 pub mod ipc;
 pub mod monitoring;
@@ -10,7 +10,7 @@ pub mod session;
 pub mod sftp;
 pub mod ssh;
 pub mod state;
-pub mod terraform;
+pub mod tofu;
 pub mod toolchain;
 pub mod tunnel;
 pub mod vault;
@@ -20,8 +20,8 @@ use std::sync::atomic::Ordering;
 use state::AppState;
 use tracing_subscriber::EnvFilter;
 
+use ipc::ansible_commands::*;
 use ipc::ai_commands::*;
-use ipc::playbook_commands::*;
 use ipc::plugin_commands::*;
 use ipc::credential_commands::*;
 use ipc::settings_commands::*;
@@ -34,7 +34,7 @@ use ipc::session_commands::*;
 use ipc::sftp_commands::*;
 use ipc::ssh_commands::*;
 use ipc::sshconfig_commands::*;
-use ipc::terraform_commands::*;
+use ipc::tofu_commands::*;
 use ipc::toolchain_commands::*;
 use ipc::tunnel_commands::*;
 use ipc::vault_commands::*;
@@ -128,14 +128,6 @@ pub fn run() {
             session_create_folder,
             session_delete_folder,
             session_share,
-            // Playbook commands
-            playbook_run,
-            playbook_cancel,
-            playbook_get_run,
-            playbook_validate,
-            playbook_save_project,
-            playbook_list_projects,
-            playbook_delete_project,
             // Tunnel commands
             tunnel_create,
             tunnel_start,
@@ -224,20 +216,62 @@ pub fn run() {
             vault_export_backup,
             vault_preview_backup,
             vault_import_backup,
-            // Terraform commands
-            terraform_run,
-            terraform_cancel,
-            terraform_get_run,
-            terraform_state_list,
-            terraform_state_show,
-            terraform_output,
-            terraform_check,
-            terraform_save_workspace,
-            terraform_list_workspaces,
-            terraform_delete_workspace,
             // Toolchain commands
             toolchain_check,
             toolchain_install,
+            // Ansible commands
+            ansible_list_projects,
+            ansible_create_project,
+            ansible_delete_project,
+            ansible_open_project,
+            ansible_update_inventory,
+            ansible_list_files,
+            ansible_read_file,
+            ansible_write_file,
+            ansible_run_command,
+            ansible_generate_inventory,
+            ansible_write_inventory,
+            ansible_list_roles,
+            ansible_list_collections,
+            ansible_vault_view,
+            // OpenTofu commands
+            tofu_list_projects,
+            tofu_create_project,
+            tofu_delete_project,
+            tofu_open_project,
+            tofu_run_command,
+            tofu_read_file,
+            tofu_write_file,
+            tofu_list_files,
+            tofu_get_provider_catalog,
+            tofu_update_providers,
+            tofu_update_variables,
+            tofu_update_environments,
+            tofu_generate_hcl,
+            tofu_write_generated_files,
+            tofu_get_resource_catalog,
+            tofu_update_resources,
+            tofu_state_list_resources,
+            tofu_update_outputs,
+            tofu_get_output_values,
+            tofu_get_dependency_graph,
+            tofu_get_templates,
+            tofu_apply_template,
+            tofu_update_backend,
+            tofu_update_data_sources,
+            tofu_get_data_source_catalog,
+            tofu_update_locals,
+            tofu_update_modules,
+            tofu_get_backend_catalog,
+            tofu_workspace_list,
+            tofu_workspace_new,
+            tofu_workspace_select,
+            tofu_workspace_delete,
+            tofu_fmt,
+            tofu_show_plan_json,
+            tofu_fetch_schema,
+            tofu_get_cached_schema,
+            tofu_get_schema_resource_fields,
             // Plugin commands
             plugin_discover,
             plugin_load,
@@ -291,14 +325,6 @@ pub fn run() {
             session_create_folder,
             session_delete_folder,
             session_share,
-            // Playbook commands
-            playbook_run,
-            playbook_cancel,
-            playbook_get_run,
-            playbook_validate,
-            playbook_save_project,
-            playbook_list_projects,
-            playbook_delete_project,
             // Tunnel commands
             tunnel_create,
             tunnel_start,
@@ -377,20 +403,62 @@ pub fn run() {
             vault_export_backup,
             vault_preview_backup,
             vault_import_backup,
-            // Terraform commands
-            terraform_run,
-            terraform_cancel,
-            terraform_get_run,
-            terraform_state_list,
-            terraform_state_show,
-            terraform_output,
-            terraform_check,
-            terraform_save_workspace,
-            terraform_list_workspaces,
-            terraform_delete_workspace,
             // Toolchain commands
             toolchain_check,
             toolchain_install,
+            // Ansible commands
+            ansible_list_projects,
+            ansible_create_project,
+            ansible_delete_project,
+            ansible_open_project,
+            ansible_update_inventory,
+            ansible_list_files,
+            ansible_read_file,
+            ansible_write_file,
+            ansible_run_command,
+            ansible_generate_inventory,
+            ansible_write_inventory,
+            ansible_list_roles,
+            ansible_list_collections,
+            ansible_vault_view,
+            // OpenTofu commands
+            tofu_list_projects,
+            tofu_create_project,
+            tofu_delete_project,
+            tofu_open_project,
+            tofu_run_command,
+            tofu_read_file,
+            tofu_write_file,
+            tofu_list_files,
+            tofu_get_provider_catalog,
+            tofu_update_providers,
+            tofu_update_variables,
+            tofu_update_environments,
+            tofu_generate_hcl,
+            tofu_write_generated_files,
+            tofu_get_resource_catalog,
+            tofu_update_resources,
+            tofu_state_list_resources,
+            tofu_update_outputs,
+            tofu_get_output_values,
+            tofu_get_dependency_graph,
+            tofu_get_templates,
+            tofu_apply_template,
+            tofu_update_backend,
+            tofu_update_data_sources,
+            tofu_get_data_source_catalog,
+            tofu_update_locals,
+            tofu_update_modules,
+            tofu_get_backend_catalog,
+            tofu_workspace_list,
+            tofu_workspace_new,
+            tofu_workspace_select,
+            tofu_workspace_delete,
+            tofu_fmt,
+            tofu_show_plan_json,
+            tofu_fetch_schema,
+            tofu_get_cached_schema,
+            tofu_get_schema_resource_fields,
             // Plugin commands
             plugin_discover,
             plugin_load,
