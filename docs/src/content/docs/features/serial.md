@@ -7,26 +7,53 @@ description: Connect to devices over COM/TTY serial ports.
 Serial console is a desktop-only feature. It's not available on Android.
 :::
 
-Reach can talk to serial devices like routers, switches, and embedded hardware directly from the app.
+Reach can talk to serial devices — routers, switches, embedded boards, anything with a serial port.
 
-## Getting started
+## Connecting
 
-1. Go to the serial section
-2. Pick a port from the list of detected serial ports
-3. Set the baud rate
-4. Connect
+The backend provides three operations: list available ports, open a port, and close it.
 
-That's it. Data shows up in the same terminal interface used for SSH sessions, so it feels familiar.
+When you open a serial connection, you specify:
 
-## Supported platforms
+- **Port name** — the system port identifier (e.g., `COM3` on Windows, `/dev/ttyUSB0` on Linux)
+- **Baud rate** — the speed (e.g., `9600`, `115200`)
 
-- **Windows** - COM ports (COM1, COM2, etc.)
-- **macOS** - TTY devices
-- **Linux** - TTY devices (`/dev/ttyUSB0`, `/dev/ttyACM0`, etc.)
+Data shows up in the same terminal interface used for SSH, so it feels familiar. Keystrokes are sent to the device in real time.
 
-## Common uses
+## Port Detection
+
+Reach scans your system for available serial ports and shows them with their type:
+
+- **USB** — USB-to-serial adapters. Shows the product name if available (e.g., "USB - FTDI FT232R").
+- **PCI** — Built-in serial ports on the motherboard.
+- **Bluetooth** — Bluetooth serial profiles.
+- **Unknown** — Ports that don't report their type.
+
+The port list refreshes when you open the serial section.
+
+## How It Works
+
+When you open a port, Reach:
+
+1. Opens the serial port at the specified baud rate with a 100ms timeout
+2. Spawns a dedicated reader thread that continuously reads data (1024-byte buffer)
+3. Incoming data is emitted as events (`serial-data-{port_name}`) and displayed in the terminal
+4. Outgoing data (your keystrokes) goes through an async write channel and gets flushed immediately
+
+The reader thread runs on a real OS thread (not an async task) so it can do blocking reads without holding up anything else. When you close the port, a shutdown signal stops both the reader and writer, with a 3-second timeout for cleanup.
+
+## Supported Platforms
+
+| Platform | Port format | Example |
+|----------|-----------|---------|
+| **Windows** | COM ports | `COM1`, `COM3` |
+| **macOS** | TTY devices | `/dev/tty.usbserial-110` |
+| **Linux** | TTY devices | `/dev/ttyUSB0`, `/dev/ttyACM0` |
+
+## Common Uses
 
 - Configuring network equipment (Cisco, Juniper, MikroTik, etc.)
-- Debugging embedded systems
-- Accessing device consoles
-- Setting up headless servers or SBCs that only have serial output
+- Debugging embedded systems and microcontrollers
+- Accessing device consoles that only have serial output
+- Setting up headless servers or single-board computers (Raspberry Pi, etc.)
+- Talking to Arduino and other development boards
