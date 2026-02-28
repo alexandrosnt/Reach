@@ -1,0 +1,17 @@
+/* Fix: Starlight ToC sidebar doesn't scroll to all sections */
+/* https://github.com/withastro/starlight/issues/1746 */
+
+/* Make the right sidebar ToC independently scrollable */
+starlight-toc nav {
+	position: sticky;
+	top: var(--sl-nav-height);
+	max-height: calc(100vh - var(--sl-nav-height) - 2rem);
+	overflow-y: auto;
+	padding-bottom: 2rem;
+}
+
+/* Make the mobile ToC dropdown scrollable when it has many items */
+starlight-toc details > div {
+	max-height: 60vh;
+	overflow-y: auto;
+}
