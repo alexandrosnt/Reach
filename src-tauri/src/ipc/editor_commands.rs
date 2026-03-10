@@ -1,8 +1,13 @@
-use tauri::{AppHandle, State, Manager, Emitter, WebviewUrl, WebviewWindowBuilder};
+use tauri::State;
 use crate::state::AppState;
 
+#[cfg(desktop)]
+use tauri::{AppHandle, Manager, Emitter, WebviewUrl, WebviewWindowBuilder};
+
+#[cfg(desktop)]
 const EDITOR_LABEL: &str = "editor-window";
 
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn editor_open_file(
     app: AppHandle,
@@ -12,9 +17,9 @@ pub async fn editor_open_file(
     // Check if editor window exists (might be hidden)
     if let Some(win) = app.get_webview_window(EDITOR_LABEL) {
         // Show it if hidden, send file, focus
-        let _ = win.show();
+        let _ = win.as_ref().show();
         win.emit("editor-open-file", &file).map_err(|e| e.to_string())?;
-        let _ = win.set_focus();
+        let _ = win.as_ref().set_focus();
         return Ok(());
     }
 
@@ -30,18 +35,33 @@ pub async fn editor_open_file(
         .decorations(false)
         .center()
         .build()
-        .map_err(|e| e.to_string())?;
+        .map_err(|e: tauri::Error| e.to_string())?;
 
-    let _ = win.set_focus();
+    let _ = win.as_ref().set_focus();
     Ok(())
 }
 
-/// Called by the editor window to hide itself instead of closing
+#[cfg(not(desktop))]
+#[tauri::command]
+pub async fn editor_open_file(
+    _state: State<'_, AppState>,
+    _file: serde_json::Value,
+) -> Result<(), String> {
+    Err("Editor is not available on this platform".to_string())
+}
+
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn editor_hide_window(app: AppHandle) -> Result<(), String> {
     if let Some(win) = app.get_webview_window(EDITOR_LABEL) {
-        win.hide().map_err(|e| e.to_string())?;
+        win.as_ref().hide().map_err(|e| e.to_string())?;
     }
+    Ok(())
+}
+
+#[cfg(not(desktop))]
+#[tauri::command]
+pub async fn editor_hide_window() -> Result<(), String> {
     Ok(())
 }
 
