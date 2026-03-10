@@ -140,6 +140,13 @@ graph LR
 
 ## Changelog
 
+### v0.3.1
+- **Fix editor window reopen** — Editor now hides instead of closing to avoid WebView2 crash on Windows; reopens instantly when editing another file
+- **Fix editor initial load** — Files are delivered via Rust backend message queue instead of unreliable cross-window events
+- **Editor tabs** — Multiple files open as tabs in a single editor window with dirty-state indicators
+- **Close tab shortcut** — Changed from Ctrl+W to Ctrl+Shift+W to avoid browser conflicts
+- Fixed corrupted i18n locale files, added `editor.opening` key to all 6 locales
+
 ### v0.3.0
 - **Ansible integration** — Full Ansible UI with project management, playbook execution, inventory editor, roles/collections management, ad-hoc commands, and vault encrypt/decrypt
 - **OpenTofu integration** — Infrastructure-as-Code workspace with project management, plan/apply/destroy, state inspection, and provider/module management

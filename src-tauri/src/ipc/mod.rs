@@ -16,3 +16,4 @@ pub mod tofu_commands;
 pub mod toolchain_commands;
 pub mod tunnel_commands;
 pub mod vault_commands;
+pub mod editor_commands;

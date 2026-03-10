@@ -10,7 +10,7 @@ Reach has global keyboard shortcuts that work anywhere in the app. On Mac, repla
 | Shortcut | Action |
 |----------|--------|
 | **Ctrl+T** | Open a new local terminal tab |
-| **Ctrl+W** | Close the current tab |
+| **Ctrl+Shift+W** | Close the current tab |
 | **Ctrl+Tab** | Switch to the next tab (wraps around) |
 | **Ctrl+Shift+Tab** | Switch to the previous tab (wraps around) |
 
