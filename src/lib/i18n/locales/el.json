@@ -171,6 +171,7 @@
   "editor.save": "Αποθήκευση",
   "editor.unsaved_changes": "Έχετε μη αποθηκευμένες αλλαγές. Κλείσιμο χωρίς αποθήκευση;",
   "editor.file_saved_toast": "Το αρχείο αποθηκεύτηκε",
+  "editor.opening": "Άνοιγμα αρχείου...",
 
   "ai.title": "Βοηθός AI",
   "ai.clear_chat": "Εκκαθάριση συνομιλίας",

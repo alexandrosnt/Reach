@@ -3,6 +3,8 @@
 	import { sftpWriteFile } from '$lib/ipc/sftp';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import { fetchPendingFile } from '$lib/state/editor.svelte';
+	import { invoke } from '@tauri-apps/api/core';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { onMount } from 'svelte';
@@ -75,11 +77,6 @@
 	}
 
 	function closeTab(id: string): void {
-		const tab = tabs.find((t) => t.id === id);
-		if (tab && tab.content !== tab.originalContent) {
-			const confirmed = window.confirm(t('editor.unsaved_changes'));
-			if (!confirmed) return;
-		}
 		const idx = tabs.findIndex((t) => t.id === id);
 		if (idx === -1) return;
 		tabs.splice(idx, 1);
@@ -93,7 +90,7 @@
 		}
 
 		if (tabs.length === 0) {
-			getCurrentWindow().close();
+			handleCloseWindow();
 		}
 	}
 
@@ -139,13 +136,11 @@
 		maximized = await getCurrentWindow().isMaximized();
 	}
 
-	function handleCloseWindow(): void {
-		const hasUnsaved = tabs.some((t) => t.content !== t.originalContent);
-		if (hasUnsaved) {
-			const confirmed = window.confirm(t('editor.unsaved_changes'));
-			if (!confirmed) return;
-		}
-		getCurrentWindow().close();
+	async function handleCloseWindow(): Promise<void> {
+		// Hide instead of close — avoids WebView2 crash on Windows
+		tabs.splice(0, tabs.length);
+		activeTabId = null;
+		await invoke('editor_hide_window');
 	}
 
 	let unlisten: UnlistenFn | undefined;
@@ -153,6 +148,14 @@
 	let unlistenResize: UnlistenFn | undefined;
 
 	onMount(() => {
+		// Fetch the initial file from Rust backend (no event timing issues)
+		fetchPendingFile().then((file) => {
+			if (file) {
+				addOrActivateTab(file.connectionId, file.path, file.filename, file.content);
+			}
+		});
+
+		// Listen for subsequent files sent via emitTo (window already exists)
 		listen<{ connectionId: string; path: string; filename: string; content: string }>(
 			'editor-open-file',
 			(event) => {
@@ -268,7 +271,7 @@
 		{/key}
 	{:else}
 		<div class="empty-state">
-			<p>{t('common.loading')}</p>
+			<p>{t('editor.opening')}</p>
 		</div>
 	{/if}
 </div>

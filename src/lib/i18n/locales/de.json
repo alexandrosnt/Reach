@@ -171,6 +171,7 @@
   "editor.save": "Speichern",
   "editor.unsaved_changes": "Du hast ungespeicherte Änderungen. Ohne Speichern schließen?",
   "editor.file_saved_toast": "Datei gespeichert",
+  "editor.opening": "Datei wird geöffnet...",
 
   "ai.title": "AI-Assistent",
   "ai.clear_chat": "Chat leeren",

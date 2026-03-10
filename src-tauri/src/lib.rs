@@ -38,6 +38,7 @@ use ipc::tofu_commands::*;
 use ipc::toolchain_commands::*;
 use ipc::tunnel_commands::*;
 use ipc::vault_commands::*;
+use ipc::editor_commands::*;
 
 #[tauri::command]
 fn set_close_to_tray(state: tauri::State<'_, AppState>, enabled: bool) {
@@ -285,6 +286,10 @@ pub fn run() {
             plugin_get_dir,
             plugin_set_dir,
             plugin_dispatch_hook,
+            // Editor commands
+            editor_open_file,
+            editor_get_pending_file,
+            editor_hide_window,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
@@ -472,6 +477,10 @@ pub fn run() {
             plugin_get_dir,
             plugin_set_dir,
             plugin_dispatch_hook,
+            // Editor commands
+            editor_open_file,
+            editor_get_pending_file,
+            editor_hide_window,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,

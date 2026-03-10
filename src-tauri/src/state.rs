@@ -133,6 +133,8 @@ pub struct AppState {
     pub tofu_project_manager: Arc<tokio::sync::Mutex<TofuProjectManager>>,
     pub tofu_schema_cache: Arc<tokio::sync::Mutex<SchemaCache>>,
     pub close_to_tray: AtomicBool,
+    /// Pending file for the editor window to pick up on mount
+    pub pending_editor_file: Arc<tokio::sync::Mutex<Option<serde_json::Value>>>,
 }
 
 impl AppState {
@@ -158,6 +160,7 @@ impl AppState {
             tofu_project_manager: Arc::new(tokio::sync::Mutex::new(TofuProjectManager::new())),
             tofu_schema_cache: Arc::new(tokio::sync::Mutex::new(SchemaCache::default())),
             close_to_tray: AtomicBool::new(false),
+            pending_editor_file: Arc::new(tokio::sync::Mutex::new(None)),
         }
     }
 }

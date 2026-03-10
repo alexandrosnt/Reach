@@ -14,7 +14,7 @@ Each terminal session gets its own tab. You can have as many open as you want �
 Keyboard shortcuts for tab management:
 
 - **Ctrl+T** — open a new local terminal tab
-- **Ctrl+W** — close the current tab
+- **Ctrl+Shift+W** — close the current tab
 - **Ctrl+Tab** — switch to the next tab
 - **Ctrl+Shift+Tab** — switch to the previous tab
 

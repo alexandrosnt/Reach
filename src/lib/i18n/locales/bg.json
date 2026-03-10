@@ -171,6 +171,7 @@
   "editor.save": "Запази",
   "editor.unsaved_changes": "Имате незапазени промени. Затваряне без запазване?",
   "editor.file_saved_toast": "Файлът е запазен",
+  "editor.opening": "Отваряне на файл...",
 
   "ai.title": "AI Асистент",
   "ai.clear_chat": "Изчисти чата",

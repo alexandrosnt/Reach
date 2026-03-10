@@ -171,6 +171,7 @@
   "editor.save": "Salva",
   "editor.unsaved_changes": "Hai modifiche non salvate. Chiudere senza salvare?",
   "editor.file_saved_toast": "File salvato",
+  "editor.opening": "Apertura file...",
 
   "ai.title": "Assistente AI",
   "ai.clear_chat": "Cancella chat",

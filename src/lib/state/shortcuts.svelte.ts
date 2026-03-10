@@ -56,7 +56,7 @@ function openCommandPalette(): void {
 
 const shortcuts: Shortcut[] = [
 	{ key: 't', ctrl: true, action: 'New tab', handler: () => createTab('local') },
-	{ key: 'w', ctrl: true, action: 'Close tab', handler: closeActiveTab },
+	{ key: 'w', ctrl: true, shift: true, action: 'Close tab', handler: closeActiveTab },
 	{ key: 'Tab', ctrl: true, action: 'Next tab', handler: nextTab },
 	{ key: 'Tab', ctrl: true, shift: true, action: 'Previous tab', handler: previousTab },
 	{ key: ',', ctrl: true, action: 'Open settings', handler: openSettings },

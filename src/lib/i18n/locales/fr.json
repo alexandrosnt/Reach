@@ -170,7 +170,8 @@
   "editor.saving": "Enregistrement...",
   "editor.save": "Enregistrer",
   "editor.unsaved_changes": "Vous avez des modifications non enregistrees. Fermer sans enregistrer ?",
-  "editor.file_saved_toast": "Fichier enregistre",
+  "editor.file_saved_toast": "Fichier enregistré",
+  "editor.opening": "Ouverture du fichier...",
 
   "ai.title": "Assistant AI",
   "ai.clear_chat": "Effacer la conversation",
