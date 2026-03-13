@@ -137,9 +137,8 @@
 	}
 
 	async function handleCloseWindow(): Promise<void> {
-		// Hide instead of close — avoids WebView2 crash on Windows
-		tabs.splice(0, tabs.length);
-		activeTabId = null;
+		// Hide instead of close — window stays alive, tabs persist
+		// Avoids WebView2 Chrome_WidgetWin_0 crash on Windows
 		await invoke('editor_hide_window');
 	}
 
