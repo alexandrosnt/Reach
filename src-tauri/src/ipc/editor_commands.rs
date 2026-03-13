@@ -7,6 +7,23 @@ use tauri::{AppHandle, Manager, Emitter, WebviewUrl, WebviewWindowBuilder};
 #[cfg(desktop)]
 const EDITOR_LABEL: &str = "editor-window";
 
+/// Force WebView2 to repaint after showing a hidden window.
+/// WebView2 suspends rendering when the window is hidden; a 1px size nudge
+/// forces it to recalculate layout and repaint (Microsoft WebView2Feedback #1077, #2983).
+#[cfg(desktop)]
+fn force_webview_repaint(win: &tauri::WebviewWindow) {
+    if let Ok(size) = win.outer_size() {
+        let _ = win.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+            width: size.width.saturating_add(1),
+            height: size.height,
+        }));
+        let _ = win.set_size(tauri::Size::Physical(tauri::PhysicalSize {
+            width: size.width,
+            height: size.height,
+        }));
+    }
+}
+
 #[cfg(desktop)]
 #[tauri::command]
 pub async fn editor_open_file(
@@ -16,10 +33,13 @@ pub async fn editor_open_file(
 ) -> Result<(), String> {
     // Check if editor window exists (might be hidden)
     if let Some(win) = app.get_webview_window(EDITOR_LABEL) {
-        // Show it if hidden, send file, focus
-        let _ = win.as_ref().show();
+        // IMPORTANT: call show/hide/set_focus on WebviewWindow directly, NOT through
+        // .as_ref() which resolves to &Webview and only controls the webview layer
+        // (leaving the OS window frame visible as a white rectangle).
+        let _ = win.show();
+        force_webview_repaint(&win);
         win.emit("editor-open-file", &file).map_err(|e| e.to_string())?;
-        let _ = win.as_ref().set_focus();
+        let _ = win.set_focus();
         return Ok(());
     }
 
@@ -37,7 +57,7 @@ pub async fn editor_open_file(
         .build()
         .map_err(|e: tauri::Error| e.to_string())?;
 
-    let _ = win.as_ref().set_focus();
+    let _ = win.set_focus();
     Ok(())
 }
 
@@ -54,7 +74,7 @@ pub async fn editor_open_file(
 #[tauri::command]
 pub async fn editor_hide_window(app: AppHandle) -> Result<(), String> {
     if let Some(win) = app.get_webview_window(EDITOR_LABEL) {
-        win.as_ref().hide().map_err(|e| e.to_string())?;
+        win.hide().map_err(|e| e.to_string())?;
     }
     Ok(())
 }

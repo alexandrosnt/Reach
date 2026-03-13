@@ -640,6 +640,15 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Editor windows: ALWAYS hide instead of close (prevents WebView2 crash on Windows)
+                if window.label().starts_with("editor") {
+                    api.prevent_close();
+                    #[cfg(desktop)]
+                    let _ = window.hide();
+                    return;
+                }
+
+                // Main window: hide to tray if enabled
                 use tauri::Manager;
                 let app_state = window.state::<AppState>();
                 if app_state.close_to_tray.load(Ordering::Relaxed) {
