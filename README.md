@@ -140,6 +140,12 @@ graph LR
 
 ## Changelog
 
+### v0.3.2
+- **Fix editor white screen on reopen** — `WebviewWindow.as_ref()` resolved to `&Webview` instead of `&Window`, causing `hide()` to blank the webview content while leaving the OS window frame visible. All window operations now call `WebviewWindow` methods directly.
+- **Fix editor window not hiding on close** — Added `on_window_event` handler to intercept `CloseRequested` for editor windows with `api.prevent_close()` + `hide()`, preventing WebView2 destruction
+- **Force WebView2 repaint** — Added 1px size nudge after `show()` to force WebView2 rendering pipeline restart (workaround for Microsoft WebView2Feedback #1077)
+- Editor tabs now persist across hide/show cycles instead of being cleared on close
+
 ### v0.3.1
 - **Fix editor window reopen** — Editor now hides instead of closing to avoid WebView2 crash on Windows; reopens instantly when editing another file
 - **Fix editor initial load** — Files are delivered via Rust backend message queue instead of unreliable cross-window events

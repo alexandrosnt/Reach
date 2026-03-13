@@ -19,6 +19,7 @@ src-tauri/gen/
 # IDE
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~
