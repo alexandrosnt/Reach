@@ -23,6 +23,7 @@ export interface SessionConfig {
   auth_method: AuthMethod;
   folder_id: string | null;
   tags: string[];
+  order: number;
   detected_os?: string | null;
   vault_id?: string | null; // Which vault this session belongs to
   jump_chain?: JumpHostConfig[] | null; // ProxyJump chain
@@ -32,6 +33,9 @@ export interface Folder {
   id: string;
   name: string;
   parent_id: string | null;
+  icon?: string | null;
+  color?: string | null;
+  order: number;
 }
 
 export async function sessionList(): Promise<SessionConfig[]> {
@@ -50,6 +54,7 @@ export async function sessionCreate(params: {
   authMethod: AuthMethod;
   folderId: string | null;
   tags: string[];
+  order?: number;
   vaultId?: string | null;
   jumpChain?: JumpHostConfig[] | null;
 }): Promise<SessionConfig> {
@@ -61,6 +66,7 @@ export async function sessionCreate(params: {
     authMethod: params.authMethod,
     folderId: params.folderId,
     tags: params.tags,
+    order: params.order ?? 0,
     vaultId: params.vaultId ?? null,
     jumpChain: params.jumpChain ?? null,
   });
@@ -78,8 +84,24 @@ export async function sessionListFolders(): Promise<Folder[]> {
   return invoke<Folder[]>('session_list_folders');
 }
 
-export async function sessionCreateFolder(name: string, parentId: string | null): Promise<Folder> {
-  return invoke<Folder>('session_create_folder', { name, parentId });
+export async function sessionCreateFolder(params: {
+  name: string;
+  parentId: string | null;
+  icon?: string | null;
+  color?: string | null;
+  order?: number;
+}): Promise<Folder> {
+  return invoke<Folder>('session_create_folder', {
+    name: params.name,
+    parentId: params.parentId,
+    icon: params.icon ?? null,
+    color: params.color ?? null,
+    order: params.order ?? 0,
+  });
+}
+
+export async function sessionUpdateFolder(folder: Folder): Promise<Folder> {
+  return invoke<Folder>('session_update_folder', { folder });
 }
 
 export async function sessionDeleteFolder(folderId: string): Promise<void> {
