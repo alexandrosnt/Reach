@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 use russh::ChannelMsg;
 use tauri::Emitter;
 use thiserror::Error;
@@ -89,7 +90,7 @@ impl SshManager {
         let timeout_duration = std::time::Duration::from_secs(15);
         let connect_future = async {
             let config = Arc::new(russh::client::Config::default());
-            let handler = SshClientHandler;
+            let handler = SshClientHandler::new(host, port);
 
             let mut handle = russh::client::connect(config, (host, port), handler)
                 .await
@@ -208,7 +209,7 @@ impl SshManager {
             // Step 1: Connect to the first jump host directly
             let first_jump = &jump_chain[0];
             let config = Arc::new(russh::client::Config::default());
-            let handler = SshClientHandler;
+            let handler = SshClientHandler::new(first_jump.host.as_str(), first_jump.port);
 
             let mut current_handle = russh::client::connect(
                 config,
@@ -260,7 +261,7 @@ impl SshManager {
 
                     let stream = channel.into_stream();
                     let config = Arc::new(russh::client::Config::default());
-                    let handler = SshClientHandler;
+                    let handler = SshClientHandler::new(next_jump.host.as_str(), next_jump.port);
 
                     let mut next_handle =
                         russh::client::connect_stream(config, stream, handler)
@@ -307,7 +308,7 @@ impl SshManager {
 
                 let stream = channel.into_stream();
                 let config = Arc::new(russh::client::Config::default());
-                let handler = SshClientHandler;
+                let handler = SshClientHandler::new(target_host, target_port);
 
                 let mut target_handle =
                     russh::client::connect_stream(config, stream, handler)
@@ -352,7 +353,7 @@ impl SshManager {
 
                 let stream = channel.into_stream();
                 let config = Arc::new(russh::client::Config::default());
-                let handler = SshClientHandler;
+                let handler = SshClientHandler::new(target_host, target_port);
 
                 let mut target_handle =
                     russh::client::connect_stream(config, stream, handler)
@@ -704,7 +705,29 @@ pub async fn exec_on_connection_streaming(
     Ok(exit_code)
 }
 
-pub struct SshClientHandler;
+#[derive(Debug, Clone)]
+pub struct SshClientHandler {
+    host: String,
+    port: u16,
+}
+
+impl SshClientHandler {
+    pub fn new(host: impl Into<String>, port: u16) -> Self {
+        Self { host: host.into(), port }
+    }
+
+    fn known_hosts_path() -> std::path::PathBuf {
+        let data_dir = dirs::data_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("."))
+            .join("com.reach.app");
+        data_dir.join("ssh").join("known_hosts.json")
+    }
+}
+
+#[derive(Debug, Default, Serialize, Deserialize)]
+struct KnownHosts {
+    entries: HashMap<String, String>,
+}
 
 #[async_trait]
 impl russh::client::Handler for SshClientHandler {
@@ -712,11 +735,44 @@ impl russh::client::Handler for SshClientHandler {
 
     async fn check_server_key(
         &mut self,
-        _server_public_key: &russh_keys::key::PublicKey,
+        server_public_key: &russh_keys::key::PublicKey,
     ) -> Result<bool, Self::Error> {
-        // Accept all server keys for now
-        // TODO: known_hosts verification
-        Ok(true)
+        let host_id = format!("{}:{}", self.host, self.port);
+        let fingerprint = server_public_key.fingerprint().to_string();
+
+        let path = Self::known_hosts_path();
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+
+        let mut known: KnownHosts = match std::fs::read_to_string(&path) {
+            Ok(raw) => serde_json::from_str(&raw).unwrap_or_default(),
+            Err(_) => KnownHosts::default(),
+        };
+
+        match known.entries.get(&host_id) {
+            Some(existing) => {
+                if existing == &fingerprint {
+                    Ok(true)
+                } else {
+                    tracing::error!(
+                        "SSH host key mismatch for {}. Expected {}, got {}",
+                        host_id,
+                        existing,
+                        fingerprint
+                    );
+                    Ok(false)
+                }
+            }
+            None => {
+                known.entries.insert(host_id, fingerprint);
+                if let Ok(raw) = serde_json::to_string_pretty(&known) {
+                    let _ = std::fs::write(&path, raw);
+                }
+                tracing::warn!("SSH host key saved (TOFU) for {}", self.host);
+                Ok(true)
+            }
+        }
     }
 }
 
