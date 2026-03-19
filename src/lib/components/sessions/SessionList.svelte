@@ -4,7 +4,7 @@
 	import SshConfigImport from './SshConfigImport.svelte';
 	import SessionCard from './SessionCard.svelte';
 	import VaultSelector from '$lib/components/vault/VaultSelector.svelte';
-	import { sessionList, sessionDelete, sessionUpdate, type SessionConfig } from '$lib/ipc/sessions';
+	import { sessionList, sessionDelete, sessionUpdate, sessionListFolders, sessionCreateFolder, sessionDeleteFolder, type SessionConfig, type Folder } from '$lib/ipc/sessions';
 	import { sshConnect, sshDisconnect, sshDetectOs, type JumpHostConnectParams } from '$lib/ipc/ssh';
 	// Passwords are now stored encrypted in vault, not in memory cache
 	import { createTab } from '$lib/state/tabs.svelte';
@@ -24,17 +24,133 @@
 	// Selected vault filter (null = private/default vault)
 	let selectedVaultId = $state<string | null>(null);
 
-	// Filter sessions by selected vault
-	let filteredSessions = $derived(
-		sessions.filter(s => {
-			if (selectedVaultId === null) {
-				// Show sessions without vault_id (private vault)
-				return !s.vault_id;
-			}
-			return s.vault_id === selectedVaultId;
-		})
-	);
+	// Search query
+	let searchQuery = $state('');
 
+	// Folders
+	let folders = $state<Folder[]>([]);
+	let collapsedFolders = $state<Set<string>>(new Set());
+	let creatingFolder = $state(false);
+	let newFolderName = $state('');
+
+	// Filter sessions by selected vault, then by search query
+	let filteredSessions = $derived.by(() => {
+		let result = sessions.filter(s => {
+			if (selectedVaultId === null) return !s.vault_id;
+			return s.vault_id === selectedVaultId;
+		});
+		const q = searchQuery.trim().toLowerCase();
+		if (q) {
+			result = result.filter(s =>
+				s.name.toLowerCase().includes(q) ||
+				s.host.toLowerCase().includes(q) ||
+				s.username.toLowerCase().includes(q) ||
+				s.tags.some(tag => tag.toLowerCase().includes(q))
+			);
+		}
+		return result;
+	});
+
+
+	// Group sessions by folder
+	let groupedSessions = $derived.by(() => {
+		const groups: { folder: Folder | null; sessions: SessionConfig[] }[] = [];
+		const folderIds = new Set(folders.map(f => f.id));
+		const folderMap = new Map<string, SessionConfig[]>();
+		const ungrouped: SessionConfig[] = [];
+
+		for (const s of filteredSessions) {
+			// Treat sessions with deleted/orphaned folder_id as ungrouped
+			if (s.folder_id && folderIds.has(s.folder_id)) {
+				const arr = folderMap.get(s.folder_id) ?? [];
+				arr.push(s);
+				folderMap.set(s.folder_id, arr);
+			} else {
+				ungrouped.push(s);
+			}
+		}
+
+		for (const folder of folders) {
+			const folderSessions = folderMap.get(folder.id) ?? [];
+			if (folderSessions.length > 0 || !searchQuery.trim()) {
+				groups.push({ folder, sessions: folderSessions });
+			}
+		}
+
+		if (ungrouped.length > 0 || groups.length === 0) {
+			groups.push({ folder: null, sessions: ungrouped });
+		}
+
+		return groups;
+	});
+
+	function toggleFolder(folderId: string): void {
+		const next = new Set(collapsedFolders);
+		if (next.has(folderId)) next.delete(folderId);
+		else next.add(folderId);
+		collapsedFolders = next;
+	}
+
+	async function handleCreateFolder(): Promise<void> {
+		const name = newFolderName.trim();
+		if (!name) return;
+		try {
+			await sessionCreateFolder(name, null);
+			newFolderName = '';
+			creatingFolder = false;
+			folders = await sessionListFolders();
+		} catch (err) {
+			addToast(String(err), 'error');
+		}
+	}
+
+	async function handleDeleteFolder(folderId: string): Promise<void> {
+		try {
+			// Unassign sessions from this folder before deleting it
+			const affected = sessions.filter(s => s.folder_id === folderId);
+			for (const s of affected) {
+				await sessionUpdate({ ...s, folder_id: null });
+			}
+			await sessionDeleteFolder(folderId);
+			folders = await sessionListFolders();
+			await loadSessions();
+		} catch (err) {
+			addToast(String(err), 'error');
+		}
+	}
+
+	// Right-click context menu
+	let contextMenu = $state<{ x: number; y: number; session?: SessionConfig } | undefined>();
+
+	function openSessionContextMenu(e: MouseEvent, session: SessionConfig): void {
+		e.preventDefault();
+		e.stopPropagation();
+		contextMenu = { x: e.clientX, y: e.clientY, session };
+	}
+
+	function openBackgroundContextMenu(e: MouseEvent): void {
+		e.preventDefault();
+		contextMenu = { x: e.clientX, y: e.clientY };
+	}
+
+	function closeContextMenu(): void {
+		contextMenu = undefined;
+	}
+
+	async function moveToFolder(session: SessionConfig, folderId: string | null): Promise<void> {
+		closeContextMenu();
+		try {
+			await sessionUpdate({ ...session, folder_id: folderId });
+			await loadSessions();
+		} catch (err) {
+			addToast(String(err), 'error');
+		}
+	}
+
+	function contextNewFolder(): void {
+		closeContextMenu();
+		creatingFolder = true;
+	}
 
 	// Vault state (TLS-style: auto-unlock, no password needed)
 	let locked = $derived(vaultState.locked);
@@ -59,7 +175,7 @@
 
 	async function loadSessions(): Promise<void> {
 		try {
-			sessions = await sessionList();
+			[sessions, folders] = await Promise.all([sessionList(), sessionListFolders()]);
 		} catch (err) {
 			console.error('Failed to load sessions:', err);
 		} finally {
@@ -363,43 +479,176 @@
 
 		<VaultSelector onvaultselect={(id) => (selectedVaultId = id)} onrefresh={() => loadSessions()} />
 
+		<div class="search-row">
+			<svg class="search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none">
+				<circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+				<path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+			</svg>
+			<input
+				class="search-input"
+				type="text"
+				placeholder={t('session.search_placeholder')}
+				bind:value={searchQuery}
+			/>
+			{#if searchQuery}
+				<button class="search-clear" onclick={() => (searchQuery = '')} aria-label={t('common.clear')}>
+					<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+						<path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+					</svg>
+				</button>
+			{/if}
+		</div>
+
 		{#if loading}
 			<div class="loading-state">
 				<span class="spinner"></span>
 				<span class="loading-text">{t('session.loading')}</span>
 			</div>
-		{:else if filteredSessions.length === 0}
-			<p class="empty-state">{t('session.no_sessions_vault')}</p>
+		{:else if filteredSessions.length === 0 && creatingFolder}
+			<div class="empty-state-area">
+				<form class="new-folder-form" onsubmit={(e) => { e.preventDefault(); handleCreateFolder(); }}>
+					<input class="new-folder-input" type="text" placeholder={t('session.folder_name')} bind:value={newFolderName} />
+					<button class="new-folder-save" type="submit" disabled={!newFolderName.trim()}>{t('common.save')}</button>
+					<button class="new-folder-cancel" type="button" onclick={() => { creatingFolder = false; newFolderName = ''; }}>{t('common.cancel')}</button>
+				</form>
+			</div>
+		{:else if filteredSessions.length === 0 && !creatingFolder}
+			<!-- svelte-ignore a11y_no_static_element_interactions -->
+			<div class="empty-state-area" oncontextmenu={openBackgroundContextMenu}>
+				<p class="empty-state">{t('session.no_sessions_vault')}</p>
+				<button class="add-folder-btn" onclick={() => (creatingFolder = true)}>
+					<svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+						<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+						<line x1="12" y1="11" x2="12" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+						<line x1="9" y1="14" x2="15" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+					</svg>
+					{t('session.new_folder')}
+				</button>
+			</div>
 		{:else}
+		<div class="folder-actions-row">
+			{#if creatingFolder}
+				<form class="new-folder-form" onsubmit={(e) => { e.preventDefault(); handleCreateFolder(); }}>
+					<input
+						class="new-folder-input"
+						type="text"
+						placeholder={t('session.folder_name')}
+						bind:value={newFolderName}
+					/>
+					<button class="new-folder-save" type="submit" disabled={!newFolderName.trim()}>{t('common.save')}</button>
+					<button class="new-folder-cancel" type="button" onclick={() => { creatingFolder = false; newFolderName = ''; }}>{t('common.cancel')}</button>
+				</form>
+			{:else}
+				<button class="add-folder-btn" onclick={() => (creatingFolder = true)} title={t('session.new_folder')}>
+					<svg width="10" height="10" viewBox="0 0 24 24" fill="none">
+						<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+						<line x1="12" y1="11" x2="12" y2="17" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+						<line x1="9" y1="14" x2="15" y2="14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+					</svg>
+					{t('session.new_folder')}
+				</button>
+			{/if}
+		</div>
 		<div class="divider"></div>
-		<div class="sessions-scroll">
-			{#each filteredSessions as session (session.id)}
-				{#if deleteConfirm === session.id}
-					<div class="delete-confirm">
-						<span class="delete-confirm-text">{t('session.delete_confirm', { name: session.name })}</span>
-						<button class="delete-confirm-btn" onclick={() => handleDelete(session)}>
-							{t('common.confirm')}
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="sessions-scroll" oncontextmenu={openBackgroundContextMenu} onclick={closeContextMenu}>
+			{#each groupedSessions as group (group.folder?.id ?? '__ungrouped__')}
+				{#if group.folder}
+					<div class="folder-header">
+						<button class="folder-toggle" onclick={() => toggleFolder(group.folder!.id)}>
+							<svg width="10" height="10" viewBox="0 0 10 10" fill="none" class="folder-chevron" class:collapsed={collapsedFolders.has(group.folder!.id)}>
+								<path d="M3 2l4 3-4 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+							</svg>
+							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="folder-icon">
+								<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+							</svg>
+							<span class="folder-name">{group.folder.name}</span>
+							<span class="folder-count">{group.sessions.length}</span>
 						</button>
-						<button class="delete-cancel-btn" onclick={() => (deleteConfirm = null)}>
-							{t('common.cancel')}
+						<button class="folder-delete-btn" onclick={() => handleDeleteFolder(group.folder!.id)} title={t('common.delete')}>
+							<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+								<path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+							</svg>
 						</button>
 					</div>
+					{#if !collapsedFolders.has(group.folder.id)}
+						{#each group.sessions as session (session.id)}
+							{#if deleteConfirm === session.id}
+								<div class="delete-confirm">
+									<span class="delete-confirm-text">{t('session.delete_confirm', { name: session.name })}</span>
+									<button class="delete-confirm-btn" onclick={() => handleDelete(session)}>{t('common.confirm')}</button>
+									<button class="delete-cancel-btn" onclick={() => (deleteConfirm = null)}>{t('common.cancel')}</button>
+								</div>
+							{:else}
+								<div class="folder-session">
+									<SessionCard {session} onconnect={() => handleConnect(session)} onedit={() => handleEdit(session)} ondelete={() => handleDelete(session)} oncontextmenu={(e) => openSessionContextMenu(e, session)} />
+								</div>
+							{/if}
+						{/each}
+					{/if}
 				{:else}
-					<SessionCard
-						{session}
-						onconnect={() => handleConnect(session)}
-						onedit={() => handleEdit(session)}
-						ondelete={() => handleDelete(session)}
-					/>
+					{#each group.sessions as session (session.id)}
+						{#if deleteConfirm === session.id}
+							<div class="delete-confirm">
+								<span class="delete-confirm-text">{t('session.delete_confirm', { name: session.name })}</span>
+								<button class="delete-confirm-btn" onclick={() => handleDelete(session)}>{t('common.confirm')}</button>
+								<button class="delete-cancel-btn" onclick={() => (deleteConfirm = null)}>{t('common.cancel')}</button>
+							</div>
+						{:else}
+							<SessionCard {session} onconnect={() => handleConnect(session)} onedit={() => handleEdit(session)} ondelete={() => handleDelete(session)} oncontextmenu={(e) => openSessionContextMenu(e, session)} />
+						{/if}
+					{/each}
 				{/if}
 			{/each}
 		</div>
 		{/if}
 	{/if}
+
+	{#if contextMenu}
+		<div class="context-menu" style="left: {contextMenu.x}px; top: {contextMenu.y}px;">
+			{#if contextMenu.session}
+				<button class="context-item" onclick={() => { if (contextMenu?.session) handleConnect(contextMenu.session); closeContextMenu(); }} type="button">
+					{t('session.connect')}
+				</button>
+				<button class="context-item" onclick={() => { if (contextMenu?.session) handleEdit(contextMenu.session); closeContextMenu(); }} type="button">
+					{t('session.edit')}
+				</button>
+				<div class="context-sep"></div>
+				<div class="context-label">{t('session.move_to_folder')}</div>
+				{#each folders as folder (folder.id)}
+					<button class="context-item context-folder-item" onclick={() => { if (contextMenu?.session) moveToFolder(contextMenu.session, folder.id); }} type="button">
+						<svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="ctx-folder-icon">
+							<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+						</svg>
+						{folder.name}
+					</button>
+				{/each}
+				<button class="context-item context-folder-item" onclick={contextNewFolder} type="button">
+					<svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="ctx-folder-icon">
+						<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+					</svg>
+					{t('session.new_folder')}
+				</button>
+				{#if contextMenu.session.folder_id}
+					<button class="context-item" onclick={() => { if (contextMenu?.session) moveToFolder(contextMenu.session, null); }} type="button">
+						{t('session.remove_from_folder')}
+					</button>
+				{/if}
+				<div class="context-sep"></div>
+				<button class="context-item context-danger" onclick={() => { if (contextMenu?.session) handleDelete(contextMenu.session); closeContextMenu(); }} type="button">
+					{t('common.delete')}
+				</button>
+			{:else}
+				<button class="context-item" onclick={contextNewFolder} type="button">
+					{t('session.new_folder')}
+				</button>
+			{/if}
+		</div>
+	{/if}
 </div>
 
 <QuickConnect bind:open={showQuickConnect} />
-<SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={selectedVaultId} onsave={handleEditorSave} />
+<SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={selectedVaultId} {folders} onsave={handleEditorSave} />
 <SshConfigImport bind:open={showImport} onsave={handleEditorSave} />
 
 {#if showConnectPrompt && connectSession}
@@ -521,6 +770,282 @@
 		transform: scale(0.98);
 	}
 
+	.search-row {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 8px;
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+	}
+
+	.search-row:focus-within {
+		border-color: var(--color-accent);
+	}
+
+	.search-icon {
+		flex-shrink: 0;
+		color: var(--color-text-secondary);
+		opacity: 0.5;
+	}
+
+	.search-input {
+		flex: 1;
+		min-width: 0;
+		padding: 3px 0;
+		border: none;
+		background: transparent;
+		color: var(--color-text-primary);
+		font-family: var(--font-sans);
+		font-size: 0.6875rem;
+		outline: none;
+	}
+
+	.search-input::placeholder {
+		color: var(--color-text-secondary);
+		opacity: 0.5;
+	}
+
+	.search-clear {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 18px;
+		height: 18px;
+		border: none;
+		border-radius: 4px;
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		flex-shrink: 0;
+	}
+
+	.search-clear:hover {
+		background: rgba(255, 255, 255, 0.08);
+		color: var(--color-text-primary);
+	}
+
+	.folder-actions-row {
+		display: flex;
+		align-items: center;
+	}
+
+	.add-folder-btn {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		padding: 3px 8px;
+		font-family: var(--font-sans);
+		font-size: 0.625rem;
+		color: var(--color-text-secondary);
+		background: transparent;
+		border: 1px dashed var(--color-border);
+		border-radius: 5px;
+		cursor: pointer;
+		transition: background-color var(--duration-default) var(--ease-default), color var(--duration-default) var(--ease-default);
+	}
+
+	.add-folder-btn:hover {
+		background-color: rgba(255, 255, 255, 0.04);
+		color: var(--color-text-primary);
+	}
+
+	.new-folder-form {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		flex: 1;
+	}
+
+	.new-folder-input {
+		flex: 1;
+		min-width: 0;
+		padding: 4px 8px;
+		border: 1px solid var(--color-border);
+		border-radius: 5px;
+		background: var(--color-bg-primary);
+		color: var(--color-text-primary);
+		font-family: var(--font-sans);
+		font-size: 0.6875rem;
+		outline: none;
+	}
+
+	.new-folder-input:focus {
+		border-color: var(--color-accent);
+	}
+
+	.new-folder-save,
+	.new-folder-cancel {
+		padding: 4px 8px;
+		font-family: var(--font-sans);
+		font-size: 0.625rem;
+		font-weight: 500;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+	}
+
+	.new-folder-save {
+		background: var(--color-accent);
+		color: #fff;
+	}
+
+	.new-folder-save:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+
+	.new-folder-cancel {
+		background: transparent;
+		color: var(--color-text-secondary);
+	}
+
+	.folder-header {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		padding: 3px 4px;
+	}
+
+	.folder-toggle {
+		flex: 1;
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		padding: 2px 4px;
+		border: none;
+		border-radius: 4px;
+		background: transparent;
+		color: var(--color-text-secondary);
+		font-family: var(--font-sans);
+		font-size: 0.6875rem;
+		cursor: pointer;
+		transition: background-color var(--duration-default) var(--ease-default);
+	}
+
+	.folder-toggle:hover {
+		background-color: rgba(255, 255, 255, 0.04);
+	}
+
+	.folder-chevron {
+		transition: transform 0.15s ease;
+		transform: rotate(90deg);
+	}
+
+	.folder-chevron.collapsed {
+		transform: rotate(0deg);
+	}
+
+	.folder-icon {
+		color: var(--color-warning, #ffd60a);
+		opacity: 0.7;
+	}
+
+	.folder-name {
+		font-weight: 500;
+		color: var(--color-text-primary);
+	}
+
+	.folder-count {
+		font-size: 0.5625rem;
+		color: var(--color-text-secondary);
+		opacity: 0.6;
+	}
+
+	.folder-delete-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 20px;
+		height: 20px;
+		border: none;
+		border-radius: 4px;
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		opacity: 0;
+		transition: opacity var(--duration-default) var(--ease-default), background-color var(--duration-default) var(--ease-default);
+	}
+
+	.folder-header:hover .folder-delete-btn {
+		opacity: 1;
+	}
+
+	.folder-delete-btn:hover {
+		background: rgba(255, 69, 58, 0.12);
+		color: var(--color-danger);
+	}
+
+	.folder-session {
+		padding-left: 12px;
+	}
+
+	.context-menu {
+		position: fixed;
+		min-width: 180px;
+		padding: 4px 0;
+		background-color: var(--color-bg-elevated, #1c1c1e);
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+		z-index: 1000;
+	}
+
+	.context-item {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
+		padding: 6px 12px;
+		border: none;
+		background: transparent;
+		color: var(--color-text-primary);
+		font-family: var(--font-sans);
+		font-size: 0.75rem;
+		cursor: pointer;
+		text-align: left;
+		transition: background-color 0.1s ease;
+	}
+
+	.context-item:hover {
+		background-color: rgba(255, 255, 255, 0.08);
+	}
+
+	.context-folder-item {
+		padding-left: 20px;
+	}
+
+	.context-danger {
+		color: var(--color-danger, #ff453a);
+	}
+
+	.context-danger:hover {
+		background-color: rgba(255, 69, 58, 0.12);
+	}
+
+	.context-label {
+		padding: 4px 12px 2px;
+		font-size: 0.625rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--color-text-secondary);
+		opacity: 0.6;
+	}
+
+	.ctx-folder-icon {
+		color: var(--color-warning, #ffd60a);
+		opacity: 0.7;
+		flex-shrink: 0;
+	}
+
+	.context-sep {
+		height: 1px;
+		margin: 4px 0;
+		background-color: var(--color-border);
+	}
+
 	.divider {
 		height: 1px;
 		background-color: var(--color-border);
@@ -548,9 +1073,18 @@
 		color: var(--color-text-secondary);
 	}
 
+	.empty-state-area {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 10px;
+		padding: 16px 4px;
+		flex: 1;
+	}
+
 	.empty-state {
 		margin: 0;
-		padding: 12px 4px;
+		padding: 0;
 		font-size: 0.6875rem;
 		color: var(--color-text-secondary);
 		opacity: 0.7;

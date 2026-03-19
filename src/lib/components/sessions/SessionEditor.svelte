@@ -2,17 +2,18 @@
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import Button from '$lib/components/shared/Button.svelte';
 	import Input from '$lib/components/shared/Input.svelte';
-	import { sessionCreate, sessionUpdate, type SessionConfig, type AuthMethod, type JumpHostConfig } from '$lib/ipc/sessions';
+	import { sessionCreate, sessionUpdate, type SessionConfig, type AuthMethod, type JumpHostConfig, type Folder } from '$lib/ipc/sessions';
 	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		open: boolean;
 		editSession?: SessionConfig;
 		vaultId?: string | null; // Which vault to save to (null = private)
+		folders?: Folder[];
 		onsave?: () => void;
 	}
 
-	let { open = $bindable(), editSession, vaultId = null, onsave }: Props = $props();
+	let { open = $bindable(), editSession, vaultId = null, folders = [], onsave }: Props = $props();
 
 	let name = $state('');
 	let host = $state('');
@@ -23,6 +24,7 @@
 	let keyPath = $state('');
 	let keyPassphrase = $state('');
 	let tagsStr = $state('');
+	let folderIdStr = $state('');
 	let jumpEnabled = $state(false);
 	let jumpHops = $state<Array<{host: string; port: string; username: string; authType: 'Password' | 'Key' | 'Agent'; password: string; keyPath: string; keyPassphrase: string}>>([]);
 	let saving = $state(false);
@@ -43,6 +45,7 @@
 			keyPath = editSession.auth_method.path ?? '';
 			keyPassphrase = editSession.auth_method.passphrase ?? '';
 			tagsStr = editSession.tags.join(', ');
+			folderIdStr = editSession.folder_id ?? '';
 			if (editSession.jump_chain && editSession.jump_chain.length > 0) {
 				jumpEnabled = true;
 				jumpHops = editSession.jump_chain.map(j => ({
@@ -68,6 +71,7 @@
 			keyPath = '';
 			keyPassphrase = '';
 			tagsStr = '';
+			folderIdStr = '';
 			jumpEnabled = false;
 			jumpHops = [];
 		}
@@ -112,6 +116,7 @@
 					port,
 					username: username.trim(),
 					auth_method: authMethod,
+					folder_id: folderIdStr || null,
 					tags,
 					jump_chain: jumpChain ?? editSession.jump_chain ?? null,
 				});
@@ -122,7 +127,7 @@
 					port,
 					username: username.trim(),
 					authMethod: authMethod,
-					folderId: null,
+					folderId: folderIdStr || null,
 					tags,
 					vaultId,
 					jumpChain: jumpChain ?? null,
@@ -267,6 +272,18 @@
 
 		<Input label={t('session.tags')} bind:value={tagsStr} placeholder="production, web, linux" disabled={saving} />
 
+		{#if folders.length > 0}
+			<div class="folder-section">
+				<span class="folder-label">{t('session.folder')}</span>
+				<select class="folder-select" bind:value={folderIdStr} disabled={saving}>
+					<option value="">{t('session.no_folder')}</option>
+					{#each folders as folder (folder.id)}
+						<option value={folder.id}>{folder.name}</option>
+					{/each}
+				</select>
+			</div>
+		{/if}
+
 		{#if error}
 			<div class="error-message">{error}</div>
 		{/if}
@@ -308,6 +325,35 @@
 	.field-port {
 		width: 80px;
 		flex-shrink: 0;
+	}
+
+	.folder-section {
+		display: flex;
+		flex-direction: column;
+		gap: 6px;
+	}
+
+	.folder-label {
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--color-text-secondary);
+	}
+
+	.folder-select {
+		padding: 6px 10px;
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-btn);
+		color: var(--color-text-primary);
+		font-family: var(--font-sans);
+		font-size: 0.75rem;
+		outline: none;
+	}
+
+	.folder-select:focus {
+		border-color: var(--color-accent);
 	}
 
 	.auth-section {

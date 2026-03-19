@@ -140,6 +140,17 @@ graph LR
 
 ## Changelog
 
+### v0.3.3
+- **Connection folders** — Organize sessions into folders via right-click → Move to Folder. Create, collapse, and delete folders. Deleting a folder safely unassigns sessions back to ungrouped.
+- **Connection search** — Real-time search bar filters sessions by name, host, username, or tags
+- **File explorer search** — Filter files and folders by name in the current directory
+- **File preview** — Right-click a file → Preview to view contents in a read-only overlay
+- **CD here** — Right-click a folder in the file explorer → CD here to send `cd /path` to the SSH terminal
+- **Copy path / filename** — Right-click any file or folder to copy its full path or filename to clipboard
+- **One-click download** — Download button appears on hover for each file in the explorer
+- **Direct path navigation** — Double-click the breadcrumb bar to type a path directly
+- **Folder selector in session editor** — Assign sessions to folders when creating or editing
+
 ### v0.3.2
 - **Fix editor white screen on reopen** — `WebviewWindow.as_ref()` resolved to `&Webview` instead of `&Window`, causing `hide()` to blank the webview content while leaving the OS window frame visible. All window operations now call `WebviewWindow` methods directly.
 - **Fix editor window not hiding on close** — Added `on_window_event` handler to intercept `CloseRequested` for editor windows with `api.prevent_close()` + `hide()`, preventing WebView2 destruction

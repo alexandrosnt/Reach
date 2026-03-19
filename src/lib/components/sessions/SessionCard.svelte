@@ -8,9 +8,10 @@
 		onconnect: () => void;
 		onedit: () => void;
 		ondelete: () => void;
+		oncontextmenu?: (e: MouseEvent) => void;
 	}
 
-	let { session, onconnect, onedit, ondelete }: Props = $props();
+	let { session, onconnect, onedit, ondelete, oncontextmenu }: Props = $props();
 
 	let authLabel = $derived(
 		session.auth_method.type === 'Password' ? t('session.auth_pw_label') :
@@ -18,7 +19,7 @@
 	);
 </script>
 
-<div class="session-card">
+<div class="session-card" oncontextmenu={oncontextmenu}>
 	<button class="card-main" onclick={onconnect} title={t('session.connect_to', { name: session.name })}>
 		<DistroIcon osId={session.detected_os} size={18} />
 		<div class="session-info">
