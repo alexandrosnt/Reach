@@ -17,7 +17,8 @@
 		{ code: 'fr', name: 'Français', subtitle: 'French' },
 		{ code: 'el', name: 'Ελληνικά', subtitle: 'Greek' },
 		{ code: 'it', name: 'Italiano', subtitle: 'Italian' },
-		{ code: 'bg', name: 'Български', subtitle: 'Bulgarian' }
+		{ code: 'bg', name: 'Български', subtitle: 'Bulgarian' },
+		{ code: 'ru', name: 'Русский', subtitle: 'Russian' }
 	];
 
 	let selected = $state(settings.locale || 'en');
@@ -80,6 +81,11 @@
 						<rect width="60" height="13.33" fill="#fff"/>
 						<rect y="13.33" width="60" height="13.34" fill="#00966E"/>
 						<rect y="26.67" width="60" height="13.33" fill="#D62612"/>
+					{:else if lang.code === 'ru'}
+						<!-- Russia -->
+						<rect width="60" height="13.33" fill="#fff"/>
+						<rect y="13.33" width="60" height="13.34" fill="#0039A6"/>
+						<rect y="26.67" width="60" height="13.33" fill="#D52B1E"/>
 					{/if}
 				</svg>
 				<span class="lang-name">{lang.name}</span>
