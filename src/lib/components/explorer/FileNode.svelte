@@ -5,9 +5,10 @@
 		entry: FileEntry;
 		onclick: () => void;
 		oncontextmenu?: (e: MouseEvent) => void;
+		ondownload?: () => void;
 	}
 
-	let { entry, onclick, oncontextmenu }: Props = $props();
+	let { entry, onclick, oncontextmenu, ondownload }: Props = $props();
 
 	let sizeText = $derived.by(() => {
 		if (entry.isDirectory) return '';
@@ -18,7 +19,8 @@
 	});
 </script>
 
-<button class="file-node" onclick={onclick} oncontextmenu={oncontextmenu} type="button">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="file-node" onclick={onclick} oncontextmenu={oncontextmenu} role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter') onclick(); }}>
 	<span class="file-icon">
 		{#if entry.isDirectory}
 			<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -59,7 +61,17 @@
 	{#if entry.permissions}
 		<span class="file-permissions">{entry.permissions}</span>
 	{/if}
-</button>
+
+	{#if !entry.isDirectory && ondownload}
+		<button class="download-btn" onclick={(e) => { e.stopPropagation(); ondownload?.(); }} type="button" title="Download">
+			<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+				<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+				<polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+				<line x1="12" y1="15" x2="12" y2="3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+			</svg>
+		</button>
+	{/if}
+</div>
 
 <style>
 	.file-node {
@@ -116,5 +128,30 @@
 		font-family: var(--font-mono, monospace);
 		color: var(--color-text-secondary);
 		opacity: 0.7;
+	}
+
+	.download-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 22px;
+		height: 22px;
+		border: none;
+		border-radius: 4px;
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		flex-shrink: 0;
+		opacity: 0;
+		transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
+	}
+
+	.file-node:hover .download-btn {
+		opacity: 1;
+	}
+
+	.download-btn:hover {
+		background: rgba(255, 255, 255, 0.08);
+		color: var(--color-accent, #0a84ff);
 	}
 </style>
