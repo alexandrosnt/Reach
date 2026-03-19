@@ -150,6 +150,7 @@ graph LR
 - **One-click download** — Download button appears on hover for each file in the explorer
 - **Direct path navigation** — Double-click the breadcrumb bar to type a path directly
 - **Folder selector in session editor** — Assign sessions to folders when creating or editing
+- **SSH host key verification (TOFU)** — Saves host key fingerprints on first connection, rejects changed keys to prevent MITM attacks, stores `known_hosts.json` under the app data directory
 
 ### v0.3.2
 - **Fix editor white screen on reopen** — `WebviewWindow.as_ref()` resolved to `&Webview` instead of `&Window`, causing `hide()` to blank the webview content while leaving the OS window frame visible. All window operations now call `WebviewWindow` methods directly.
@@ -213,6 +214,22 @@ graph LR
 - Added German, French, Greek and Italian translations
 - Language selector in Settings > General
 - Language picker with flag icons during setup
+
+## Contributors
+
+Thanks to those who have contributed to Reach:
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/ddwnbot">
+        <img src="https://github.com/ddwnbot.png" width="60" style="border-radius: 50%;" alt="ddwnbot" /><br />
+        <sub><b>ddwnbot</b></sub>
+      </a><br />
+      <sub>SSH host key verification (TOFU)</sub>
+    </td>
+  </tr>
+</table>
 
 ## Contributing
 
