@@ -3,18 +3,14 @@
 	import SessionEditor from './SessionEditor.svelte';
 	import SshConfigImport from './SshConfigImport.svelte';
 	import SessionCard from './SessionCard.svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
 	import VaultSelector from '$lib/components/vault/VaultSelector.svelte';
-	import { sessionList, sessionDelete, sessionUpdate, sessionListFolders, sessionCreateFolder, sessionUpdateFolder, type SessionConfig, type Folder } from '$lib/ipc/sessions';
+	import { sessionList, sessionDelete, sessionUpdate, type SessionConfig } from '$lib/ipc/sessions';
 	import { sshConnect, sshDisconnect, sshDetectOs, type JumpHostConnectParams } from '$lib/ipc/ssh';
 	// Passwords are now stored encrypted in vault, not in memory cache
 	import { createTab } from '$lib/state/tabs.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { t } from '$lib/state/i18n.svelte';
-	import { untrack, onMount } from 'svelte';
-	import { flip } from 'svelte/animate';
+	import { untrack } from 'svelte';
 	import { vaultState, checkState, initIdentity, refreshVaults, importIdentity } from '$lib/state/vault.svelte';
 
 	let showQuickConnect = $state(false);
@@ -24,17 +20,6 @@
 	let sessions = $state<SessionConfig[]>([]);
 	let loading = $state(true);
 	let deleteConfirm = $state<string | null>(null);
-
-	let folders = $state<Folder[]>([]);
-	let folderCollapse = $state<Record<string, boolean>>({});
-	let showFolderModal = $state(false);
-	let newFolderName = $state('');
-	let newFolderIcon = $state('📁');
-	let newFolderColor = $state('#3b82f6');
-	let folderEditing = $state<Folder | null>(null);
-
-	let draggingSessionId = $state<string | null>(null);
-	let draggingFolderId = $state<string | null>(null);
 
 	// Selected vault filter (null = private/default vault)
 	let selectedVaultId = $state<string | null>(null);
@@ -50,17 +35,6 @@
 		})
 	);
 
-	let sortedFolders = $derived(
-		[...folders].sort((a, b) => (a.order - b.order) || a.name.localeCompare(b.name))
-	);
-
-	function sortedSessions(list: SessionConfig[]): SessionConfig[] {
-		return [...list].sort((a, b) => (a.order - b.order) || a.name.localeCompare(b.name));
-	}
-
-	let ungroupedSessions = $derived(
-		sortedSessions(filteredSessions.filter(s => !s.folder_id))
-	);
 
 	// Vault state (TLS-style: auto-unlock, no password needed)
 	let locked = $derived(vaultState.locked);
@@ -83,43 +57,15 @@
 
 	let showConnectPrompt = $derived(!!connectSession);
 
-	async function loadFolders(): Promise<void> {
-		try {
-			folders = await sessionListFolders();
-		} catch (err) {
-			console.error('Failed to load folders:', err);
-		}
-	}
-
 	async function loadSessions(): Promise<void> {
 		try {
 			sessions = await sessionList();
-			await loadFolders();
 		} catch (err) {
 			console.error('Failed to load sessions:', err);
 		} finally {
 			loading = false;
 		}
 	}
-
-	onMount(() => {
-		try {
-			const raw = localStorage.getItem('reach.folderCollapse');
-			if (raw) {
-				folderCollapse = JSON.parse(raw);
-			}
-		} catch {
-			// ignore
-		}
-	});
-
-	$effect(() => {
-		try {
-			localStorage.setItem('reach.folderCollapse', JSON.stringify(folderCollapse));
-		} catch {
-			// ignore
-		}
-	});
 
 	async function handleConnect(session: SessionConfig): Promise<void> {
 		// Check if credentials are stored in the session (from vault)
@@ -254,149 +200,6 @@
 	function handleNewSession(): void {
 		editingSession = undefined;
 		showEditor = true;
-	}
-
-	function openCreateFolder(): void {
-		newFolderName = '';
-		newFolderIcon = '📁';
-		newFolderColor = '#3b82f6';
-		folderEditing = null;
-		showFolderModal = true;
-	}
-
-	function openEditFolder(folder: Folder): void {
-		newFolderName = folder.name;
-		newFolderIcon = folder.icon ?? '📁';
-		newFolderColor = folder.color ?? '#3b82f6';
-		folderEditing = folder;
-		showFolderModal = true;
-	}
-
-	async function saveFolder(): Promise<void> {
-		const name = newFolderName.trim();
-		if (!name) return;
-
-		if (folderEditing) {
-			const updated: Folder = {
-				...folderEditing,
-				name,
-				icon: newFolderIcon.trim() || null,
-				color: newFolderColor || null,
-			};
-			const saved = await sessionUpdateFolder(updated);
-			folders = folders.map(f => (f.id === saved.id ? saved : f));
-		} else {
-			const order = folders.length ? Math.max(...folders.map(f => f.order ?? 0)) + 1 : 0;
-			const created = await sessionCreateFolder({
-				name,
-				parentId: null,
-				icon: newFolderIcon.trim() || null,
-				color: newFolderColor || null,
-				order,
-			});
-			folders = [...folders, created];
-		}
-
-		showFolderModal = false;
-		newFolderName = '';
-		newFolderIcon = '📁';
-		newFolderColor = '#3b82f6';
-		addToast('Saved', 'success');
-	}
-
-	function toggleFolder(folderId: string): void {
-		folderCollapse = { ...folderCollapse, [folderId]: !folderCollapse[folderId] };
-	}
-
-	function handleFolderDragStart(folder: Folder, event: DragEvent): void {
-		if (!event.dataTransfer) return;
-		draggingFolderId = folder.id;
-		event.dataTransfer.setData('folderId', folder.id);
-		event.dataTransfer.effectAllowed = 'move';
-	}
-
-	function handleFolderDragEnd(): void {
-		draggingFolderId = null;
-	}
-
-	async function handleFolderDrop(targetFolderId: string, event: DragEvent): Promise<void> {
-		const sourceId = event.dataTransfer?.getData('folderId');
-		if (!sourceId || sourceId === targetFolderId) return;
-
-		const list = [...sortedFolders];
-		const sourceIndex = list.findIndex(f => f.id === sourceId);
-		const targetIndex = list.findIndex(f => f.id === targetFolderId);
-		if (sourceIndex === -1 || targetIndex === -1) return;
-
-		const [moved] = list.splice(sourceIndex, 1);
-		list.splice(targetIndex, 0, moved);
-
-		const updates: Folder[] = [];
-		list.forEach((f, idx) => {
-			if (f.order !== idx) {
-				updates.push({ ...f, order: idx });
-			}
-		});
-
-		if (updates.length) {
-			const updateMap = new Map(updates.map(u => [u.id, u]));
-			folders = folders.map(f => updateMap.get(f.id) ?? f);
-			await Promise.all(updates.map(sessionUpdateFolder));
-		}
-	}
-
-	function handleSessionDragStart(session: SessionConfig, event: DragEvent): void {
-		if (!event.dataTransfer) return;
-		draggingSessionId = session.id;
-		event.dataTransfer.setData('sessionId', session.id);
-		event.dataTransfer.effectAllowed = 'move';
-	}
-
-	function handleSessionDragEnd(): void {
-		draggingSessionId = null;
-	}
-
-	async function moveSessionTo(folderId: string | null, targetIndex?: number): Promise<void> {
-		if (!draggingSessionId) return;
-		const session = sessions.find(s => s.id === draggingSessionId);
-		if (!session) return;
-
-		const sourceFolderId = session.folder_id ?? null;
-		const targetFolderId = folderId;
-
-		const targetSessions = sortedSessions(
-			filteredSessions.filter(s => (s.folder_id ?? null) === targetFolderId && s.id !== session.id)
-		);
-		const insertIndex = targetIndex === undefined
-			? targetSessions.length
-			: Math.max(0, Math.min(targetIndex, targetSessions.length));
-
-		const newTargetSessions = [...targetSessions];
-		newTargetSessions.splice(insertIndex, 0, { ...session, folder_id: targetFolderId, order: insertIndex });
-
-		const updates = new Map<string, SessionConfig>();
-		newTargetSessions.forEach((s, idx) => {
-			if (s.order !== idx || (s.folder_id ?? null) !== targetFolderId) {
-				updates.set(s.id, { ...s, order: idx, folder_id: targetFolderId });
-			}
-		});
-
-		if (sourceFolderId !== targetFolderId) {
-			const sourceSessions = sortedSessions(
-				filteredSessions.filter(s => (s.folder_id ?? null) === sourceFolderId && s.id !== session.id)
-			);
-			sourceSessions.forEach((s, idx) => {
-				if (s.order !== idx) {
-					updates.set(s.id, { ...s, order: idx });
-				}
-			});
-		}
-
-		if (updates.size) {
-			const updatedSessions = new Map(updates);
-			sessions = sessions.map(s => updatedSessions.get(s.id) ?? s);
-			await Promise.all([...updates.values()].map(sessionUpdate));
-		}
 	}
 
 	function handleEditorSave(): void {
@@ -556,18 +359,6 @@
 				{t('session.import_ssh_config')}
 				<span class="beta-badge">BETA</span>
 			</button>
-			<button class="save-session-btn" onclick={openCreateFolder} title="New Folder">
-				<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-					<path
-						d="M3 7h6l2 2h10v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					/>
-				</svg>
-				New Folder
-			</button>
 		</div>
 
 		<VaultSelector onvaultselect={(id) => (selectedVaultId = id)} onrefresh={() => loadSessions()} />
@@ -582,121 +373,25 @@
 		{:else}
 		<div class="divider"></div>
 		<div class="sessions-scroll">
-			{#if ungroupedSessions.length > 0}
-				<div
-					class="folder-block ungrouped"
-					style="--folder-color: #374151;"
-					on:dragover|preventDefault
-					on:drop={(e) => moveSessionTo(null)}
-				>
-					<div class="folder-header">
-						<div class="folder-title">
-							<span class="folder-icon">🧷</span>
-							<span class="folder-name">Ungrouped</span>
-							<span class="folder-count">{ungroupedSessions.length}</span>
-						</div>
+			{#each filteredSessions as session (session.id)}
+				{#if deleteConfirm === session.id}
+					<div class="delete-confirm">
+						<span class="delete-confirm-text">{t('session.delete_confirm', { name: session.name })}</span>
+						<button class="delete-confirm-btn" onclick={() => handleDelete(session)}>
+							{t('common.confirm')}
+						</button>
+						<button class="delete-cancel-btn" onclick={() => (deleteConfirm = null)}>
+							{t('common.cancel')}
+						</button>
 					</div>
-					<div class="folder-content" on:dragover|preventDefault on:drop={(e) => moveSessionTo(null)}
-					>
-						{#each ungroupedSessions as session, index (session.id)}
-							<div
-								class="session-card-wrapper"
-								draggable="true"
-								on:dragstart={(e) => handleSessionDragStart(session, e)}
-								on:dragend={handleSessionDragEnd}
-								on:dragover|preventDefault
-								on:drop={(e) => moveSessionTo(null, index)}
-								animate:flip
-							>
-								{#if deleteConfirm === session.id}
-									<div class="delete-confirm">
-										<span class="delete-confirm-text">{t('session.delete_confirm', { name: session.name })}</span>
-										<button class="delete-confirm-btn" onclick={() => handleDelete(session)}>
-											{t('common.confirm')}
-										</button>
-										<button class="delete-cancel-btn" onclick={() => (deleteConfirm = null)}>
-											{t('common.cancel')}
-										</button>
-									</div>
-								{:else}
-									<SessionCard
-										{session}
-										onconnect={() => handleConnect(session)}
-										onedit={() => handleEdit(session)}
-										ondelete={() => handleDelete(session)}
-									/>
-								{/if}
-							</div>
-						{/each}
-					</div>
-				</div>
-			{/if}
-
-			{#each sortedFolders as folder (folder.id)}
-				{@const folderSessions = sortedSessions(filteredSessions.filter(s => s.folder_id === folder.id))}
-				<div
-					class="folder-block"
-					style="--folder-color: {folder.color ?? '#3b82f6'};"
-					on:dragover|preventDefault
-					on:drop={(e) => handleFolderDrop(folder.id, e)}
-					animate:flip
-				>
-					<div
-						class="folder-header"
-						draggable="true"
-						on:dragstart={(e) => handleFolderDragStart(folder, e)}
-						on:dragend={handleFolderDragEnd}
-					>
-						<div class="folder-title" onclick={() => toggleFolder(folder.id)}>
-							<span class="folder-icon">{folder.icon ?? '📁'}</span>
-							<span class="folder-name">{folder.name}</span>
-							<span class="folder-count">{folderSessions.length}</span>
-						</div>
-						<div class="folder-actions">
-							<button class="folder-btn" onclick={() => openEditFolder(folder)} title="Edit">✏️</button>
-							<button class="folder-btn" onclick={() => toggleFolder(folder.id)} title="Toggle">{folderCollapse[folder.id] ? '▸' : '▾'}</button>
-						</div>
-					</div>
-
-					{#if !folderCollapse[folder.id]}
-						<div class="folder-content" on:dragover|preventDefault on:drop={(e) => moveSessionTo(folder.id)}
-						>
-							{#if folderSessions.length === 0}
-								<div class="folder-empty">Drop sessions here</div>
-							{/if}
-							{#each folderSessions as session, index (session.id)}
-								<div
-									class="session-card-wrapper"
-									draggable="true"
-									on:dragstart={(e) => handleSessionDragStart(session, e)}
-									on:dragend={handleSessionDragEnd}
-									on:dragover|preventDefault
-									on:drop={(e) => moveSessionTo(folder.id, index)}
-									animate:flip
-								>
-									{#if deleteConfirm === session.id}
-										<div class="delete-confirm">
-											<span class="delete-confirm-text">{t('session.delete_confirm', { name: session.name })}</span>
-											<button class="delete-confirm-btn" onclick={() => handleDelete(session)}>
-												{t('common.confirm')}
-											</button>
-											<button class="delete-cancel-btn" onclick={() => (deleteConfirm = null)}>
-												{t('common.cancel')}
-											</button>
-										</div>
-									{:else}
-										<SessionCard
-											{session}
-											onconnect={() => handleConnect(session)}
-											onedit={() => handleEdit(session)}
-											ondelete={() => handleDelete(session)}
-										/>
-									{/if}
-								</div>
-							{/each}
-						</div>
-					{/if}
-				</div>
+				{:else}
+					<SessionCard
+						{session}
+						onconnect={() => handleConnect(session)}
+						onedit={() => handleEdit(session)}
+						ondelete={() => handleDelete(session)}
+					/>
+				{/if}
 			{/each}
 		</div>
 		{/if}
@@ -706,21 +401,6 @@
 <QuickConnect bind:open={showQuickConnect} />
 <SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={selectedVaultId} onsave={handleEditorSave} />
 <SshConfigImport bind:open={showImport} onsave={handleEditorSave} />
-
-<Modal open={showFolderModal} onclose={() => (showFolderModal = false)} title={folderEditing ? 'Edit Folder' : 'New Folder'}>
-	<div class="folder-modal">
-		<Input label="Name" bind:value={newFolderName} placeholder="Prod servers" />
-		<Input label="Icon (emoji)" bind:value={newFolderIcon} placeholder="📁" />
-		<label class="color-label">
-			<span>Color</span>
-			<input type="color" bind:value={newFolderColor} />
-		</label>
-		<div class="modal-actions">
-			<Button variant="ghost" onclick={() => (showFolderModal = false)}>Cancel</Button>
-			<Button variant="primary" onclick={saveFolder}>Save</Button>
-		</div>
-	</div>
-</Modal>
 
 {#if showConnectPrompt && connectSession}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -853,138 +533,6 @@
 		flex-direction: column;
 		gap: 2px;
 		overflow-y: auto;
-	}
-
-	.folder-block {
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		border-radius: 10px;
-		background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
-		box-shadow: 0 1px 0 rgba(0,0,0,0.25);
-		margin-bottom: 6px;
-		transition: border-color 0.2s ease, transform 0.2s ease;
-	}
-
-	.folder-block:hover {
-		border-color: rgba(255, 255, 255, 0.16);
-	}
-
-	.folder-block.ungrouped {
-		background: rgba(255,255,255,0.02);
-	}
-
-	.folder-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 8px 10px;
-		cursor: grab;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-	}
-
-	.folder-title {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		font-size: 0.75rem;
-		font-weight: 600;
-		color: var(--color-text-primary);
-	}
-
-	.folder-icon {
-		width: 18px;
-		text-align: center;
-	}
-
-	.folder-name {
-		max-width: 170px;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.folder-count {
-		padding: 2px 6px;
-		font-size: 0.625rem;
-		background: rgba(255,255,255,0.06);
-		border-radius: 999px;
-		color: var(--color-text-secondary);
-	}
-
-	.folder-actions {
-		display: flex;
-		gap: 4px;
-	}
-
-	.folder-btn {
-		background: rgba(255,255,255,0.04);
-		border: 1px solid rgba(255,255,255,0.08);
-		border-radius: 6px;
-		padding: 2px 6px;
-		font-size: 0.65rem;
-		color: var(--color-text-secondary);
-		cursor: pointer;
-	}
-
-	.folder-btn:hover {
-		color: var(--color-text-primary);
-	}
-
-	.folder-content {
-		padding: 8px;
-		border-top: 2px solid rgba(255,255,255,0.02);
-		background: rgba(0,0,0,0.12);
-	}
-
-	.folder-content:empty {
-		padding: 6px;
-	}
-
-	.folder-block {
-		border-left: 3px solid var(--folder-color, #3b82f6);
-	}
-
-	.folder-empty {
-		padding: 8px;
-		font-size: 0.6875rem;
-		color: var(--color-text-secondary);
-		opacity: 0.7;
-	}
-
-	.session-card-wrapper {
-		margin-bottom: 6px;
-		transition: transform 0.15s ease;
-	}
-
-	.session-card-wrapper:active {
-		transform: scale(0.995);
-	}
-
-	.folder-modal {
-		display: flex;
-		flex-direction: column;
-		gap: 10px;
-	}
-
-	.color-label {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
-	}
-
-	.color-label input[type='color'] {
-		width: 44px;
-		height: 28px;
-		border: none;
-		background: transparent;
-		padding: 0;
-	}
-
-	.modal-actions {
-		display: flex;
-		justify-content: flex-end;
-		gap: 8px;
 	}
 
 	.loading-state {

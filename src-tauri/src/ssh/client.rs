@@ -713,10 +713,7 @@ pub struct SshClientHandler {
 
 impl SshClientHandler {
     pub fn new(host: impl Into<String>, port: u16) -> Self {
-        Self {
-            host: host.into(),
-            port,
-        }
+        Self { host: host.into(), port }
     }
 
     fn known_hosts_path() -> std::path::PathBuf {
@@ -768,7 +765,6 @@ impl russh::client::Handler for SshClientHandler {
                 }
             }
             None => {
-                // TOFU: trust first use, then lock.
                 known.entries.insert(host_id, fingerprint);
                 if let Ok(raw) = serde_json::to_string_pretty(&known) {
                     let _ = std::fs::write(&path, raw);

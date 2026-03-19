@@ -40,9 +40,6 @@ pub struct SessionConfig {
     pub auth_method: AuthMethod,
     pub folder_id: Option<String>,
     pub tags: Vec<String>,
-    /// Custom ordering within a folder (lower first)
-    #[serde(default)]
-    pub order: i32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub detected_os: Option<String>,
     /// Which vault this session belongs to (None = private __sessions__ vault)
@@ -79,13 +76,6 @@ pub struct Folder {
     pub id: String,
     pub name: String,
     pub parent_id: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub icon: Option<String>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub color: Option<String>,
-    /// Custom ordering (lower first)
-    #[serde(default)]
-    pub order: i32,
 }
 
 /// Configuration for a port-forwarding tunnel.

@@ -130,7 +130,6 @@ pub async fn session_create(
     auth_method: AuthMethod,
     folder_id: Option<String>,
     tags: Vec<String>,
-    order: i32,
     vault_id: Option<String>,
     jump_chain: Option<Vec<JumpHostConfig>>,
 ) -> Result<SessionConfig, String> {
@@ -164,7 +163,6 @@ pub async fn session_create(
         auth_method,
         folder_id,
         tags,
-        order,
         detected_os: None,
         vault_id: if storage_vault_id != ensure_sessions_vault(&mut manager).await.unwrap_or_default() {
             Some(storage_vault_id.clone())
@@ -294,9 +292,6 @@ pub async fn session_create_folder(
     state: State<'_, AppState>,
     name: String,
     parent_id: Option<String>,
-    icon: Option<String>,
-    color: Option<String>,
-    order: i32,
 ) -> Result<Folder, String> {
     let mut manager = state.vault_manager.lock().await;
 
@@ -310,9 +305,6 @@ pub async fn session_create_folder(
         id: uuid::Uuid::new_v4().to_string(),
         name: name.clone(),
         parent_id,
-        icon,
-        color,
-        order,
     };
 
     let json = serde_json::to_string(&folder).map_err(|e| e.to_string())?;
@@ -331,36 +323,6 @@ pub async fn session_create_folder(
         .map_err(|e| e.to_string())?;
 
     tracing::info!("Created folder: {}", folder.id);
-    Ok(folder)
-}
-
-/// Update a session folder. O(1) update.
-#[tauri::command]
-#[tracing::instrument(skip(state))]
-pub async fn session_update_folder(
-    state: State<'_, AppState>,
-    folder: Folder,
-) -> Result<Folder, String> {
-    let manager = state.vault_manager.lock().await;
-
-    if manager.is_locked() {
-        return Err("Vault is locked".to_string());
-    }
-
-    let vault_id = match get_folders_vault_id_if_exists(&manager) {
-        Some(id) => id,
-        None => return Err("Folders vault not found".to_string()),
-    };
-
-    let json = serde_json::to_string(&folder).map_err(|e| e.to_string())?;
-    let plaintext = SecretBox::new(Box::new(json.into_bytes()));
-
-    manager
-        .update_secret(&vault_id, &folder.id, plaintext)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    tracing::info!("Updated folder: {}", folder.id);
     Ok(folder)
 }
 
