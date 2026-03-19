@@ -14,7 +14,8 @@
 		{ label: 'Français', value: 'fr' },
 		{ label: 'Ελληνικά', value: 'el' },
 		{ label: 'Italiano', value: 'it' },
-		{ label: 'Български', value: 'bg' }
+		{ label: 'Български', value: 'bg' },
+		{ label: 'Русский', value: 'ru' }
 	];
 
 	function onLanguageChange(value: string) {
