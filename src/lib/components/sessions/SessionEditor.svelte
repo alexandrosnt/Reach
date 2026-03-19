@@ -124,7 +124,6 @@
 					authMethod: authMethod,
 					folderId: null,
 					tags,
-					order: 0,
 					vaultId,
 					jumpChain: jumpChain ?? null,
 				});
