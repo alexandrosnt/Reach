@@ -4,6 +4,7 @@
 	import { t } from '$lib/state/i18n.svelte';
 	import { getCurrentPath, getEntries, setCurrentPath, setEntries } from '$lib/state/explorer.svelte';
 	import { sftpListDir, sftpUpload, sftpDownload, sftpDelete, sftpRename, sftpMkdir, sftpTouch, sftpReadFile } from '$lib/ipc/sftp';
+	import { sshSend } from '$lib/ipc/ssh';
 	import { openEditor } from '$lib/state/editor.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import FileNode from './FileNode.svelte';
@@ -55,15 +56,29 @@
 		];
 	});
 
+	let fileSearch = $state('');
+
 	let sortedEntries = $derived.by(() => {
-		const dirs = entries
+		let filtered = entries;
+		const q = fileSearch.trim().toLowerCase();
+		if (q) {
+			filtered = entries.filter((e: FileEntry) => e.name.toLowerCase().includes(q));
+		}
+		const dirs = filtered
 			.filter((e: FileEntry) => e.isDirectory)
 			.sort((a: FileEntry, b: FileEntry) => a.name.localeCompare(b.name));
-		const files = entries
+		const files = filtered
 			.filter((e: FileEntry) => !e.isDirectory)
 			.sort((a: FileEntry, b: FileEntry) => a.name.localeCompare(b.name));
 		return [...dirs, ...files];
 	});
+
+	function cdToFolder(entry: FileEntry): void {
+		if (!connectionId || !entry.isDirectory) return;
+		const cmd = `cd ${entry.path}\n`;
+		sshSend(connectionId, Array.from(new TextEncoder().encode(cmd)));
+		addToast(t('explorer.cd_sent', { path: entry.path }), 'success');
+	}
 
 	function openContextMenu(e: MouseEvent, entry: FileEntry): void {
 		e.preventDefault();
@@ -217,6 +232,105 @@
 		}
 	}
 
+	let previewFile = $state<{ name: string; path: string; content: string; size: number } | undefined>();
+
+	async function handlePreview(): Promise<void> {
+		if (!connectionId || !contextMenu?.entry || contextMenu.entry.isDirectory) return;
+		const entry = contextMenu.entry;
+		closeContextMenu();
+		try {
+			const content = await sftpReadFile(connectionId, entry.path);
+			previewFile = { name: entry.name, path: entry.path, content, size: entry.size };
+		} catch (err) {
+			addToast(t('explorer.open_file_error', { error: String(err) }), 'error');
+		}
+	}
+
+	let pathInput = $state('');
+	let editingPath = $state(false);
+
+	function startPathEdit(): void {
+		pathInput = currentPath;
+		editingPath = true;
+	}
+
+	function commitPathEdit(): void {
+		const p = pathInput.trim();
+		editingPath = false;
+		if (p && p !== currentPath) {
+			loadDirectory(p.startsWith('/') ? p : '/' + p);
+		}
+	}
+
+	function handlePathKeydown(e: KeyboardEvent): void {
+		if (e.key === 'Enter') { e.preventDefault(); commitPathEdit(); }
+		else if (e.key === 'Escape') { editingPath = false; }
+	}
+
+	async function copyToClipboard(text: string): Promise<void> {
+		try {
+			await navigator.clipboard.writeText(text);
+			addToast(t('explorer.copied'), 'success');
+		} catch {
+			addToast('Copy failed', 'error');
+		}
+	}
+
+	function handleCopyPath(): void {
+		if (!contextMenu?.entry) return;
+		copyToClipboard(contextMenu.entry.path);
+		closeContextMenu();
+	}
+
+	function handleCopyFilename(): void {
+		if (!contextMenu?.entry) return;
+		copyToClipboard(contextMenu.entry.name);
+		closeContextMenu();
+	}
+
+	async function handleQuickDownload(entry: FileEntry): Promise<void> {
+		if (!connectionId) return;
+
+		const localPath = await save({ defaultPath: entry.name });
+		if (!localPath) return;
+
+		let transferId: string | undefined;
+		let progressUnlisten: UnlistenFn | undefined;
+		let completeUnlisten: UnlistenFn | undefined;
+		let errorUnlisten: UnlistenFn | undefined;
+
+		try {
+			transferId = await sftpDownload(connectionId, entry.path, localPath);
+			addTransfer(transferId, entry.name, entry.size, 'downloading');
+
+			const tid = transferId;
+
+			progressUnlisten = await listen<{ id: string; filename: string; bytesTransferred: number; totalBytes: number; percent: number; }>(`transfer-progress-${tid}`, (event) => {
+				updateTransferProgress(event.payload.id, event.payload.bytesTransferred, event.payload.totalBytes, event.payload.percent);
+			});
+
+			completeUnlisten = await listen(`transfer-complete-${tid}`, () => { completeTransfer(tid); });
+			errorUnlisten = await listen<string>(`transfer-error-${tid}`, (event) => {
+				failTransfer(tid, typeof event.payload === 'string' ? event.payload : 'Download failed');
+			});
+
+			await new Promise<void>((resolve, reject) => {
+				const checkInterval = setInterval(() => {
+					const transfers = getTransfers();
+					const tr = transfers.find((x: Transfer) => x.id === tid);
+					if (!tr || tr.status === 'completed') { clearInterval(checkInterval); resolve(); }
+					else if (tr.status === 'error') { clearInterval(checkInterval); reject(new Error(tr.error ?? 'Download failed')); }
+				}, 200);
+			});
+		} catch (err) {
+			if (transferId) failTransfer(transferId, String(err));
+		} finally {
+			progressUnlisten?.();
+			completeUnlisten?.();
+			errorUnlisten?.();
+		}
+	}
+
 	let creatingFolder = $state<string | undefined>();
 	let creatingFile = $state<string | undefined>();
 
@@ -288,6 +402,7 @@
 		if (!connectionId) return;
 		loading = true;
 		error = undefined;
+		fileSearch = '';
 		try {
 			const result = await sftpListDir(connectionId, path);
 			setCurrentPath(connectionId, path);
@@ -535,22 +650,56 @@
 					/>
 				</svg>
 			</button>
+
+			<div class="explorer-search">
+				<svg width="11" height="11" viewBox="0 0 24 24" fill="none" class="explorer-search-icon">
+					<circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
+					<path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+				</svg>
+				<input
+					class="explorer-search-input"
+					type="text"
+					placeholder={t('explorer.search_placeholder')}
+					bind:value={fileSearch}
+				/>
+				{#if fileSearch}
+					<button class="explorer-search-clear" onclick={() => (fileSearch = '')} type="button">
+						<svg width="8" height="8" viewBox="0 0 10 10" fill="none">
+							<path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+						</svg>
+					</button>
+				{/if}
+			</div>
 		</div>
 
 		<div class="breadcrumb-bar">
-			{#each pathSegments as segment, i (segment.path)}
-				{#if i > 0}
-					<span class="breadcrumb-sep">/</span>
-				{/if}
-				<button
-					class="breadcrumb-segment"
-					class:active={i === pathSegments.length - 1}
-					onclick={() => navigateTo(segment.path)}
-					type="button"
-				>
-					{segment.name}
-				</button>
-			{/each}
+			{#if editingPath}
+				<input
+					class="path-input"
+					type="text"
+					bind:value={pathInput}
+					onkeydown={handlePathKeydown}
+					onblur={commitPathEdit}
+					use:autoFocus
+				/>
+			{:else}
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="breadcrumb-segments" ondblclick={startPathEdit}>
+					{#each pathSegments as segment, i (segment.path)}
+						{#if i > 0}
+							<span class="breadcrumb-sep">/</span>
+						{/if}
+						<button
+							class="breadcrumb-segment"
+							class:active={i === pathSegments.length - 1}
+							onclick={() => navigateTo(segment.path)}
+							type="button"
+						>
+							{segment.name}
+						</button>
+					{/each}
+				</div>
+			{/if}
 		</div>
 
 		{#if error}
@@ -697,10 +846,29 @@
 							/>
 						</div>
 					{:else}
-						<FileNode {entry} onclick={() => handleNodeClick(entry)} oncontextmenu={(e) => openContextMenu(e, entry)} />
+						<FileNode {entry} onclick={() => handleNodeClick(entry)} oncontextmenu={(e) => openContextMenu(e, entry)} ondownload={!entry.isDirectory ? () => handleQuickDownload(entry) : undefined} />
 					{/if}
 				{/each}
 			{/if}
+		</div>
+	</div>
+{/if}
+
+{#if previewFile}
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div class="preview-overlay" onclick={() => (previewFile = undefined)} onkeydown={(e) => { if (e.key === 'Escape') previewFile = undefined; }}>
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div class="preview-box" onclick={(e) => e.stopPropagation()} onkeydown={() => {}}>
+			<div class="preview-header">
+				<span class="preview-filename">{previewFile.name}</span>
+				<span class="preview-path">{previewFile.path}</span>
+				<button class="preview-close" onclick={() => (previewFile = undefined)} type="button">
+					<svg width="12" height="12" viewBox="0 0 10 10" fill="none">
+						<path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+					</svg>
+				</button>
+			</div>
+			<pre class="preview-content">{previewFile.content}</pre>
 		</div>
 	</div>
 {/if}
@@ -712,6 +880,13 @@
 	>
 		{#if contextMenu.entry}
 			{#if !contextMenu.entry.isDirectory}
+				<button class="context-item" onclick={handlePreview} type="button">
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+						<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+						<circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/>
+					</svg>
+					{t('explorer.preview')}
+				</button>
 				<button class="context-item" onclick={handleEdit} type="button">
 					<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 						<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -730,6 +905,29 @@
 					{t('explorer.download')}
 				</button>
 			{/if}
+			{#if contextMenu.entry.isDirectory}
+				<button class="context-item" onclick={() => { if (contextMenu?.entry) cdToFolder(contextMenu.entry); closeContextMenu(); }} type="button">
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+						<polyline points="4 17 10 11 4 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+						<line x1="12" y1="19" x2="20" y2="19" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+					</svg>
+					{t('explorer.cd_here')}
+				</button>
+			{/if}
+			<button class="context-item" onclick={handleCopyPath} type="button">
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+					<rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/>
+					<path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="1.5"/>
+				</svg>
+				{t('explorer.copy_path')}
+			</button>
+			<button class="context-item" onclick={handleCopyFilename} type="button">
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+					<rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/>
+					<path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="1.5"/>
+				</svg>
+				{t('explorer.copy_filename')}
+			</button>
 			<button class="context-item" onclick={startRename} type="button">
 				<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 					<path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -839,6 +1037,64 @@
 		color: var(--color-text-secondary);
 	}
 
+	.explorer-search {
+		display: flex;
+		align-items: center;
+		gap: 4px;
+		flex: 1;
+		min-width: 0;
+		padding: 3px 6px;
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
+		border-radius: 5px;
+		margin-left: 4px;
+	}
+
+	.explorer-search:focus-within {
+		border-color: var(--color-accent);
+	}
+
+	.explorer-search-icon {
+		flex-shrink: 0;
+		color: var(--color-text-secondary);
+		opacity: 0.4;
+	}
+
+	.explorer-search-input {
+		flex: 1;
+		min-width: 0;
+		padding: 0;
+		border: none;
+		background: transparent;
+		color: var(--color-text-primary);
+		font-family: var(--font-sans);
+		font-size: 0.625rem;
+		outline: none;
+	}
+
+	.explorer-search-input::placeholder {
+		color: var(--color-text-secondary);
+		opacity: 0.5;
+	}
+
+	.explorer-search-clear {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 14px;
+		height: 14px;
+		border: none;
+		border-radius: 3px;
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		flex-shrink: 0;
+	}
+
+	.explorer-search-clear:hover {
+		background: rgba(255, 255, 255, 0.08);
+	}
+
 	.breadcrumb-bar {
 		display: flex;
 		align-items: center;
@@ -847,6 +1103,25 @@
 		overflow-x: auto;
 		scrollbar-width: none;
 		flex-shrink: 0;
+	}
+
+	.breadcrumb-segments {
+		display: flex;
+		align-items: center;
+		flex: 1;
+		min-width: 0;
+	}
+
+	.path-input {
+		width: 100%;
+		padding: 2px 4px;
+		border: 1px solid var(--color-accent);
+		border-radius: 4px;
+		background: var(--color-bg-primary);
+		color: var(--color-text-primary);
+		font-family: var(--font-mono, monospace);
+		font-size: 0.6875rem;
+		outline: none;
 	}
 
 	.breadcrumb-bar::-webkit-scrollbar {
@@ -1072,6 +1347,87 @@
 
 	.explorer-root {
 		display: contents;
+	}
+
+	.preview-overlay {
+		position: fixed;
+		inset: 0;
+		z-index: 500;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(0, 0, 0, 0.6);
+		backdrop-filter: blur(4px);
+	}
+
+	.preview-box {
+		width: min(90vw, 700px);
+		max-height: 80vh;
+		display: flex;
+		flex-direction: column;
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border);
+		border-radius: 10px;
+		box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+		overflow: hidden;
+	}
+
+	.preview-header {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 10px 14px;
+		border-bottom: 1px solid var(--color-border);
+		flex-shrink: 0;
+	}
+
+	.preview-filename {
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: var(--color-text-primary);
+	}
+
+	.preview-path {
+		flex: 1;
+		font-size: 0.6875rem;
+		color: var(--color-text-secondary);
+		opacity: 0.6;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.preview-close {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 24px;
+		height: 24px;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		flex-shrink: 0;
+	}
+
+	.preview-close:hover {
+		background: rgba(255, 255, 255, 0.08);
+		color: var(--color-text-primary);
+	}
+
+	.preview-content {
+		flex: 1;
+		overflow: auto;
+		padding: 12px 16px;
+		margin: 0;
+		font-family: var(--font-mono, monospace);
+		font-size: 0.75rem;
+		line-height: 1.5;
+		color: var(--color-text-primary);
+		white-space: pre-wrap;
+		word-break: break-all;
+		tab-size: 4;
 	}
 
 	.context-menu {
