@@ -140,6 +140,17 @@ graph LR
 
 ## Changelog
 
+### v0.3.4
+- **Google Fonts integration** — Searchable font picker in Settings → Appearance with 24+ monospace fonts from Google Fonts, each rendered in its own typeface
+- **Live font preview** — Real-time preview in Appearance settings shows selected font and size with terminal-style output
+- **Live terminal font & size updates** — Changing font family or size in settings updates all open terminals instantly
+- **Font persistence** — Selected Google Font loads on app startup so terminals use the saved font immediately
+- **Fix session/folder data collision** — Sessions and folders in unified vaults no longer cross-contaminate (SecretCategory filtering)
+- **Folder delete confirmation** — Double-click to delete: first click shows "Confirm", second click deletes
+- **Drag & drop sessions into folders** — Grab the grip handle to drag sessions between folders (pointer events, works on Windows WebView2)
+- **Folder collapse persistence** — Expanded/collapsed state saved to localStorage across view switches and restarts
+- **Right-click improvements** — No browser default context menu, full-height clickable area, folder creation on empty vaults
+
 ### v0.3.3
 - **Connection folders** — Organize sessions into folders via right-click → Move to Folder. Create, collapse, and delete folders. Deleting a folder safely unassigns sessions back to ungrouped.
 - **Connection search** — Real-time search bar filters sessions by name, host, username, or tags

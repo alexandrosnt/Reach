@@ -44,6 +44,25 @@
 	});
 
 	$effect(() => {
+		document.documentElement.style.setProperty('--app-font-size', `${settings.fontSize}px`);
+	});
+
+	// Load saved Google Font on startup so terminal has it ready
+	$effect(() => {
+		const family = settings.fontFamily;
+		if (family && family !== 'monospace') {
+			const id = `gf-${family.replace(/\s+/g, '-').toLowerCase()}`;
+			if (!document.getElementById(id)) {
+				const link = document.createElement('link');
+				link.id = id;
+				link.rel = 'stylesheet';
+				link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@400;700&display=swap`;
+				document.head.appendChild(link);
+			}
+		}
+	});
+
+	$effect(() => {
 		const theme = settings.theme;
 		const root = document.documentElement;
 		root.classList.remove('dark', 'light');
