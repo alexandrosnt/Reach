@@ -72,7 +72,8 @@
 
 		for (const folder of folders) {
 			const folderSessions = folderMap.get(folder.id) ?? [];
-			if (folderSessions.length > 0 || !searchQuery.trim()) {
+			// Only show folders that have sessions in the current vault view
+			if (folderSessions.length > 0) {
 				groups.push({ folder, sessions: folderSessions });
 			}
 		}
@@ -477,7 +478,7 @@
 			</button>
 		</div>
 
-		<VaultSelector onvaultselect={(id) => (selectedVaultId = id)} onrefresh={() => loadSessions()} />
+		<VaultSelector onvaultselect={(id) => { selectedVaultId = id; creatingFolder = false; newFolderName = ''; }} onrefresh={() => loadSessions()} />
 
 		<div class="search-row">
 			<svg class="search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none">
