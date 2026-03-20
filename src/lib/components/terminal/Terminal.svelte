@@ -9,6 +9,7 @@
 	import { ptyWrite, ptyResize } from '$lib/ipc/pty';
 	import { sshSend, sshResize } from '$lib/ipc/ssh';
 	import { registerBufferReader, unregisterBufferReader } from '$lib/state/terminal-buffer.svelte';
+	import { getSettings } from '$lib/state/settings.svelte';
 
 	interface Props {
 		ptyId: string;
@@ -29,9 +30,10 @@
 	let resizeObserver: ResizeObserver | undefined;
 
 	function createTerminal(): Terminal {
+		const appSettings = getSettings();
 		return new Terminal({
-			fontFamily: "'JetBrains Mono', 'SF Mono', 'Cascadia Code', monospace",
-			fontSize: 14,
+			fontFamily: appSettings.fontFamily || 'monospace',
+			fontSize: appSettings.fontSize ?? 14,
 			cursorBlink: true,
 			cursorStyle: 'bar',
 			scrollback: 10000,
@@ -186,67 +188,113 @@
 
 		const term = createTerminal();
 		const fit = new FitAddon();
+		const font = getSettings().fontFamily || 'monospace';
 
 		loadAddons(term, fit);
-		term.open(containerEl);
 
-		requestAnimationFrame(() => {
-			try {
-				fit.fit();
-				sendResize(term.cols, term.rows);
-			} catch (err) {
-				console.error('[Terminal] Initial fit error:', err);
-			}
-		});
+		// Wait for font to load before opening (canvas needs the font ready)
+		const fontSize = getSettings().fontSize ?? 14;
+		Promise.all([
+			document.fonts.load(`${fontSize}px "${font}"`),
+			document.fonts.load(`bold ${fontSize}px "${font}"`)
+		]).catch(() => {}).finally(() => {
+			if (!containerEl) return;
+			term.open(containerEl);
 
-		setupInputHandler(term);
-		setupEventListeners(term);
-		setupResizeObserver(term, fit, containerEl);
-
-		// Detect user changes (e.g. sudo su -) via OSC 2 terminal title updates
-		term.onTitleChange((title: string) => {
-			onTitleChange?.(title);
-		});
-
-		// Right-click pastes from clipboard
-		const termEl = containerEl;
-		function onContextMenu(e: MouseEvent) {
-			e.preventDefault();
-			navigator.clipboard.readText().then((text) => {
-				if (text) term.paste(text);
-			});
-		}
-		termEl.addEventListener('contextmenu', onContextMenu);
-
-		terminal = term;
-		fitAddon = fit;
-
-		const bufferId = termType === 'ssh' && connectionId ? connectionId : ptyId;
-		registerBufferReader(bufferId, {
-			read: (startLine?: number, maxLines?: number) => {
-				const buf = term.buffer.active;
-				const start = startLine ?? Math.max(0, buf.length - (maxLines ?? 50));
-				const end = maxLines && startLine != null ? Math.min(buf.length, start + maxLines) : buf.length;
-				const lines: string[] = [];
-				for (let i = start; i < end; i++) {
-					const line = buf.getLine(i);
-					if (line) lines.push(line.translateToString(true));
+			requestAnimationFrame(() => {
+				try {
+					fit.fit();
+					sendResize(term.cols, term.rows);
+				} catch (err) {
+					console.error('[Terminal] Initial fit error:', err);
 				}
-				return lines.join('\n').trim();
-			},
-			lineCount: () => term.buffer.active.length
+			});
+
+			setupInputHandler(term);
+			setupEventListeners(term);
+			setupResizeObserver(term, fit, containerEl);
+
+			// Detect user changes (e.g. sudo su -) via OSC 2 terminal title updates
+			term.onTitleChange((title: string) => {
+				onTitleChange?.(title);
+			});
+
+			// Right-click pastes from clipboard
+			const termEl = containerEl!;
+			function onContextMenu(e: MouseEvent) {
+				e.preventDefault();
+				navigator.clipboard.readText().then((text) => {
+					if (text) term.paste(text);
+				});
+			}
+			termEl.addEventListener('contextmenu', onContextMenu);
+
+			terminal = term;
+			fitAddon = fit;
+
+			const bufferId = termType === 'ssh' && connectionId ? connectionId : ptyId;
+			registerBufferReader(bufferId, {
+				read: (startLine?: number, maxLines?: number) => {
+					const buf = term.buffer.active;
+					const start = startLine ?? Math.max(0, buf.length - (maxLines ?? 50));
+					const end = maxLines && startLine != null ? Math.min(buf.length, start + maxLines) : buf.length;
+					const lines: string[] = [];
+					for (let i = start; i < end; i++) {
+						const line = buf.getLine(i);
+						if (line) lines.push(line.translateToString(true));
+					}
+					return lines.join('\n').trim();
+				},
+				lineCount: () => term.buffer.active.length
+			});
 		});
 
 		return () => {
+			const bufferId = termType === 'ssh' && connectionId ? connectionId : ptyId;
 			unregisterBufferReader(bufferId);
 			unlistenData?.();
 			unlistenExit?.();
 			resizeObserver?.disconnect();
-			termEl.removeEventListener('contextmenu', onContextMenu);
 			term.dispose();
 			terminal = undefined;
 			fitAddon = undefined;
 		};
+	});
+
+	// Live font updates from settings
+	const appSettings = getSettings();
+	$effect(() => {
+		const size = appSettings.fontSize;
+		const family = appSettings.fontFamily;
+		const term = terminal;
+		const fit = fitAddon;
+		if (!term || !fit) return;
+
+		let sizeChanged = false;
+		let familyChanged = false;
+
+		if (size && term.options.fontSize !== size) {
+			term.options.fontSize = size;
+			sizeChanged = true;
+		}
+		if (family && term.options.fontFamily !== family) {
+			// Load font first, then apply
+			Promise.all([
+				document.fonts.load(`${size || 14}px "${family}"`),
+				document.fonts.load(`bold ${size || 14}px "${family}"`)
+			]).catch(() => {}).finally(() => {
+				term.options.fontFamily = family;
+				term.clearTextureAtlas();
+				fit.fit();
+				sendResize(term.cols, term.rows);
+			});
+			familyChanged = true;
+		}
+		if (sizeChanged && !familyChanged) {
+			term.clearTextureAtlas();
+			fit.fit();
+			sendResize(term.cols, term.rows);
+		}
 	});
 
 </script>

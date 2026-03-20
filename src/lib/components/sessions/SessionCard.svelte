@@ -9,9 +9,11 @@
 		onedit: () => void;
 		ondelete: () => void;
 		oncontextmenu?: (e: MouseEvent) => void;
+		ondragstart?: (e: PointerEvent) => void;
+		ondragend?: () => void;
 	}
 
-	let { session, onconnect, onedit, ondelete, oncontextmenu }: Props = $props();
+	let { session, onconnect, onedit, ondelete, oncontextmenu, ondragstart, ondragend }: Props = $props();
 
 	let authLabel = $derived(
 		session.auth_method.type === 'Password' ? t('session.auth_pw_label') :
@@ -20,6 +22,18 @@
 </script>
 
 <div class="session-card" oncontextmenu={oncontextmenu}>
+	<span
+		class="drag-handle"
+		role="img"
+		aria-label="Drag to reorder"
+		onpointerdown={(e) => { if (ondragstart) { e.stopPropagation(); ondragstart(e); } }}
+	>
+		<svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor">
+			<circle cx="2" cy="2" r="1.2"/><circle cx="6" cy="2" r="1.2"/>
+			<circle cx="2" cy="6" r="1.2"/><circle cx="6" cy="6" r="1.2"/>
+			<circle cx="2" cy="10" r="1.2"/><circle cx="6" cy="10" r="1.2"/>
+		</svg>
+	</span>
 	<button class="card-main" onclick={onconnect} title={t('session.connect_to', { name: session.name })}>
 		<DistroIcon osId={session.detected_os} size={18} />
 		<div class="session-info">
@@ -51,6 +65,29 @@
 </div>
 
 <style>
+	.drag-handle {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 16px;
+		height: 24px;
+		flex-shrink: 0;
+		color: var(--color-text-secondary);
+		opacity: 0.15;
+		cursor: grab;
+		touch-action: none;
+		transition: opacity 0.15s ease;
+	}
+
+	.drag-handle:active {
+		cursor: grabbing;
+		opacity: 0.6;
+	}
+
+	.session-card:hover .drag-handle {
+		opacity: 0.4;
+	}
+
 	.session-card {
 		display: flex;
 		align-items: center;

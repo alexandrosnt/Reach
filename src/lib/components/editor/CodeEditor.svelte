@@ -38,6 +38,7 @@
 	import { lintKeymap } from '@codemirror/lint';
 	import { LanguageDescription } from '@codemirror/language';
 	import { hcl } from 'codemirror-lang-hcl';
+	import { getSettings } from '$lib/state/settings.svelte';
 
 	interface Props {
 		content: string;
@@ -52,6 +53,7 @@
 	let currentLanguage = '';
 	const languageCompartment = new Compartment();
 
+	const editorFontSize = getSettings().fontSize ?? 14;
 	const appleDarkTheme = EditorView.theme(
 		{
 			'&': {
@@ -61,7 +63,7 @@
 			'.cm-scroller': {
 				overflow: 'auto',
 				fontFamily: "'JetBrains Mono', 'SF Mono', 'Cascadia Code', monospace",
-				fontSize: '13px',
+				fontSize: `${editorFontSize}px`,
 				lineHeight: '1.6'
 			},
 			'.cm-gutters': {
