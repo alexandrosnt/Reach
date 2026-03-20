@@ -27,6 +27,9 @@ pub async fn session_list(state: State<'_, AppState>) -> Result<Vec<SessionConfi
     if let Some(vault_id) = get_sessions_vault_id_if_exists(&manager) {
         if let Ok(secrets) = manager.list_secrets(&vault_id).await {
             for secret in secrets {
+                if secret.category != "session" && secret.category != "custom:session" {
+                    continue;
+                }
                 if let Ok(plaintext) = manager.read_secret(&vault_id, &secret.id).await {
                     use secrecy::ExposeSecret;
                     if let Ok(json) = String::from_utf8(plaintext.expose_secret().clone()) {
@@ -270,8 +273,12 @@ pub async fn session_list_folders(state: State<'_, AppState>) -> Result<Vec<Fold
         .await
         .map_err(|e| e.to_string())?;
 
-    let mut folders = Vec::with_capacity(secrets.len());
+    let mut folders = Vec::new();
     for secret in secrets {
+        // Only read secrets with category "folder" — skip sessions, settings, etc.
+        if secret.category != "folder" {
+            continue;
+        }
         if let Ok(plaintext) = manager.read_secret(&vault_id, &secret.id).await {
             use secrecy::ExposeSecret;
             if let Ok(json) = String::from_utf8(plaintext.expose_secret().clone()) {
