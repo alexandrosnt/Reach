@@ -54,6 +54,20 @@ function openCommandPalette(): void {
 	// Placeholder for command palette
 }
 
+
+const ruKeyMap: Record<string, string> = {
+	'ф': 'a',
+	'ц': 'w',
+	'е': 't',
+	'з': 'p',
+	'б': ','
+};
+
+function normalizeKey(key: string): string {
+	const lower = key.toLowerCase();
+	return ruKeyMap[lower] ?? lower;
+}
+
 const shortcuts: Shortcut[] = [
 	{ key: 't', ctrl: true, action: 'New tab', handler: () => createTab('local') },
 	{ key: 'w', ctrl: true, shift: true, action: 'Close tab', handler: closeActiveTab },
@@ -76,7 +90,7 @@ function matchesShortcut(e: KeyboardEvent, shortcut: Shortcut): boolean {
 
 	if (shortcut.alt && !e.altKey) return false;
 
-	return e.key.toLowerCase() === shortcut.key.toLowerCase() || e.key === shortcut.key;
+	return normalizeKey(e.key) === shortcut.key.toLowerCase() || e.key === shortcut.key;
 }
 
 function onKeydown(e: KeyboardEvent): void {
