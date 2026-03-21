@@ -21,7 +21,8 @@
 	);
 </script>
 
-<div class="session-card" oncontextmenu={oncontextmenu}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="session-card" oncontextmenu={oncontextmenu} role="group">
 	<span
 		class="drag-handle"
 		role="img"

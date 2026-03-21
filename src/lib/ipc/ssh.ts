@@ -10,6 +10,14 @@ export interface JumpHostConnectParams {
   keyPassphrase?: string;
 }
 
+export interface ProxyConfig {
+  proxy_type: string;
+  host: string;
+  port: number;
+  username?: string;
+  password?: string;
+}
+
 export interface SshConnectParams {
   id: string;
   host: string;
@@ -22,6 +30,7 @@ export interface SshConnectParams {
   cols: number;
   rows: number;
   jumpChain?: JumpHostConnectParams[];
+  proxy?: ProxyConfig;
 }
 
 export interface ConnectionInfo {
@@ -44,6 +53,7 @@ export async function sshConnect(params: SshConnectParams): Promise<string> {
     cols: params.cols,
     rows: params.rows,
     jumpChain: params.jumpChain ?? null,
+    proxy: params.proxy ?? null,
   });
 }
 

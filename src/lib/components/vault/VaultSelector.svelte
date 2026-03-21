@@ -892,7 +892,4 @@ Go to Settings > Sync > Accept Vault Invite`;
 		line-height: 1.5;
 	}
 
-	.delete-warning strong {
-		color: var(--color-text-primary);
-	}
 </style>

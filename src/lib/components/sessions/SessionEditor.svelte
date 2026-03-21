@@ -27,6 +27,12 @@
 	let folderIdStr = $state('');
 	let jumpEnabled = $state(false);
 	let jumpHops = $state<Array<{host: string; port: string; username: string; authType: 'Password' | 'Key' | 'Agent'; password: string; keyPath: string; keyPassphrase: string}>>([]);
+	let proxyEnabled = $state(false);
+	let proxyType = $state<'socks5' | 'socks4' | 'http'>('socks5');
+	let proxyHost = $state('127.0.0.1');
+	let proxyPort = $state('9050');
+	let proxyUsername = $state('');
+	let proxyPassword = $state('');
 	let saving = $state(false);
 	let error = $state<string | undefined>();
 
@@ -61,6 +67,16 @@
 				jumpEnabled = false;
 				jumpHops = [];
 			}
+		if (editSession.proxy) {
+			proxyEnabled = true;
+			proxyType = (editSession.proxy.proxy_type as 'socks5' | 'socks4' | 'http') ?? 'socks5';
+			proxyHost = editSession.proxy.host ?? '127.0.0.1';
+			proxyPort = String(editSession.proxy.port ?? 9050);
+			proxyUsername = editSession.proxy.username ?? '';
+			proxyPassword = editSession.proxy.password ?? '';
+		} else {
+			proxyEnabled = false;
+		}
 		} else {
 			name = '';
 			host = '';
@@ -74,6 +90,12 @@
 			folderIdStr = '';
 			jumpEnabled = false;
 			jumpHops = [];
+			proxyEnabled = false;
+			proxyType = 'socks5';
+			proxyHost = '127.0.0.1';
+			proxyPort = '9050';
+			proxyUsername = '';
+			proxyPassword = '';
 		}
 		error = undefined;
 	});
@@ -107,6 +129,14 @@
 			})
 			: undefined;
 
+		const proxyConfig = proxyEnabled ? {
+			proxy_type: proxyType,
+			host: proxyHost.trim(),
+			port: parseInt(proxyPort, 10) || 9050,
+			username: proxyUsername.trim() || null,
+			password: proxyPassword || null,
+		} : null;
+
 		try {
 			if (isEditing && editSession) {
 				await sessionUpdate({
@@ -119,9 +149,10 @@
 					folder_id: folderIdStr || null,
 					tags,
 					jump_chain: jumpChain ?? editSession.jump_chain ?? null,
+					proxy: proxyConfig,
 				});
 			} else {
-				await sessionCreate({
+				const created = await sessionCreate({
 					name: name.trim(),
 					host: host.trim(),
 					port,
@@ -132,6 +163,9 @@
 					vaultId,
 					jumpChain: jumpChain ?? null,
 				});
+				if (proxyConfig) {
+					await sessionUpdate({ ...created, proxy: proxyConfig });
+				}
 			}
 			onsave?.();
 			open = false;
@@ -267,6 +301,48 @@
 				<button type="button" class="jump-add-btn" onclick={addHop} disabled={saving}>
 					+ {t('session.jump_add_hop')}
 				</button>
+			{/if}
+		</div>
+
+		<div class="proxy-section">
+			<label class="proxy-toggle">
+				<input type="checkbox" bind:checked={proxyEnabled} disabled={saving} />
+				<span class="proxy-toggle-text">Connect via Proxy</span>
+			</label>
+
+			{#if proxyEnabled}
+				<div class="proxy-fields">
+					<div class="proxy-type-row">
+						<button type="button" class="proxy-type-btn" class:active={proxyType === 'socks5'} onclick={() => (proxyType = 'socks5')} disabled={saving}>SOCKS5</button>
+						<button type="button" class="proxy-type-btn" class:active={proxyType === 'socks4'} onclick={() => (proxyType = 'socks4')} disabled={saving}>SOCKS4</button>
+						<button type="button" class="proxy-type-btn" class:active={proxyType === 'http'} onclick={() => (proxyType = 'http')} disabled={saving}>HTTP</button>
+					</div>
+					<div class="row">
+						<div class="field-host">
+							<Input label="Proxy Host" bind:value={proxyHost} placeholder="127.0.0.1" disabled={saving} />
+						</div>
+						<div class="field-port">
+							<Input label="Port" bind:value={proxyPort} type="number" placeholder="9050" disabled={saving} />
+						</div>
+					</div>
+					<div class="row">
+						<div class="field-host">
+							<Input label="Username (optional)" bind:value={proxyUsername} placeholder="" disabled={saving} />
+						</div>
+						<div class="field-host">
+							<Input label="Password (optional)" bind:value={proxyPassword} type="password" disabled={saving} />
+						</div>
+					</div>
+					<p class="proxy-hint">
+						{#if proxyType === 'socks5'}
+							Tor default: 127.0.0.1:9050 | Tor Browser: 127.0.0.1:9150
+						{:else if proxyType === 'http'}
+							HTTP CONNECT proxy for tunneling SSH through corporate proxies
+						{:else}
+							SOCKS4 proxy (no authentication support)
+						{/if}
+					</p>
+				</div>
 			{/if}
 		</div>
 
@@ -434,6 +510,73 @@
 		to {
 			transform: rotate(360deg);
 		}
+	}
+
+	.proxy-section {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding-top: 4px;
+	}
+
+	.proxy-toggle {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		cursor: pointer;
+	}
+
+	.proxy-toggle-text {
+		font-size: 0.75rem;
+		font-weight: 500;
+		color: var(--color-text-primary);
+	}
+
+	.proxy-fields {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding: 10px;
+		background: rgba(255, 255, 255, 0.02);
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+	}
+
+	.proxy-type-row {
+		display: flex;
+		gap: 0;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-btn);
+		overflow: hidden;
+	}
+
+	.proxy-type-btn {
+		flex: 1;
+		padding: 5px 8px;
+		font-family: var(--font-sans);
+		font-size: 0.6875rem;
+		font-weight: 500;
+		border: none;
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		transition: background-color var(--duration-default) var(--ease-default), color var(--duration-default) var(--ease-default);
+	}
+
+	.proxy-type-btn.active {
+		background-color: var(--color-accent);
+		color: #fff;
+	}
+
+	.proxy-type-btn:not(.active):hover {
+		background-color: rgba(255, 255, 255, 0.06);
+	}
+
+	.proxy-hint {
+		margin: 0;
+		font-size: 0.625rem;
+		color: var(--color-text-secondary);
+		opacity: 0.7;
 	}
 
 	.jump-section {

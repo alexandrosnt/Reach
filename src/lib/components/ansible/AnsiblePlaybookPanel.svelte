@@ -42,35 +42,41 @@
 		</div>
 	{:else}
 		<div class="form-section">
-			<label class="field-label">{t('ansible.playbook_select')}</label>
-			<select class="field-select" bind:value={selectedPlaybook}>
-				<option value={null}>--</option>
-				{#each playbooks as pb (pb)}
-					<option value={pb}>{pb}</option>
-				{/each}
-			</select>
+			<label class="field-label">
+				{t('ansible.playbook_select')}
+				<select class="field-select" bind:value={selectedPlaybook}>
+					<option value={null}>--</option>
+					{#each playbooks as pb (pb)}
+						<option value={pb}>{pb}</option>
+					{/each}
+				</select>
+			</label>
 		</div>
 
 		{#if inventoryFiles.length > 0}
 			<div class="form-section">
-				<label class="field-label">{t('ansible.inventory_select')}</label>
-				<select class="field-select" bind:value={selectedInventory}>
-					<option value={null}>--</option>
-					{#each inventoryFiles as inv (inv)}
-						<option value={inv}>{inv}</option>
-					{/each}
-				</select>
+				<label class="field-label">
+					{t('ansible.inventory_select')}
+					<select class="field-select" bind:value={selectedInventory}>
+						<option value={null}>--</option>
+						{#each inventoryFiles as inv (inv)}
+							<option value={inv}>{inv}</option>
+						{/each}
+					</select>
+				</label>
 			</div>
 		{/if}
 
 		<div class="form-section">
-			<label class="field-label">{t('ansible.extra_args')}</label>
-			<input
-				type="text"
-				class="field-input"
-				bind:value={extraArgs}
-				placeholder={t('ansible.extra_args_placeholder')}
-			/>
+			<label class="field-label">
+				{t('ansible.extra_args')}
+				<input
+					type="text"
+					class="field-input"
+					bind:value={extraArgs}
+					placeholder={t('ansible.extra_args_placeholder')}
+				/>
+			</label>
 		</div>
 
 		<div class="actions">
