@@ -48,6 +48,26 @@ pub struct SessionConfig {
     /// ProxyJump chain: ordered list of jump hosts to tunnel through
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub jump_chain: Option<Vec<JumpHostConfig>>,
+    /// Proxy configuration (SOCKS5, SOCKS4, HTTP CONNECT)
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub proxy: Option<ProxyConfig>,
+}
+
+/// Proxy configuration for SSH connections (Tor, SOCKS5, HTTP CONNECT).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ProxyConfig {
+    /// Proxy type: "socks5", "socks4", "http"
+    pub proxy_type: String,
+    /// Proxy host (e.g. "127.0.0.1" for Tor)
+    pub host: String,
+    /// Proxy port (e.g. 9050 for Tor)
+    pub port: u16,
+    /// Optional proxy username
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    /// Optional proxy password
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password: Option<String>,
 }
 
 /// Authentication method for an SSH session.
@@ -76,6 +96,8 @@ pub struct Folder {
     pub id: String,
     pub name: String,
     pub parent_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vault_id: Option<String>,
 }
 
 /// Configuration for a port-forwarding tunnel.
