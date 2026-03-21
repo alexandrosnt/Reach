@@ -77,33 +77,43 @@
 						{#if editingHost === idx}
 							<div class="edit-form">
 								<div class="form-row">
-									<label class="field-label">{t('ansible.host_name')}</label>
-									<input class="field-input" bind:value={host.name} placeholder="web1" />
+									<label class="field-label">
+										{t('ansible.host_name')}
+										<input class="field-input" bind:value={host.name} placeholder="web1" />
+									</label>
 								</div>
 								<div class="form-row">
-									<label class="field-label">{t('ansible.host_address')}</label>
-									<input class="field-input" bind:value={host.ansibleHost} placeholder="192.168.1.10" />
+									<label class="field-label">
+										{t('ansible.host_address')}
+										<input class="field-input" bind:value={host.ansibleHost} placeholder="192.168.1.10" />
+									</label>
 								</div>
 								<div class="form-row-half">
 									<div class="form-row">
-										<label class="field-label">{t('ansible.host_port')}</label>
-										<input class="field-input" type="number" bind:value={host.ansiblePort} placeholder="22" />
+										<label class="field-label">
+											{t('ansible.host_port')}
+											<input class="field-input" type="number" bind:value={host.ansiblePort} placeholder="22" />
+										</label>
 									</div>
 									<div class="form-row">
-										<label class="field-label">{t('ansible.host_user')}</label>
-										<input class="field-input" bind:value={host.ansibleUser} placeholder="admin" />
+										<label class="field-label">
+											{t('ansible.host_user')}
+											<input class="field-input" bind:value={host.ansibleUser} placeholder="admin" />
+										</label>
 									</div>
 								</div>
 								<div class="form-row">
-									<label class="field-label">{t('ansible.host_groups')}</label>
-									<input
-										class="field-input"
-										value={host.groups.join(', ')}
-										placeholder="webservers, production"
-										onchange={(e) => {
-											host.groups = (e.currentTarget as HTMLInputElement).value.split(',').map(s => s.trim()).filter(Boolean);
-										}}
-									/>
+									<label class="field-label">
+										{t('ansible.host_groups')}
+										<input
+											class="field-input"
+											value={host.groups.join(', ')}
+											placeholder="webservers, production"
+											onchange={(e) => {
+												host.groups = (e.currentTarget as HTMLInputElement).value.split(',').map(s => s.trim()).filter(Boolean);
+											}}
+										/>
+									</label>
 								</div>
 								<div class="edit-actions">
 									<Button variant="secondary" size="sm" onclick={() => editingHost = null}>{t('common.ok')}</Button>
@@ -149,19 +159,23 @@
 						{#if editingGroup === idx}
 							<div class="edit-form">
 								<div class="form-row">
-									<label class="field-label">{t('ansible.group_name')}</label>
-									<input class="field-input" bind:value={group.name} placeholder="webservers" />
+									<label class="field-label">
+										{t('ansible.group_name')}
+										<input class="field-input" bind:value={group.name} placeholder="webservers" />
+									</label>
 								</div>
 								<div class="form-row">
-									<label class="field-label">{t('ansible.group_children')}</label>
-									<input
-										class="field-input"
-										value={group.children.join(', ')}
-										placeholder="child_group1, child_group2"
-										onchange={(e) => {
-											group.children = (e.currentTarget as HTMLInputElement).value.split(',').map(s => s.trim()).filter(Boolean);
-										}}
-									/>
+									<label class="field-label">
+										{t('ansible.group_children')}
+										<input
+											class="field-input"
+											value={group.children.join(', ')}
+											placeholder="child_group1, child_group2"
+											onchange={(e) => {
+												group.children = (e.currentTarget as HTMLInputElement).value.split(',').map(s => s.trim()).filter(Boolean);
+											}}
+										/>
+									</label>
 								</div>
 								<div class="edit-actions">
 									<Button variant="secondary" size="sm" onclick={() => editingGroup = null}>{t('common.ok')}</Button>

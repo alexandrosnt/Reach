@@ -30,13 +30,15 @@
 
 <div class="vault-panel">
 	<div class="form-section">
-		<label class="field-label">{t('ansible.vault_file')}</label>
-		<select class="field-select" bind:value={selectedFile}>
-			<option value={null}>--</option>
-			{#each files as f (f)}
-				<option value={f}>{f}</option>
-			{/each}
-		</select>
+		<label class="field-label">
+			{t('ansible.vault_file')}
+			<select class="field-select" bind:value={selectedFile}>
+				<option value={null}>--</option>
+				{#each files as f (f)}
+					<option value={f}>{f}</option>
+				{/each}
+			</select>
+		</label>
 	</div>
 
 	{#if selectedFile}
