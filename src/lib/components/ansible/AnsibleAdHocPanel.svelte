@@ -40,43 +40,51 @@
 
 <div class="adhoc-panel">
 	<div class="form-section">
-		<label class="field-label">{t('ansible.host_pattern')}</label>
-		<input
-			type="text"
-			class="field-input"
-			bind:value={hostPattern}
-			placeholder={t('ansible.host_pattern_placeholder')}
-		/>
+		<label class="field-label">
+			{t('ansible.host_pattern')}
+			<input
+				type="text"
+				class="field-input"
+				bind:value={hostPattern}
+				placeholder={t('ansible.host_pattern_placeholder')}
+			/>
+		</label>
 	</div>
 
 	<div class="form-section">
-		<label class="field-label">{t('ansible.module')}</label>
-		<select class="field-select" bind:value={moduleName}>
-			{#each modules as mod (mod)}
-				<option value={mod}>{mod}</option>
-			{/each}
-		</select>
+		<label class="field-label">
+			{t('ansible.module')}
+			<select class="field-select" bind:value={moduleName}>
+				{#each modules as mod (mod)}
+					<option value={mod}>{mod}</option>
+				{/each}
+			</select>
+		</label>
 	</div>
 
 	<div class="form-section">
-		<label class="field-label">{t('ansible.module_args')}</label>
-		<input
-			type="text"
-			class="field-input"
-			bind:value={moduleArgs}
-			placeholder={t('ansible.module_args_placeholder')}
-		/>
+		<label class="field-label">
+			{t('ansible.module_args')}
+			<input
+				type="text"
+				class="field-input"
+				bind:value={moduleArgs}
+				placeholder={t('ansible.module_args_placeholder')}
+			/>
+		</label>
 	</div>
 
 	{#if inventoryFiles.length > 0}
 		<div class="form-section">
-			<label class="field-label">{t('ansible.inventory_select')}</label>
-			<select class="field-select" bind:value={selectedInventory}>
-				<option value={null}>--</option>
-				{#each inventoryFiles as inv (inv)}
-					<option value={inv}>{inv}</option>
-				{/each}
-			</select>
+			<label class="field-label">
+				{t('ansible.inventory_select')}
+				<select class="field-select" bind:value={selectedInventory}>
+					<option value={null}>--</option>
+					{#each inventoryFiles as inv (inv)}
+						<option value={inv}>{inv}</option>
+					{/each}
+				</select>
+			</label>
 		</div>
 	{/if}
 

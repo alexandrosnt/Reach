@@ -140,6 +140,12 @@ graph LR
 
 ## Changelog
 
+### v0.3.5
+- **Proxy support (SOCKS5/SOCKS4/HTTP)** — Connect to SSH servers through proxies. Supports Tor (SOCKS5 on 127.0.0.1:9050), corporate HTTP CONNECT proxies, and any SOCKS4/5 proxy with optional authentication. Configured per session in the session editor.
+- **Vault-scoped folders** — Folders now belong to the vault where they were created. A folder in "DevOps Team" vault won't appear in "Private" or other vaults.
+- **Clean toolchain check** — Ansible and OpenTofu panels show a spinner while checking installation status instead of raw terminal commands
+- **Zero svelte-check warnings** — Fixed all 17 accessibility warnings (form labels, ARIA roles, unused CSS) across Ansible, Tofu, and Vault components
+
 ### v0.3.4
 - **Google Fonts integration** — Searchable font picker in Settings → Appearance with 24+ monospace fonts from Google Fonts, each rendered in its own typeface
 - **Live font preview** — Real-time preview in Appearance settings shows selected font and size with terminal-style output

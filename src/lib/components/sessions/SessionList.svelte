@@ -71,6 +71,15 @@
 		}
 
 		for (const folder of folders) {
+			// Only show folders that belong to the current vault (or have no vault_id for legacy folders)
+			if (folder.vault_id !== undefined && folder.vault_id !== null && folder.vault_id !== (selectedVaultId ?? null)) {
+				// This folder belongs to a different vault — skip unless it has sessions here
+				const folderSessions = folderMap.get(folder.id) ?? [];
+				if (folderSessions.length > 0) {
+					groups.push({ folder, sessions: folderSessions });
+				}
+				continue;
+			}
 			const folderSessions = folderMap.get(folder.id) ?? [];
 			groups.push({ folder, sessions: folderSessions });
 		}
@@ -94,7 +103,7 @@
 		const name = newFolderName.trim();
 		if (!name) return;
 		try {
-			await sessionCreateFolder(name, null);
+			await sessionCreateFolder(name, null, selectedVaultId);
 			newFolderName = '';
 			creatingFolder = false;
 			folders = await sessionListFolders();
@@ -304,6 +313,13 @@
 				cols: 80,
 				rows: 24,
 				jumpChain,
+			proxy: session.proxy ? {
+				proxy_type: session.proxy.proxy_type,
+				host: session.proxy.host,
+				port: session.proxy.port,
+				username: session.proxy.username ?? undefined,
+				password: session.proxy.password ?? undefined,
+			} : undefined,
 			});
 
 			createTab('ssh', `${session.username}@${session.host}`, id);
@@ -589,6 +605,7 @@
 			</div>
 		{/if}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<!-- svelte-ignore a11y_click_events_have_key_events -->
 		<div
 			class="sessions-scroll"
 			oncontextmenu={openBackgroundContextMenu}
@@ -886,30 +903,6 @@
 		color: var(--color-text-primary);
 	}
 
-	.folder-actions-row {
-		display: flex;
-		align-items: center;
-	}
-
-	.add-folder-btn {
-		display: flex;
-		align-items: center;
-		gap: 4px;
-		padding: 3px 8px;
-		font-family: var(--font-sans);
-		font-size: 0.625rem;
-		color: var(--color-text-secondary);
-		background: transparent;
-		border: 1px dashed var(--color-border);
-		border-radius: 5px;
-		cursor: pointer;
-		transition: background-color var(--duration-default) var(--ease-default), color var(--duration-default) var(--ease-default);
-	}
-
-	.add-folder-btn:hover {
-		background-color: rgba(255, 255, 255, 0.04);
-		color: var(--color-text-primary);
-	}
 
 	.new-folder-row {
 		display: flex;
@@ -1145,12 +1138,6 @@
 		background-color: var(--color-border);
 	}
 
-	.divider {
-		height: 1px;
-		background-color: var(--color-border);
-		opacity: 0.5;
-		margin: 2px 0;
-	}
 
 	.sessions-scroll {
 		display: flex;
