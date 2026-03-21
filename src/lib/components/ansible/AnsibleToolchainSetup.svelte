@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { t } from '$lib/state/i18n.svelte';
-	import { checkTool, isToolInstalled, getToolVersion, isLocalUnsupported, isWsl } from '$lib/state/ansible.svelte';
+	import { checkTool, isToolInstalled, isToolChecking, getToolVersion, isLocalUnsupported, isWsl } from '$lib/state/ansible.svelte';
 	import { toolchainInstall, type ToolInstallEvent } from '$lib/ipc/toolchain';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import Button from '$lib/components/shared/Button.svelte';
@@ -66,7 +66,12 @@
 </script>
 
 <div class="toolchain-setup">
-	{#if isWsl()}
+	{#if isToolChecking()}
+		<div class="checking-row">
+			<div class="spinner"></div>
+			<span class="checking-text">{t('ansible.checking')}</span>
+		</div>
+	{:else if isWsl()}
 		<!-- WSL detected on Windows: show two-row checklist -->
 		<div class="checklist">
 			<div class="checklist-row">
@@ -185,6 +190,27 @@
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
+	}
+
+	/* Checking state */
+	.checking-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.spinner {
+		width: 18px;
+		height: 18px;
+		border: 2px solid var(--color-border);
+		border-top-color: var(--color-accent);
+		border-radius: 50%;
+		animation: spin 0.6s linear infinite;
+	}
+
+	.checking-text {
+		font-size: 0.875rem;
+		color: var(--color-text-secondary);
 	}
 
 	/* Two-row checklist for WSL mode */
@@ -339,5 +365,11 @@
 	.progress-actions {
 		display: flex;
 		justify-content: flex-end;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 </style>

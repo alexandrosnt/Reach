@@ -28,6 +28,7 @@ import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 let projects = $state<AnsibleProject[]>([]);
 let activeProjectId = $state<string | null>(null);
 let toolStatus = $state<ToolStatus | null>(null);
+let toolChecking = $state(false);
 let commandRunning = $state(false);
 let commandOutput = $state<Array<{ stream: string; line: string }>>([]);
 let currentRunId = $state<string | null>(null);
@@ -59,6 +60,10 @@ export function getToolStatus(): ToolStatus | null {
 
 export function isToolInstalled(): boolean {
 	return toolStatus?.installed ?? false;
+}
+
+export function isToolChecking(): boolean {
+	return toolChecking;
 }
 
 export function isLocalUnsupported(): boolean {
@@ -123,7 +128,12 @@ export function setWorkspaceTab(
 }
 
 export async function checkTool(): Promise<void> {
-	toolStatus = await toolchainCheck('ansible');
+	toolChecking = true;
+	try {
+		toolStatus = await toolchainCheck('ansible');
+	} finally {
+		toolChecking = false;
+	}
 }
 
 export async function loadProjects(): Promise<void> {
