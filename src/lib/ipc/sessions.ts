@@ -26,12 +26,22 @@ export interface SessionConfig {
   detected_os?: string | null;
   vault_id?: string | null; // Which vault this session belongs to
   jump_chain?: JumpHostConfig[] | null; // ProxyJump chain
+  proxy?: ProxySessionConfig | null; // Proxy config (SOCKS5/Tor, HTTP)
+}
+
+export interface ProxySessionConfig {
+  proxy_type: string;
+  host: string;
+  port: number;
+  username?: string | null;
+  password?: string | null;
 }
 
 export interface Folder {
   id: string;
   name: string;
   parent_id: string | null;
+  vault_id: string | null;
 }
 
 export async function sessionList(): Promise<SessionConfig[]> {
@@ -78,8 +88,8 @@ export async function sessionListFolders(): Promise<Folder[]> {
   return invoke<Folder[]>('session_list_folders');
 }
 
-export async function sessionCreateFolder(name: string, parentId: string | null): Promise<Folder> {
-  return invoke<Folder>('session_create_folder', { name, parentId });
+export async function sessionCreateFolder(name: string, parentId: string | null, vaultId?: string | null): Promise<Folder> {
+  return invoke<Folder>('session_create_folder', { name, parentId, vaultId: vaultId ?? null });
 }
 
 export async function sessionDeleteFolder(folderId: string): Promise<void> {

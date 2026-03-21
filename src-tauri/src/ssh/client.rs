@@ -7,6 +7,8 @@ use tauri::Emitter;
 use thiserror::Error;
 use tokio::sync::mpsc;
 
+use crate::state::ProxyConfig;
+
 /// A shared, clonable wrapper around the russh Handle.
 /// Handle is not Clone, so we wrap it in Arc<Mutex<>> for reuse.
 pub type SharedHandle = Arc<tokio::sync::Mutex<russh::client::Handle<SshClientHandler>>>;
@@ -84,6 +86,7 @@ impl SshManager {
         cols: u16,
         rows: u16,
         app_handle: tauri::AppHandle,
+        proxy: Option<ProxyConfig>,
     ) -> Result<ConnectionInfo, SshError> {
         tracing::info!("SSH connecting to {}@{}:{}", username, host, port);
 
@@ -92,9 +95,17 @@ impl SshManager {
             let config = Arc::new(russh::client::Config::default());
             let handler = SshClientHandler::new(host, port);
 
-            let mut handle = russh::client::connect(config, (host, port), handler)
-                .await
-                .map_err(|e| SshError::ConnectionFailed(format!("{}", e)))?;
+            let mut handle = if let Some(ref proxy) = proxy {
+                tracing::info!("SSH connecting via {} proxy {}:{}", proxy.proxy_type, proxy.host, proxy.port);
+                let stream = Self::connect_via_proxy(proxy, host, port).await?;
+                russh::client::connect_stream(config, stream, handler)
+                    .await
+                    .map_err(|e| SshError::ConnectionFailed(format!("Proxy SSH handshake failed: {}", e)))?
+            } else {
+                russh::client::connect(config, (host, port), handler)
+                    .await
+                    .map_err(|e| SshError::ConnectionFailed(format!("{}", e)))?
+            };
 
             // Authenticate
             let authenticated = match auth {
@@ -185,6 +196,83 @@ impl SshManager {
 
     /// Connect to a target host through one or more jump hosts (ProxyJump).
     /// `jump_chain` is ordered outermost-first: connect to first hop, then tunnel through.
+    /// Connect to a target host through a SOCKS5/SOCKS4/HTTP proxy.
+    async fn connect_via_proxy(
+        proxy: &ProxyConfig,
+        target_host: &str,
+        target_port: u16,
+    ) -> Result<tokio::net::TcpStream, SshError> {
+        let proxy_addr = format!("{}:{}", proxy.host, proxy.port);
+        let target_addr = (target_host, target_port);
+
+        match proxy.proxy_type.to_lowercase().as_str() {
+            "socks5" => {
+                let stream = if let (Some(user), Some(pass)) = (&proxy.username, &proxy.password) {
+                    tokio_socks::tcp::Socks5Stream::connect_with_password(
+                        proxy_addr.as_str(),
+                        target_addr,
+                        user.as_str(),
+                        pass.as_str(),
+                    )
+                    .await
+                    .map_err(|e| SshError::ConnectionFailed(format!("SOCKS5 proxy error: {}", e)))?
+                } else {
+                    tokio_socks::tcp::Socks5Stream::connect(
+                        proxy_addr.as_str(),
+                        target_addr,
+                    )
+                    .await
+                    .map_err(|e| SshError::ConnectionFailed(format!("SOCKS5 proxy error: {}", e)))?
+                };
+                Ok(stream.into_inner())
+            }
+            "socks4" => {
+                let stream = tokio_socks::tcp::Socks4Stream::connect(
+                    proxy_addr.as_str(),
+                    target_addr,
+                )
+                .await
+                .map_err(|e| SshError::ConnectionFailed(format!("SOCKS4 proxy error: {}", e)))?;
+                Ok(stream.into_inner())
+            }
+            "http" => {
+                // HTTP CONNECT proxy
+                use tokio::io::{AsyncReadExt, AsyncWriteExt};
+                let mut stream = tokio::net::TcpStream::connect(&proxy_addr)
+                    .await
+                    .map_err(|e| SshError::ConnectionFailed(format!("HTTP proxy connect error: {}", e)))?;
+
+                let connect_req = if let (Some(user), Some(pass)) = (&proxy.username, &proxy.password) {
+                    let creds = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, format!("{}:{}", user, pass));
+                    format!(
+                        "CONNECT {}:{} HTTP/1.1\r\nHost: {}:{}\r\nProxy-Authorization: Basic {}\r\n\r\n",
+                        target_host, target_port, target_host, target_port, creds
+                    )
+                } else {
+                    format!(
+                        "CONNECT {}:{} HTTP/1.1\r\nHost: {}:{}\r\n\r\n",
+                        target_host, target_port, target_host, target_port
+                    )
+                };
+
+                stream.write_all(connect_req.as_bytes()).await
+                    .map_err(|e| SshError::ConnectionFailed(format!("HTTP proxy write error: {}", e)))?;
+
+                let mut buf = [0u8; 1024];
+                let n = stream.read(&mut buf).await
+                    .map_err(|e| SshError::ConnectionFailed(format!("HTTP proxy read error: {}", e)))?;
+                let response = String::from_utf8_lossy(&buf[..n]);
+
+                if !response.contains("200") {
+                    return Err(SshError::ConnectionFailed(format!("HTTP proxy rejected: {}", response.lines().next().unwrap_or(""))));
+                }
+
+                Ok(stream)
+            }
+            _ => Err(SshError::ConnectionFailed(format!("Unsupported proxy type: {}", proxy.proxy_type))),
+        }
+    }
+
     pub async fn connect_via_jump(
         &mut self,
         id: &str,

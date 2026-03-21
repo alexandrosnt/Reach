@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { t } from '$lib/state/i18n.svelte';
-	import { checkTool, isToolInstalled, getToolVersion } from '$lib/state/tofu.svelte';
+	import { checkTool, isToolInstalled, isToolChecking, getToolVersion } from '$lib/state/tofu.svelte';
 	import { toolchainInstall, type ToolInstallEvent } from '$lib/ipc/toolchain';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import Button from '$lib/components/shared/Button.svelte';
@@ -66,7 +66,12 @@
 </script>
 
 <div class="toolchain-setup">
-	{#if isToolInstalled()}
+	{#if isToolChecking()}
+		<div class="checking-row">
+			<div class="spinner"></div>
+			<span class="checking-text">{t('tofu.checking')}</span>
+		</div>
+	{:else if isToolInstalled()}
 		<div class="status-row installed">
 			<svg class="check-icon" width="20" height="20" viewBox="0 0 20 20" fill="none">
 				<circle cx="10" cy="10" r="9" stroke="currentColor" stroke-width="1.5" />
@@ -121,6 +126,27 @@
 		border-radius: var(--radius-btn);
 		background-color: var(--color-bg-elevated);
 		border: 1px solid var(--color-border);
+	}
+
+	/* Checking state */
+	.checking-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.spinner {
+		width: 18px;
+		height: 18px;
+		border: 2px solid var(--color-border);
+		border-top-color: var(--color-accent);
+		border-radius: 50%;
+		animation: spin 0.6s linear infinite;
+	}
+
+	.checking-text {
+		font-size: 0.875rem;
+		color: var(--color-text-secondary);
 	}
 
 	.status-row {
@@ -205,5 +231,11 @@
 	.progress-actions {
 		display: flex;
 		justify-content: flex-end;
+	}
+
+	@keyframes spin {
+		to {
+			transform: rotate(360deg);
+		}
 	}
 </style>

@@ -173,6 +173,7 @@ pub async fn session_create(
             None
         },
         jump_chain,
+        proxy: None,
     };
 
     let json = serde_json::to_string(&session).map_err(|e| e.to_string())?;
@@ -299,6 +300,7 @@ pub async fn session_create_folder(
     state: State<'_, AppState>,
     name: String,
     parent_id: Option<String>,
+    vault_id: Option<String>,
 ) -> Result<Folder, String> {
     let mut manager = state.vault_manager.lock().await;
 
@@ -306,12 +308,13 @@ pub async fn session_create_folder(
         return Err("Vault is locked. Set a master password first.".to_string());
     }
 
-    let vault_id = ensure_folders_vault(&mut manager).await?;
+    let storage_vault_id = ensure_folders_vault(&mut manager).await?;
 
     let folder = Folder {
         id: uuid::Uuid::new_v4().to_string(),
         name: name.clone(),
         parent_id,
+        vault_id,
     };
 
     let json = serde_json::to_string(&folder).map_err(|e| e.to_string())?;
@@ -320,7 +323,7 @@ pub async fn session_create_folder(
     // O(1) insert
     manager
         .create_secret_with_id(
-            &vault_id,
+            &storage_vault_id,
             &folder.id,
             &name,
             SecretCategory::Folder,

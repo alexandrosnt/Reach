@@ -49,6 +49,7 @@ pub async fn ssh_connect(
     cols: u16,
     rows: u16,
     jump_chain: Option<Vec<JumpHostConnectParams>>,
+    proxy: Option<crate::state::ProxyConfig>,
 ) -> Result<String, String> {
     let auth = build_auth(&auth_method, password, key_path, key_passphrase)?;
 
@@ -58,7 +59,7 @@ pub async fn ssh_connect(
         if chain.is_empty() {
             // No jump hosts, connect directly
             manager
-                .connect(&id, &host, port, &username, auth, cols, rows, app.clone())
+                .connect(&id, &host, port, &username, auth, cols, rows, app.clone(), proxy)
                 .await
                 .map_err(|e| e.to_string())?
         } else {
@@ -98,7 +99,7 @@ pub async fn ssh_connect(
         }
     } else {
         manager
-            .connect(&id, &host, port, &username, auth, cols, rows, app.clone())
+            .connect(&id, &host, port, &username, auth, cols, rows, app.clone(), proxy)
             .await
             .map_err(|e| e.to_string())?
     };
