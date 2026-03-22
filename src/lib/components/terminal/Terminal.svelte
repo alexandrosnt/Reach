@@ -9,7 +9,7 @@
 	import { ptyWrite, ptyResize } from '$lib/ipc/pty';
 	import { sshSend, sshResize } from '$lib/ipc/ssh';
 	import { registerBufferReader, unregisterBufferReader } from '$lib/state/terminal-buffer.svelte';
-	import { getSettings } from '$lib/state/settings.svelte';
+	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
 
 	interface Props {
 		ptyId: string;
@@ -229,6 +229,22 @@
 			}
 			termEl.addEventListener('contextmenu', onContextMenu);
 
+			// Ctrl+Wheel zooms terminal font size
+			function onWheel(e: WheelEvent) {
+				if (!e.ctrlKey) return;
+				e.preventDefault();
+				const current = term.options.fontSize ?? 14;
+				const next = e.deltaY < 0 ? Math.min(current + 1, 32) : Math.max(current - 1, 8);
+				if (next !== current) {
+					term.options.fontSize = next;
+					term.clearTextureAtlas();
+					fit.fit();
+					sendResize(term.cols, term.rows);
+					updateSetting('fontSize', next);
+				}
+			}
+			termEl.addEventListener('wheel', onWheel, { passive: false });
+
 			terminal = term;
 			fitAddon = fit;
 
@@ -261,40 +277,25 @@
 		};
 	});
 
-	// Live font updates from settings
+	// Live font family updates from settings (size is changed via Ctrl+Wheel directly)
 	const appSettings = getSettings();
 	$effect(() => {
-		const size = appSettings.fontSize;
 		const family = appSettings.fontFamily;
 		const term = terminal;
 		const fit = fitAddon;
-		if (!term || !fit) return;
+		if (!term || !fit || !family) return;
+		if (term.options.fontFamily === family) return;
 
-		let sizeChanged = false;
-		let familyChanged = false;
-
-		if (size && term.options.fontSize !== size) {
-			term.options.fontSize = size;
-			sizeChanged = true;
-		}
-		if (family && term.options.fontFamily !== family) {
-			// Load font first, then apply
-			Promise.all([
-				document.fonts.load(`${size || 14}px "${family}"`),
-				document.fonts.load(`bold ${size || 14}px "${family}"`)
-			]).catch(() => {}).finally(() => {
-				term.options.fontFamily = family;
-				term.clearTextureAtlas();
-				fit.fit();
-				sendResize(term.cols, term.rows);
-			});
-			familyChanged = true;
-		}
-		if (sizeChanged && !familyChanged) {
+		const size = term.options.fontSize ?? 14;
+		Promise.all([
+			document.fonts.load(`${size}px "${family}"`),
+			document.fonts.load(`bold ${size}px "${family}"`)
+		]).catch(() => {}).finally(() => {
+			term.options.fontFamily = family;
 			term.clearTextureAtlas();
 			fit.fit();
 			sendResize(term.cols, term.rows);
-		}
+		});
 	});
 
 </script>

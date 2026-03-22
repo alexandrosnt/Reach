@@ -140,6 +140,11 @@ graph LR
 
 ## Changelog
 
+### v0.3.6
+- **Ctrl + Mouse Wheel zoom** — Change terminal font size with Ctrl + Scroll in any terminal tab. Saves automatically, persists across restarts.
+- **Removed font size slider** — No separate "console text size" setting. Terminal sizing is Ctrl+Wheel only, keeping UI and terminal scaling independent.
+- **Font family via Settings only** — Google Fonts picker stays in Appearance for choosing terminal font family, font size is controlled naturally in the terminal itself.
+
 ### v0.3.5
 - **Proxy support (SOCKS5/SOCKS4/HTTP)** — Connect to SSH servers through proxies. Supports Tor (SOCKS5 on 127.0.0.1:9050), corporate HTTP CONNECT proxies, and any SOCKS4/5 proxy with optional authentication. Configured per session in the session editor.
 - **Vault-scoped folders** — Folders now belong to the vault where they were created. A folder in "DevOps Team" vault won't appear in "Private" or other vaults.
