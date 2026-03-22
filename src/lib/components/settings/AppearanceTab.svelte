@@ -33,12 +33,6 @@
 		}
 	}
 
-	function onFontSizeInput(e: Event) {
-		const target = e.target as HTMLInputElement;
-		const size = parseInt(target.value, 10);
-		updateSetting('fontSize', size);
-		pvSize = size;
-	}
 
 	// Google Fonts
 	const MONOSPACE_FONTS = [
@@ -58,7 +52,6 @@
 	];
 
 	let pvFont = $state(settings.fontFamily || 'monospace');
-	let pvSize = $state(settings.fontSize || 14);
 
 	let fontSearch = $state('');
 	let fontDropdownOpen = $state(false);
@@ -166,19 +159,10 @@
 	<div class="setting-row">
 		<div class="setting-info">
 			<span class="setting-label">{t('settings.font_size')}</span>
-			<span class="setting-description">{t('settings.font_size_desc', { size: settings.fontSize })}</span>
+			<span class="setting-description">Current: {settings.fontSize}px — Use Ctrl + Mouse Wheel in terminal to adjust</span>
 		</div>
-		<div class="setting-control slider-control">
-			<span class="range-value">{settings.fontSize}px</span>
-			<input
-				type="range"
-				class="range-slider"
-				min="10"
-				max="24"
-				step="1"
-				value={settings.fontSize}
-				oninput={onFontSizeInput}
-			/>
+		<div class="setting-control">
+			<span class="font-size-badge">{settings.fontSize}px</span>
 		</div>
 	</div>
 
@@ -242,13 +226,13 @@
 		</div>
 	</div>
 
-	{#key `${pvFont}-${pvSize}`}
+	{#key `${pvFont}-${currentSize}`}
 		<div class="font-preview-box">
-			<span class="preview-label">Preview — {pvFont} @ {pvSize}px</span>
+			<span class="preview-label">Preview — {pvFont} @ {currentSize}px</span>
 			<iframe
 				title="Font Preview"
 				class="preview-iframe"
-				srcdoc={`<!DOCTYPE html><html><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(pvFont)}:wght@400;700&display=swap"><style>*{margin:0;padding:0;background:#0a0a0a;color:#f5f5f7;}html,body{overflow:hidden;width:100%;height:100%;}pre{overflow:hidden;}</style></head><body><pre style="font-family:'${pvFont}',monospace;font-size:${pvSize}px;padding:12px;line-height:1.5;white-space:pre;">user@server:~$ ls -la\ntotal 42\ndrwxr-xr-x  2 root root 4096 Mar 20 08:00 .\n0123456789 ABCDEF abcdef</pre></body></html>`}
+				srcdoc={`<!DOCTYPE html><html><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(pvFont)}:wght@400;700&display=swap"><style>*{margin:0;padding:0;background:#0a0a0a;color:#f5f5f7;}html,body{overflow:hidden;width:100%;height:100%;}pre{overflow:hidden;}</style></head><body><pre style="font-family:'${pvFont}',monospace;font-size:${currentSize}px;padding:12px;line-height:1.5;white-space:pre;">user@server:~$ ls -la\ntotal 42\ndrwxr-xr-x  2 root root 4096 Mar 20 08:00 .\n0123456789 ABCDEF abcdef</pre></body></html>`}
 			></iframe>
 		</div>
 	{/key}
@@ -320,23 +304,12 @@
 	.setting-description { font-size: 0.75rem; color: var(--color-text-secondary); }
 	.setting-control { flex-shrink: 0; min-width: 180px; }
 
-	.slider-control { display: flex; align-items: center; gap: 10px; }
-	.range-value { font-size: 0.8125rem; font-weight: 600; color: var(--color-accent); min-width: 36px; text-align: right; font-variant-numeric: tabular-nums; }
 
-	.range-slider {
-		-webkit-appearance: none; appearance: none; width: 130px; height: 4px;
-		border-radius: 2px; background: var(--color-border); outline: none; cursor: pointer;
-	}
-	.range-slider::-webkit-slider-thumb {
-		-webkit-appearance: none; appearance: none; width: 16px; height: 16px;
-		border-radius: 50%; background: var(--color-accent); border: 2px solid #fff;
-		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); cursor: pointer;
-		transition: transform var(--duration-default) var(--ease-default);
-	}
-	.range-slider::-webkit-slider-thumb:hover { transform: scale(1.15); }
-	.range-slider::-moz-range-thumb {
-		width: 16px; height: 16px; border-radius: 50%; background: var(--color-accent);
-		border: 2px solid #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3); cursor: pointer;
+	.font-size-badge {
+		font-size: 0.875rem;
+		font-weight: 600;
+		color: var(--color-accent);
+		font-variant-numeric: tabular-nums;
 	}
 
 	/* Font picker */
