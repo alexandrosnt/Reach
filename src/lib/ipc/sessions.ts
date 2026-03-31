@@ -62,6 +62,7 @@ export async function sessionCreate(params: {
   tags: string[];
   vaultId?: string | null;
   jumpChain?: JumpHostConfig[] | null;
+  proxy?: ProxySessionConfig | null;
 }): Promise<SessionConfig> {
   return invoke<SessionConfig>('session_create', {
     name: params.name,
@@ -73,6 +74,7 @@ export async function sessionCreate(params: {
     tags: params.tags,
     vaultId: params.vaultId ?? null,
     jumpChain: params.jumpChain ?? null,
+    proxy: params.proxy ?? null,
   });
 }
 

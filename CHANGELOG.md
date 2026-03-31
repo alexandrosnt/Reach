@@ -2,6 +2,14 @@
 
 All notable changes to Reach are documented here.
 
+## v0.3.7
+- **Tab labels show server name + OS icon** — SSH tabs display the saved session name (e.g. "MiniPC") instead of `root@IP`. Detected OS distro icon (Ubuntu, Debian, Rocky, etc.) replaces the generic SSH icon. Hover for the full `user@host` tooltip.
+- **Click-to-copy terminal selection** — Click selected text in the terminal to copy it to clipboard automatically. *(Contributed by [@alien-ye](https://github.com/alien-ye))*
+- **Proxy fix: saves on first create** — Proxy config is now passed directly in `sessionCreate` instead of a fragile create-then-update. Proxy checkbox and fields save reliably on new sessions.
+- **Proxy in Quick Connect** — Full proxy support (SOCKS5/SOCKS4/HTTP) added to Quick Connect, not just the session editor.
+- **macOS entitlements** — Added `Entitlements.plist` with `network.client` and `network.server` for signed/notarized macOS builds. Proxy and SSH connections work in production on Mac.
+- **Proxy checkbox visible on macOS** — Explicit checkbox sizing and `accent-color` styling for WebKit/Safari rendering.
+
 ## v0.3.6
 - **Ctrl + Mouse Wheel zoom** — Change terminal font size with Ctrl + Scroll in any terminal tab. Saves automatically, persists across restarts.
 - **Removed font size slider** — No separate "console text size" setting. Terminal sizing is Ctrl+Wheel only, keeping UI and terminal scaling independent.

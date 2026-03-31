@@ -280,9 +280,6 @@
 			unlistenData?.();
 			unlistenExit?.();
 			resizeObserver?.disconnect();
-			termEl.removeEventListener('contextmenu', onContextMenu);
-			termEl.removeEventListener('wheel', onWheel);
-			termEl.removeEventListener('click', onClick);
 			term.dispose();
 			terminal = undefined;
 			fitAddon = undefined;
