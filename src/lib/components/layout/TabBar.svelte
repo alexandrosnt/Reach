@@ -2,6 +2,7 @@
 	import { getTabs, getActiveTab, createTab, closeTab, activateTab } from '$lib/state/tabs.svelte';
 	import { getActivePage, setActivePage, type Page } from '$lib/state/navigation.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import DistroIcon from '$lib/components/sessions/DistroIcon.svelte';
 
 	let tabs = $derived(getTabs());
 	let activeTab = $derived(getActiveTab());
@@ -56,15 +57,19 @@
 					aria-selected={tab.id === activeTab?.id}
 					title={tab.title}
 				>
-					<svg class="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none">
-						{#if tab.type === 'local'}
-							<path d={terminalIcon} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-						{:else}
-							<path d={sshIcon} fill="currentColor" />
-						{/if}
-					</svg>
+					{#if tab.type === 'ssh' && tab.detectedOs}
+						<DistroIcon osId={tab.detectedOs} size={14} />
+					{:else}
+						<svg class="tab-icon" width="14" height="14" viewBox="0 0 24 24" fill="none">
+							{#if tab.type === 'local'}
+								<path d={terminalIcon} stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+							{:else}
+								<path d={sshIcon} fill="currentColor" />
+							{/if}
+						</svg>
+					{/if}
 
-					<span class="tab-title">{tab.title}</span>
+					<span class="tab-title">{tab.sessionName || tab.title}</span>
 
 					<button
 						class="tab-close"

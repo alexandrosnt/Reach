@@ -135,6 +135,7 @@ pub async fn session_create(
     tags: Vec<String>,
     vault_id: Option<String>,
     jump_chain: Option<Vec<JumpHostConfig>>,
+    proxy: Option<crate::state::ProxyConfig>,
 ) -> Result<SessionConfig, String> {
     let mut manager = state.vault_manager.lock().await;
 
@@ -173,7 +174,7 @@ pub async fn session_create(
             None
         },
         jump_chain,
-        proxy: None,
+        proxy,
     };
 
     let json = serde_json::to_string(&session).map_err(|e| e.to_string())?;

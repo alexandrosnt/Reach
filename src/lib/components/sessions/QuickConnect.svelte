@@ -27,6 +27,12 @@
 	let jumpPassword = $state('');
 	let jumpKeyPath = $state('');
 	let jumpKeyPassphrase = $state('');
+	let proxyEnabled = $state(false);
+	let proxyType = $state<'socks5' | 'socks4' | 'http'>('socks5');
+	let proxyHost = $state('127.0.0.1');
+	let proxyPort = $state('9050');
+	let proxyUsername = $state('');
+	let proxyPassword = $state('');
 	let connecting = $state(false);
 	let error = $state<string | undefined>();
 
@@ -65,6 +71,13 @@
 				cols: 80,
 				rows: 24,
 				jumpChain,
+				proxy: proxyEnabled ? {
+					proxy_type: proxyType,
+					host: proxyHost.trim(),
+					port: parseInt(proxyPort, 10) || 9050,
+					username: proxyUsername.trim() || undefined,
+					password: proxyPassword || undefined,
+				} : undefined,
 			});
 
 			createTab('ssh', `${username.trim()}@${host.trim()}`, id);
@@ -83,6 +96,12 @@
 			jumpPassword = '';
 			jumpKeyPath = '';
 			jumpKeyPassphrase = '';
+			proxyEnabled = false;
+			proxyType = 'socks5';
+			proxyHost = '127.0.0.1';
+			proxyPort = '9050';
+			proxyUsername = '';
+			proxyPassword = '';
 			error = undefined;
 			open = false;
 		} catch (err) {
@@ -181,6 +200,42 @@
 						<Input label={t('session.key_path')} bind:value={jumpKeyPath} placeholder="~/.ssh/id_rsa" disabled={connecting} />
 						<Input label={t('session.passphrase_optional')} bind:value={jumpKeyPassphrase} type="password" disabled={connecting} />
 					{/if}
+				</div>
+			{/if}
+		</div>
+
+		<div class="proxy-section">
+			<label class="proxy-toggle">
+				<input type="checkbox" bind:checked={proxyEnabled} disabled={connecting} />
+				<span class="proxy-toggle-text">Connect via Proxy</span>
+			</label>
+
+			{#if proxyEnabled}
+				<div class="proxy-fields">
+					<div class="proxy-type-row">
+						<button type="button" class="proxy-type-btn" class:active={proxyType === 'socks5'} onclick={() => (proxyType = 'socks5')} disabled={connecting}>SOCKS5</button>
+						<button type="button" class="proxy-type-btn" class:active={proxyType === 'socks4'} onclick={() => (proxyType = 'socks4')} disabled={connecting}>SOCKS4</button>
+						<button type="button" class="proxy-type-btn" class:active={proxyType === 'http'} onclick={() => (proxyType = 'http')} disabled={connecting}>HTTP</button>
+					</div>
+					<div class="row">
+						<div class="field-host">
+							<Input label="Proxy Host" bind:value={proxyHost} placeholder="127.0.0.1" disabled={connecting} />
+						</div>
+						<div class="field-port">
+							<Input label="Port" bind:value={proxyPort} type="number" placeholder="9050" disabled={connecting} />
+						</div>
+					</div>
+					<div class="row">
+						<div class="field-host">
+							<Input label="Username (optional)" bind:value={proxyUsername} disabled={connecting} />
+						</div>
+						<div class="field-host">
+							<Input label="Password (optional)" bind:value={proxyPassword} type="password" disabled={connecting} />
+						</div>
+					</div>
+					<p class="proxy-hint">
+						{#if proxyType === 'socks5'}Tor: 127.0.0.1:9050 | Tor Browser: 127.0.0.1:9150{:else if proxyType === 'http'}HTTP CONNECT proxy{:else}SOCKS4 proxy{/if}
+					</p>
 				</div>
 			{/if}
 		</div>
@@ -359,5 +414,79 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-btn);
 		background-color: rgba(255, 255, 255, 0.02);
+	}
+
+	.proxy-section {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding-top: 4px;
+	}
+
+	.proxy-toggle {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		cursor: pointer;
+	}
+
+	.proxy-toggle input[type="checkbox"] {
+		width: 14px;
+		height: 14px;
+		accent-color: var(--color-accent);
+		cursor: pointer;
+	}
+
+	.proxy-toggle-text {
+		font-size: 0.8125rem;
+		font-weight: 500;
+		color: var(--color-text-primary);
+	}
+
+	.proxy-fields {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		padding: 10px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-btn);
+		background-color: rgba(255, 255, 255, 0.02);
+	}
+
+	.proxy-type-row {
+		display: flex;
+		gap: 0;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-btn);
+		overflow: hidden;
+	}
+
+	.proxy-type-btn {
+		flex: 1;
+		padding: 5px 8px;
+		font-family: var(--font-sans);
+		font-size: 0.6875rem;
+		font-weight: 500;
+		border: none;
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		transition: background-color var(--duration-default) var(--ease-default), color var(--duration-default) var(--ease-default);
+	}
+
+	.proxy-type-btn.active {
+		background-color: var(--color-accent);
+		color: #fff;
+	}
+
+	.proxy-type-btn:not(.active):hover {
+		background-color: rgba(255, 255, 255, 0.06);
+	}
+
+	.proxy-hint {
+		margin: 0;
+		font-size: 0.625rem;
+		color: var(--color-text-secondary);
+		opacity: 0.7;
 	}
 </style>

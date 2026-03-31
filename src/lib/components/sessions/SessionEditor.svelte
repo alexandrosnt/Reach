@@ -152,7 +152,7 @@
 					proxy: proxyConfig,
 				});
 			} else {
-				const created = await sessionCreate({
+				await sessionCreate({
 					name: name.trim(),
 					host: host.trim(),
 					port,
@@ -162,10 +162,8 @@
 					tags,
 					vaultId,
 					jumpChain: jumpChain ?? null,
+					proxy: proxyConfig,
 				});
-				if (proxyConfig) {
-					await sessionUpdate({ ...created, proxy: proxyConfig });
-				}
 			}
 			onsave?.();
 			open = false;
@@ -523,6 +521,13 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
+		cursor: pointer;
+	}
+
+	.proxy-toggle input[type="checkbox"] {
+		width: 14px;
+		height: 14px;
+		accent-color: var(--color-accent);
 		cursor: pointer;
 	}
 
