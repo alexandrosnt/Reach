@@ -250,6 +250,13 @@ Thanks to those who have contributed to Reach:
       </a><br />
       <sub>SSH host key verification (TOFU)</sub>
     </td>
+    <td align="center">
+      <a href="https://github.com/alien-ye">
+        <img src="https://github.com/alien-ye.png" width="60" style="border-radius: 50%;" alt="alien-ye" /><br />
+        <sub><b>alien-ye</b></sub>
+      </a><br />
+      <sub>Click-to-copy terminal selection</sub>
+    </td>
   </tr>
 </table>
 
