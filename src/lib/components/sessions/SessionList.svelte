@@ -7,7 +7,7 @@
 	import { sessionList, sessionDelete, sessionUpdate, sessionListFolders, sessionCreateFolder, sessionDeleteFolder, type SessionConfig, type Folder } from '$lib/ipc/sessions';
 	import { sshConnect, sshDisconnect, sshDetectOs, type JumpHostConnectParams } from '$lib/ipc/ssh';
 	// Passwords are now stored encrypted in vault, not in memory cache
-	import { createTab } from '$lib/state/tabs.svelte';
+	import { createTab, updateTabOs } from '$lib/state/tabs.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { untrack } from 'svelte';
@@ -322,7 +322,7 @@
 			} : undefined,
 			});
 
-			createTab('ssh', `${session.username}@${session.host}`, id);
+			createTab('ssh', `${session.username}@${session.host}`, id, session.name, session.detected_os);
 			addToast(t('session.connected_toast', { name: session.name }), 'success');
 			connectSession = undefined;
 
@@ -330,6 +330,7 @@
 			if (!session.detected_os) {
 				sshDetectOs(id).then(async (osId) => {
 					if (osId) {
+						updateTabOs(id, osId);
 						const updated = { ...session, detected_os: osId };
 						try {
 							await sessionUpdate(updated);

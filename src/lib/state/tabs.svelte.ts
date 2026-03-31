@@ -6,6 +6,10 @@ export interface Tab {
 	type: TabType;
 	connectionId?: string;
 	active: boolean;
+	/** Session display name (e.g. "MiniPC") */
+	sessionName?: string;
+	/** Detected OS ID for distro icon (e.g. "ubuntu", "debian") */
+	detectedOs?: string | null;
 }
 
 let tabs = $state<Tab[]>([]);
@@ -20,7 +24,7 @@ export function getActiveTab(): Tab | undefined {
 	return activeTab;
 }
 
-export function createTab(type: TabType, title?: string, connectionId?: string): Tab {
+export function createTab(type: TabType, title?: string, connectionId?: string, sessionName?: string, detectedOs?: string | null): Tab {
 	const id = crypto.randomUUID();
 
 	// Deactivate all existing tabs
@@ -33,7 +37,9 @@ export function createTab(type: TabType, title?: string, connectionId?: string):
 		title: title ?? (type === 'local' ? 'Local' : 'SSH'),
 		type,
 		connectionId,
-		active: true
+		active: true,
+		sessionName,
+		detectedOs
 	};
 
 	tabs.push(tab);
@@ -65,6 +71,13 @@ export function updateTabTitle(id: string, title: string): void {
 	const tab = tabs.find((t) => t.id === id);
 	if (tab) {
 		tab.title = title;
+	}
+}
+
+export function updateTabOs(connectionId: string, os: string): void {
+	const tab = tabs.find((t) => t.connectionId === connectionId);
+	if (tab) {
+		tab.detectedOs = os;
 	}
 }
 
