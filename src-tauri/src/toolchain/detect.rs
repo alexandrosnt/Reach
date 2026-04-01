@@ -1,6 +1,17 @@
 use serde::Serialize;
 use std::process::Command;
 
+/// Create a Command that hides the console window on Windows.
+fn silent_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
+    let mut cmd = Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000); // CREATE_NO_WINDOW
+    }
+    cmd
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ToolStatus {
     pub installed: bool,
@@ -59,7 +70,7 @@ pub fn check_tool(tool: &str) -> ToolStatus {
     let path = Some(bin.to_string_lossy().to_string());
 
     // Run --version and check if the tool actually works
-    match Command::new(&bin).arg("--version").output() {
+    match silent_command(&bin).arg("--version").output() {
         Ok(out) if out.status.success() => {
             let stdout = String::from_utf8_lossy(&out.stdout);
             let stderr = String::from_utf8_lossy(&out.stderr);
@@ -113,7 +124,7 @@ pub fn check_tool(tool: &str) -> ToolStatus {
 #[cfg(windows)]
 fn check_ansible_windows() -> ToolStatus {
     // Step 1: Check if WSL is available
-    let wsl_list = Command::new("wsl.exe")
+    let wsl_list = silent_command("wsl.exe")
         .args(["--list", "--quiet"])
         .output();
 
@@ -131,7 +142,7 @@ fn check_ansible_windows() -> ToolStatus {
         // Step 2: Check if ansible is installed inside WSL.
         // Use login shell (-l) so ~/.profile / ~/.bashrc PATH additions are loaded
         // (pip --user installs to ~/.local/bin which is often only in interactive PATH).
-        let ansible_check = Command::new("wsl.exe")
+        let ansible_check = silent_command("wsl.exe")
             .args(["--", "bash", "-lc", "which ansible 2>/dev/null || command -v ansible 2>/dev/null"])
             .output();
 
@@ -140,7 +151,7 @@ fn check_ansible_windows() -> ToolStatus {
                 let wsl_path = String::from_utf8_lossy(&out.stdout).trim().to_string();
                 if !wsl_path.is_empty() {
                     // WSL has ansible — get version
-                    let version = Command::new("wsl.exe")
+                    let version = silent_command("wsl.exe")
                         .args(["--", "bash", "-lc", "ansible --version 2>/dev/null"])
                         .output()
                         .ok()
@@ -193,7 +204,7 @@ fn check_ansible_windows() -> ToolStatus {
 /// Check if WSL is available on this Windows system.
 #[cfg(windows)]
 pub fn is_wsl_available() -> bool {
-    Command::new("wsl.exe")
+    silent_command("wsl.exe")
         .args(["--list", "--quiet"])
         .output()
         .map(|out| {
@@ -260,7 +271,7 @@ fn ansible_version_from_metadata() -> Option<String> {
         if which::which(python).is_err() {
             continue;
         }
-        if let Ok(out) = Command::new(python)
+        if let Ok(out) = silent_command(python)
             .args(["-c", "from importlib.metadata import version; print(version('ansible'))"])
             .output()
         {

@@ -5,6 +5,27 @@ use serde::Serialize;
 use tauri::Emitter;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
+/// Create a std::process::Command that hides the console window on Windows.
+fn silent_command(program: impl AsRef<std::ffi::OsStr>) -> std::process::Command {
+    let mut cmd = std::process::Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000);
+    }
+    cmd
+}
+
+fn silent_async_command(program: impl AsRef<std::ffi::OsStr>) -> tokio::process::Command {
+    let mut cmd = tokio::process::Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000);
+    }
+    cmd
+}
+
 #[derive(Debug, Clone, Serialize)]
 pub struct ToolInstallEvent {
     pub tool: String,
@@ -90,7 +111,7 @@ if (Test-Path $tofuPath) {{ Write-Output "OK:$tofuPath" }} else {{ throw 'tofu.e
         tools_dir.display()
     );
 
-    let mut child = tokio::process::Command::new("powershell")
+    let mut child = silent_async_command("powershell")
         .args(["-NoProfile", "-NonInteractive", "-Command", &ps_script])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -163,7 +184,7 @@ async fn install_tofu_unix(app_handle: &tauri::AppHandle) -> Result<String, Stri
         tools_dir.display()
     );
 
-    let mut child = tokio::process::Command::new("sh")
+    let mut child = silent_async_command("sh")
         .args(["-c", &install_cmd])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -271,7 +292,7 @@ pub async fn install_ansible(app_handle: &tauri::AppHandle) -> Result<String, St
         return Err("Python 3 is required to install Ansible. Please install Python 3 and try again.".to_string());
     };
 
-    let mut child = tokio::process::Command::new(installer)
+    let mut child = silent_async_command(installer)
         .args(&args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -361,7 +382,7 @@ pub async fn install_ansible(app_handle: &tauri::AppHandle) -> Result<String, St
         if which::which(python).is_err() {
             continue;
         }
-        if let Ok(output) = std::process::Command::new(python)
+        if let Ok(output) = silent_command(python)
             .args(["-c", "from importlib.metadata import version; print(version('ansible'))"])
             .output()
         {
@@ -388,7 +409,7 @@ pub async fn install_ansible(app_handle: &tauri::AppHandle) -> Result<String, St
             }
         }
         // Try to get version from the found binary
-        if let Ok(output) = std::process::Command::new(&found).arg("--version").output() {
+        if let Ok(output) = silent_command(&found).arg("--version").output() {
             let stdout = String::from_utf8_lossy(&output.stdout).to_string();
             let first_line = stdout.lines().next().unwrap_or("ansible (installed)").trim().to_string();
             emit_done(app_handle, tool, true, &first_line);
@@ -500,7 +521,7 @@ pub fn ensure_python_scripts_in_path() {
         if which::which(python).is_err() {
             continue;
         }
-        if let Ok(output) = std::process::Command::new(python)
+        if let Ok(output) = silent_command(python)
             .args([
                 "-c",
                 "import sysconfig; print(sysconfig.get_path('scripts', '{}_user'.format('nt' if __import__('os').name == 'nt' else 'posix_prefix')))",
@@ -583,7 +604,7 @@ fn add_python_scripts_to_path(installer: &str) {
             "python"
         };
 
-        if let Ok(output) = std::process::Command::new(python)
+        if let Ok(output) = silent_command(python)
             .args([
                 "-c",
                 "import sysconfig; print(sysconfig.get_path('scripts', '{}_user'.format('nt' if __import__('os').name == 'nt' else 'posix_prefix')))",
@@ -648,13 +669,13 @@ async fn install_ansible_wsl(app_handle: &tauri::AppHandle) -> Result<String, St
     emit_progress(app_handle, tool, "Detecting package manager inside WSL...");
 
     // Detect which package manager/pip is available in WSL
-    let has_pip3 = std::process::Command::new("wsl.exe")
+    let has_pip3 = silent_command("wsl.exe")
         .args(["--", "which", "pip3"])
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false);
 
-    let has_apt = std::process::Command::new("wsl.exe")
+    let has_apt = silent_command("wsl.exe")
         .args(["--", "which", "apt-get"])
         .output()
         .map(|o| o.status.success())
@@ -673,7 +694,7 @@ async fn install_ansible_wsl(app_handle: &tauri::AppHandle) -> Result<String, St
         return Err(msg.to_string());
     };
 
-    let mut child = tokio::process::Command::new("wsl.exe")
+    let mut child = silent_async_command("wsl.exe")
         .args(["--", "bash", "-c", &install_cmd])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

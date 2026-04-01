@@ -534,6 +534,7 @@
   "toolchain.python_required": "Python 3 est requis pour installer Ansible",
   "toolchain.retry": "Reessayer",
 
+  "sidebar.snippets": "Extraits",
   "sidebar.plugins": "Plugins",
 
   "plugin.title": "Plugins",

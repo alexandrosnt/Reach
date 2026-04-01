@@ -8,6 +8,8 @@
 	import { initShortcuts, cleanupShortcuts } from '$lib/state/shortcuts.svelte';
 	import { startupUpdateCheck, startPeriodicChecks, stopPeriodicChecks } from '$lib/state/updater.svelte';
 	import { changeLocale } from '$lib/state/i18n.svelte';
+	import { loadSnippets } from '$lib/state/snippets.svelte';
+	import { vaultState } from '$lib/state/vault.svelte';
 	import { onMount } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -41,6 +43,13 @@
 
 	$effect(() => {
 		changeLocale(settings.locale);
+	});
+
+	// Load snippets once vault is unlocked
+	$effect(() => {
+		if (!vaultState.locked) {
+			loadSnippets();
+		}
 	});
 
 	$effect(() => {

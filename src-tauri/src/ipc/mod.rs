@@ -17,3 +17,4 @@ pub mod toolchain_commands;
 pub mod tunnel_commands;
 pub mod vault_commands;
 pub mod editor_commands;
+pub mod snippet_commands;

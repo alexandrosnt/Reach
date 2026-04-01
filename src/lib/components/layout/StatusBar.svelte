@@ -42,9 +42,7 @@
 		<span>{connectionStatus}</span>
 	</div>
 
-	<div class="statusbar-center">
-		<span>{t('app.name')} v0.1.0</span>
-	</div>
+	<div class="statusbar-center"></div>
 
 	<div class="statusbar-right">
 		<span>{currentTime}</span>

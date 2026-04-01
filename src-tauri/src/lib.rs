@@ -39,6 +39,7 @@ use ipc::toolchain_commands::*;
 use ipc::tunnel_commands::*;
 use ipc::vault_commands::*;
 use ipc::editor_commands::*;
+use ipc::snippet_commands::*;
 
 #[tauri::command]
 fn set_close_to_tray(state: tauri::State<'_, AppState>, enabled: bool) {
@@ -290,6 +291,11 @@ pub fn run() {
             editor_open_file,
             editor_get_pending_file,
             editor_hide_window,
+            // Snippet commands
+            snippet_list,
+            snippet_create,
+            snippet_update,
+            snippet_delete,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
@@ -481,6 +487,11 @@ pub fn run() {
             editor_open_file,
             editor_get_pending_file,
             editor_hide_window,
+            // Snippet commands
+            snippet_list,
+            snippet_create,
+            snippet_update,
+            snippet_delete,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
