@@ -90,6 +90,19 @@ pub enum AuthMethod {
     Agent,
 }
 
+/// A saved command snippet.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Snippet {
+    pub id: String,
+    pub name: String,
+    pub command: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+}
+
 /// A folder used to organize sessions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Folder {
@@ -130,6 +143,12 @@ pub struct SystemStats {
     pub ram_used: u64,
     pub disk: f64,
     pub users: Vec<String>,
+    /// Network upload bytes per second
+    #[serde(default)]
+    pub net_up: u64,
+    /// Network download bytes per second
+    #[serde(default)]
+    pub net_down: u64,
 }
 
 /// Main application state.

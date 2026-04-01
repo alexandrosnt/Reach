@@ -75,10 +75,19 @@ const STATS_COMMAND: &str = concat!(
 /// Read the first "cpu " line from /proc/stat.
 const CPU_COMMAND: &str = "head -1 /proc/stat";
 
+/// Read network interface counters from /proc/net/dev.
+const NET_COMMAND: &str = "cat /proc/net/dev 2>/dev/null";
+
 #[derive(Default, Clone, Copy)]
 struct CpuSnapshot {
     total: u64,
     idle: u64,
+}
+
+#[derive(Default, Clone, Copy)]
+struct NetSnapshot {
+    rx_bytes: u64,
+    tx_bytes: u64,
 }
 
 async fn monitoring_loop(
@@ -92,15 +101,21 @@ async fn monitoring_loop(
     tracing::info!("Monitoring loop starting for {}", connection_id);
 
     loop {
-        // Take first CPU snapshot
+        // Take first CPU + network snapshot
         let cpu1 = read_cpu_snapshot(&handle).await.unwrap_or_default();
+        let net1 = read_net_snapshot(&handle).await.unwrap_or_default();
         tracing::debug!("CPU snapshot 1: total={}, idle={}", cpu1.total, cpu1.idle);
 
-        // Small delay between CPU readings for delta
+        // Small delay between readings for delta
         tokio::time::sleep(std::time::Duration::from_millis(500)).await;
 
-        // Take second CPU snapshot + all other stats
+        // Take second CPU + network snapshot
         let cpu2 = read_cpu_snapshot(&handle).await.unwrap_or_default();
+        let net2 = read_net_snapshot(&handle).await.unwrap_or_default();
+
+        // Compute network bytes/sec (scale 500ms delta to per-second)
+        let net_down = if net2.rx_bytes >= net1.rx_bytes { (net2.rx_bytes - net1.rx_bytes) * 2 } else { 0 };
+        let net_up = if net2.tx_bytes >= net1.tx_bytes { (net2.tx_bytes - net1.tx_bytes) * 2 } else { 0 };
 
         // Compute CPU% from delta (or from previous loop iteration if delta is 0)
         let cpu = if cpu2.total > cpu1.total {
@@ -145,6 +160,8 @@ async fn monitoring_loop(
                     ram_used,
                     disk,
                     users,
+                    net_up,
+                    net_down,
                 };
 
                 // Store in AppState for polling
@@ -189,6 +206,31 @@ async fn read_cpu_snapshot(handle: &SharedHandle) -> Option<CpuSnapshot> {
         }
     }
     None
+}
+
+/// Read total RX/TX bytes across all non-loopback interfaces from /proc/net/dev.
+async fn read_net_snapshot(handle: &SharedHandle) -> Option<NetSnapshot> {
+    let output = exec_on_connection(handle, NET_COMMAND).await.ok()?;
+    let mut rx_total: u64 = 0;
+    let mut tx_total: u64 = 0;
+
+    for line in output.lines() {
+        let line = line.trim();
+        // Skip header lines and loopback
+        if !line.contains(':') || line.starts_with("lo:") || line.starts_with("Inter") || line.starts_with("face") {
+            continue;
+        }
+        // Format: "eth0: rx_bytes rx_packets ... tx_bytes tx_packets ..."
+        if let Some(data) = line.split(':').nth(1) {
+            let values: Vec<u64> = data.split_whitespace().filter_map(|s| s.parse().ok()).collect();
+            if values.len() >= 10 {
+                rx_total += values[0]; // receive bytes
+                tx_total += values[8]; // transmit bytes
+            }
+        }
+    }
+
+    Some(NetSnapshot { rx_bytes: rx_total, tx_bytes: tx_total })
 }
 
 fn parse_memory(output: &str) -> (u64, u64) {

@@ -1,5 +1,15 @@
 use std::process::Stdio;
 
+fn silent_async_command(program: impl AsRef<std::ffi::OsStr>) -> tokio::process::Command {
+    let mut cmd = tokio::process::Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000);
+    }
+    cmd
+}
+
 use crate::ssh::client::exec_on_connection;
 use crate::state::AppState;
 use crate::tofu::runner;
@@ -406,7 +416,7 @@ pub async fn tofu_state_list_resources(
                 return Err("OpenTofu CLI not found".to_string());
             };
 
-            let result = tokio::process::Command::new(binary)
+            let result = silent_async_command(binary)
                 .args(["state", "list"])
                 .current_dir(&project_path)
                 .stdout(Stdio::piped())
@@ -492,7 +502,7 @@ pub async fn tofu_get_output_values(
                 return Err("OpenTofu CLI not found".to_string());
             };
 
-            let result = tokio::process::Command::new(binary)
+            let result = silent_async_command(binary)
                 .args(["output", "-json"])
                 .current_dir(&project_path)
                 .stdout(Stdio::piped())
@@ -1011,7 +1021,7 @@ async fn run_tofu_sync(
                 return Err("OpenTofu CLI not found".to_string());
             };
 
-            let result = tokio::process::Command::new(binary)
+            let result = silent_async_command(binary)
                 .args(args)
                 .current_dir(working_dir)
                 .stdout(Stdio::piped())
@@ -1068,7 +1078,7 @@ async fn run_tofu_sync_full(
                 return Err("OpenTofu CLI not found".to_string());
             };
 
-            let result = tokio::process::Command::new(binary)
+            let result = silent_async_command(binary)
                 .args(args)
                 .current_dir(working_dir)
                 .stdout(Stdio::piped())

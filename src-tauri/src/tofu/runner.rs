@@ -3,6 +3,16 @@ use std::process::Stdio;
 use tauri::Emitter;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
+fn silent_async_command(program: impl AsRef<std::ffi::OsStr>) -> tokio::process::Command {
+    let mut cmd = tokio::process::Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000);
+    }
+    cmd
+}
+
 use crate::ssh::client::{exec_on_connection_streaming, SshManager};
 use crate::tofu::types::{TofuCommand, TofuCommandEvent, TofuCommandRequest};
 
@@ -132,7 +142,7 @@ pub async fn run_local(
         return Err("OpenTofu CLI not found".to_string());
     };
 
-    let mut child = tokio::process::Command::new(binary)
+    let mut child = silent_async_command(binary)
         .args(args)
         .current_dir(working_dir)
         .stdout(Stdio::piped())
