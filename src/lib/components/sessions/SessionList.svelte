@@ -112,19 +112,7 @@
 		}
 	}
 
-	let deleteFolderConfirm = $state<string | null>(null);
-
-	function handleDeleteFolder(folderId: string): void {
-		if (deleteFolderConfirm !== folderId) {
-			deleteFolderConfirm = folderId;
-			setTimeout(() => { deleteFolderConfirm = null; }, 4000);
-			return;
-		}
-		confirmDeleteFolder(folderId);
-	}
-
-	async function confirmDeleteFolder(folderId: string): Promise<void> {
-		deleteFolderConfirm = null;
+	async function handleDeleteFolder(folderId: string): Promise<void> {
 		try {
 			const affected = sessions.filter(s => s.folder_id === folderId);
 			for (const s of affected) {
@@ -634,17 +622,12 @@
 						</button>
 						<button
 							class="folder-delete-btn"
-							class:confirm={deleteFolderConfirm === group.folder!.id}
 							onclick={() => handleDeleteFolder(group.folder!.id)}
-							title={deleteFolderConfirm === group.folder!.id ? t('common.confirm') : t('common.delete')}
+							title={t('common.delete')}
 						>
-							{#if deleteFolderConfirm === group.folder!.id}
-								<span class="folder-delete-confirm-text">{t('common.confirm')}</span>
-							{:else}
-								<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-									<path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
-								</svg>
-							{/if}
+							<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
+								<path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+							</svg>
 						</button>
 					</div>
 					{#if !collapsedFolders.has(group.folder.id)}
@@ -1037,8 +1020,8 @@
 		background: transparent;
 		color: var(--color-text-secondary);
 		cursor: pointer;
-		opacity: 0;
-		transition: opacity var(--duration-default) var(--ease-default), background-color var(--duration-default) var(--ease-default);
+		opacity: 0.15;
+		transition: opacity 0.15s ease, background-color 0.15s ease;
 	}
 
 	.folder-header:hover .folder-delete-btn {
@@ -1048,26 +1031,6 @@
 	.folder-delete-btn:hover {
 		background: rgba(255, 69, 58, 0.12);
 		color: var(--color-danger);
-	}
-
-	.folder-delete-btn.confirm {
-		opacity: 1;
-		width: auto;
-		padding: 2px 8px;
-		background: var(--color-danger, #ff453a);
-		color: #fff;
-		border-radius: 4px;
-	}
-
-	.folder-delete-btn.confirm:hover {
-		background: #ff6961;
-		color: #fff;
-	}
-
-	.folder-delete-confirm-text {
-		font-size: 0.5625rem;
-		font-weight: 600;
-		white-space: nowrap;
 	}
 
 	.folder-session {

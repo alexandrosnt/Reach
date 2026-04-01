@@ -534,6 +534,7 @@
   "toolchain.python_required": "Απαιτείται Python 3 για την εγκατάσταση του Ansible",
   "toolchain.retry": "Επανάληψη",
 
+  "sidebar.snippets": "Αποσπάσματα",
   "sidebar.plugins": "Πρόσθετα",
 
   "plugin.title": "Πρόσθετα",

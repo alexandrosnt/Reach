@@ -3,9 +3,10 @@
 	import SessionList from '$lib/components/sessions/SessionList.svelte';
 	import TunnelManager from '$lib/components/tunnel/TunnelManager.svelte';
 	import PluginPanel from '$lib/components/plugin/PluginPanel.svelte';
+	import SnippetPanel from '$lib/components/snippets/SnippetPanel.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
-	type Section = 'sessions' | 'explorer' | 'tunnels' | 'plugins';
+	type Section = 'sessions' | 'explorer' | 'tunnels' | 'snippets' | 'plugins';
 
 	const STORAGE_KEY = 'reach-sidebar-width';
 	const MIN_WIDTH = 160;
@@ -56,6 +57,11 @@
 			id: 'tunnels',
 			label: t('sidebar.tunnels'),
 			icon: 'M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71'
+		},
+		{
+			id: 'snippets',
+			label: t('sidebar.snippets'),
+			icon: 'M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2M9 2h6a1 1 0 011 1v1a1 1 0 01-1 1H9a1 1 0 01-1-1V3a1 1 0 011-1z'
 		},
 		{
 			id: 'plugins',
@@ -149,6 +155,8 @@
 					<FileExplorer {connectionId} />
 				{:else if activeSection === 'tunnels'}
 					<TunnelManager {connectionId} />
+				{:else if activeSection === 'snippets'}
+					<SnippetPanel {connectionId} />
 				{:else if activeSection === 'plugins'}
 					<PluginPanel {connectionId} />
 				{/if}

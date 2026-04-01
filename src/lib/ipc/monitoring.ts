@@ -7,6 +7,8 @@ export interface SystemStats {
   ramUsed: number;
   disk: number;
   users: string[];
+  netUp: number;
+  netDown: number;
 }
 
 export async function monitoringStart(connectionId: string): Promise<void> {

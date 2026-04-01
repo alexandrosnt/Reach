@@ -49,6 +49,16 @@
 		});
 	});
 
+	function formatSpeed(bytesPerSec: number): string {
+		if (bytesPerSec < 1024) return `${bytesPerSec} B/s`;
+		if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+		if (bytesPerSec < 1024 * 1024 * 1024) return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s`;
+		return `${(bytesPerSec / (1024 * 1024 * 1024)).toFixed(2)} GB/s`;
+	}
+
+	let netDown = $derived(stats ? formatSpeed(stats.netDown ?? 0) : '0 B/s');
+	let netUp = $derived(stats ? formatSpeed(stats.netUp ?? 0) : '0 B/s');
+
 	let showTooltip = $state(false);
 </script>
 
@@ -85,6 +95,21 @@
 				></div>
 			</div>
 			<span class="gauge-value" style="color:{diskColor}">{stats.disk}%</span>
+		</div>
+
+		<div class="net-stats">
+			<span class="net-item">
+				<svg width="10" height="10" viewBox="0 0 10 10" fill="none" class="net-icon down">
+					<path d="M5 1v8M2 6l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+				{netDown}
+			</span>
+			<span class="net-item">
+				<svg width="10" height="10" viewBox="0 0 10 10" fill="none" class="net-icon up">
+					<path d="M5 9V1M2 4l3-3 3 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+				{netUp}
+			</span>
 		</div>
 
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -165,6 +190,35 @@
 		min-width: 32px;
 		text-align: right;
 		flex-shrink: 0;
+	}
+
+	.net-stats {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		flex-shrink: 0;
+	}
+
+	.net-item {
+		display: flex;
+		align-items: center;
+		gap: 3px;
+		font-size: 0.625rem;
+		font-variant-numeric: tabular-nums;
+		color: var(--color-text-secondary);
+		white-space: nowrap;
+	}
+
+	.net-icon {
+		flex-shrink: 0;
+	}
+
+	.net-icon.down {
+		color: var(--color-success, #30d158);
+	}
+
+	.net-icon.up {
+		color: var(--color-accent, #0a84ff);
 	}
 
 	.users {

@@ -5,6 +5,8 @@ export interface SystemStats {
 	ramUsed: number;
 	disk: number;
 	users: string[];
+	netUp: number;
+	netDown: number;
 }
 
 // Use a plain reactive object for better Svelte 5 $derived tracking

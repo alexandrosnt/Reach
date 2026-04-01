@@ -10,6 +10,7 @@
 	import { sshSend, sshResize } from '$lib/ipc/ssh';
 	import { registerBufferReader, unregisterBufferReader } from '$lib/state/terminal-buffer.svelte';
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
+	import { trieMatch } from '$lib/state/snippets.svelte';
 
 	interface Props {
 		ptyId: string;
@@ -28,6 +29,66 @@
 	let unlistenData: UnlistenFn | undefined;
 	let unlistenExit: UnlistenFn | undefined;
 	let resizeObserver: ResizeObserver | undefined;
+
+	// Snippet autocomplete (Trie-based, ghost text via xterm Decoration API)
+	let inputBuffer = $state('');
+	let suggestion = $state<{ command: string; name: string; ghost: string } | null>(null);
+	let ghostDecoration: { dispose: () => void } | undefined;
+	let ghostMarker: { dispose: () => void } | undefined;
+
+	let ghostEl: HTMLDivElement | undefined;
+
+	function showGhostDecoration(term: Terminal, ghost: string): void {
+		clearGhostDecoration();
+		if (!term.element) return;
+
+		const cursorX = term.buffer.active.cursorX;
+		const cursorY = term.buffer.active.cursorY - term.buffer.active.viewportY;
+
+		// Get exact cell dimensions and canvas padding from xterm internals
+		let cellW: number, cellH: number, padLeft = 0, padTop = 0;
+		try {
+			const dims = (term as any)._core._renderService.dimensions;
+			cellW = dims.css.cell.width;
+			cellH = dims.css.cell.height;
+			padLeft = dims.css.canvas.left ?? 0;
+			padTop = dims.css.canvas.top ?? 0;
+		} catch {
+			const screen = term.element.querySelector('.xterm-screen');
+			if (!screen) return;
+			cellW = screen.clientWidth / term.cols;
+			cellH = screen.clientHeight / term.rows;
+		}
+
+		const screen = term.element.querySelector('.xterm-screen') as HTMLElement;
+		if (!screen) return;
+
+		const el = document.createElement('div');
+		el.textContent = ghost;
+		el.style.position = 'absolute';
+		el.style.left = `${screen.offsetLeft + padLeft + cursorX * cellW}px`;
+		el.style.top = `${screen.offsetTop + padTop + cursorY * cellH}px`;
+		el.style.height = `${cellH}px`;
+		el.style.lineHeight = `${cellH}px`;
+		el.style.fontSize = `${term.options.fontSize ?? 14}px`;
+		el.style.fontFamily = term.options.fontFamily || 'monospace';
+		el.style.letterSpacing = '0px';
+		el.style.color = 'rgba(255, 255, 255, 0.3)';
+		el.style.pointerEvents = 'none';
+		el.style.whiteSpace = 'pre';
+		el.style.zIndex = '10';
+		el.style.overflow = 'visible';
+
+		term.element.appendChild(el);
+		ghostEl = el;
+	}
+
+	function clearGhostDecoration(): void {
+		if (ghostEl) {
+			ghostEl.remove();
+			ghostEl = undefined;
+		}
+	}
 
 	function createTerminal(): Terminal {
 		const appSettings = getSettings();
@@ -108,8 +169,78 @@
 		}
 	}
 
+	let suggestionTimer: ReturnType<typeof setTimeout> | undefined;
+	let lastCursorX = -1;
+
+	function updateSuggestion(): void {
+		clearTimeout(suggestionTimer);
+		if (inputBuffer.length < 2 || !terminal) {
+			suggestion = null;
+			clearGhostDecoration();
+			return;
+		}
+		const match = trieMatch(inputBuffer);
+		if (match) {
+			const ghost = match.command.slice(inputBuffer.length);
+			suggestion = { command: match.command, name: match.name, ghost };
+			const term = terminal;
+			// Wait for cursor to move (echo arrived) instead of fixed delay
+			lastCursorX = term.buffer.active.cursorX;
+			let attempts = 0;
+			const poll = () => {
+				attempts++;
+				const nowX = term.buffer.active.cursorX;
+				if (nowX !== lastCursorX || attempts > 20) {
+					// Cursor moved = echo arrived, or max 500ms reached
+					clearGhostDecoration();
+					showGhostDecoration(term, ghost);
+				} else {
+					suggestionTimer = setTimeout(poll, 25);
+				}
+			};
+			suggestionTimer = setTimeout(poll, 25);
+		} else {
+			suggestion = null;
+			clearGhostDecoration();
+		}
+	}
+
+	function acceptSuggestion(): boolean {
+		if (!suggestion) return false;
+		const remaining = suggestion.command.slice(inputBuffer.length);
+		if (remaining.length > 0) {
+			const encoded = Array.from(new TextEncoder().encode(remaining));
+			sendData(encoded);
+		}
+		inputBuffer = '';
+		suggestion = null;
+		clearGhostDecoration();
+		return true;
+	}
+
 	function setupInputHandler(term: Terminal): void {
 		term.onData((data: string) => {
+			// Track input buffer for snippet autocomplete
+			if (data === '\r' || data === '\n') {
+				inputBuffer = '';
+				suggestion = null;
+				clearGhostDecoration();
+			} else if (data === '\x7f' || data === '\b') {
+				inputBuffer = inputBuffer.slice(0, -1);
+				updateSuggestion();
+			} else if (data === '\x03') {
+				inputBuffer = '';
+				suggestion = null;
+				clearGhostDecoration();
+			} else if (data.length === 1 && data.charCodeAt(0) >= 32) {
+				inputBuffer += data;
+				updateSuggestion();
+			} else {
+				inputBuffer = '';
+				suggestion = null;
+				clearGhostDecoration();
+			}
+
 			const encoded = Array.from(new TextEncoder().encode(data));
 			sendData(encoded);
 		});
@@ -121,8 +252,24 @@
 
 		// Ctrl+C copies when text is selected, otherwise sends SIGINT as normal.
 		// Ctrl+V pastes from clipboard.
+		// Tab accepts snippet suggestion.
 		term.attachCustomKeyEventHandler((event: KeyboardEvent) => {
 			if (event.type !== 'keydown') return true;
+
+			// Tab accepts snippet autocomplete
+			if (event.key === 'Tab' && suggestion) {
+				event.preventDefault();
+				acceptSuggestion();
+				return false;
+			}
+
+			// Escape dismisses suggestion
+			if (event.key === 'Escape' && suggestion) {
+				suggestion = null;
+				inputBuffer = '';
+				clearGhostDecoration();
+				return true;
+			}
 
 			if (event.ctrlKey && event.key === 'c' && term.hasSelection()) {
 				navigator.clipboard.writeText(term.getSelection());
@@ -321,12 +468,14 @@
 		width: 100%;
 		height: 100%;
 		background: var(--bg-primary, #0a0a0a);
+		position: relative;
 	}
 
 	.terminal-container {
 		width: 100%;
 		height: 100%;
 	}
+
 
 	.terminal-container :global(.xterm) {
 		height: 100%;

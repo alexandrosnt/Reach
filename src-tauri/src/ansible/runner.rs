@@ -3,6 +3,26 @@ use std::process::Stdio;
 use tauri::Emitter;
 use tokio::io::{AsyncBufReadExt, BufReader};
 
+fn silent_async_command(program: impl AsRef<std::ffi::OsStr>) -> tokio::process::Command {
+    let mut cmd = tokio::process::Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000);
+    }
+    cmd
+}
+
+fn silent_command(program: impl AsRef<std::ffi::OsStr>) -> std::process::Command {
+    let mut cmd = std::process::Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000);
+    }
+    cmd
+}
+
 use crate::ssh::client::{exec_on_connection_streaming, SshManager};
 use crate::ansible::types::{AnsibleCommand, AnsibleCommandEvent, AnsibleCommandRequest};
 use crate::toolchain::detect::windows_to_wsl_path;
@@ -159,7 +179,7 @@ pub async fn run_local(
             },
         );
 
-        tokio::process::Command::new("wsl.exe")
+        silent_async_command("wsl.exe")
             .args(&wsl_args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
@@ -182,7 +202,7 @@ pub async fn run_local(
             return Err(format!("{} not found", binary));
         }
 
-        tokio::process::Command::new(binary)
+        silent_async_command(binary)
             .args(args)
             .current_dir(working_dir)
             .stdout(Stdio::piped())
@@ -281,7 +301,7 @@ fn should_use_wsl(binary: &str) -> bool {
         // On Windows, always prefer WSL for ansible commands since
         // native ansible doesn't work (os.get_blocking error).
         // Use login shell so ~/.local/bin is in PATH.
-        std::process::Command::new("wsl.exe")
+        silent_command("wsl.exe")
             .args(["--", "bash", "-lc", &format!("which {} 2>/dev/null || command -v {} 2>/dev/null", binary, binary)])
             .output()
             .map(|out| out.status.success() && !String::from_utf8_lossy(&out.stdout).trim().is_empty())

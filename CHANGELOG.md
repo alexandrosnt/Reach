@@ -2,6 +2,19 @@
 
 All notable changes to Reach are documented here.
 
+## v0.3.8
+- **Command snippets** — Save frequently used commands in the new Snippets sidebar panel. Add, edit, delete, search, and organize with tags. Click to paste or run in any terminal. Stored encrypted in the vault, persists across restarts.
+- **Terminal autocomplete with ghost text** — Type in the terminal and saved snippets appear as dimmed placeholder text at the cursor position (fish shell style). Press Tab to accept. Uses a Trie (prefix tree) for O(m) lookup. Adaptive echo detection polls cursor movement instead of fixed delay — works on fast LAN and slow proxy connections alike.
+- **Network monitoring** — Upload/download speed displayed in the monitoring bar alongside CPU, RAM, and disk. Reads `/proc/net/dev` with delta calculation across all non-loopback interfaces. Auto-formats to B/s, KB/s, MB/s, GB/s.
+- **Hidden CMD windows** — All Ansible, OpenTofu, and toolchain commands on Windows now use `CREATE_NO_WINDOW` flag. No more CMD popups flashing on screen.
+- **Folder delete simplified** — Single-click delete instead of double-click confirmation that broke on macOS WebKit.
+- **Status bar cleaned up** — Removed hardcoded version text from the bottom bar.
+- **Proxy save fix** — `sessionCreate` now accepts proxy config directly. No more fragile create-then-update.
+- **Proxy in Quick Connect** — Full SOCKS5/SOCKS4/HTTP proxy support added to Quick Connect modal.
+- **macOS folder delete fix** — Simplified folder deletion to work reliably on macOS WebKit.
+- **Russian locale fixed** — Synced ru.json to match all 910 keys from en.json.
+- **Snippets vault mapping** — `__snippets__` added to unified vault mapping for persistence with personal sync.
+
 ## v0.3.7
 - **Tab labels show server name + OS icon** — SSH tabs display the saved session name (e.g. "MiniPC") instead of `root@IP`. Detected OS distro icon (Ubuntu, Debian, Rocky, etc.) replaces the generic SSH icon. Hover for the full `user@host` tooltip.
 - **Click-to-copy terminal selection** — Click selected text in the terminal to copy it to clipboard automatically. *(Contributed by [@alien-ye](https://github.com/alien-ye))*
