@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getTabs, getActiveTab, updateTabTitle } from '$lib/state/tabs.svelte';
+	import { getTabs, getActiveTab, updateTabTitle, updateTabConnection } from '$lib/state/tabs.svelte';
 	import { getActivePage } from '$lib/state/navigation.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { ptySpawn, ptyClose } from '$lib/ipc/pty';
@@ -175,6 +175,8 @@
 								connectionId={tab.connectionId}
 								active={tab.id === activeTab?.id}
 								onTitleChange={(title) => handleTerminalTitleChange(tab.id, title)}
+								sshConnectParams={tab.sshConnectParams}
+								onReconnected={(newId) => updateTabConnection(tab.id, newId)}
 							/>
 						</div>
 					{/each}
