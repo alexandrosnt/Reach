@@ -289,7 +289,7 @@
 			: undefined;
 
 		try {
-			await sshConnect({
+			const connectParams = {
 				id,
 				host: session.host,
 				port: session.port,
@@ -301,16 +301,18 @@
 				cols: 80,
 				rows: 24,
 				jumpChain,
-			proxy: session.proxy ? {
-				proxy_type: session.proxy.proxy_type,
-				host: session.proxy.host,
-				port: session.proxy.port,
-				username: session.proxy.username ?? undefined,
-				password: session.proxy.password ?? undefined,
-			} : undefined,
-			});
+				proxy: session.proxy ? {
+					proxy_type: session.proxy.proxy_type,
+					host: session.proxy.host,
+					port: session.proxy.port,
+					username: session.proxy.username ?? undefined,
+					password: session.proxy.password ?? undefined,
+				} : undefined,
+			};
+			await sshConnect(connectParams);
 
-			createTab('ssh', `${session.username}@${session.host}`, id, session.name, session.detected_os);
+			const tab = createTab('ssh', `${session.username}@${session.host}`, id, session.name, session.detected_os);
+			tab.sshConnectParams = connectParams;
 			addToast(t('session.connected_toast', { name: session.name }), 'success');
 			connectSession = undefined;
 

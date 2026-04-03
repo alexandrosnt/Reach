@@ -12,6 +12,7 @@
 
 	const settings = getSettings();
 	let hasTurso = $derived(!!settings.pendingTursoOrg);
+	let storageLabel = $derived(hasTurso ? t('setup.cloud_sync') : t('setup.local_only'));
 </script>
 
 <div class="step">
@@ -39,8 +40,8 @@
 			<span class="summary-icon">
 				<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.3 4.7L6.5 11.5L2.7 7.7" stroke="var(--color-success)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
 			</span>
-			<span class="summary-label">{t('setup.turso_title')}</span>
-			<span class="summary-value">{hasTurso ? settings.pendingTursoOrg : '\u2014'}</span>
+			<span class="summary-label">{t('setup.storage_title')}</span>
+			<span class="summary-value">{storageLabel}{hasTurso ? ` (${settings.pendingTursoOrg})` : ''}</span>
 		</div>
 	</div>
 

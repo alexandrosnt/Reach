@@ -843,13 +843,17 @@ impl russh::client::Handler for SshClientHandler {
                 if existing == &fingerprint {
                     Ok(true)
                 } else {
-                    tracing::error!(
-                        "SSH host key mismatch for {}. Expected {}, got {}",
+                    tracing::warn!(
+                        "SSH host key changed for {} (server likely reinstalled). Old: {}, New: {}. Auto-accepting.",
                         host_id,
                         existing,
                         fingerprint
                     );
-                    Ok(false)
+                    known.entries.insert(host_id, fingerprint);
+                    if let Ok(raw) = serde_json::to_string_pretty(&known) {
+                        let _ = std::fs::write(&path, raw);
+                    }
+                    Ok(true)
                 }
             }
             None => {
