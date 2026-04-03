@@ -7,10 +7,11 @@
 	import '@xterm/xterm/css/xterm.css';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { ptyWrite, ptyResize } from '$lib/ipc/pty';
-	import { sshSend, sshResize } from '$lib/ipc/ssh';
+	import { sshSend, sshResize, sshConnect, type SshConnectParams } from '$lib/ipc/ssh';
 	import { registerBufferReader, unregisterBufferReader } from '$lib/state/terminal-buffer.svelte';
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
 	import { trieMatch } from '$lib/state/snippets.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		ptyId: string;
@@ -18,9 +19,19 @@
 		connectionId?: string;
 		active: boolean;
 		onTitleChange?: (title: string) => void;
+		sshConnectParams?: SshConnectParams;
+		onReconnected?: (newConnectionId: string) => void;
 	}
 
-	let { ptyId, type: termType, connectionId, active, onTitleChange }: Props = $props();
+	let { ptyId, type: termType, connectionId, active, onTitleChange, sshConnectParams, onReconnected }: Props = $props();
+
+	let currentConnectionId = $state(connectionId);
+	let disconnected = $state(false);
+	let reconnecting = $state(false);
+
+	$effect(() => {
+		currentConnectionId = connectionId;
+	});
 
 	let containerEl: HTMLDivElement | undefined = $state();
 	let terminal: Terminal | undefined = $state();
@@ -146,8 +157,8 @@
 	}
 
 	function sendData(data: number[]): void {
-		if (termType === 'ssh' && connectionId) {
-			sshSend(connectionId, data).catch((err) => {
+		if (termType === 'ssh' && currentConnectionId) {
+			sshSend(currentConnectionId, data).catch((err) => {
 				console.error('[Terminal] Failed to write to SSH:', err);
 			});
 		} else {
@@ -158,8 +169,8 @@
 	}
 
 	function sendResize(cols: number, rows: number): void {
-		if (termType === 'ssh' && connectionId) {
-			sshResize(connectionId, cols, rows).catch((err) => {
+		if (termType === 'ssh' && currentConnectionId) {
+			sshResize(currentConnectionId, cols, rows).catch((err) => {
 				console.error('[Terminal] Failed to resize SSH:', err);
 			});
 		} else {
@@ -290,7 +301,7 @@
 	}
 
 	async function setupEventListeners(term: Terminal): Promise<void> {
-		const eventId = termType === 'ssh' && connectionId ? connectionId : ptyId;
+		const eventId = termType === 'ssh' && currentConnectionId ? currentConnectionId : ptyId;
 		const dataEventName = termType === 'ssh' ? `ssh-data-${eventId}` : `pty-data-${eventId}`;
 		const exitEventName = termType === 'ssh' ? `ssh-exit-${eventId}` : `pty-exit-${eventId}`;
 
@@ -308,7 +319,46 @@
 		unlistenExit = await listen<{ code: number }>(exitEventName, (event) => {
 			const code = event.payload?.code ?? 0;
 			term.write(`\r\n\x1b[90m[Process exited with code ${code}]\x1b[0m\r\n`);
+			if (termType === 'ssh') {
+				disconnected = true;
+			}
 		});
+	}
+
+	async function handleReconnect(): Promise<void> {
+		if (!terminal || !sshConnectParams || reconnecting) return;
+		reconnecting = true;
+		disconnected = false;
+
+		const term = terminal;
+		const newId = crypto.randomUUID();
+
+		try {
+			term.write(`\r\n\x1b[33m[${t('terminal.reconnecting')}]\x1b[0m\r\n`);
+
+			await sshConnect({
+				...sshConnectParams,
+				id: newId,
+				cols: term.cols,
+				rows: term.rows,
+			});
+
+			// Tear down old event listeners
+			unlistenData?.();
+			unlistenExit?.();
+
+			// Switch to new connection
+			currentConnectionId = newId;
+			await setupEventListeners(term);
+
+			term.write(`\r\n\x1b[32m[${t('terminal.reconnected')}]\x1b[0m\r\n`);
+			onReconnected?.(newId);
+		} catch (err) {
+			term.write(`\r\n\x1b[31m[${t('terminal.reconnect_failed')}: ${err}]\x1b[0m\r\n`);
+			disconnected = true;
+		} finally {
+			reconnecting = false;
+		}
 	}
 
 	function setupResizeObserver(term: Terminal, fit: FitAddon, el: HTMLDivElement): void {
@@ -404,7 +454,7 @@
 			terminal = term;
 			fitAddon = fit;
 
-			const bufferId = termType === 'ssh' && connectionId ? connectionId : ptyId;
+			const bufferId = termType === 'ssh' && currentConnectionId ? currentConnectionId : ptyId;
 			registerBufferReader(bufferId, {
 				read: (startLine?: number, maxLines?: number) => {
 					const buf = term.buffer.active;
@@ -422,7 +472,7 @@
 		});
 
 		return () => {
-			const bufferId = termType === 'ssh' && connectionId ? connectionId : ptyId;
+			const bufferId = termType === 'ssh' && currentConnectionId ? currentConnectionId : ptyId;
 			unregisterBufferReader(bufferId);
 			unlistenData?.();
 			unlistenExit?.();
@@ -461,6 +511,22 @@
 	style:display={active ? 'block' : 'none'}
 >
 	<div bind:this={containerEl} class="terminal-container"></div>
+	{#if disconnected && termType === 'ssh'}
+		<div class="reconnect-overlay">
+			<div class="reconnect-card">
+				<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+					<path d="M2.5 2v6h6" />
+					<path d="M2.5 8a10 10 0 0 1 17.13-4" />
+					<path d="M21.5 22v-6h-6" />
+					<path d="M21.5 16a10 10 0 0 1-17.13 4" />
+				</svg>
+				<span class="reconnect-text">{t('terminal.connection_lost')}</span>
+				<button class="reconnect-btn" onclick={handleReconnect} disabled={reconnecting}>
+					{reconnecting ? t('terminal.reconnecting') : t('terminal.reconnect')}
+				</button>
+			</div>
+		</div>
+	{/if}
 </div>
 
 <style>
@@ -502,5 +568,58 @@
 
 	.terminal-container :global(.xterm-viewport::-webkit-scrollbar-thumb:hover) {
 		background-color: rgba(255, 255, 255, 0.25);
+	}
+
+	.reconnect-overlay {
+		position: absolute;
+		inset: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		background: rgba(0, 0, 0, 0.6);
+		backdrop-filter: blur(4px);
+		z-index: 20;
+	}
+
+	.reconnect-card {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 12px;
+		padding: 24px 32px;
+		border-radius: 12px;
+		background: rgba(30, 30, 30, 0.95);
+		border: 1px solid rgba(255, 255, 255, 0.1);
+		color: var(--color-text-secondary, #a1a1a6);
+	}
+
+	.reconnect-card svg {
+		opacity: 0.6;
+	}
+
+	.reconnect-text {
+		font-size: 0.85rem;
+		font-weight: 500;
+	}
+
+	.reconnect-btn {
+		padding: 6px 20px;
+		border-radius: 6px;
+		border: none;
+		background: var(--color-accent, #0a84ff);
+		color: #fff;
+		font-size: 0.8rem;
+		font-weight: 500;
+		cursor: pointer;
+		transition: opacity 0.15s;
+	}
+
+	.reconnect-btn:hover:not(:disabled) {
+		opacity: 0.85;
+	}
+
+	.reconnect-btn:disabled {
+		opacity: 0.5;
+		cursor: not-allowed;
 	}
 </style>

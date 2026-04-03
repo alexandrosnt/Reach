@@ -2,6 +2,12 @@
 
 All notable changes to Reach are documented here.
 
+## v0.3.9
+- **SSH reconnect button** — When an SSH connection drops, a "Reconnect" overlay appears on the terminal with a single click to re-establish the connection using the same credentials. Terminal buffer is preserved so you can see what happened before the disconnect.
+- **Host key auto-accept on server reinstall** — If a server's host key changes (e.g. VPS reformatted), Reach automatically updates the stored fingerprint and connects. No more manual editing of `known_hosts.json`.
+- **Local Only setup option** — The welcome wizard now lets you choose between "Local Only" (data on this device) and "Turso Cloud Sync". Users who don't need cloud sync can skip Turso setup entirely.
+- **Russian locale** — Added 5 new reconnection keys, 6 new storage mode keys across all 7 locales.
+
 ## v0.3.8
 - **Command snippets** — Save frequently used commands in the new Snippets sidebar panel. Add, edit, delete, search, and organize with tags. Click to paste or run in any terminal. Stored encrypted in the vault, persists across restarts.
 - **Terminal autocomplete with ghost text** — Type in the terminal and saved snippets appear as dimmed placeholder text at the cursor position (fish shell style). Press Tab to accept. Uses a Trie (prefix tree) for O(m) lookup. Adaptive echo detection polls cursor movement instead of fixed delay — works on fast LAN and slow proxy connections alike.

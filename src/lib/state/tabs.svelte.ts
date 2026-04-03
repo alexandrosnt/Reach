@@ -1,3 +1,5 @@
+import type { SshConnectParams } from '$lib/ipc/ssh';
+
 export type TabType = 'local' | 'ssh';
 
 export interface Tab {
@@ -10,6 +12,8 @@ export interface Tab {
 	sessionName?: string;
 	/** Detected OS ID for distro icon (e.g. "ubuntu", "debian") */
 	detectedOs?: string | null;
+	/** SSH connect params for reconnection */
+	sshConnectParams?: SshConnectParams;
 }
 
 let tabs = $state<Tab[]>([]);
@@ -78,6 +82,13 @@ export function updateTabOs(connectionId: string, os: string): void {
 	const tab = tabs.find((t) => t.connectionId === connectionId);
 	if (tab) {
 		tab.detectedOs = os;
+	}
+}
+
+export function updateTabConnection(tabId: string, newConnectionId: string): void {
+	const tab = tabs.find((t) => t.id === tabId);
+	if (tab) {
+		tab.connectionId = newConnectionId;
 	}
 }
 
