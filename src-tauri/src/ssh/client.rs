@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -9,6 +10,183 @@ use tokio::sync::mpsc;
 
 use crate::state::ProxyConfig;
 
+/// Expand `~` and `~/` to the user's home directory. Cross-platform: works
+/// on Windows (resolves to %USERPROFILE%), macOS, and Linux. Leaves absolute
+/// paths and paths without leading `~` unchanged.
+fn expand_tilde(path: &str) -> PathBuf {
+    let trimmed = path.trim();
+    if trimmed == "~" {
+        return dirs::home_dir().unwrap_or_else(|| PathBuf::from(trimmed));
+    }
+    if let Some(rest) = trimmed.strip_prefix("~/").or_else(|| trimmed.strip_prefix("~\\")) {
+        if let Some(home) = dirs::home_dir() {
+            return home.join(rest);
+        }
+    }
+    PathBuf::from(trimmed)
+}
+
+/// Attempt to authenticate via the local SSH agent (OpenSSH agent or Pageant
+/// on Windows; SSH_AUTH_SOCK on Unix). Tries every identity the agent offers
+/// and returns Ok(true) on the first one the server accepts. Returns Ok(false)
+/// if no agent identity is accepted, or Err if the agent is unreachable.
+/// Cascade through the available auth methods in OpenSSH order: configured
+/// public key → ssh-agent identities → password. Returns Ok(true) when the
+/// server accepts a method, Ok(false) when every available method is rejected.
+/// Returns Err only on hard transport-level errors; all "auth was tried but
+/// rejected" outcomes resolve to Ok(false) so the caller can decide what to
+/// do (e.g. surface a password fallback prompt to the user).
+async fn cascade_authenticate(
+    handle: &mut russh::client::Handle<SshClientHandler>,
+    username: &str,
+    auth: &AuthParams,
+) -> Result<bool, SshError> {
+    // 1. Configured private key (file).
+    if let Some(key_auth) = &auth.key {
+        let expanded = expand_tilde(&key_auth.path);
+        tracing::info!(
+            "SSH key auth: loading key from '{}' (raw input: '{}')",
+            expanded.display(),
+            key_auth.path
+        );
+        let key = russh_keys::load_secret_key(&expanded, key_auth.passphrase.as_deref())
+            .map_err(|e| {
+                tracing::error!("SSH key load failed for '{}': {}", expanded.display(), e);
+                SshError::ConnectionFailed(format!(
+                    "Key load error: {} (path: {})",
+                    e,
+                    expanded.display()
+                ))
+            })?;
+        tracing::info!(
+            "SSH key loaded successfully, attempting publickey auth as '{}'",
+            username
+        );
+        let accepted = handle
+            .authenticate_publickey(username, Arc::new(key))
+            .await
+            .map_err(|e| {
+                tracing::error!("SSH publickey auth error: {}", e);
+                SshError::ConnectionFailed(format!("Auth error: {}", e))
+            })?;
+        tracing::info!("SSH publickey auth result: {}", accepted);
+        if accepted {
+            return Ok(true);
+        }
+    }
+
+    // 2. ssh-agent identities (auto-detected: OpenSSH agent / Pageant / SSH_AUTH_SOCK).
+    if auth.allow_agent {
+        match try_agent_auth(handle, username.to_string()).await {
+            Ok(true) => return Ok(true),
+            Ok(false) => tracing::info!("SSH agent: no identity accepted"),
+            Err(e) => tracing::info!("SSH agent fallback skipped: {}", e),
+        }
+    }
+
+    // 3. Password.
+    if let Some(password) = &auth.password {
+        tracing::info!(
+            "SSH password auth: attempting as '{}' (password length: {})",
+            username,
+            password.len()
+        );
+        let accepted = handle
+            .authenticate_password(username, password)
+            .await
+            .map_err(|e| {
+                tracing::error!("SSH password auth error: {}", e);
+                SshError::ConnectionFailed(format!("Auth error: {}", e))
+            })?;
+        tracing::info!("SSH password auth result: {}", accepted);
+        if accepted {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
+}
+
+/// Try every identity from the local SSH agent. Returns Ok(true) on the first
+/// identity accepted by the server, Ok(false) if none are accepted, or Err if
+/// the agent is unreachable or holds no keys. Cross-platform: uses OpenSSH's
+/// Windows named pipe / Pageant on Windows; SSH_AUTH_SOCK on Unix.
+async fn try_agent_auth(
+    handle: &mut russh::client::Handle<SshClientHandler>,
+    username: String,
+) -> Result<bool, String> {
+    #[cfg(unix)]
+    {
+        let agent = russh_keys::agent::client::AgentClient::connect_env()
+            .await
+            .map_err(|e| format!("ssh-agent unavailable (SSH_AUTH_SOCK): {}", e))?;
+        try_agent_auth_inner(handle, username, agent).await
+    }
+    #[cfg(windows)]
+    {
+        // Try OpenSSH for Windows agent named pipe first (most common on Win10+).
+        match russh_keys::agent::client::AgentClient::connect_named_pipe(
+            r"\\.\pipe\openssh-ssh-agent",
+        )
+        .await
+        {
+            Ok(agent) => try_agent_auth_inner(handle, username, agent).await,
+            Err(e) => {
+                tracing::debug!("OpenSSH Windows agent named pipe unavailable: {}", e);
+                let pageant = russh_keys::agent::client::AgentClient::connect_pageant().await;
+                try_agent_auth_inner(handle, username, pageant).await
+            }
+        }
+    }
+}
+
+async fn try_agent_auth_inner<S>(
+    handle: &mut russh::client::Handle<SshClientHandler>,
+    username: String,
+    mut agent: russh_keys::agent::client::AgentClient<S>,
+) -> Result<bool, String>
+where
+    S: tokio::io::AsyncRead + tokio::io::AsyncWrite + Send + Unpin + 'static,
+{
+    let identities = agent
+        .request_identities()
+        .await
+        .map_err(|e| format!("agent request_identities failed: {}", e))?;
+    if identities.is_empty() {
+        return Err("ssh agent is reachable but holds no identities".into());
+    }
+    tracing::info!(
+        "SSH agent offers {} identit{}",
+        identities.len(),
+        if identities.len() == 1 { "y" } else { "ies" }
+    );
+    let mut current_agent = agent;
+    for (idx, key) in identities.into_iter().enumerate() {
+        tracing::info!(
+            "SSH agent: trying identity #{} (type: {})",
+            idx + 1,
+            key.name()
+        );
+        let (returned, result) = handle
+            .authenticate_future(username.clone(), key, current_agent)
+            .await;
+        current_agent = returned;
+        match result {
+            Ok(true) => {
+                tracing::info!("SSH agent: identity #{} accepted by server", idx + 1);
+                return Ok(true);
+            }
+            Ok(false) => {
+                tracing::info!("SSH agent: identity #{} rejected by server", idx + 1);
+            }
+            Err(e) => {
+                tracing::warn!("SSH agent: identity #{} signing error: {:?}", idx + 1, e);
+            }
+        }
+    }
+    Ok(false)
+}
+
 /// A shared, clonable wrapper around the russh Handle.
 /// Handle is not Clone, so we wrap it in Arc<Mutex<>> for reuse.
 pub type SharedHandle = Arc<tokio::sync::Mutex<russh::client::Handle<SshClientHandler>>>;
@@ -17,7 +195,7 @@ pub type SharedHandle = Arc<tokio::sync::Mutex<russh::client::Handle<SshClientHa
 pub enum SshError {
     #[error("Connection failed: {0}")]
     ConnectionFailed(String),
-    #[error("Authentication failed")]
+    #[error("Authentication rejected — server did not accept the public key (not in authorized_keys?) or password is wrong")]
     AuthFailed,
     #[error("Channel error: {0}")]
     ChannelError(String),
@@ -33,11 +211,36 @@ enum SessionCommand {
     Close,
 }
 
+/// Cascading SSH auth parameters. Each field is optional and tried in order:
+/// configured key → ssh-agent identities → password. The first method the
+/// server accepts wins. This mirrors OpenSSH's progressive auth — `ssh root@h`
+/// without an `IdentitiesOnly yes` will try every loaded identity, then prompt
+/// for a password if all fail.
+#[derive(Debug, Clone, Default)]
+pub struct AuthParams {
+    pub key: Option<KeyAuth>,
+    pub password: Option<String>,
+    pub allow_agent: bool,
+}
+
 #[derive(Debug, Clone)]
-pub enum AuthParams {
-    Password(String),
-    Key { path: String, passphrase: Option<String> },
-    Agent,
+pub struct KeyAuth {
+    pub path: String,
+    pub passphrase: Option<String>,
+}
+
+impl AuthParams {
+    pub fn from_password(password: String) -> Self {
+        Self { password: Some(password), allow_agent: true, ..Default::default() }
+    }
+
+    pub fn from_key(path: String, passphrase: Option<String>) -> Self {
+        Self { key: Some(KeyAuth { path, passphrase }), allow_agent: true, ..Default::default() }
+    }
+
+    pub fn from_agent() -> Self {
+        Self { allow_agent: true, ..Default::default() }
+    }
 }
 
 /// Parameters for a single jump host in a proxy chain.
@@ -107,24 +310,9 @@ impl SshManager {
                     .map_err(|e| SshError::ConnectionFailed(format!("{}", e)))?
             };
 
-            // Authenticate
-            let authenticated = match auth {
-                AuthParams::Password(ref password) => {
-                    handle.authenticate_password(username, password).await
-                        .map_err(|e| SshError::ConnectionFailed(format!("Auth error: {}", e)))?
-                }
-                AuthParams::Key { ref path, ref passphrase } => {
-                    let key = russh_keys::load_secret_key(path, passphrase.as_deref())
-                        .map_err(|e| SshError::ConnectionFailed(format!("Key load error: {}", e)))?;
-                    handle.authenticate_publickey(username, Arc::new(key)).await
-                        .map_err(|e| SshError::ConnectionFailed(format!("Auth error: {}", e)))?
-                }
-                AuthParams::Agent => {
-                    return Err(SshError::ConnectionFailed("Agent auth not yet implemented".into()));
-                }
-            };
-
-            if !authenticated {
+            // Authenticate using a cascading strategy: configured key → agent → password.
+            // The first method the server accepts wins. Mirrors OpenSSH's progressive auth.
+            if !cascade_authenticate(&mut handle, username, &auth).await? {
                 return Err(SshError::AuthFailed);
             }
 
@@ -544,39 +732,17 @@ impl SshManager {
         Ok(info)
     }
 
-    /// Authenticate on a russh handle with the given auth params.
+    /// Authenticate on a russh handle by cascading through the configured
+    /// methods. Used by jump hosts; the direct connect path uses the same
+    /// `cascade_authenticate` free function.
     async fn authenticate_handle(
         handle: &mut russh::client::Handle<SshClientHandler>,
         username: &str,
         auth: &AuthParams,
     ) -> Result<(), SshError> {
-        let authenticated = match auth {
-            AuthParams::Password(ref password) => handle
-                .authenticate_password(username, password)
-                .await
-                .map_err(|e| SshError::ConnectionFailed(format!("Auth error: {}", e)))?,
-            AuthParams::Key {
-                ref path,
-                ref passphrase,
-            } => {
-                let key = russh_keys::load_secret_key(path, passphrase.as_deref())
-                    .map_err(|e| SshError::ConnectionFailed(format!("Key load error: {}", e)))?;
-                handle
-                    .authenticate_publickey(username, Arc::new(key))
-                    .await
-                    .map_err(|e| SshError::ConnectionFailed(format!("Auth error: {}", e)))?
-            }
-            AuthParams::Agent => {
-                return Err(SshError::ConnectionFailed(
-                    "Agent auth not yet implemented".into(),
-                ));
-            }
-        };
-
-        if !authenticated {
+        if !cascade_authenticate(handle, username, auth).await? {
             return Err(SshError::AuthFailed);
         }
-
         Ok(())
     }
 

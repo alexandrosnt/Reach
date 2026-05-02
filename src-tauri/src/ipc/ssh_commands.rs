@@ -21,17 +21,29 @@ fn build_auth(
     key_path: Option<String>,
     key_passphrase: Option<String>,
 ) -> Result<AuthParams, String> {
+    // The frontend currently picks one primary method, but the backend
+    // cascades through key → agent → password regardless. Populating optional
+    // fields here lets a session that was saved with a key still fall back to
+    // an entered password (and vice versa) without any UI gymnastics.
+    let mut auth = AuthParams { allow_agent: true, ..Default::default() };
     match auth_method {
-        "password" => Ok(AuthParams::Password(
-            password.ok_or("Password required for password auth")?,
-        )),
-        "key" => Ok(AuthParams::Key {
-            path: key_path.ok_or("Key path required for key auth")?,
-            passphrase: key_passphrase,
-        }),
-        "agent" => Ok(AuthParams::Agent),
-        _ => Err(format!("Unknown auth method: {}", auth_method)),
+        "password" => {
+            auth.password = Some(password.ok_or("Password required for password auth")?);
+        }
+        "key" => {
+            auth.key = Some(crate::ssh::client::KeyAuth {
+                path: key_path.ok_or("Key path required for key auth")?,
+                passphrase: key_passphrase,
+            });
+            // Allow callers to also pass a password as a fallback.
+            auth.password = password.filter(|p| !p.is_empty());
+        }
+        "agent" => {
+            // Just use ssh-agent (allow_agent is already true).
+        }
+        _ => return Err(format!("Unknown auth method: {}", auth_method)),
     }
+    Ok(auth)
 }
 
 #[tauri::command]
@@ -51,6 +63,15 @@ pub async fn ssh_connect(
     jump_chain: Option<Vec<JumpHostConnectParams>>,
     proxy: Option<crate::state::ProxyConfig>,
 ) -> Result<String, String> {
+    tracing::info!(
+        "ssh_connect IPC: id={}, host={}, port={}, user={}, auth_method='{}', has_key_path={}, has_password={}, has_passphrase={}, has_proxy={}, has_jump={}",
+        id, host, port, username, auth_method,
+        key_path.as_deref().map(|p| !p.is_empty()).unwrap_or(false),
+        password.as_deref().map(|p| !p.is_empty()).unwrap_or(false),
+        key_passphrase.as_deref().map(|p| !p.is_empty()).unwrap_or(false),
+        proxy.is_some(),
+        jump_chain.as_ref().map(|c| c.len()).unwrap_or(0),
+    );
     let auth = build_auth(&auth_method, password, key_path, key_passphrase)?;
 
     let mut manager = state.ssh_manager.lock().await;
