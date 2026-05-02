@@ -219,8 +219,21 @@
 	let connectError = $state<string | undefined>();
 	let rememberPassword = $state(false);
 	let hasSavedPassword = $state(false);
+	// When the saved auth method (key/agent) gets rejected by the server, switch
+	// the modal to "fallback to password" mode without losing context.
+	let passwordFallback = $state(false);
+	let fallbackPassword = $state('');
 
 	let showConnectPrompt = $derived(!!connectSession);
+
+	// Programmatic focus for the fallback input — `autofocus` is unreliable
+	// inside conditionally-rendered blocks across WebView versions.
+	let fallbackInputEl: HTMLInputElement | undefined = $state();
+	$effect(() => {
+		if (passwordFallback && fallbackInputEl) {
+			fallbackInputEl.focus();
+		}
+	});
 
 	async function loadSessions(): Promise<void> {
 		try {
@@ -261,19 +274,29 @@
 		connectError = undefined;
 		rememberPassword = false;
 		hasSavedPassword = false;
+		passwordFallback = false;
+		fallbackPassword = '';
 	}
 
 	async function doConnect(): Promise<void> {
 		if (!connectSession) return;
+		// Don't submit an empty password while in fallback mode — that just
+		// burns another round-trip with the same failure.
+		if (passwordFallback && !fallbackPassword) {
+			connectError = t('session.password_required');
+			return;
+		}
 		connecting = true;
 		connectError = undefined;
 
 		const session = connectSession;
 		const id = crypto.randomUUID();
 		connectingId = id;
-		const authType = session.auth_method.type;
 
-		const passwordToSave = authType === 'Password' ? connectPassword : connectKeyPassphrase;
+		// If the user is in password-fallback mode, force password auth regardless of saved method.
+		const authType = passwordFallback ? 'Password' : session.auth_method.type;
+
+		const passwordToSave = authType === 'Password' ? (passwordFallback ? fallbackPassword : connectPassword) : connectKeyPassphrase;
 
 		// Build jump chain from session config if present
 		const jumpChain: JumpHostConnectParams[] | undefined = session.jump_chain && session.jump_chain.length > 0
@@ -289,14 +312,18 @@
 			: undefined;
 
 		try {
+			const sessionKeyPath = session.auth_method.type === 'Key' ? session.auth_method.path : undefined;
+			const passwordToUse = authType === 'Password'
+				? (passwordFallback ? fallbackPassword : connectPassword)
+				: undefined;
 			const connectParams = {
 				id,
 				host: session.host,
 				port: session.port,
 				username: session.username,
 				authMethod: authType === 'Key' ? 'key' : authType.toLowerCase(),
-				password: authType === 'Password' ? connectPassword : undefined,
-				keyPath: authType === 'Key' && session.auth_method.type === 'Key' ? session.auth_method.path : undefined,
+				password: passwordToUse,
+				keyPath: authType === 'Key' && sessionKeyPath ? sessionKeyPath.trim() : undefined,
 				keyPassphrase: authType === 'Key' && connectKeyPassphrase ? connectKeyPassphrase : undefined,
 				cols: 80,
 				rows: 24,
@@ -315,6 +342,8 @@
 			tab.sshConnectParams = connectParams;
 			addToast(t('session.connected_toast', { name: session.name }), 'success');
 			connectSession = undefined;
+			passwordFallback = false;
+			fallbackPassword = '';
 
 			// Detect OS in background and persist to session
 			if (!session.detected_os) {
@@ -332,7 +361,17 @@
 				}).catch(() => {});
 			}
 		} catch (err) {
-			connectError = String(err);
+			const errStr = String(err);
+			connectError = errStr;
+			// If the saved auth method got rejected and we haven't already tried the password fallback,
+			// switch the modal to password mode so the user can retry without changing the session.
+			const isAuthRejection = /auth/i.test(errStr) && (
+				/reject/i.test(errStr) || /fail/i.test(errStr) || /denied/i.test(errStr)
+			);
+			if (isAuthRejection && !passwordFallback && session.auth_method.type !== 'Password') {
+				passwordFallback = true;
+				fallbackPassword = '';
+			}
 		} finally {
 			connecting = false;
 		}
@@ -346,6 +385,8 @@
 		connecting = false;
 		connectingId = undefined;
 		connectSession = undefined;
+		passwordFallback = false;
+		fallbackPassword = '';
 	}
 
 	function handleEdit(session: SessionConfig): void {
@@ -723,7 +764,17 @@
 			</div>
 
 			<form class="prompt-form" onsubmit={(e) => { e.preventDefault(); doConnect(); }}>
-				{#if connectSession.auth_method.type === 'Password'}
+				{#if passwordFallback}
+					<div class="fallback-hint">{t('session.fallback_to_password')}</div>
+					<input
+						class="prompt-input"
+						type="password"
+						placeholder={t('session.password')}
+						bind:value={fallbackPassword}
+						bind:this={fallbackInputEl}
+						disabled={connecting}
+					/>
+				{:else if connectSession.auth_method.type === 'Password'}
 					<input
 						class="prompt-input"
 						type="password"
@@ -741,7 +792,7 @@
 					/>
 				{/if}
 
-				{#if connectSession.auth_method.type !== 'Agent'}
+				{#if connectSession.auth_method.type !== 'Agent' && !passwordFallback}
 					<label class="remember-label">
 						<input type="checkbox" class="remember-check" bind:checked={rememberPassword} disabled={connecting} />
 						<span class="remember-text">{hasSavedPassword ? t('session.password_saved') : t('session.remember_password')}</span>
@@ -755,7 +806,7 @@
 				<div class="prompt-actions">
 					<button type="button" class="prompt-btn prompt-cancel" onclick={cancelConnect}>{t('common.cancel')}</button>
 					<button type="submit" class="prompt-btn prompt-connect" disabled={connecting}>
-						{#if connecting}{t('session.connecting')}{:else}{t('session.connect')}{/if}
+						{#if connecting}{t('session.connecting')}{:else if passwordFallback}{t('session.try_with_password')}{:else}{t('session.connect')}{/if}
 					</button>
 				</div>
 			</form>
@@ -1308,6 +1359,16 @@
 	.remember-text {
 		font-size: 0.6875rem;
 		color: var(--color-text-secondary);
+	}
+
+	.fallback-hint {
+		padding: 6px 10px;
+		font-size: 0.6875rem;
+		color: var(--color-text-secondary);
+		background-color: rgba(10, 132, 255, 0.08);
+		border: 1px solid rgba(10, 132, 255, 0.2);
+		border-radius: 4px;
+		line-height: 1.4;
 	}
 
 	.prompt-error {

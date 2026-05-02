@@ -109,7 +109,7 @@
 		const authMethod: AuthMethod = authType === 'Password'
 			? { type: 'Password', password: password || undefined }
 			: authType === 'Key'
-				? { type: 'Key', path: keyPath, passphrase: keyPassphrase || undefined }
+				? { type: 'Key', path: keyPath.trim(), passphrase: keyPassphrase || undefined }
 				: { type: 'Agent' };
 		const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
 
@@ -118,7 +118,7 @@
 				const hopAuth: AuthMethod = h.authType === 'Password'
 					? { type: 'Password', password: h.password || undefined }
 					: h.authType === 'Key'
-						? { type: 'Key', path: h.keyPath, passphrase: h.keyPassphrase || undefined }
+						? { type: 'Key', path: h.keyPath.trim(), passphrase: h.keyPassphrase || undefined }
 						: { type: 'Agent' };
 				return {
 					host: h.host.trim(),

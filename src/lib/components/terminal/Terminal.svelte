@@ -504,6 +504,34 @@
 		});
 	});
 
+	// Auto-focus xterm when this tab becomes active (Ctrl+Tab, click, sidebar switch).
+	// xterm needs an explicit `focus()` call — toggling `display: none` → `display: block`
+	// doesn't make the inner textarea capture keystrokes on its own. We focus on three
+	// timings to defeat any race with click handlers that re-focus a tab button or
+	// CSS layout that hasn't applied yet:
+	//   1. Synchronous focus (covers Ctrl+Tab where no click is involved).
+	//   2. Next animation frame (covers tab clicks — runs after the click handler
+	//      releases focus to the tab button).
+	//   3. Microtask after that (covers Tauri WebView2 quirks where the textarea
+	//      isn't yet visible to the focus engine on the very next frame).
+	// Cross-platform: same behavior on Windows WebView2, macOS WebKit, and Linux WebKitGTK.
+	$effect(() => {
+		if (!active || !terminal) return;
+		const term = terminal;
+		const focusNow = () => {
+			try {
+				term.focus();
+			} catch {
+				// Terminal may have been disposed mid-frame
+			}
+		};
+		focusNow();
+		requestAnimationFrame(() => {
+			focusNow();
+			queueMicrotask(focusNow);
+		});
+	});
+
 </script>
 
 <div
