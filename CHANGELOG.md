@@ -2,6 +2,17 @@
 
 All notable changes to Reach are documented here.
 
+## v0.4.0
+- **OpenSSH-style cascading auth** — SSH connect now tries methods in OpenSSH order: configured key → ssh-agent identities → password. The first method the server accepts wins. Replaces the previous one-method-only model where you had to pick the right auth upfront and re-edit the session if it failed.
+- **SSH agent integration** — Reach now talks to the local SSH agent and tries every loaded identity. On Windows, connects to OpenSSH's `\\.\pipe\openssh-ssh-agent` named pipe with Pageant as fallback; on Unix uses `SSH_AUTH_SOCK`. If the configured key gets rejected, every agent identity is offered to the server before giving up — same behavior as `ssh user@host` from a terminal.
+- **Password fallback prompt** — when the configured key and every agent identity get rejected, the connect modal stays open and shows a password input ("Key was rejected by the server. Enter your password to try again.") instead of failing outright. Type the password, click "Try with password", connection retries with password auth.
+- **Tab keyboard focus on switch** — switching SSH tabs via Ctrl+Tab or mouse click now auto-focuses the terminal so you can type immediately. Previously required a second click inside the terminal area. Focus runs at three timings (sync, next frame, microtask after) to defeat races with click handlers and WebView layout. Cross-platform: same behavior on Windows WebView2, macOS WebKit, Linux WebKitGTK.
+- **`~` path expansion for SSH keys** — `~/.ssh/id_ed25519` in the key path field now resolves to the user's home directory on Windows / macOS / Linux. Whitespace is also trimmed so trailing spaces don't break key loads.
+- **AuthParams refactored to a flat struct** — replaces the three exclusive `Password | Key | Agent` enum variants with optional fields (`key`, `password`, `allow_agent`). One `cascade_authenticate` function used by both direct and jump-host paths — no duplicated auth logic.
+- **Better SSH error messages** — "Authentication failed" now reads "Authentication rejected — server did not accept the public key (not in authorized_keys?) or password is wrong", and detailed `tracing::info!` lines for every auth step so debugging a connect failure shows exactly which method was tried and what the server said.
+- **Quick Connect tabs are now reconnectable** — Quick Connect now stores `sshConnectParams` on the tab so the reconnect overlay works for ad-hoc connections too, not only saved sessions.
+- 3 new i18n keys added across all 7 locales (`session.fallback_to_password`, `session.try_with_password`, `session.password_required`).
+
 ## v0.3.9
 - **SSH reconnect button** — When an SSH connection drops, a "Reconnect" overlay appears on the terminal with a single click to re-establish the connection using the same credentials. Terminal buffer is preserved so you can see what happened before the disconnect.
 - **Host key auto-accept on server reinstall** — If a server's host key changes (e.g. VPS reformatted), Reach automatically updates the stored fingerprint and connects. No more manual editing of `known_hosts.json`.

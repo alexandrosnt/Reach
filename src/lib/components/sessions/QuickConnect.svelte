@@ -59,14 +59,14 @@
 				}]
 				: undefined;
 
-			await sshConnect({
+			const connectParams = {
 				id,
 				host: host.trim(),
 				port,
 				username: username.trim(),
 				authMethod,
 				password: authMethod === 'password' ? password : undefined,
-				keyPath: authMethod === 'key' ? keyPath : undefined,
+				keyPath: authMethod === 'key' ? keyPath.trim() : undefined,
 				keyPassphrase: authMethod === 'key' && keyPassphrase ? keyPassphrase : undefined,
 				cols: 80,
 				rows: 24,
@@ -78,9 +78,11 @@
 					username: proxyUsername.trim() || undefined,
 					password: proxyPassword || undefined,
 				} : undefined,
-			});
+			};
+			await sshConnect(connectParams);
 
-			createTab('ssh', `${username.trim()}@${host.trim()}`, id);
+			const tab = createTab('ssh', `${username.trim()}@${host.trim()}`, id);
+			tab.sshConnectParams = connectParams;
 
 			// Reset form
 			host = '';
