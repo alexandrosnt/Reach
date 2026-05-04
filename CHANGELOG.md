@@ -2,6 +2,11 @@
 
 All notable changes to Reach are documented here.
 
+## v0.4.1
+- **Terminal width fix on tab switch** — Fixes a bug where switching away from a tab with active output and back left the terminal rendering in a ~2-character-wide stripe. Root cause: `FitAddon.fit()` clamps to its 2×1 minimum when called against a `display:none` container; the ResizeObserver would fire on the hidden tab and resize the remote PTY to 2 columns, baking CRLF-wrapped 2-char lines into the buffer that couldn't be reflowed back. Fixed by routing all fit call sites (initial mount, ResizeObserver, Ctrl+Wheel zoom, font-family change, tab activation) through a `safeFitAndResize()` helper that bails when `clientWidth === 0` and only sends `sendResize()` when cols/rows actually changed. Particularly noticeable with TUIs that use full terminal width — though TUIs like htop self-heal on SIGWINCH and previously masked the bug; plain stream commands (`yes`, `tail -f`) showed the damage clearly.
+- **File picker for SSH private key path** — Session editor now has a "Browse" button next to the private key path input. Opens the OS-native file dialog with filters for common SSH key file types (`pem`, `key`, `ppk`, `rsa`, `ed25519`, `ecdsa`, `dsa`) plus an "All Files" fallback for unextensioned keys. Available for both the main session and every jump-host hop. Implementation routes through `@tauri-apps/plugin-dialog`'s `open()`. Mirrors the existing path-picker pattern from the Ansible project editor.
+- 3 new i18n keys added across all 7 locales (`session.browse_key`, `session.select_key_file`, `session.ssh_private_key_filter`).
+
 ## v0.4.0
 - **OpenSSH-style cascading auth** — SSH connect now tries methods in OpenSSH order: configured key → ssh-agent identities → password. The first method the server accepts wins. Replaces the previous one-method-only model where you had to pick the right auth upfront and re-edit the session if it failed.
 - **SSH agent integration** — Reach now talks to the local SSH agent and tries every loaded identity. On Windows, connects to OpenSSH's `\\.\pipe\openssh-ssh-agent` named pipe with Pageant as fallback; on Unix uses `SSH_AUTH_SOCK`. If the configured key gets rejected, every agent identity is offered to the server before giving up — same behavior as `ssh user@host` from a terminal.

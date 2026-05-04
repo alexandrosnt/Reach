@@ -25,11 +25,16 @@
 
 	let { ptyId, type: termType, connectionId, active, onTitleChange, sshConnectParams, onReconnected }: Props = $props();
 
-	let currentConnectionId = $state(connectionId);
+	// Local state seeded from the `connectionId` prop and overridden in-place on
+	// reconnect (handleReconnect assigns a new UUID and notifies the parent via
+	// onReconnected). Use $effect.pre so the prop value is captured before the
+	// first render — avoids the state_referenced_locally warning that fires when
+	// reading a reactive prop directly inside $state(...).
+	let currentConnectionId = $state<string | undefined>();
 	let disconnected = $state(false);
 	let reconnecting = $state(false);
 
-	$effect(() => {
+	$effect.pre(() => {
 		currentConnectionId = connectionId;
 	});
 
@@ -177,6 +182,26 @@
 			ptyResize(ptyId, cols, rows).catch((err) => {
 				console.error('[Terminal] Failed to resize PTY:', err);
 			});
+		}
+	}
+
+	// Fit to container, then push the new geometry to the remote PTY — but only
+	// when the container is actually visible. A hidden tab's wrapper has
+	// display:none, so its container has 0×0 dimensions; FitAddon would clamp
+	// to its 2×1 minimum and resize the remote PTY to a 2-column window,
+	// permanently narrowing any output that arrives while the tab is hidden.
+	function safeFitAndResize(term: Terminal, fit: FitAddon, el: HTMLDivElement): void {
+		if (!term.element) return;
+		if (el.clientWidth === 0 || el.clientHeight === 0) return;
+		const prevCols = term.cols;
+		const prevRows = term.rows;
+		try {
+			fit.fit();
+			if (term.cols !== prevCols || term.rows !== prevRows) {
+				sendResize(term.cols, term.rows);
+			}
+		} catch (err) {
+			console.error('[Terminal] Fit error:', err);
 		}
 	}
 
@@ -366,15 +391,7 @@
 
 		resizeObserver = new ResizeObserver(() => {
 			if (resizeTimeout) clearTimeout(resizeTimeout);
-			resizeTimeout = setTimeout(() => {
-				if (!term.element) return;
-				try {
-					fit.fit();
-					sendResize(term.cols, term.rows);
-				} catch (err) {
-					console.error('[Terminal] Fit error:', err);
-				}
-			}, 50);
+			resizeTimeout = setTimeout(() => safeFitAndResize(term, fit, el), 50);
 		});
 
 		resizeObserver.observe(el);
@@ -399,12 +416,7 @@
 			term.open(containerEl);
 
 			requestAnimationFrame(() => {
-				try {
-					fit.fit();
-					sendResize(term.cols, term.rows);
-				} catch (err) {
-					console.error('[Terminal] Initial fit error:', err);
-				}
+				safeFitAndResize(term, fit, containerEl!);
 			});
 
 			setupInputHandler(term);
@@ -435,8 +447,7 @@
 				if (next !== current) {
 					term.options.fontSize = next;
 					term.clearTextureAtlas();
-					fit.fit();
-					sendResize(term.cols, term.rows);
+					safeFitAndResize(term, fit, termEl);
 					updateSetting('fontSize', next);
 				}
 			}
@@ -489,7 +500,8 @@
 		const family = appSettings.fontFamily;
 		const term = terminal;
 		const fit = fitAddon;
-		if (!term || !fit || !family) return;
+		const el = containerEl;
+		if (!term || !fit || !el || !family) return;
 		if (term.options.fontFamily === family) return;
 
 		const size = term.options.fontSize ?? 14;
@@ -499,25 +511,22 @@
 		]).catch(() => {}).finally(() => {
 			term.options.fontFamily = family;
 			term.clearTextureAtlas();
-			fit.fit();
-			sendResize(term.cols, term.rows);
+			safeFitAndResize(term, fit, el);
 		});
 	});
 
-	// Auto-focus xterm when this tab becomes active (Ctrl+Tab, click, sidebar switch).
-	// xterm needs an explicit `focus()` call — toggling `display: none` → `display: block`
-	// doesn't make the inner textarea capture keystrokes on its own. We focus on three
-	// timings to defeat any race with click handlers that re-focus a tab button or
-	// CSS layout that hasn't applied yet:
-	//   1. Synchronous focus (covers Ctrl+Tab where no click is involved).
-	//   2. Next animation frame (covers tab clicks — runs after the click handler
-	//      releases focus to the tab button).
-	//   3. Microtask after that (covers Tauri WebView2 quirks where the textarea
-	//      isn't yet visible to the focus engine on the very next frame).
-	// Cross-platform: same behavior on Windows WebView2, macOS WebKit, and Linux WebKitGTK.
+	// Auto-focus xterm AND re-fit when this tab becomes active (Ctrl+Tab, click, sidebar switch).
+	// Focus: xterm needs an explicit `focus()` call — toggling `display: none` → `display: block`
+	// doesn't make the inner textarea capture keystrokes on its own. Three focus timings
+	// defeat races with click handlers and Tauri WebView2 layout-not-ready quirks.
+	// Re-fit: while the tab was hidden, the container measured 0×0 so the ResizeObserver
+	// could not track window/sidebar resizes. We re-fit on the next frame (after layout)
+	// instead of waiting for the observer's 50ms debounce — keeps the switch feeling instant.
 	$effect(() => {
 		if (!active || !terminal) return;
 		const term = terminal;
+		const fit = fitAddon;
+		const el = containerEl;
 		const focusNow = () => {
 			try {
 				term.focus();
@@ -527,6 +536,7 @@
 		};
 		focusNow();
 		requestAnimationFrame(() => {
+			if (fit && el) safeFitAndResize(term, fit, el);
 			focusNow();
 			queueMicrotask(focusNow);
 		});
