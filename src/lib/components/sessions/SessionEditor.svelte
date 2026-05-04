@@ -4,6 +4,7 @@
 	import Input from '$lib/components/shared/Input.svelte';
 	import { sessionCreate, sessionUpdate, type SessionConfig, type AuthMethod, type JumpHostConfig, type Folder } from '$lib/ipc/sessions';
 	import { t } from '$lib/state/i18n.svelte';
+	import { open as openDialog } from '@tauri-apps/plugin-dialog';
 
 	interface Props {
 		open: boolean;
@@ -174,6 +175,23 @@
 		}
 	}
 
+	async function browseKey(setter: (path: string) => void): Promise<void> {
+		try {
+			const selected = await openDialog({
+				multiple: false,
+				directory: false,
+				title: t('session.select_key_file'),
+				filters: [
+					{ name: t('session.ssh_private_key_filter'), extensions: ['pem', 'key', 'ppk', 'rsa', 'ed25519', 'ecdsa', 'dsa'] },
+					{ name: 'All Files', extensions: ['*'] },
+				],
+			});
+			if (typeof selected === 'string') setter(selected);
+		} catch {
+			// User cancelled the dialog
+		}
+	}
+
 	function addHop(): void {
 		jumpHops = [...jumpHops, { host: '', port: '22', username: 'root', authType: 'Password', password: '', keyPath: '', keyPassphrase: '' }];
 	}
@@ -240,7 +258,14 @@
 		{#if authType === 'Password'}
 			<Input label={t('session.password_optional')} bind:value={password} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
 		{:else if authType === 'Key'}
-			<Input label={t('session.key_path')} bind:value={keyPath} placeholder="~/.ssh/id_rsa" disabled={saving} />
+			<div class="key-path-row">
+				<div class="key-path-input">
+					<Input label={t('session.key_path')} bind:value={keyPath} placeholder="~/.ssh/id_rsa" disabled={saving} />
+				</div>
+				<Button variant="secondary" size="sm" onclick={() => browseKey((p) => (keyPath = p))} disabled={saving}>
+					{t('session.browse_key')}
+				</Button>
+			</div>
 			<Input label={t('session.passphrase_optional')} bind:value={keyPassphrase} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
 		{/if}
 
@@ -290,7 +315,14 @@
 						{#if hop.authType === 'Password'}
 							<Input label={t('session.password_optional')} bind:value={hop.password} type="password" disabled={saving} />
 						{:else if hop.authType === 'Key'}
-							<Input label={t('session.key_path')} bind:value={hop.keyPath} placeholder="~/.ssh/id_rsa" disabled={saving} />
+							<div class="key-path-row">
+								<div class="key-path-input">
+									<Input label={t('session.key_path')} bind:value={hop.keyPath} placeholder="~/.ssh/id_rsa" disabled={saving} />
+								</div>
+								<Button variant="secondary" size="sm" onclick={() => browseKey((p) => (hop.keyPath = p))} disabled={saving}>
+									{t('session.browse_key')}
+								</Button>
+							</div>
 							<Input label={t('session.passphrase_optional')} bind:value={hop.keyPassphrase} type="password" disabled={saving} />
 						{/if}
 					</div>
@@ -399,6 +431,17 @@
 	.field-port {
 		width: 80px;
 		flex-shrink: 0;
+	}
+
+	.key-path-row {
+		display: flex;
+		align-items: flex-end;
+		gap: 8px;
+	}
+
+	.key-path-input {
+		flex: 1;
+		min-width: 0;
 	}
 
 	.folder-section {
