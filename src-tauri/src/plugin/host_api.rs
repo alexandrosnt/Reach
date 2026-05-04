@@ -1,13 +1,27 @@
 use std::collections::HashSet;
 use std::sync::Arc;
+use std::sync::OnceLock;
+use std::time::Duration;
 
 use mlua::{Lua, Result as LuaResult, UserDataRef};
 use tauri::Emitter;
 
-use crate::plugin::schema::{PluginPermission, UiElement};
+use crate::plugin::schema::{PluginPermission, UiElement, HTTP_REQUEST_TIMEOUT_MS};
 use crate::ssh::client::SshManager;
 use crate::tunnel::manager::TunnelManager;
 use crate::vault::VaultManager;
+
+/// Shared HTTP client used by every plugin's `reach.http.*`. Built once with a
+/// hard request timeout so a slow/hung endpoint cannot stall a plugin hook.
+fn http_client() -> &'static reqwest::Client {
+    static CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
+            .timeout(Duration::from_millis(HTTP_REQUEST_TIMEOUT_MS))
+            .build()
+            .expect("reqwest client build should not fail with default features")
+    })
+}
 
 /// Shared reference to app state passed into Lua via userdata.
 #[derive(Clone)]
@@ -297,7 +311,9 @@ fn inject_http_api(lua: &Lua, reach: &mlua::Table) -> LuaResult<()> {
     http.set(
         "get",
         lua.create_async_function(|_, url: String| async move {
-            let resp = reqwest::get(&url)
+            let resp = http_client()
+                .get(&url)
+                .send()
                 .await
                 .map_err(|e| mlua::Error::external(e.to_string()))?;
             let body = resp
@@ -311,8 +327,7 @@ fn inject_http_api(lua: &Lua, reach: &mlua::Table) -> LuaResult<()> {
     http.set(
         "post",
         lua.create_async_function(|_, (url, body): (String, String)| async move {
-            let client = reqwest::Client::new();
-            let resp = client
+            let resp = http_client()
                 .post(&url)
                 .header("Content-Type", "application/json")
                 .body(body)

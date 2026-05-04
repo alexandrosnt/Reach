@@ -4,3 +4,4 @@ pub mod sandbox;
 pub mod host_api;
 pub mod storage;
 pub mod hooks;
+pub mod marketplace;

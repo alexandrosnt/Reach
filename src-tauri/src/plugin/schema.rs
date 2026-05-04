@@ -19,7 +19,19 @@ pub struct PluginManifest {
     /// Hook events the plugin wants to receive
     #[serde(default)]
     pub hooks: Vec<String>,
+    /// Optional per-hook execution timeout in milliseconds (capped at HOOK_TIMEOUT_HARD_CAP_MS)
+    #[serde(default)]
+    pub hook_timeout_ms: Option<u64>,
 }
+
+/// Default per-hook timeout if the manifest doesn't specify one.
+pub const HOOK_TIMEOUT_DEFAULT_MS: u64 = 5_000;
+/// Hard cap on hook timeout — manifests cannot opt out of this.
+pub const HOOK_TIMEOUT_HARD_CAP_MS: u64 = 30_000;
+/// Maximum Luau interrupt counter before a runaway-loop error is raised.
+pub const LUA_INTERRUPT_LIMIT: u64 = 10_000_000;
+/// Shared HTTP request timeout for `reach.http.*`.
+pub const HTTP_REQUEST_TIMEOUT_MS: u64 = 30_000;
 
 fn default_entry() -> String {
     "main.lua".to_string()
@@ -87,6 +99,11 @@ pub struct PluginConfig {
     pub id: String,
     pub enabled: bool,
     pub granted_permissions: Vec<PluginPermission>,
+    /// Manifest version at the time permissions were granted. When the plugin
+    /// is upgraded to a different version, granted_permissions is cleared so
+    /// the user must re-confirm.
+    #[serde(default)]
+    pub version_at_grant: Option<String>,
 }
 
 /// A single UI element that plugins can render

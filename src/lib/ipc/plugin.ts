@@ -43,6 +43,8 @@ export interface PluginConfig {
 	id: string;
 	enabled: boolean;
 	grantedPermissions: PluginPermission[];
+	/// Manifest version when permissions were granted; cleared on upgrade.
+	versionAtGrant?: string | null;
 }
 
 export type UiElement =
