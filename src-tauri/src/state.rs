@@ -170,6 +170,8 @@ pub struct AppState {
     pub serial_manager: Arc<tokio::sync::Mutex<SerialManager>>,
     pub vault_manager: Arc<tokio::sync::Mutex<VaultManager>>,
     pub plugin_manager: Arc<tokio::sync::Mutex<PluginManager>>,
+    /// URL of the marketplace registry JSON file.
+    pub marketplace_index_url: Arc<RwLock<String>>,
     pub ansible_project_manager: Arc<tokio::sync::Mutex<AnsibleProjectManager>>,
     pub tofu_project_manager: Arc<tokio::sync::Mutex<TofuProjectManager>>,
     pub tofu_schema_cache: Arc<tokio::sync::Mutex<SchemaCache>>,
@@ -197,6 +199,9 @@ impl AppState {
             serial_manager: Arc::new(tokio::sync::Mutex::new(SerialManager::new())),
             vault_manager: Arc::new(tokio::sync::Mutex::new(VaultManager::new(app_dir.clone()))),
             plugin_manager: Arc::new(tokio::sync::Mutex::new(PluginManager::new(app_dir.join("plugins")))),
+            marketplace_index_url: Arc::new(RwLock::new(
+                crate::plugin::marketplace::DEFAULT_INDEX_URL.to_string(),
+            )),
             ansible_project_manager: Arc::new(tokio::sync::Mutex::new(AnsibleProjectManager::new())),
             tofu_project_manager: Arc::new(tokio::sync::Mutex::new(TofuProjectManager::new())),
             tofu_schema_cache: Arc::new(tokio::sync::Mutex::new(SchemaCache::default())),

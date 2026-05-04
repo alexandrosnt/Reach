@@ -131,10 +131,15 @@ pub async fn ssh_connect(
     // (plugins may call reach.ssh.exec which needs the lock)
     drop(manager);
 
-    // Dispatch plugin hook
+    // Fire-and-forget: a slow or hung plugin hook must not block the IPC
+    // return. dispatch_hook applies a per-hook timeout internally.
     let hook = hooks::session_connected(&connection_id, &host, &username);
-    let mut plugin_mgr = state.plugin_manager.lock().await;
-    plugin_mgr.dispatch_hook(&hook, Some(&app)).await;
+    let plugin_mgr = state.plugin_manager.clone();
+    let app_for_hook = app.clone();
+    tokio::spawn(async move {
+        let mut mgr = plugin_mgr.lock().await;
+        mgr.dispatch_hook(&hook, Some(&app_for_hook)).await;
+    });
 
     Ok(connection_id)
 }
@@ -170,10 +175,14 @@ pub async fn ssh_disconnect(
     manager.disconnect(&connection_id).map_err(|e| e.to_string())?;
     drop(manager);
 
-    // Dispatch plugin hook
+    // Fire-and-forget hook dispatch (see ssh_connect for rationale).
     let hook = hooks::session_disconnected(&connection_id);
-    let mut plugin_mgr = state.plugin_manager.lock().await;
-    plugin_mgr.dispatch_hook(&hook, Some(&app)).await;
+    let plugin_mgr = state.plugin_manager.clone();
+    let app_for_hook = app.clone();
+    tokio::spawn(async move {
+        let mut mgr = plugin_mgr.lock().await;
+        mgr.dispatch_hook(&hook, Some(&app_for_hook)).await;
+    });
 
     Ok(())
 }

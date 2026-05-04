@@ -66,10 +66,16 @@ pub async fn tunnel_start(
     }
     drop(tunnels);
 
-    // Dispatch plugin hook
+    // Fire-and-forget hook dispatch — tunnel start completes for the user
+    // immediately; plugin reactions run in the background with a per-hook
+    // timeout enforced by PluginManager::dispatch_hook.
     let hook = hooks::tunnel_started(&tunnel_id, local_port);
-    let mut plugin_mgr = state.plugin_manager.lock().await;
-    plugin_mgr.dispatch_hook(&hook, Some(&app)).await;
+    let plugin_mgr = state.plugin_manager.clone();
+    let app_for_hook = app.clone();
+    tokio::spawn(async move {
+        let mut mgr = plugin_mgr.lock().await;
+        mgr.dispatch_hook(&hook, Some(&app_for_hook)).await;
+    });
 
     Ok(())
 }
@@ -104,10 +110,14 @@ pub async fn tunnel_stop(
     }
     drop(tunnels);
 
-    // Dispatch plugin hook
+    // Fire-and-forget hook dispatch (see tunnel_start for rationale).
     let hook = hooks::tunnel_stopped(&tunnel_id);
-    let mut plugin_mgr = state.plugin_manager.lock().await;
-    plugin_mgr.dispatch_hook(&hook, Some(&app)).await;
+    let plugin_mgr = state.plugin_manager.clone();
+    let app_for_hook = app.clone();
+    tokio::spawn(async move {
+        let mut mgr = plugin_mgr.lock().await;
+        mgr.dispatch_hook(&hook, Some(&app_for_hook)).await;
+    });
 
     Ok(())
 }

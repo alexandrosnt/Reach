@@ -27,6 +27,7 @@ pub async fn plugin_load(
                 id: plugin_id.clone(),
                 enabled: true,
                 granted_permissions: Vec::new(),
+                version_at_grant: None,
             })
     };
 
@@ -70,6 +71,7 @@ pub async fn plugin_reload(
                 id: plugin_id.clone(),
                 enabled: true,
                 granted_permissions: Vec::new(),
+                version_at_grant: None,
             })
     };
 
@@ -139,11 +141,20 @@ pub async fn plugin_get_config(
 }
 
 /// Save plugin configuration (enabled state, granted permissions).
+///
+/// Stamps `version_at_grant` with the plugin's current manifest version so
+/// future upgrades trigger a permission re-grant prompt.
 #[tauri::command]
 pub async fn plugin_set_config(
     state: tauri::State<'_, AppState>,
-    config: PluginConfig,
+    mut config: PluginConfig,
 ) -> Result<(), String> {
+    if config.version_at_grant.is_none() && !config.granted_permissions.is_empty() {
+        let mgr = state.plugin_manager.lock().await;
+        if let Some(plugin) = mgr.list_plugins().into_iter().find(|p| p.manifest.id == config.id) {
+            config.version_at_grant = Some(plugin.manifest.version.clone());
+        }
+    }
     let mut vault_mgr = state.vault_manager.lock().await;
     storage::save_plugin_config(&mut vault_mgr, &config).await
 }

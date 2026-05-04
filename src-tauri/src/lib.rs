@@ -23,6 +23,7 @@ use tracing_subscriber::EnvFilter;
 use ipc::ansible_commands::*;
 use ipc::ai_commands::*;
 use ipc::plugin_commands::*;
+use ipc::marketplace_commands::*;
 use ipc::credential_commands::*;
 use ipc::settings_commands::*;
 use ipc::monitoring_commands::*;
@@ -287,6 +288,12 @@ pub fn run() {
             plugin_get_dir,
             plugin_set_dir,
             plugin_dispatch_hook,
+            // Marketplace commands
+            marketplace_fetch,
+            marketplace_install,
+            marketplace_uninstall,
+            marketplace_get_url,
+            marketplace_set_url,
             // Editor commands
             editor_open_file,
             editor_get_pending_file,
@@ -483,6 +490,12 @@ pub fn run() {
             plugin_get_dir,
             plugin_set_dir,
             plugin_dispatch_hook,
+            // Marketplace commands
+            marketplace_fetch,
+            marketplace_install,
+            marketplace_uninstall,
+            marketplace_get_url,
+            marketplace_set_url,
             // Editor commands
             editor_open_file,
             editor_get_pending_file,
@@ -616,6 +629,7 @@ pub fn run() {
                                     id: manifest.id.clone(),
                                     enabled: true,
                                     granted_permissions: manifest.permissions.clone(),
+                                    version_at_grant: Some(manifest.version.clone()),
                                 }
                             });
                         if config.enabled {

@@ -4,6 +4,7 @@
 	interface Props {
 		variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
 		size?: 'sm' | 'md' | 'lg';
+		type?: 'button' | 'submit' | 'reset';
 		disabled?: boolean;
 		children: Snippet;
 		onclick?: (e: MouseEvent) => void;
@@ -12,6 +13,7 @@
 	let {
 		variant = 'primary',
 		size = 'md',
+		type = 'button',
 		disabled = false,
 		children,
 		onclick
@@ -25,6 +27,7 @@
 </script>
 
 <button
+	{type}
 	class="btn btn-{variant} {sizeClasses[size]}"
 	{disabled}
 	{onclick}

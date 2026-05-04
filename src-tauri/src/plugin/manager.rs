@@ -1,12 +1,13 @@
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 
 use mlua::Lua;
 use tauri::Emitter;
 
 use crate::plugin::host_api::{inject_host_api, PluginAppState};
-use crate::plugin::sandbox::create_sandbox;
+use crate::plugin::sandbox::{create_sandbox, ExecutionLimits};
 use crate::plugin::schema::*;
 use crate::ssh::client::SshManager;
 use crate::tunnel::manager::TunnelManager;
@@ -20,6 +21,19 @@ pub struct PluginInstance {
     pub lua: Option<Lua>,
     pub ui_state: Option<PluginUiState>,
     pub plugin_dir: PathBuf,
+    pub limits: ExecutionLimits,
+}
+
+impl PluginInstance {
+    /// Per-hook execution timeout, capped at the global hard cap.
+    fn hook_timeout(&self) -> Duration {
+        let raw = self
+            .manifest
+            .hook_timeout_ms
+            .unwrap_or(HOOK_TIMEOUT_DEFAULT_MS)
+            .min(HOOK_TIMEOUT_HARD_CAP_MS);
+        Duration::from_millis(raw)
+    }
 }
 
 /// Manages all plugins: discovery, lifecycle, and hook dispatch.
@@ -77,7 +91,7 @@ impl PluginManager {
     pub fn load_plugin(
         &mut self,
         plugin_id: &str,
-        config: PluginConfig,
+        mut config: PluginConfig,
         ssh_manager: Arc<tokio::sync::Mutex<SshManager>>,
         tunnel_manager: Arc<tokio::sync::Mutex<TunnelManager>>,
         vault_manager: Arc<tokio::sync::Mutex<VaultManager>>,
@@ -91,6 +105,27 @@ impl PluginManager {
         let manifest: PluginManifest =
             toml::from_str(&manifest_content).map_err(|e| e.to_string())?;
 
+        // If the manifest version differs from the version permissions were
+        // granted under, drop the granted permissions — the user must re-grant
+        // explicitly. Treats first-time load (None) as a fresh grant.
+        let version_changed = config
+            .version_at_grant
+            .as_deref()
+            .map(|v| v != manifest.version)
+            .unwrap_or(false);
+        if version_changed {
+            tracing::warn!(
+                "Plugin '{}' upgraded from {:?} to {} — clearing granted permissions",
+                plugin_id,
+                config.version_at_grant,
+                manifest.version
+            );
+            config.granted_permissions.clear();
+            config.version_at_grant = None;
+        }
+
+        let limits = ExecutionLimits::default_limits();
+
         if !config.enabled {
             let instance = PluginInstance {
                 manifest: manifest.clone(),
@@ -99,6 +134,7 @@ impl PluginManager {
                 lua: None,
                 ui_state: None,
                 plugin_dir,
+                limits,
             };
             let info = make_plugin_info(&instance);
             self.plugins.insert(plugin_id.to_string(), instance);
@@ -106,11 +142,19 @@ impl PluginManager {
         }
 
         // Create sandboxed VM
-        let lua = create_sandbox().map_err(|e| format!("Sandbox creation failed: {}", e))?;
+        let lua = create_sandbox(&limits).map_err(|e| format!("Sandbox creation failed: {}", e))?;
 
-        // Build granted permissions set
-        let granted: HashSet<PluginPermission> =
-            config.granted_permissions.iter().cloned().collect();
+        // Build granted permissions set — intersected with what the manifest
+        // currently declares so a stored permission for an API the manifest no
+        // longer requests is silently dropped.
+        let declared: HashSet<PluginPermission> =
+            manifest.permissions.iter().cloned().collect();
+        let granted: HashSet<PluginPermission> = config
+            .granted_permissions
+            .iter()
+            .filter(|p| declared.contains(p))
+            .cloned()
+            .collect();
 
         // Inject host API
         let plugin_app_state = PluginAppState {
@@ -128,16 +172,21 @@ impl PluginManager {
         let entry_code = std::fs::read_to_string(&entry_path)
             .map_err(|e| format!("Cannot read {}: {}", manifest.entry, e))?;
 
+        // Reset the interrupt counter before each top-level Lua execution.
+        limits.reset();
         let status = match lua.load(&entry_code).set_name(&manifest.entry).exec() {
             Ok(()) => {
                 // Try calling on_init if it exists
                 match lua.globals().get::<mlua::Function>("on_init") {
-                    Ok(func) => match func.call::<()>(()) {
-                        Ok(()) => PluginStatus::Running,
-                        Err(e) => PluginStatus::Error {
-                            message: format!("on_init error: {}", e),
-                        },
-                    },
+                    Ok(func) => {
+                        limits.reset();
+                        match func.call::<()>(()) {
+                            Ok(()) => PluginStatus::Running,
+                            Err(e) => PluginStatus::Error {
+                                message: format!("on_init error: {}", e),
+                            },
+                        }
+                    }
                     Err(_) => PluginStatus::Running,
                 }
             }
@@ -171,6 +220,7 @@ impl PluginManager {
             lua: Some(lua),
             ui_state,
             plugin_dir,
+            limits,
         };
 
         let info = make_plugin_info(&instance);
@@ -241,6 +291,7 @@ impl PluginManager {
             Ok(func) => {
                 let lua_val = mlua::LuaSerdeExt::to_value(lua, &params)
                     .map_err(|e| e.to_string())?;
+                instance.limits.reset();
                 match func.call_async::<mlua::Value>(lua_val).await {
                     Ok(result) => {
                         // Check if result is a table (UI elements)
@@ -275,6 +326,12 @@ impl PluginManager {
     }
 
     /// Dispatch a hook event to all registered plugins.
+    ///
+    /// Each plugin's hook call is wrapped in [`tokio::time::timeout`] using the
+    /// plugin's manifest-declared `hook_timeout_ms` (capped at the global hard
+    /// cap). On timeout or error the plugin's status flips to
+    /// [`PluginStatus::Error`] and a `plugin-status-update` event is emitted so
+    /// the UI can show the user which plugin misbehaved.
     pub async fn dispatch_hook(
         &mut self,
         event: &HookEvent,
@@ -287,34 +344,66 @@ impl PluginManager {
             .unwrap_or_default();
 
         for plugin_id in plugin_ids {
-            if let Some(instance) = self.plugins.get_mut(&plugin_id) {
-                if let Some(ref lua) = instance.lua {
-                    let func_name = format!(
-                        "on_{}",
-                        event.event_name.replace(':', "_")
-                    );
-                    if let Ok(func) = lua.globals().get::<mlua::Function>(&*func_name) {
-                        let lua_val = mlua::LuaSerdeExt::to_value(lua, &event.data).ok();
-                        if let Some(val) = lua_val {
-                            if let Err(e) = func.call_async::<()>(val).await {
-                                tracing::warn!(
-                                    "Plugin '{}' hook '{}' error: {}",
-                                    plugin_id,
-                                    event.event_name,
-                                    e
-                                );
-                            }
-                        }
-                    }
+            let Some(instance) = self.plugins.get_mut(&plugin_id) else {
+                continue;
+            };
+            let Some(ref lua) = instance.lua else { continue };
 
-                    // Update UI state after hook
-                    let ui = get_ui_from_lua(lua, &plugin_id);
-                    if ui.is_some() {
-                        instance.ui_state = ui.clone();
-                        if let Some(handle) = app_handle {
-                            let _ = handle.emit("plugin-ui-update", &ui);
-                        }
+            let func_name = format!("on_{}", event.event_name.replace(':', "_"));
+            let Ok(func) = lua.globals().get::<mlua::Function>(&*func_name) else {
+                continue;
+            };
+            let Some(val) = mlua::LuaSerdeExt::to_value(lua, &event.data).ok() else {
+                continue;
+            };
+
+            instance.limits.reset();
+            let timeout = instance.hook_timeout();
+            let call_result = tokio::time::timeout(timeout, func.call_async::<()>(val)).await;
+
+            let mut new_error: Option<String> = None;
+            match call_result {
+                Ok(Ok(())) => {}
+                Ok(Err(e)) => {
+                    let msg = format!("hook '{}' error: {}", event.event_name, e);
+                    tracing::warn!("Plugin '{}' {}", plugin_id, msg);
+                    new_error = Some(msg);
+                }
+                Err(_elapsed) => {
+                    let msg = format!(
+                        "hook '{}' timed out after {}ms",
+                        event.event_name,
+                        timeout.as_millis()
+                    );
+                    tracing::warn!("Plugin '{}' {}", plugin_id, msg);
+                    new_error = Some(msg);
+                }
+            }
+
+            // Update UI state after hook (only if VM still healthy).
+            if new_error.is_none() {
+                let ui = get_ui_from_lua(lua, &plugin_id);
+                if ui.is_some() {
+                    instance.ui_state = ui.clone();
+                    if let Some(handle) = app_handle {
+                        let _ = handle.emit("plugin-ui-update", &ui);
                     }
+                }
+            }
+
+            if let Some(message) = new_error {
+                instance.status = PluginStatus::Error {
+                    message: message.clone(),
+                };
+                if let Some(handle) = app_handle {
+                    let _ = handle.emit(
+                        "plugin-status-update",
+                        serde_json::json!({
+                            "pluginId": plugin_id,
+                            "status": "error",
+                            "message": message,
+                        }),
+                    );
                 }
             }
         }

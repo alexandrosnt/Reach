@@ -1,6 +1,7 @@
 <script lang="ts">
 	import PluginListItem from './PluginListItem.svelte';
 	import PluginView from './PluginView.svelte';
+	import MarketplacePanel from './MarketplacePanel.svelte';
 	import {
 		pluginDiscover,
 		pluginLoad,
@@ -34,6 +35,7 @@
 	let { connectionId }: Props = $props();
 
 	let discovering = $state(false);
+	let activeTab = $state<'installed' | 'marketplace'>('installed');
 
 	let plugins = $derived(getPlugins());
 	let activePluginId = $derived(getActivePluginId());
@@ -114,7 +116,8 @@
 	}
 
 	onMount(() => {
-		let unlisten: UnlistenFn | undefined;
+		let unlistenNotify: UnlistenFn | undefined;
+		let unlistenStatus: UnlistenFn | undefined;
 
 		// Silently load current plugin list without loading flash
 		pluginList()
@@ -126,74 +129,111 @@
 			const toastType = level === 'error' ? 'error' : level === 'warning' ? 'warning' : 'info';
 			addToast(message, toastType);
 		}).then((fn) => {
-			unlisten = fn;
+			unlistenNotify = fn;
+		});
+
+		// A plugin's hook timed out or errored — surface it and refresh the
+		// list so the row's status badge flips to Error.
+		listen<{ pluginId: string; status: string; message: string }>(
+			'plugin-status-update',
+			(event) => {
+				const { pluginId, message } = event.payload;
+				addToast(t('plugin.hook_failed', { id: pluginId, msg: message }), 'error');
+				refreshPlugins();
+			}
+		).then((fn) => {
+			unlistenStatus = fn;
 		});
 
 		return () => {
-			unlisten?.();
+			unlistenNotify?.();
+			unlistenStatus?.();
 		};
 	});
 </script>
 
 <div class="plugin-panel">
-	<div class="toolbar">
-		<span class="toolbar-title">{t('plugin.title')}</span>
-		<div class="toolbar-actions">
-			<button
-				class="toolbar-btn"
-				onclick={discoverPlugins}
-				disabled={discovering}
-				title={t('plugin.reload')}
-			>
-				<svg class:spinning={discovering} width="14" height="14" viewBox="0 0 24 24" fill="none">
-					<path
-						d="M23 4v6h-6M1 20v-6h6"
-						stroke="currentColor"
-						stroke-width="1.5"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					/>
-					<path
-						d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"
-						stroke="currentColor"
-						stroke-width="1.5"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					/>
-				</svg>
-			</button>
-		</div>
+	<div class="tab-bar">
+		<button
+			type="button"
+			class="tab-btn"
+			class:active={activeTab === 'installed'}
+			onclick={() => (activeTab = 'installed')}
+		>
+			{t('plugin.tab_installed')}
+		</button>
+		<button
+			type="button"
+			class="tab-btn"
+			class:active={activeTab === 'marketplace'}
+			onclick={() => (activeTab = 'marketplace')}
+		>
+			{t('plugin.tab_marketplace')}
+		</button>
 	</div>
 
-	{#if loading}
-		<div class="loading-indicator">
-			<span class="loading-text">{t('plugin.loading')}</span>
+	{#if activeTab === 'installed'}
+		<div class="toolbar">
+			<span class="toolbar-title">{t('plugin.title')}</span>
+			<div class="toolbar-actions">
+				<button
+					class="toolbar-btn"
+					onclick={discoverPlugins}
+					disabled={discovering}
+					title={t('plugin.reload')}
+				>
+					<svg class:spinning={discovering} width="14" height="14" viewBox="0 0 24 24" fill="none">
+						<path
+							d="M23 4v6h-6M1 20v-6h6"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+						<path
+							d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"
+							stroke="currentColor"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+					</svg>
+				</button>
+			</div>
 		</div>
-	{/if}
 
-	{#if plugins.length === 0 && !loading}
-		<div class="empty-state">
-			<p class="empty-text">{t('plugin.no_plugins')}</p>
-			<p class="empty-hint">{t('plugin.no_plugins_hint')}</p>
-		</div>
+		{#if loading}
+			<div class="loading-indicator">
+				<span class="loading-text">{t('plugin.loading')}</span>
+			</div>
+		{/if}
+
+		{#if plugins.length === 0 && !loading}
+			<div class="empty-state">
+				<p class="empty-text">{t('plugin.no_plugins')}</p>
+				<p class="empty-hint">{t('plugin.no_plugins_hint')}</p>
+			</div>
+		{:else}
+			<div class="plugin-list">
+				{#each plugins as plugin (plugin.manifest.id)}
+					<PluginListItem
+						{plugin}
+						active={activePluginId === plugin.manifest.id}
+						onclick={() => handlePluginClick(plugin.manifest.id)}
+						onToggle={(enabled) => handleToggle(plugin.manifest.id, enabled)}
+					/>
+				{/each}
+			</div>
+		{/if}
+
+		{#if selectedPlugin?.hasUi && activePluginId}
+			<div class="divider"></div>
+			<div class="plugin-view-container">
+				<PluginView pluginId={activePluginId} {connectionId} />
+			</div>
+		{/if}
 	{:else}
-		<div class="plugin-list">
-			{#each plugins as plugin (plugin.manifest.id)}
-				<PluginListItem
-					{plugin}
-					active={activePluginId === plugin.manifest.id}
-					onclick={() => handlePluginClick(plugin.manifest.id)}
-					onToggle={(enabled) => handleToggle(plugin.manifest.id, enabled)}
-				/>
-			{/each}
-		</div>
-	{/if}
-
-	{#if selectedPlugin?.hasUi && activePluginId}
-		<div class="divider"></div>
-		<div class="plugin-view-container">
-			<PluginView pluginId={activePluginId} {connectionId} />
-		</div>
+		<MarketplacePanel />
 	{/if}
 </div>
 
@@ -203,6 +243,38 @@
 		flex-direction: column;
 		height: 100%;
 		overflow: hidden;
+	}
+
+	.tab-bar {
+		display: flex;
+		border-bottom: 1px solid var(--color-border);
+	}
+
+	.tab-btn {
+		flex: 1;
+		padding: 7px 10px;
+		font-family: var(--font-sans);
+		font-size: 0.6875rem;
+		font-weight: 500;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		color: var(--color-text-secondary);
+		background: transparent;
+		border: none;
+		border-bottom: 2px solid transparent;
+		cursor: pointer;
+		transition:
+			color var(--duration-default) var(--ease-default),
+			border-color var(--duration-default) var(--ease-default);
+	}
+
+	.tab-btn:hover {
+		color: var(--color-text-primary);
+	}
+
+	.tab-btn.active {
+		color: var(--color-text-primary);
+		border-bottom-color: var(--color-accent);
 	}
 
 	.toolbar {
