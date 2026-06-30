@@ -62,6 +62,7 @@ pub async fn ssh_connect(
     rows: u16,
     jump_chain: Option<Vec<JumpHostConnectParams>>,
     proxy: Option<crate::state::ProxyConfig>,
+    shell: Option<String>,
 ) -> Result<String, String> {
     tracing::info!(
         "ssh_connect IPC: id={}, host={}, port={}, user={}, auth_method='{}', has_key_path={}, has_password={}, has_passphrase={}, has_proxy={}, has_jump={}",
@@ -72,6 +73,9 @@ pub async fn ssh_connect(
         proxy.is_some(),
         jump_chain.as_ref().map(|c| c.len()).unwrap_or(0),
     );
+    if let Some(s) = shell.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        tracing::info!("ssh_connect: per-session login shell override = '{}'", s);
+    }
     let auth = build_auth(&auth_method, password, key_path, key_passphrase)?;
 
     let mut manager = state.ssh_manager.lock().await;
@@ -80,7 +84,7 @@ pub async fn ssh_connect(
         if chain.is_empty() {
             // No jump hosts, connect directly
             manager
-                .connect(&id, &host, port, &username, auth, cols, rows, app.clone(), proxy)
+                .connect(&id, &host, port, &username, auth, cols, rows, app.clone(), proxy, shell)
                 .await
                 .map_err(|e| e.to_string())?
         } else {
@@ -114,13 +118,14 @@ pub async fn ssh_connect(
                     cols,
                     rows,
                     app.clone(),
+                    shell,
                 )
                 .await
                 .map_err(|e| e.to_string())?
         }
     } else {
         manager
-            .connect(&id, &host, port, &username, auth, cols, rows, app.clone(), proxy)
+            .connect(&id, &host, port, &username, auth, cols, rows, app.clone(), proxy, shell)
             .await
             .map_err(|e| e.to_string())?
     };
@@ -230,4 +235,12 @@ pub async fn ssh_detect_os(
     }
 
     Ok("linux".to_string())
+}
+
+/// Inspect a key-file path so the UI can warn when the user picked the wrong
+/// file (e.g. an OpenSSH public key) and suggest the right private key from the
+/// same folder. Pure filesystem read — no connection or state required.
+#[tauri::command]
+pub fn inspect_key_file(path: String) -> crate::ssh::keyfile::KeyFileInfo {
+    crate::ssh::keyfile::classify_path(&path)
 }

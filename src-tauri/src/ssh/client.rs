@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -13,7 +13,7 @@ use crate::state::ProxyConfig;
 /// Expand `~` and `~/` to the user's home directory. Cross-platform: works
 /// on Windows (resolves to %USERPROFILE%), macOS, and Linux. Leaves absolute
 /// paths and paths without leading `~` unchanged.
-fn expand_tilde(path: &str) -> PathBuf {
+pub(crate) fn expand_tilde(path: &str) -> PathBuf {
     let trimmed = path.trim();
     if trimmed == "~" {
         return dirs::home_dir().unwrap_or_else(|| PathBuf::from(trimmed));
@@ -24,6 +24,164 @@ fn expand_tilde(path: &str) -> PathBuf {
         }
     }
     PathBuf::from(trimmed)
+}
+
+/// POSIX color/prompt initialization injected after login. Safe for bash, zsh,
+/// sh, dash, etc. It sets truecolor + `ls`/`grep` color aliases and, for bash
+/// without a colored prompt, a sensible `PS1`. `stty -echo`/`clear` hide it.
+/// NOTE: this is bash/POSIX syntax — it is NOT valid in fish, which is why the
+/// init is selected per shell family (see `shell_init`).
+const POSIX_COLOR_INIT: &str = concat!(
+    r#"stty -echo; export COLORTERM=truecolor; "#,
+    r#"[ -z "$LS_COLORS" ] && eval "$(dircolors -b 2>/dev/null)"; "#,
+    r#"alias ls='ls --color=auto' 2>/dev/null; "#,
+    r#"alias grep='grep --color=auto' 2>/dev/null; "#,
+    r#"alias diff='diff --color=auto' 2>/dev/null; "#,
+    r#"if [ -n "$BASH" ]; then "#,
+    r#"case "$PS1" in *033*|*\\e\[*) ;; *) "#,
+    r#"_c=32; [ "${EUID:-$(id -u)}" = "0" ] && _c=31; "#,
+    r#"PS1="\\[\\033[01;${_c}m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ "; "#,
+    r#"unset _c; esac; fi; stty echo; clear"#,
+    "\n"
+);
+
+/// Shell families we tailor the post-login init for.
+enum ShellFamily {
+    /// bash / zsh / sh / dash / ksh … — gets `POSIX_COLOR_INIT`.
+    Posix,
+    /// fish — gets a minimal fish-native init (its prompt/colors are good by default).
+    Fish,
+    /// Anything we don't recognize — inject nothing rather than guess its syntax.
+    Other,
+}
+
+/// Classify a configured login-shell command (e.g. `"fish"`, `"/usr/bin/zsh -l"`).
+/// `None`/empty means "use the account's default shell", which we treat as POSIX
+/// to preserve the long-standing behavior for the common bash/zsh case.
+fn shell_family(shell: Option<&str>) -> ShellFamily {
+    let Some(s) = shell.map(str::trim).filter(|s| !s.is_empty()) else {
+        return ShellFamily::Posix;
+    };
+    let prog = s.split_whitespace().next().unwrap_or("");
+    let base = prog.rsplit(['/', '\\']).next().unwrap_or(prog).to_ascii_lowercase();
+    match base.as_str() {
+        "fish" => ShellFamily::Fish,
+        "bash" | "sh" | "zsh" | "dash" | "ash" | "ksh" | "mksh" | "busybox" => ShellFamily::Posix,
+        _ => ShellFamily::Other,
+    }
+}
+
+/// The post-login init to inject for the given shell, or `None` to inject nothing.
+fn shell_init(shell: Option<&str>) -> Option<String> {
+    match shell_family(shell) {
+        ShellFamily::Posix => Some(POSIX_COLOR_INIT.to_string()),
+        // Valid fish: avoids the bash-isms (`export`, `$(...)`, `if…then…fi`)
+        // that make fish throw a syntax error on every connect.
+        ShellFamily::Fish => Some("set -gx COLORTERM truecolor; clear\n".to_string()),
+        ShellFamily::Other => None,
+    }
+}
+
+/// Request a PTY and start the interactive shell on `channel`. When `shell` is
+/// set, `exec` it as the login shell instead of the account's default; a bare
+/// program name (e.g. `fish`) gets a `-l` login flag, while a value with flags
+/// (e.g. `fish -l`) is run verbatim. When `shell` is empty, request the default
+/// login shell exactly as before.
+async fn open_interactive_shell(
+    channel: &russh::Channel<russh::client::Msg>,
+    cols: u16,
+    rows: u16,
+    shell: Option<&str>,
+) -> Result<(), SshError> {
+    channel
+        .request_pty(false, "xterm-256color", cols as u32, rows as u32, 0, 0, &[])
+        .await
+        .map_err(|e| SshError::ChannelError(format!("PTY request failed: {}", e)))?;
+
+    match shell.map(str::trim).filter(|s| !s.is_empty()) {
+        Some(cmd) => {
+            let full = if cmd.split_whitespace().nth(1).is_some() {
+                format!("exec {}", cmd)
+            } else {
+                format!("exec {} -l", cmd)
+            };
+            channel
+                .exec(false, full.as_bytes())
+                .await
+                .map_err(|e| SshError::ChannelError(format!("Shell exec failed: {}", e)))?;
+        }
+        None => {
+            channel
+                .request_shell(false)
+                .await
+                .map_err(|e| SshError::ChannelError(format!("Shell request failed: {}", e)))?;
+        }
+    }
+    Ok(())
+}
+
+/// Turn an opaque `load_secret_key` failure into a message that tells the user
+/// what's actually wrong. The most common mistake is selecting an OpenSSH
+/// *public* key (`id_ed25519.pub`) where the *private* key is required — russh
+/// reports that as a generic parse error (the public key's spaces look like a
+/// formatting problem), so we classify the file ourselves and point at the fix.
+fn describe_key_load_error(
+    raw_path: &str,
+    expanded: &Path,
+    had_passphrase: bool,
+    err: &impl std::fmt::Display,
+) -> String {
+    use crate::ssh::keyfile::{classify_path, KeyFileKind};
+
+    let info = classify_path(raw_path);
+    match info.kind {
+        KeyFileKind::PublicKey => {
+            let algo = info
+                .algo
+                .as_deref()
+                .map(|a| format!(" ({a})"))
+                .unwrap_or_default();
+            let fix = if let Some(c) = &info.suggested_private_key {
+                format!(" Use the matching private key instead: {}", c.path)
+            } else if !info.sibling_private_keys.is_empty() {
+                let names: Vec<_> = info
+                    .sibling_private_keys
+                    .iter()
+                    .map(|c| c.name.clone())
+                    .collect();
+                format!(" Private keys in that folder: {}", names.join(", "))
+            } else {
+                String::new()
+            };
+            format!(
+                "'{}' is an OpenSSH public key{}, not a private key.{}",
+                expanded.display(),
+                algo,
+                fix
+            )
+        }
+        KeyFileKind::NotFound => format!("Key file not found: {}", expanded.display()),
+        KeyFileKind::NotAKey => format!(
+            "'{}' is not a recognized private key file ({})",
+            expanded.display(),
+            err
+        ),
+        KeyFileKind::PrivateKey => {
+            if had_passphrase {
+                format!(
+                    "Could not load private key '{}' — wrong passphrase? ({})",
+                    expanded.display(),
+                    err
+                )
+            } else {
+                format!(
+                    "Could not load private key '{}'. If it is passphrase-protected, enter the passphrase. ({})",
+                    expanded.display(),
+                    err
+                )
+            }
+        }
+    }
 }
 
 /// Attempt to authenticate via the local SSH agent (OpenSSH agent or Pageant
@@ -52,10 +210,11 @@ async fn cascade_authenticate(
         let key = russh_keys::load_secret_key(&expanded, key_auth.passphrase.as_deref())
             .map_err(|e| {
                 tracing::error!("SSH key load failed for '{}': {}", expanded.display(), e);
-                SshError::ConnectionFailed(format!(
-                    "Key load error: {} (path: {})",
-                    e,
-                    expanded.display()
+                SshError::ConnectionFailed(describe_key_load_error(
+                    &key_auth.path,
+                    &expanded,
+                    key_auth.passphrase.is_some(),
+                    &e,
                 ))
             })?;
         tracing::info!(
@@ -290,6 +449,7 @@ impl SshManager {
         rows: u16,
         app_handle: tauri::AppHandle,
         proxy: Option<ProxyConfig>,
+        shell: Option<String>,
     ) -> Result<ConnectionInfo, SshError> {
         tracing::info!("SSH connecting to {}@{}:{}", username, host, port);
 
@@ -321,11 +481,7 @@ impl SshManager {
             let channel = handle.channel_open_session().await
                 .map_err(|e| SshError::ChannelError(format!("Failed to open session: {}", e)))?;
 
-            channel.request_pty(false, "xterm-256color", cols as u32, rows as u32, 0, 0, &[]).await
-                .map_err(|e| SshError::ChannelError(format!("PTY request failed: {}", e)))?;
-
-            channel.request_shell(false).await
-                .map_err(|e| SshError::ChannelError(format!("Shell request failed: {}", e)))?;
+            open_interactive_shell(&channel, cols, rows, shell.as_deref()).await?;
 
             tracing::info!("SSH shell opened for {}@{}:{}", username, host, port);
 
@@ -336,24 +492,14 @@ impl SshManager {
             .await
             .map_err(|_| SshError::ConnectionFailed("Connection timed out".into()))??;
 
-        // Inject color initialization for remote shells that may lack color config
-        // (e.g. root on Debian/Ubuntu ships with a minimal .bashrc without colors).
-        // stty -echo hides the commands; clear wipes any artifacts afterward.
-        let color_init = concat!(
-            r#"stty -echo; export COLORTERM=truecolor; "#,
-            r#"[ -z "$LS_COLORS" ] && eval "$(dircolors -b 2>/dev/null)"; "#,
-            r#"alias ls='ls --color=auto' 2>/dev/null; "#,
-            r#"alias grep='grep --color=auto' 2>/dev/null; "#,
-            r#"alias diff='diff --color=auto' 2>/dev/null; "#,
-            r#"if [ -n "$BASH" ]; then "#,
-            r#"case "$PS1" in *033*|*\\e\[*) ;; *) "#,
-            r#"_c=32; [ "${EUID:-$(id -u)}" = "0" ] && _c=31; "#,
-            r#"PS1="\\[\\033[01;${_c}m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ "; "#,
-            r#"unset _c; esac; fi; stty echo; clear"#,
-            "\n"
-        );
-        channel.data(color_init.as_bytes()).await
-            .map_err(|e| SshError::ChannelError(format!("Color init failed: {}", e)))?;
+        // Inject shell-appropriate color/prompt initialization for remote shells
+        // that may lack color config (e.g. root on Debian/Ubuntu ships a minimal
+        // .bashrc without colors). The snippet is chosen per shell family so a
+        // fish login doesn't get bash syntax. `None` => nothing injected.
+        if let Some(init) = shell_init(shell.as_deref()) {
+            channel.data(init.as_bytes()).await
+                .map_err(|e| SshError::ChannelError(format!("Color init failed: {}", e)))?;
+        }
 
         let info = ConnectionInfo {
             id: id.to_string(),
@@ -472,6 +618,7 @@ impl SshManager {
         cols: u16,
         rows: u16,
         app_handle: tauri::AppHandle,
+        shell: Option<String>,
     ) -> Result<ConnectionInfo, SshError> {
         tracing::info!(
             "SSH connecting to {}@{}:{} via {} jump host(s)",
@@ -662,45 +809,26 @@ impl SshManager {
             target_username, target_host, target_port
         );
 
-        // Open session, request PTY and shell on target
+        // Open session, request PTY and the (optionally overridden) shell on target
         let channel = target_handle
             .channel_open_session()
             .await
             .map_err(|e| SshError::ChannelError(format!("Failed to open session: {}", e)))?;
 
-        channel
-            .request_pty(false, "xterm-256color", cols as u32, rows as u32, 0, 0, &[])
-            .await
-            .map_err(|e| SshError::ChannelError(format!("PTY request failed: {}", e)))?;
-
-        channel
-            .request_shell(false)
-            .await
-            .map_err(|e| SshError::ChannelError(format!("Shell request failed: {}", e)))?;
+        open_interactive_shell(&channel, cols, rows, shell.as_deref()).await?;
 
         tracing::info!(
             "SSH shell opened for {}@{}:{} (via jump)",
             target_username, target_host, target_port
         );
 
-        // Inject color initialization (same as direct connect)
-        let color_init = concat!(
-            r#"stty -echo; export COLORTERM=truecolor; "#,
-            r#"[ -z "$LS_COLORS" ] && eval "$(dircolors -b 2>/dev/null)"; "#,
-            r#"alias ls='ls --color=auto' 2>/dev/null; "#,
-            r#"alias grep='grep --color=auto' 2>/dev/null; "#,
-            r#"alias diff='diff --color=auto' 2>/dev/null; "#,
-            r#"if [ -n "$BASH" ]; then "#,
-            r#"case "$PS1" in *033*|*\\e\[*) ;; *) "#,
-            r#"_c=32; [ "${EUID:-$(id -u)}" = "0" ] && _c=31; "#,
-            r#"PS1="\\[\\033[01;${_c}m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ "; "#,
-            r#"unset _c; esac; fi; stty echo; clear"#,
-            "\n"
-        );
-        channel
-            .data(color_init.as_bytes())
-            .await
-            .map_err(|e| SshError::ChannelError(format!("Color init failed: {}", e)))?;
+        // Inject shell-appropriate color/prompt initialization (see `shell_init`).
+        if let Some(init) = shell_init(shell.as_deref()) {
+            channel
+                .data(init.as_bytes())
+                .await
+                .map_err(|e| SshError::ChannelError(format!("Color init failed: {}", e)))?;
+        }
 
         let info = ConnectionInfo {
             id: id.to_string(),
@@ -971,10 +1099,9 @@ impl SshClientHandler {
     }
 
     fn known_hosts_path() -> std::path::PathBuf {
-        let data_dir = dirs::data_dir()
-            .unwrap_or_else(|| std::path::PathBuf::from("."))
-            .join("com.reach.app");
-        data_dir.join("ssh").join("known_hosts.json")
+        // Use the Tauri-resolved writable app data dir (not `dirs::data_dir()`)
+        // so this works inside the Android/iOS sandbox too.
+        crate::app_data_dir().join("ssh").join("known_hosts.json")
     }
 }
 
@@ -1104,4 +1231,56 @@ async fn ssh_session_task(
         tracing::error!("Failed to emit '{}': {}", exit_event, e);
     }
     tracing::info!("SSH '{}' session task exiting", connection_id);
+}
+
+#[cfg(test)]
+mod shell_tests {
+    use super::*;
+
+    #[test]
+    fn family_defaults_to_posix_when_unset() {
+        assert!(matches!(shell_family(None), ShellFamily::Posix));
+        assert!(matches!(shell_family(Some("   ")), ShellFamily::Posix));
+    }
+
+    #[test]
+    fn family_detects_fish_by_basename_and_flags() {
+        assert!(matches!(shell_family(Some("fish")), ShellFamily::Fish));
+        assert!(matches!(shell_family(Some("/usr/bin/fish")), ShellFamily::Fish));
+        assert!(matches!(shell_family(Some("fish -l")), ShellFamily::Fish));
+    }
+
+    #[test]
+    fn family_detects_posix_shells() {
+        for s in ["bash", "/bin/bash", "zsh", "sh", "dash", "/usr/bin/zsh -l"] {
+            assert!(matches!(shell_family(Some(s)), ShellFamily::Posix), "{s}");
+        }
+    }
+
+    #[test]
+    fn family_unknown_shell_is_other() {
+        assert!(matches!(shell_family(Some("nu")), ShellFamily::Other));
+        assert!(matches!(shell_family(Some("xonsh")), ShellFamily::Other));
+    }
+
+    #[test]
+    fn init_is_posix_blob_when_unset_or_posix() {
+        assert_eq!(shell_init(None).as_deref(), Some(POSIX_COLOR_INIT));
+        assert_eq!(shell_init(Some("bash")).as_deref(), Some(POSIX_COLOR_INIT));
+    }
+
+    #[test]
+    fn init_for_fish_avoids_bash_syntax() {
+        // The whole point: fish must not receive `export`, `$(...)`, or `then/fi`.
+        let init = shell_init(Some("fish")).expect("fish gets an init");
+        assert!(init.contains("set -gx COLORTERM"));
+        assert!(!init.contains("export "));
+        assert!(!init.contains("$("));
+        assert!(!init.contains("fi;"));
+    }
+
+    #[test]
+    fn init_skipped_for_unknown_shell() {
+        assert!(shell_init(Some("nu")).is_none());
+    }
 }

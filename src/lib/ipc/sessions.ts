@@ -27,6 +27,7 @@ export interface SessionConfig {
   vault_id?: string | null; // Which vault this session belongs to
   jump_chain?: JumpHostConfig[] | null; // ProxyJump chain
   proxy?: ProxySessionConfig | null; // Proxy config (SOCKS5/Tor, HTTP)
+  shell?: string | null; // Optional per-session login shell (e.g. "fish -l")
 }
 
 export interface ProxySessionConfig {
@@ -63,6 +64,7 @@ export async function sessionCreate(params: {
   vaultId?: string | null;
   jumpChain?: JumpHostConfig[] | null;
   proxy?: ProxySessionConfig | null;
+  shell?: string | null;
 }): Promise<SessionConfig> {
   return invoke<SessionConfig>('session_create', {
     name: params.name,
@@ -75,6 +77,7 @@ export async function sessionCreate(params: {
     vaultId: params.vaultId ?? null,
     jumpChain: params.jumpChain ?? null,
     proxy: params.proxy ?? null,
+    shell: params.shell?.trim() ? params.shell.trim() : null,
   });
 }
 

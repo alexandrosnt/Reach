@@ -327,6 +327,7 @@
 				keyPassphrase: authType === 'Key' && connectKeyPassphrase ? connectKeyPassphrase : undefined,
 				cols: 80,
 				rows: 24,
+				shell: session.shell ?? undefined,
 				jumpChain,
 				proxy: session.proxy ? {
 					proxy_type: session.proxy.proxy_type,

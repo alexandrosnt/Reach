@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import TitleBar from './TitleBar.svelte';
 	import TabBar from './TabBar.svelte';
 	import Sidebar from './Sidebar.svelte';
@@ -7,8 +9,11 @@
 	import Toast from '$lib/components/shared/Toast.svelte';
 	import UpdateBanner from '$lib/components/shared/UpdateBanner.svelte';
 	import UpdateDialog from '$lib/components/shared/UpdateDialog.svelte';
-	import { getUpdaterState } from '$lib/state/updater.svelte';
-	import { getActiveTab } from '$lib/state/tabs.svelte';
+	import ActiveSessionsDialog from '$lib/components/shared/ActiveSessionsDialog.svelte';
+	import { getUpdaterState, relaunchNow, postponeRelaunch } from '$lib/state/updater.svelte';
+	import { getActiveTab, getTabs } from '$lib/state/tabs.svelte';
+	import { getSettings } from '$lib/state/settings.svelte';
+	import { sshListConnections } from '$lib/ipc/ssh';
 	import AIPanel from '$lib/components/ai/AIPanel.svelte';
 
 	const updater = getUpdaterState();
@@ -22,6 +27,90 @@
 	let sidebarCollapsed = $state(false);
 	let activeTab = $derived(getActiveTab());
 	let activeConnectionId = $derived(activeTab?.connectionId);
+
+	// --- Active-session guards for window close + update relaunch ---
+	let closeOpen = $state(false);
+	let closeCount = $state(0);
+	let updateOpen = $state(false);
+	let updateCount = $state(0);
+
+	/** Count live SSH connections (backend truth; falls back to connected tabs). */
+	async function countActiveConnections(): Promise<number> {
+		try {
+			return (await sshListConnections()).length;
+		} catch {
+			return getTabs().filter((tab) => tab.type === 'ssh' && !!tab.connectionId).length;
+		}
+	}
+
+	// Intercept window close (X / Alt+F4 / Cmd+Q) when SSH sessions are live.
+	let unlistenClose: (() => void) | undefined;
+	onMount(async () => {
+		try {
+			unlistenClose = await getCurrentWindow().onCloseRequested(async (event) => {
+				// Minimize-to-tray isn't a termination — let the Rust handler hide it.
+				if (getSettings().minimizeToTray) return;
+				// Hold the close synchronously, then decide async (avoids any race
+				// where the window closes before our connection check resolves).
+				event.preventDefault();
+				const count = await countActiveConnections();
+				if (count === 0) {
+					await getCurrentWindow().destroy(); // nothing to lose — close for real
+					return;
+				}
+				closeCount = count;
+				closeOpen = true;
+			});
+		} catch (e) {
+			console.error('Failed to register close handler:', e);
+		}
+	});
+	onDestroy(() => unlistenClose?.());
+
+	async function confirmClose(): Promise<void> {
+		closeOpen = false;
+		try {
+			await getCurrentWindow().destroy();
+		} catch (e) {
+			console.error('Window destroy failed:', e);
+		}
+	}
+	function cancelClose(): void {
+		closeOpen = false;
+	}
+
+	// When an update finishes installing, confirm before relaunching if sessions
+	// are live; otherwise relaunch immediately (e.g. startup with no sessions).
+	let orchestrating = false;
+	$effect(() => {
+		if (!updater.readyToRelaunch) return;
+		void orchestrateRelaunch();
+	});
+
+	async function orchestrateRelaunch(): Promise<void> {
+		if (orchestrating) return;
+		orchestrating = true;
+		try {
+			const count = await countActiveConnections();
+			if (count === 0) {
+				await relaunchNow();
+				return;
+			}
+			updateCount = count;
+			updateOpen = true;
+		} finally {
+			orchestrating = false;
+		}
+	}
+
+	async function confirmUpdate(): Promise<void> {
+		updateOpen = false;
+		await relaunchNow();
+	}
+	function postponeUpdate(): void {
+		updateOpen = false;
+		postponeRelaunch();
+	}
 </script>
 
 <div class="app-shell">
@@ -40,6 +129,21 @@
 	<Toast />
 	<UpdateBanner />
 	<UpdateDialog open={updater.startupBlocking} />
+
+	<ActiveSessionsDialog
+		open={closeOpen}
+		variant="close"
+		count={closeCount}
+		onconfirm={confirmClose}
+		oncancel={cancelClose}
+	/>
+	<ActiveSessionsDialog
+		open={updateOpen}
+		variant="update"
+		count={updateCount}
+		onconfirm={confirmUpdate}
+		oncancel={postponeUpdate}
+	/>
 </div>
 
 <style>
@@ -48,6 +152,11 @@
 		grid-template-rows: 38px 36px 1fr 24px;
 		width: 100vw;
 		height: 100vh;
+		/* Keep the title/status bars clear of the device status & navigation
+		   bars on mobile. `env(safe-area-inset-*)` is 0 on desktop, so this is
+		   a no-op there (requires viewport-fit=cover, set in app.html). */
+		padding-top: env(safe-area-inset-top);
+		padding-bottom: env(safe-area-inset-bottom);
 		overflow: hidden;
 		background-color: var(--color-bg-primary);
 	}

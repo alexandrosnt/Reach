@@ -1,10 +1,12 @@
 <script lang="ts">
-	import { getUpdaterState, downloadAndInstall, dismissUpdate } from '$lib/state/updater.svelte';
+	import { getUpdaterState, downloadAndInstall, dismissUpdate, relaunchNow } from '$lib/state/updater.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
 	const updater = getUpdaterState();
 
-	let visible = $derived(updater.updateAvailable && !updater.dismissed && !updater.startupBlocking);
+	let visible = $derived(
+		(updater.updateAvailable || updater.relaunchPostponed) && !updater.dismissed && !updater.startupBlocking
+	);
 	let errorHidden = $state(false);
 	let lastError = $state<string | null>(null);
 
@@ -42,11 +44,18 @@
 	<div class="update-banner" class:dismissing role="banner" aria-live="polite">
 		<div class="banner-content">
 			<span class="banner-text">
-				{t('updater.available', { version: updater.updateVersion ?? '' })}
+				{#if updater.relaunchPostponed}
+					{t('updater.restart_to_finish')}
+				{:else}
+					{t('updater.available', { version: updater.updateVersion ?? '' })}
+				{/if}
 			</span>
 
 			<div class="banner-actions">
-				{#if updater.installing}
+				{#if updater.relaunchPostponed}
+					<button class="btn-update" onclick={relaunchNow}>{t('updater.restart_now')}</button>
+					<button class="btn-later" onclick={handleDismiss}>{t('updater.later')}</button>
+				{:else if updater.installing}
 					<span class="status-text">{t('updater.installing')}</span>
 				{:else if updater.downloading}
 					<div class="progress-area">

@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 #[cfg(desktop)]
@@ -51,6 +50,10 @@ pub struct SessionConfig {
     /// Proxy configuration (SOCKS5, SOCKS4, HTTP CONNECT)
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub proxy: Option<ProxyConfig>,
+    /// Optional per-session login shell run instead of the remote default
+    /// (e.g. "fish" or "fish -l"). Also drives shell-aware color init.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub shell: Option<String>,
 }
 
 /// Proxy configuration for SSH connections (Tor, SOCKS5, HTTP CONNECT).
@@ -182,10 +185,11 @@ pub struct AppState {
 
 impl AppState {
     pub fn new() -> Self {
-        // Get app data directory for vault storage
-        let app_dir = dirs::data_dir()
-            .unwrap_or_else(|| PathBuf::from("."))
-            .join("com.reach.app");
+        // Writable app data dir, resolved from Tauri's path API at startup.
+        // NOT `dirs::data_dir()` directly: on Android/iOS the OS sandbox isn't
+        // an XDG/known dir, so `dirs` yields a read-only path and vault writes
+        // fail with "Read-only file system (os error 30)". See crate::app_data_dir.
+        let app_dir = crate::app_data_dir();
 
         Self {
             ssh_manager: Arc::new(tokio::sync::Mutex::new(SshManager::new())),

@@ -61,19 +61,24 @@
 		inset: 0;
 		z-index: 200;
 		display: flex;
-		align-items: center;
-		justify-content: center;
+		/* Scroll when the wizard is taller than the screen (small/mobile
+		   viewports) so the action buttons stay reachable, and keep clear of
+		   the status/navigation bars via safe-area insets. `margin: auto` on the
+		   child centers it when it fits without clipping the top when it doesn't. */
+		overflow-y: auto;
 		background: rgba(0, 0, 0, 0.85);
 		backdrop-filter: blur(24px);
 		-webkit-backdrop-filter: blur(24px);
+		padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
 	}
 
 	.welcome-container {
+		margin: auto;
 		display: flex;
 		flex-direction: column;
 		align-items: center;
 		gap: 24px;
-		padding: 40px 48px;
+		padding: 40px clamp(20px, 5vw, 48px);
 		max-width: 520px;
 		width: 100%;
 		background: var(--color-bg-secondary);

@@ -42,6 +42,32 @@ use ipc::vault_commands::*;
 use ipc::editor_commands::*;
 use ipc::snippet_commands::*;
 
+use std::path::PathBuf;
+use std::sync::OnceLock;
+
+/// Process-wide writable app data directory, resolved once at startup from
+/// Tauri's path API. Using a global (instead of `dirs::data_dir()`) is what
+/// makes mobile work: on Android/iOS the OS sandbox isn't an XDG/known dir, so
+/// `dirs` returns a non-writable path and every file write fails with
+/// "Read-only file system (os error 30)". `AppState` and the SSH known-hosts
+/// store read from this instead.
+static APP_DATA_DIR: OnceLock<PathBuf> = OnceLock::new();
+
+/// Record the resolved app data directory. Call once, early in `setup()`.
+pub fn set_app_data_dir(dir: PathBuf) {
+    let _ = APP_DATA_DIR.set(dir);
+}
+
+/// The writable app data directory. Falls back to the desktop `dirs` location
+/// when not yet set (tests / very early startup before `setup()` runs).
+pub fn app_data_dir() -> PathBuf {
+    APP_DATA_DIR.get().cloned().unwrap_or_else(|| {
+        dirs::data_dir()
+            .unwrap_or_else(|| PathBuf::from("."))
+            .join("com.reach.app")
+    })
+}
+
 #[tauri::command]
 fn set_close_to_tray(state: tauri::State<'_, AppState>, enabled: bool) {
     state.close_to_tray.store(enabled, Ordering::Relaxed);
@@ -75,8 +101,9 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_process::init())
-        .manage(AppState::new());
+        .plugin(tauri_plugin_process::init());
+    // NOTE: AppState is managed inside `setup()` (not here) so it can be rooted
+    // at the Tauri-resolved, writable app data dir — required on Android/iOS.
 
     #[cfg(desktop)]
     {
@@ -107,6 +134,7 @@ pub fn run() {
             ssh_resize,
             ssh_list_connections,
             ssh_detect_os,
+            inspect_key_file,
             // SSH Config commands
             sshconfig_list_hosts,
             sshconfig_resolve_host,
@@ -319,6 +347,7 @@ pub fn run() {
             ssh_resize,
             ssh_list_connections,
             ssh_detect_os,
+            inspect_key_file,
             // SSH Config commands
             sshconfig_list_hosts,
             sshconfig_resolve_host,
@@ -515,6 +544,27 @@ pub fn run() {
         .setup(|app| {
             use tauri::Manager;
 
+            // Root all storage at a writable data dir, then manage AppState here
+            // (not before build) so it picks up that dir.
+            //
+            // Desktop KEEPS its historical `dirs::data_dir()/com.reach.app`
+            // location — the bundle identifier is `com.reach.desktop`, so
+            // `app_data_dir()` would resolve to `.../com.reach.desktop` and make
+            // existing users' vaults look lost. Do NOT relocate them.
+            //
+            // Mobile MUST use the Tauri-resolved OS sandbox: there
+            // `dirs::data_dir()` is read-only, so vault writes fail with
+            // "Read-only file system (os error 30)".
+            #[cfg(not(desktop))]
+            match app.path().app_data_dir() {
+                Ok(dir) => set_app_data_dir(dir),
+                Err(e) => tracing::error!("Failed to resolve app_data_dir: {}", e),
+            }
+            let data_dir = app_data_dir();
+            let _ = std::fs::create_dir_all(&data_dir);
+            tracing::info!("App data dir: {:?}", data_dir);
+            app.manage(AppState::new());
+
             // Build system tray
             #[cfg(desktop)]
             {
@@ -567,10 +617,7 @@ pub fn run() {
 
             // Prepend tools dir to PATH so installed tools are found
             {
-                let data_dir = dirs::data_dir()
-                    .unwrap_or_else(|| std::path::PathBuf::from("."))
-                    .join("com.reach.app");
-                let tools_dir = data_dir.join("tools");
+                let tools_dir = app_data_dir().join("tools");
                 let _ = std::fs::create_dir_all(&tools_dir);
                 let current_path = std::env::var("PATH").unwrap_or_default();
                 let sep = if cfg!(windows) { ";" } else { ":" };
