@@ -31,17 +31,24 @@ pub(crate) fn expand_tilde(path: &str) -> PathBuf {
 /// without a colored prompt, a sensible `PS1`. `stty -echo`/`clear` hide it.
 /// NOTE: this is bash/POSIX syntax — it is NOT valid in fish, which is why the
 /// init is selected per shell family (see `shell_init`).
+///
+/// Hardened for cross-platform edge cases:
+/// - `dircolors` is guarded with `command -v` (absent on macOS/BSD).
+/// - `ls` color flag is detected: GNU `--color=auto` vs BSD `-G`, so the alias
+///   doesn't break `ls` on macOS/BSD where `--color` is an unknown option.
+/// - `stty`/`clear` are tolerated-if-missing so a minimal box doesn't error.
 const POSIX_COLOR_INIT: &str = concat!(
-    r#"stty -echo; export COLORTERM=truecolor; "#,
-    r#"[ -z "$LS_COLORS" ] && eval "$(dircolors -b 2>/dev/null)"; "#,
-    r#"alias ls='ls --color=auto' 2>/dev/null; "#,
+    r#"stty -echo 2>/dev/null; export COLORTERM=truecolor; "#,
+    r#"[ -z "$LS_COLORS" ] && command -v dircolors >/dev/null 2>&1 && eval "$(dircolors -b 2>/dev/null)"; "#,
+    r#"if ls --color=auto >/dev/null 2>&1; then alias ls='ls --color=auto'; "#,
+    r#"elif ls -G >/dev/null 2>&1; then alias ls='ls -G'; fi; "#,
     r#"alias grep='grep --color=auto' 2>/dev/null; "#,
     r#"alias diff='diff --color=auto' 2>/dev/null; "#,
     r#"if [ -n "$BASH" ]; then "#,
     r#"case "$PS1" in *033*|*\\e\[*) ;; *) "#,
     r#"_c=32; [ "${EUID:-$(id -u)}" = "0" ] && _c=31; "#,
     r#"PS1="\\[\\033[01;${_c}m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ "; "#,
-    r#"unset _c; esac; fi; stty echo; clear"#,
+    r#"unset _c; esac; fi; stty echo 2>/dev/null; clear 2>/dev/null"#,
     "\n"
 );
 
@@ -367,6 +374,11 @@ pub enum SshError {
 enum SessionCommand {
     Data(Vec<u8>),
     Resize { cols: u32, rows: u32 },
+    /// The frontend has attached its data listener — flush any buffered output
+    /// and switch to live streaming. Until this arrives, the session task holds
+    /// remote output (motd/banner) so nothing emitted before the terminal
+    /// mounts is lost.
+    Ready,
     Close,
 }
 
@@ -419,7 +431,7 @@ pub struct ConnectionInfo {
     pub username: String,
 }
 
-struct ActiveConnection {
+pub(crate) struct ActiveConnection {
     cmd_tx: mpsc::UnboundedSender<SessionCommand>,
     info: ConnectionInfo,
     handle: SharedHandle,
@@ -438,8 +450,23 @@ impl SshManager {
         Self { connections: HashMap::new() }
     }
 
-    pub async fn connect(
-        &mut self,
+    /// Register a freshly-established connection and return its info.
+    ///
+    /// The slow connect work (`connect` / `connect_via_jump`) runs lock-free;
+    /// the caller takes the global `ssh_manager` lock only to call this, which
+    /// is a single HashMap insert — so a slow/hanging handshake on one host no
+    /// longer blocks `ssh_send` / `ssh_resize` / `ssh_disconnect` on others.
+    pub(crate) fn register(&mut self, conn: ActiveConnection) -> ConnectionInfo {
+        let info = conn.info.clone();
+        self.connections.insert(info.id.clone(), conn);
+        info
+    }
+
+    /// Establish a direct SSH connection. Takes no `self` and does NOT touch the
+    /// connections map — it returns the finished `ActiveConnection` for the
+    /// caller to `register` under a brief lock. This keeps the slow handshake/
+    /// auth off the global lock so other connections stay responsive.
+    pub(crate) async fn connect(
         id: &str,
         host: &str,
         port: u16,
@@ -450,13 +477,14 @@ impl SshManager {
         app_handle: tauri::AppHandle,
         proxy: Option<ProxyConfig>,
         shell: Option<String>,
-    ) -> Result<ConnectionInfo, SshError> {
+        inject_colors: bool,
+    ) -> Result<ActiveConnection, SshError> {
         tracing::info!("SSH connecting to {}@{}:{}", username, host, port);
 
         let timeout_duration = std::time::Duration::from_secs(15);
         let connect_future = async {
             let config = Arc::new(russh::client::Config::default());
-            let handler = SshClientHandler::new(host, port);
+            let handler = SshClientHandler::new(host, port, Some(app_handle.clone()));
 
             let mut handle = if let Some(ref proxy) = proxy {
                 tracing::info!("SSH connecting via {} proxy {}:{}", proxy.proxy_type, proxy.host, proxy.port);
@@ -492,15 +520,6 @@ impl SshManager {
             .await
             .map_err(|_| SshError::ConnectionFailed("Connection timed out".into()))??;
 
-        // Inject shell-appropriate color/prompt initialization for remote shells
-        // that may lack color config (e.g. root on Debian/Ubuntu ships a minimal
-        // .bashrc without colors). The snippet is chosen per shell family so a
-        // fish login doesn't get bash syntax. `None` => nothing injected.
-        if let Some(init) = shell_init(shell.as_deref()) {
-            channel.data(init.as_bytes()).await
-                .map_err(|e| SshError::ChannelError(format!("Color init failed: {}", e)))?;
-        }
-
         let info = ConnectionInfo {
             id: id.to_string(),
             host: host.to_string(),
@@ -508,24 +527,7 @@ impl SshManager {
             username: username.to_string(),
         };
 
-        let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
-
-        let task_id = id.to_string();
-        let task_handle = app_handle.clone();
-        tokio::spawn(async move {
-            ssh_session_task(channel, cmd_rx, task_id, task_handle).await;
-        });
-
-        let shared_handle = Arc::new(tokio::sync::Mutex::new(handle));
-
-        self.connections.insert(id.to_string(), ActiveConnection {
-            cmd_tx,
-            info: info.clone(),
-            handle: shared_handle,
-            jump_handles: Vec::new(),
-        });
-
-        Ok(info)
+        into_active_connection(channel, handle, info, shell.as_deref(), inject_colors, app_handle, Vec::new()).await
     }
 
     /// Connect to a target host through one or more jump hosts (ProxyJump).
@@ -607,8 +609,10 @@ impl SshManager {
         }
     }
 
-    pub async fn connect_via_jump(
-        &mut self,
+    /// Establish an SSH connection through one or more jump hosts. Like
+    /// [`connect`], takes no `self` and returns the finished `ActiveConnection`
+    /// for the caller to `register` under a brief lock.
+    pub(crate) async fn connect_via_jump(
         id: &str,
         target_host: &str,
         target_port: u16,
@@ -619,7 +623,8 @@ impl SshManager {
         rows: u16,
         app_handle: tauri::AppHandle,
         shell: Option<String>,
-    ) -> Result<ConnectionInfo, SshError> {
+        inject_colors: bool,
+    ) -> Result<ActiveConnection, SshError> {
         tracing::info!(
             "SSH connecting to {}@{}:{} via {} jump host(s)",
             target_username, target_host, target_port, jump_chain.len()
@@ -632,7 +637,7 @@ impl SshManager {
             // Step 1: Connect to the first jump host directly
             let first_jump = &jump_chain[0];
             let config = Arc::new(russh::client::Config::default());
-            let handler = SshClientHandler::new(first_jump.host.as_str(), first_jump.port);
+            let handler = SshClientHandler::new(first_jump.host.as_str(), first_jump.port, Some(app_handle.clone()));
 
             let mut current_handle = russh::client::connect(
                 config,
@@ -684,7 +689,7 @@ impl SshManager {
 
                     let stream = channel.into_stream();
                     let config = Arc::new(russh::client::Config::default());
-                    let handler = SshClientHandler::new(next_jump.host.as_str(), next_jump.port);
+                    let handler = SshClientHandler::new(next_jump.host.as_str(), next_jump.port, Some(app_handle.clone()));
 
                     let mut next_handle =
                         russh::client::connect_stream(config, stream, handler)
@@ -731,7 +736,7 @@ impl SshManager {
 
                 let stream = channel.into_stream();
                 let config = Arc::new(russh::client::Config::default());
-                let handler = SshClientHandler::new(target_host, target_port);
+                let handler = SshClientHandler::new(target_host, target_port, Some(app_handle.clone()));
 
                 let mut target_handle =
                     russh::client::connect_stream(config, stream, handler)
@@ -776,7 +781,7 @@ impl SshManager {
 
                 let stream = channel.into_stream();
                 let config = Arc::new(russh::client::Config::default());
-                let handler = SshClientHandler::new(target_host, target_port);
+                let handler = SshClientHandler::new(target_host, target_port, Some(app_handle.clone()));
 
                 let mut target_handle =
                     russh::client::connect_stream(config, stream, handler)
@@ -822,14 +827,6 @@ impl SshManager {
             target_username, target_host, target_port
         );
 
-        // Inject shell-appropriate color/prompt initialization (see `shell_init`).
-        if let Some(init) = shell_init(shell.as_deref()) {
-            channel
-                .data(init.as_bytes())
-                .await
-                .map_err(|e| SshError::ChannelError(format!("Color init failed: {}", e)))?;
-        }
-
         let info = ConnectionInfo {
             id: id.to_string(),
             host: target_host.to_string(),
@@ -837,27 +834,7 @@ impl SshManager {
             username: target_username.to_string(),
         };
 
-        let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
-
-        let task_id = id.to_string();
-        let task_handle = app_handle.clone();
-        tokio::spawn(async move {
-            ssh_session_task(channel, cmd_rx, task_id, task_handle).await;
-        });
-
-        let shared_handle = Arc::new(tokio::sync::Mutex::new(target_handle));
-
-        self.connections.insert(
-            id.to_string(),
-            ActiveConnection {
-                cmd_tx,
-                info: info.clone(),
-                handle: shared_handle,
-                jump_handles,
-            },
-        );
-
-        Ok(info)
+        into_active_connection(channel, target_handle, info, shell.as_deref(), inject_colors, app_handle, jump_handles).await
     }
 
     /// Authenticate on a russh handle by cascading through the configured
@@ -878,6 +855,15 @@ impl SshManager {
         let conn = self.connections.get(id)
             .ok_or_else(|| SshError::NotFound(id.to_string()))?;
         conn.cmd_tx.send(SessionCommand::Data(data.to_vec()))
+            .map_err(|e| SshError::SendError(format!("{}", e)))
+    }
+
+    /// Signal that the frontend has attached its listener: flush buffered output
+    /// and stream live. Idempotent — extra calls after the first are no-ops.
+    pub fn mark_ready(&self, id: &str) -> Result<(), SshError> {
+        let conn = self.connections.get(id)
+            .ok_or_else(|| SshError::NotFound(id.to_string()))?;
+        conn.cmd_tx.send(SessionCommand::Ready)
             .map_err(|e| SshError::SendError(format!("{}", e)))
     }
 
@@ -1087,21 +1073,105 @@ pub async fn exec_on_connection_streaming(
     Ok(exit_code)
 }
 
+/// Pending host-key prompts awaiting a user decision, keyed by a per-prompt id.
+/// The SSH handshake parks on the oneshot here while the frontend shows the
+/// verification dialog; `resolve_hostkey_prompt` (via the `ssh_hostkey_response`
+/// IPC command) wakes it. Safe to add now that connect runs lock-free, so a
+/// parked handshake no longer blocks other SSH operations.
+static HOSTKEY_PROMPTS: std::sync::OnceLock<
+    std::sync::Mutex<HashMap<String, tokio::sync::oneshot::Sender<bool>>>,
+> = std::sync::OnceLock::new();
+
+fn hostkey_prompts(
+) -> &'static std::sync::Mutex<HashMap<String, tokio::sync::oneshot::Sender<bool>>> {
+    HOSTKEY_PROMPTS.get_or_init(|| std::sync::Mutex::new(HashMap::new()))
+}
+
+/// Resolve a pending host-key prompt with the user's accept/reject decision.
+pub(crate) fn resolve_hostkey_prompt(prompt_id: &str, accept: bool) {
+    let sender = hostkey_prompts().lock().unwrap().remove(prompt_id);
+    if let Some(tx) = sender {
+        let _ = tx.send(accept);
+    }
+}
+
+/// Emitted to the frontend when a host key needs user verification.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct HostKeyPrompt {
+    prompt_id: String,
+    host: String,
+    port: u16,
+    fingerprint: String,
+    key_type: String,
+    /// true = the stored key for this host CHANGED (possible MITM); false = a
+    /// brand-new (unknown) host being trusted on first use (TOFU).
+    changed: bool,
+    old_fingerprint: Option<String>,
+}
+
 #[derive(Debug, Clone)]
 pub struct SshClientHandler {
     host: String,
     port: u16,
+    app_handle: Option<tauri::AppHandle>,
 }
 
 impl SshClientHandler {
-    pub fn new(host: impl Into<String>, port: u16) -> Self {
-        Self { host: host.into(), port }
+    pub fn new(host: impl Into<String>, port: u16, app_handle: Option<tauri::AppHandle>) -> Self {
+        Self { host: host.into(), port, app_handle }
     }
 
     fn known_hosts_path() -> std::path::PathBuf {
         // Use the Tauri-resolved writable app data dir (not `dirs::data_dir()`)
         // so this works inside the Android/iOS sandbox too.
         crate::app_data_dir().join("ssh").join("known_hosts.json")
+    }
+
+    /// Ask the user to verify a host key. Emits `ssh-hostkey-prompt` and parks
+    /// on a oneshot until `ssh_hostkey_response` resolves it, or a 120s timeout.
+    /// Fails closed: rejects on a missing UI handle, emit error, or timeout.
+    async fn prompt_hostkey(
+        &self,
+        fingerprint: &str,
+        key_type: &str,
+        changed: bool,
+        old_fingerprint: Option<String>,
+    ) -> bool {
+        let Some(app) = self.app_handle.clone() else {
+            tracing::warn!(
+                "No UI handle to verify host key for {}:{}; rejecting",
+                self.host,
+                self.port
+            );
+            return false;
+        };
+
+        let prompt_id = uuid::Uuid::new_v4().to_string();
+        let (tx, rx) = tokio::sync::oneshot::channel();
+        hostkey_prompts().lock().unwrap().insert(prompt_id.clone(), tx);
+
+        let payload = HostKeyPrompt {
+            prompt_id: prompt_id.clone(),
+            host: self.host.clone(),
+            port: self.port,
+            fingerprint: fingerprint.to_string(),
+            key_type: key_type.to_string(),
+            changed,
+            old_fingerprint,
+        };
+        if app.emit("ssh-hostkey-prompt", &payload).is_err() {
+            hostkey_prompts().lock().unwrap().remove(&prompt_id);
+            return false;
+        }
+
+        match tokio::time::timeout(std::time::Duration::from_secs(120), rx).await {
+            Ok(Ok(accept)) => accept,
+            _ => {
+                hostkey_prompts().lock().unwrap().remove(&prompt_id);
+                false
+            }
+        }
     }
 }
 
@@ -1120,6 +1190,7 @@ impl russh::client::Handler for SshClientHandler {
     ) -> Result<bool, Self::Error> {
         let host_id = format!("{}:{}", self.host, self.port);
         let fingerprint = server_public_key.fingerprint().to_string();
+        let key_type = server_public_key.name().to_string();
 
         let path = Self::known_hosts_path();
         if let Some(parent) = path.parent() {
@@ -1131,34 +1202,82 @@ impl russh::client::Handler for SshClientHandler {
             Err(_) => KnownHosts::default(),
         };
 
-        match known.entries.get(&host_id) {
+        // Known host with a matching fingerprint — trusted, connect silently.
+        if known.entries.get(&host_id) == Some(&fingerprint) {
+            return Ok(true);
+        }
+
+        // Unknown host (TOFU) or — worse — a CHANGED key (possible MITM): ask
+        // the user before trusting it. No silent accept.
+        let (changed, old_fingerprint) = match known.entries.get(&host_id) {
             Some(existing) => {
-                if existing == &fingerprint {
-                    Ok(true)
-                } else {
-                    tracing::warn!(
-                        "SSH host key changed for {} (server likely reinstalled). Old: {}, New: {}. Auto-accepting.",
-                        host_id,
-                        existing,
-                        fingerprint
-                    );
-                    known.entries.insert(host_id, fingerprint);
-                    if let Ok(raw) = serde_json::to_string_pretty(&known) {
-                        let _ = std::fs::write(&path, raw);
-                    }
-                    Ok(true)
-                }
+                tracing::warn!(
+                    "SSH host key CHANGED for {} (possible MITM). Old: {}, New: {}",
+                    host_id, existing, fingerprint
+                );
+                (true, Some(existing.clone()))
             }
             None => {
-                known.entries.insert(host_id, fingerprint);
-                if let Ok(raw) = serde_json::to_string_pretty(&known) {
-                    let _ = std::fs::write(&path, raw);
-                }
-                tracing::warn!("SSH host key saved (TOFU) for {}", self.host);
-                Ok(true)
+                tracing::info!("SSH host key unknown for {} — prompting (TOFU)", host_id);
+                (false, None)
             }
+        };
+
+        let accepted = self
+            .prompt_hostkey(&fingerprint, &key_type, changed, old_fingerprint)
+            .await;
+
+        if accepted {
+            known.entries.insert(host_id.clone(), fingerprint);
+            if let Ok(raw) = serde_json::to_string_pretty(&known) {
+                let _ = std::fs::write(&path, raw);
+            }
+            tracing::info!("SSH host key accepted by user for {}", host_id);
+            Ok(true)
+        } else {
+            tracing::warn!("SSH host key rejected for {} — aborting connect", host_id);
+            Ok(false)
         }
     }
+}
+
+/// Finish a connection once the channel is open: inject shell color/prompt init
+/// (when enabled for the shell), spawn the streaming session task, and build the
+/// `ActiveConnection`. Shared by both the direct and jump-host connect paths.
+async fn into_active_connection(
+    channel: russh::Channel<russh::client::Msg>,
+    handle: russh::client::Handle<SshClientHandler>,
+    info: ConnectionInfo,
+    shell: Option<&str>,
+    inject_colors: bool,
+    app_handle: tauri::AppHandle,
+    jump_handles: Vec<SharedHandle>,
+) -> Result<ActiveConnection, SshError> {
+    // Inject shell-appropriate color/prompt init (chosen per shell family so a
+    // fish login never gets bash syntax), unless the user disabled it. `None`
+    // shell-family => nothing injected.
+    if inject_colors {
+        if let Some(init) = shell_init(shell) {
+            channel
+                .data(init.as_bytes())
+                .await
+                .map_err(|e| SshError::ChannelError(format!("Color init failed: {}", e)))?;
+        }
+    }
+
+    let (cmd_tx, cmd_rx) = mpsc::unbounded_channel();
+    let task_id = info.id.clone();
+    let task_handle = app_handle.clone();
+    tokio::spawn(async move {
+        ssh_session_task(channel, cmd_rx, task_id, task_handle).await;
+    });
+
+    Ok(ActiveConnection {
+        cmd_tx,
+        info,
+        handle: Arc::new(tokio::sync::Mutex::new(handle)),
+        jump_handles,
+    })
 }
 
 async fn ssh_session_task(
@@ -1170,23 +1289,45 @@ async fn ssh_session_task(
     let data_event = format!("ssh-data-{}", connection_id);
     let exit_event = format!("ssh-exit-{}", connection_id);
 
+    // Hold remote output until the frontend signals it's listening
+    // (SessionCommand::Ready) so the motd/banner emitted before the terminal
+    // mounts isn't dropped. A safety cap flushes anyway if Ready never arrives.
+    const BACKLOG_CAP: usize = 2 * 1024 * 1024;
+    let mut ready = false;
+    let mut backlog: Vec<String> = Vec::new();
+    let mut backlog_bytes = 0usize;
+
+    // Emit live once ready, otherwise buffer. `break`s the loop on emit failure.
+    macro_rules! deliver {
+        ($payload:expr) => {{
+            let payload = $payload;
+            if ready {
+                if let Err(e) = app_handle.emit(&data_event, &payload) {
+                    tracing::error!("Failed to emit '{}': {}", data_event, e);
+                    break;
+                }
+            } else {
+                backlog_bytes += payload.len();
+                backlog.push(payload);
+                if backlog_bytes >= BACKLOG_CAP {
+                    ready = true;
+                    for p in backlog.drain(..) {
+                        let _ = app_handle.emit(&data_event, &p);
+                    }
+                }
+            }
+        }};
+    }
+
     loop {
         tokio::select! {
             msg = channel.wait() => {
                 match msg {
                     Some(ChannelMsg::Data { ref data }) => {
-                        let payload = String::from_utf8_lossy(data).to_string();
-                        if let Err(e) = app_handle.emit(&data_event, &payload) {
-                            tracing::error!("Failed to emit '{}': {}", data_event, e);
-                            break;
-                        }
+                        deliver!(String::from_utf8_lossy(data).to_string());
                     }
                     Some(ChannelMsg::ExtendedData { ref data, .. }) => {
-                        let payload = String::from_utf8_lossy(data).to_string();
-                        if let Err(e) = app_handle.emit(&data_event, &payload) {
-                            tracing::error!("Failed to emit '{}': {}", data_event, e);
-                            break;
-                        }
+                        deliver!(String::from_utf8_lossy(data).to_string());
                     }
                     Some(ChannelMsg::ExitStatus { exit_status }) => {
                         tracing::info!("SSH '{}' exited with status {}", connection_id, exit_status);
@@ -1215,6 +1356,14 @@ async fn ssh_session_task(
                     Some(SessionCommand::Resize { cols, rows }) => {
                         if let Err(e) = channel.window_change(cols, rows, 0, 0).await {
                             tracing::error!("SSH '{}' resize error: {}", connection_id, e);
+                        }
+                    }
+                    Some(SessionCommand::Ready) => {
+                        if !ready {
+                            ready = true;
+                            for p in backlog.drain(..) {
+                                let _ = app_handle.emit(&data_event, &p);
+                            }
                         }
                     }
                     Some(SessionCommand::Close) | None => {

@@ -78,6 +78,14 @@ fn get_close_to_tray(state: tauri::State<'_, AppState>) -> bool {
     state.close_to_tray.load(Ordering::Relaxed)
 }
 
+/// Exit the whole app. The frontend calls this after confirming there are no
+/// active SSH sessions (or the user accepted terminating them) — see the tray
+/// "Quit" → `app-quit-requested` flow in `AppShell.svelte`.
+#[tauri::command]
+fn quit_app(app: tauri::AppHandle) {
+    app.exit(0);
+}
+
 /// Build and run the Tauri application.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -101,6 +109,7 @@ pub fn run() {
     let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .plugin(tauri_plugin_process::init());
     // NOTE: AppState is managed inside `setup()` (not here) so it can be rooted
     // at the Tauri-resolved, writable app data dir — required on Android/iOS.
@@ -131,6 +140,8 @@ pub fn run() {
             ssh_connect,
             ssh_disconnect,
             ssh_send,
+            ssh_ready,
+            ssh_hostkey_response,
             ssh_resize,
             ssh_list_connections,
             ssh_detect_os,
@@ -334,6 +345,7 @@ pub fn run() {
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
+            quit_app,
         ]);
     }
 
@@ -344,6 +356,8 @@ pub fn run() {
             ssh_connect,
             ssh_disconnect,
             ssh_send,
+            ssh_ready,
+            ssh_hostkey_response,
             ssh_resize,
             ssh_list_connections,
             ssh_detect_os,
@@ -537,6 +551,7 @@ pub fn run() {
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
+            quit_app,
         ]);
     }
 
@@ -597,7 +612,21 @@ pub fn run() {
                                 }
                             }
                             "quit" => {
-                                app_handle.exit(0);
+                                use tauri::Emitter;
+                                // Route through the frontend so Quit warns about active SSH
+                                // sessions too (same guard as the window close). Fall back to a
+                                // hard exit if the window/frontend can't be reached.
+                                match app_handle.get_webview_window("main") {
+                                    Some(window) => {
+                                        let _ = window.show();
+                                        let _ = window.unminimize();
+                                        let _ = window.set_focus();
+                                        if window.emit("app-quit-requested", ()).is_err() {
+                                            app_handle.exit(0);
+                                        }
+                                    }
+                                    None => app_handle.exit(0),
+                                }
                             }
                             _ => {}
                         }
@@ -717,17 +746,11 @@ pub fn run() {
                     api.prevent_close();
                     #[cfg(desktop)]
                     let _ = window.hide();
-                    return;
                 }
-
-                // Main window: hide to tray if enabled
-                use tauri::Manager;
-                let app_state = window.state::<AppState>();
-                if app_state.close_to_tray.load(Ordering::Relaxed) {
-                    api.prevent_close();
-                    #[cfg(desktop)]
-                    let _ = window.hide();
-                }
+                // Main window: the frontend's `onCloseRequested` is the single
+                // owner — it always prevents the close, then either hides to tray
+                // or runs the active-session guard. Acting here too would race it
+                // (e.g. hide the window while the frontend tries to destroy it).
             }
         })
         .run(tauri::generate_context!())

@@ -7,11 +7,15 @@
 	import '@xterm/xterm/css/xterm.css';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { ptyWrite, ptyResize } from '$lib/ipc/pty';
-	import { sshSend, sshResize, sshConnect, type SshConnectParams } from '$lib/ipc/ssh';
+	import { sshSend, sshResize, sshConnect, sshReady, type SshConnectParams } from '$lib/ipc/ssh';
 	import { registerBufferReader, unregisterBufferReader } from '$lib/state/terminal-buffer.svelte';
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
 	import { trieMatch } from '$lib/state/snippets.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import { readText as clipboardReadText, writeText as clipboardWriteText } from '@tauri-apps/plugin-clipboard-manager';
+	import { open as shellOpen } from '@tauri-apps/plugin-shell';
+	import Modal from '$lib/components/shared/Modal.svelte';
+	import Button from '$lib/components/shared/Button.svelte';
 
 	interface Props {
 		ptyId: string;
@@ -41,6 +45,51 @@
 	let containerEl: HTMLDivElement | undefined = $state();
 	let terminal: Terminal | undefined = $state();
 	let fitAddon: FitAddon | undefined = $state();
+
+	// Pending multiline paste awaiting user confirmation (guards against
+	// accidentally executing pasted multi-line commands).
+	let pastePreview = $state<string | null>(null);
+	let pasteLineCount = $derived(pastePreview ? pastePreview.split(/\r\n|\r|\n/).length : 0);
+
+	/** Copy the current selection to the OS clipboard via the Tauri plugin. */
+	async function copySelection(term: Terminal): Promise<void> {
+		if (!term.hasSelection()) return;
+		try {
+			await clipboardWriteText(term.getSelection());
+		} catch (e) {
+			console.error('Clipboard write failed:', e);
+		}
+		term.clearSelection();
+	}
+
+	/** Read the OS clipboard via the Tauri plugin and paste — single-line goes
+	 *  straight in; multi-line opens a confirmation first. */
+	async function pasteFromClipboard(term: Terminal): Promise<void> {
+		let text = '';
+		try {
+			text = (await clipboardReadText()) ?? '';
+		} catch (e) {
+			console.error('Clipboard read failed:', e);
+			return;
+		}
+		if (!text) return;
+		if (/\r|\n/.test(text)) {
+			pastePreview = text;
+		} else {
+			term.paste(text);
+		}
+	}
+
+	function confirmPaste(): void {
+		if (pastePreview && terminal) terminal.paste(pastePreview);
+		pastePreview = null;
+		terminal?.focus();
+	}
+
+	function cancelPaste(): void {
+		pastePreview = null;
+		terminal?.focus();
+	}
 
 	let unlistenData: UnlistenFn | undefined;
 	let unlistenExit: UnlistenFn | undefined;
@@ -144,7 +193,13 @@
 
 	function loadAddons(term: Terminal, fit: FitAddon): void {
 		term.loadAddon(fit);
-		term.loadAddon(new WebLinksAddon());
+		// Open links in the OS default browser (Windows/macOS/Linux) via Tauri's
+		// shell, not inside the WebView.
+		term.loadAddon(
+			new WebLinksAddon((_event, uri) => {
+				shellOpen(uri).catch((e) => console.error('Failed to open link:', e));
+			})
+		);
 
 		const unicode11 = new Unicode11Addon();
 		term.loadAddon(unicode11);
@@ -153,7 +208,17 @@
 		try {
 			const webgl = new WebglAddon();
 			webgl.onContextLoss(() => {
+				// WebGL context loss (heavy compositing — e.g. the Settings modal's
+				// backdrop blur) would otherwise leave the terminal frozen/blank.
+				// Drop the WebGL addon (xterm falls back to the DOM renderer), then
+				// force a full repaint so the existing buffer is redrawn rather than
+				// left stale.
 				webgl.dispose();
+				try {
+					term.refresh(0, term.rows - 1);
+				} catch {
+					// terminal may have been disposed mid-frame
+				}
 			});
 			term.loadAddon(webgl);
 		} catch {
@@ -308,16 +373,13 @@
 			}
 
 			if (event.ctrlKey && event.key === 'c' && term.hasSelection()) {
-				navigator.clipboard.writeText(term.getSelection());
-				term.clearSelection();
+				void copySelection(term);
 				return false;
 			}
 
 			if (event.ctrlKey && event.key === 'v') {
 				event.preventDefault();
-				navigator.clipboard.readText().then((text) => {
-					if (text) term.paste(text);
-				});
+				void pasteFromClipboard(term);
 				return false;
 			}
 
@@ -348,6 +410,12 @@
 				disconnected = true;
 			}
 		});
+
+		// Listeners are attached — tell the SSH backend to flush any buffered
+		// output (motd/banner) emitted before this terminal mounted.
+		if (termType === 'ssh' && currentConnectionId) {
+			sshReady(currentConnectionId).catch(() => {});
+		}
 	}
 
 	async function handleReconnect(): Promise<void> {
@@ -428,13 +496,16 @@
 				onTitleChange?.(title);
 			});
 
-			// Right-click pastes from clipboard
+			// Right-click copies the current selection, or pastes when there's
+			// no selection. (Selection no longer auto-copies — see below.)
 			const termEl = containerEl!;
 			function onContextMenu(e: MouseEvent) {
 				e.preventDefault();
-				navigator.clipboard.readText().then((text) => {
-					if (text) term.paste(text);
-				});
+				if (term.hasSelection()) {
+					void copySelection(term);
+				} else {
+					void pasteFromClipboard(term);
+				}
 			}
 			termEl.addEventListener('contextmenu', onContextMenu);
 
@@ -453,14 +524,9 @@
 			}
 			termEl.addEventListener('wheel', onWheel, { passive: false });
 
-			// Click to copy: if text is selected, clicking copies it
-			function onClick(e: MouseEvent) {
-				if (term.hasSelection()) {
-					navigator.clipboard.writeText(term.getSelection());
-					term.clearSelection();
-				}
-			}
-			termEl.addEventListener('click', onClick);
+			// Note: selection deliberately does NOT auto-copy. Copy is explicit
+			// via Ctrl+C (with a selection) or right-click — so drag-selecting
+			// never clobbers the clipboard. (xterm has no copy-on-select here.)
 
 			terminal = term;
 			fitAddon = fit;
@@ -567,7 +633,44 @@
 	{/if}
 </div>
 
+<Modal
+	open={pastePreview !== null}
+	onclose={cancelPaste}
+	title={t('terminal.paste_confirm_title')}
+	maxWidth="560px"
+>
+	<p class="paste-msg">{t('terminal.paste_confirm_message', { lines: String(pasteLineCount) })}</p>
+	<pre class="paste-preview">{pastePreview}</pre>
+
+	{#snippet actions()}
+		<Button variant="secondary" onclick={cancelPaste}>{t('common.cancel')}</Button>
+		<Button variant="primary" onclick={confirmPaste}>{t('terminal.paste_confirm_action')}</Button>
+	{/snippet}
+</Modal>
+
 <style>
+	.paste-msg {
+		margin: 0 0 10px;
+		font-size: 0.875rem;
+		line-height: 1.5;
+		color: var(--color-text-primary);
+	}
+
+	.paste-preview {
+		margin: 0;
+		max-height: 220px;
+		overflow: auto;
+		padding: 10px 12px;
+		font-family: var(--font-mono, monospace);
+		font-size: 0.75rem;
+		line-height: 1.5;
+		white-space: pre;
+		color: var(--color-text-secondary);
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-btn);
+	}
+
 	.terminal-wrapper {
 		width: 100%;
 		height: 100%;

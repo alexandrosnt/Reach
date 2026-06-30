@@ -1,5 +1,5 @@
 use crate::state::AppState;
-use crate::ssh::client::{AuthParams, ConnectionInfo, JumpHostParams, exec_on_connection};
+use crate::ssh::client::{AuthParams, ConnectionInfo, JumpHostParams, SshManager, exec_on_connection};
 use crate::plugin::hooks;
 
 /// Parameters for a jump host received from the frontend.
@@ -63,7 +63,10 @@ pub async fn ssh_connect(
     jump_chain: Option<Vec<JumpHostConnectParams>>,
     proxy: Option<crate::state::ProxyConfig>,
     shell: Option<String>,
+    inject_colors: Option<bool>,
 ) -> Result<String, String> {
+    // Default ON when the frontend doesn't specify (back-compat).
+    let inject_colors = inject_colors.unwrap_or(true);
     tracing::info!(
         "ssh_connect IPC: id={}, host={}, port={}, user={}, auth_method='{}', has_key_path={}, has_password={}, has_passphrase={}, has_proxy={}, has_jump={}",
         id, host, port, username, auth_method,
@@ -78,13 +81,15 @@ pub async fn ssh_connect(
     }
     let auth = build_auth(&auth_method, password, key_path, key_passphrase)?;
 
-    let mut manager = state.ssh_manager.lock().await;
-
-    let info = if let Some(chain) = jump_chain {
+    // Establish the connection WITHOUT holding the global ssh_manager lock. The
+    // handshake/auth/shell setup can take up to the connect timeout (longer if a
+    // host hangs); holding the lock across it would block ssh_send / ssh_resize /
+    // ssh_disconnect on every other live connection. We lock only afterwards,
+    // briefly, to register the finished connection (a single HashMap insert).
+    let conn = if let Some(chain) = jump_chain {
         if chain.is_empty() {
             // No jump hosts, connect directly
-            manager
-                .connect(&id, &host, port, &username, auth, cols, rows, app.clone(), proxy, shell)
+            SshManager::connect(&id, &host, port, &username, auth, cols, rows, app.clone(), proxy, shell, inject_colors)
                 .await
                 .map_err(|e| e.to_string())?
         } else {
@@ -107,34 +112,33 @@ pub async fn ssh_connect(
                 })
                 .collect();
 
-            manager
-                .connect_via_jump(
-                    &id,
-                    &host,
-                    port,
-                    &username,
-                    auth,
-                    jump_params?,
-                    cols,
-                    rows,
-                    app.clone(),
-                    shell,
-                )
-                .await
-                .map_err(|e| e.to_string())?
+            SshManager::connect_via_jump(
+                &id,
+                &host,
+                port,
+                &username,
+                auth,
+                jump_params?,
+                cols,
+                rows,
+                app.clone(),
+                shell,
+                inject_colors,
+            )
+            .await
+            .map_err(|e| e.to_string())?
         }
     } else {
-        manager
-            .connect(&id, &host, port, &username, auth, cols, rows, app.clone(), proxy, shell)
+        SshManager::connect(&id, &host, port, &username, auth, cols, rows, app.clone(), proxy, shell, inject_colors)
             .await
             .map_err(|e| e.to_string())?
     };
 
-    let connection_id = info.id.clone();
+    // Register the finished connection under a brief lock, released immediately
+    // (before plugin hooks, which may themselves need the lock).
+    let info = state.ssh_manager.lock().await.register(conn);
 
-    // Drop ssh_manager lock BEFORE dispatching plugin hooks
-    // (plugins may call reach.ssh.exec which needs the lock)
-    drop(manager);
+    let connection_id = info.id.clone();
 
     // Fire-and-forget: a slow or hung plugin hook must not block the IPC
     // return. dispatch_hook applies a per-hook timeout internally.
@@ -157,6 +161,24 @@ pub async fn ssh_send(
 ) -> Result<(), String> {
     let manager = state.ssh_manager.lock().await;
     manager.send_data(&connection_id, &data).map_err(|e| e.to_string())
+}
+
+/// Called by the terminal once its data listener is attached: flushes any
+/// buffered remote output (motd/banner) and switches to live streaming.
+#[tauri::command]
+pub async fn ssh_ready(
+    state: tauri::State<'_, AppState>,
+    connection_id: String,
+) -> Result<(), String> {
+    let manager = state.ssh_manager.lock().await;
+    manager.mark_ready(&connection_id).map_err(|e| e.to_string())
+}
+
+/// The frontend's host-key verification dialog reports the user's decision,
+/// un-parking the SSH handshake that's waiting on `check_server_key`.
+#[tauri::command]
+pub fn ssh_hostkey_response(prompt_id: String, accept: bool) {
+    crate::ssh::client::resolve_hostkey_prompt(&prompt_id, accept);
 }
 
 #[tauri::command]

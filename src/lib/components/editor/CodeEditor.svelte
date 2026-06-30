@@ -155,6 +155,11 @@
 				bracketMatching(),
 				closeBrackets(),
 				autocompletion(),
+				// Multi-cursor: enable multiple selection ranges — Alt-click adds a
+				// cursor, Ctrl-D (via searchKeymap) selects the next occurrence, and
+				// Alt-drag makes a rectangular/column selection. rectangularSelection
+				// maps by pixel geometry, so fullwidth CJK glyphs stay aligned.
+				EditorState.allowMultipleSelections.of(true),
 				rectangularSelection(),
 				crosshairCursor(),
 				highlightActiveLine(),

@@ -5,6 +5,7 @@
 	import KeyPathInput from '$lib/components/sessions/KeyPathInput.svelte';
 	import { sshConnect, type JumpHostConnectParams } from '$lib/ipc/ssh';
 	import { createTab } from '$lib/state/tabs.svelte';
+	import { getSettings } from '$lib/state/settings.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
@@ -73,6 +74,7 @@
 				cols: 80,
 				rows: 24,
 				shell: shell.trim() || undefined,
+				injectColors: getSettings().injectShellColors,
 				jumpChain,
 				proxy: proxyEnabled ? {
 					proxy_type: proxyType,

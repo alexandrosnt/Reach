@@ -11,6 +11,7 @@ export interface Settings {
 	locale: string;
 	minimizeToTray: boolean;
 	startWithSystem: boolean;
+	injectShellColors: boolean;
 	setupComplete: boolean;
 	pendingTursoOrg: string;
 	pendingTursoApiToken: string;
@@ -34,6 +35,7 @@ const defaults: Settings = {
 	locale: 'en',
 	minimizeToTray: false,
 	startWithSystem: false,
+	injectShellColors: true,
 	setupComplete: false,
 	pendingTursoOrg: '',
 	pendingTursoApiToken: ''
@@ -75,6 +77,7 @@ export function loadSettings(): void {
 			settings.locale = parsed.locale ?? defaults.locale;
 			settings.minimizeToTray = parsed.minimizeToTray ?? defaults.minimizeToTray;
 			settings.startWithSystem = parsed.startWithSystem ?? defaults.startWithSystem;
+			settings.injectShellColors = parsed.injectShellColors ?? defaults.injectShellColors;
 			settings.pendingTursoOrg = parsed.pendingTursoOrg ?? defaults.pendingTursoOrg;
 			settings.pendingTursoApiToken = parsed.pendingTursoApiToken ?? defaults.pendingTursoApiToken;
 			// Migration: existing users who already have localStorage data get setupComplete: true
