@@ -4,13 +4,16 @@
 	import SshConfigImport from './SshConfigImport.svelte';
 	import SessionCard from './SessionCard.svelte';
 	import VaultSelector from '$lib/components/vault/VaultSelector.svelte';
+	import ContextMenuBackdrop from '$lib/components/shared/ContextMenuBackdrop.svelte';
 	import { sessionList, sessionDelete, sessionUpdate, sessionListFolders, sessionCreateFolder, sessionDeleteFolder, type SessionConfig, type Folder } from '$lib/ipc/sessions';
 	import { sshConnect, sshDisconnect, sshDetectOs, type JumpHostConnectParams } from '$lib/ipc/ssh';
 	// Passwords are now stored encrypted in vault, not in memory cache
 	import { createTab, updateTabOs } from '$lib/state/tabs.svelte';
+	import { getSettings } from '$lib/state/settings.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { untrack } from 'svelte';
+	import { positionMenu } from '$lib/utils/positionMenu';
 	import { vaultState, checkState, initIdentity, refreshVaults, importIdentity } from '$lib/state/vault.svelte';
 
 	let showQuickConnect = $state(false);
@@ -328,6 +331,7 @@
 				cols: 80,
 				rows: 24,
 				shell: session.shell ?? undefined,
+				injectColors: getSettings().injectShellColors,
 				jumpChain,
 				proxy: session.proxy ? {
 					proxy_type: session.proxy.proxy_type,
@@ -708,7 +712,8 @@
 	{/if}
 
 	{#if contextMenu}
-		<div class="context-menu" style="left: {contextMenu.x}px; top: {contextMenu.y}px;">
+		<ContextMenuBackdrop onclose={closeContextMenu} />
+		<div class="context-menu" use:positionMenu={{ x: contextMenu.x, y: contextMenu.y }}>
 			{#if contextMenu.session}
 				<button class="context-item" onclick={() => { if (contextMenu?.session) handleConnect(contextMenu.session); closeContextMenu(); }} type="button">
 					{t('session.connect')}
@@ -718,14 +723,18 @@
 				</button>
 				<div class="context-sep"></div>
 				<div class="context-label">{t('session.move_to_folder')}</div>
-				{#each folders as folder (folder.id)}
-					<button class="context-item context-folder-item" onclick={() => { if (contextMenu?.session) moveToFolder(contextMenu.session, folder.id); }} type="button">
-						<svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="ctx-folder-icon">
-							<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-						</svg>
-						{folder.name}
-					</button>
-				{/each}
+				<!-- Scrollable so a large number of folders doesn't make the menu
+				     overflow the screen — caps at ~5 visible rows. -->
+				<div class="context-folders">
+					{#each folders as folder (folder.id)}
+						<button class="context-item context-folder-item" onclick={() => { if (contextMenu?.session) moveToFolder(contextMenu.session, folder.id); }} type="button">
+							<svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="ctx-folder-icon">
+								<path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+							</svg>
+							{folder.name}
+						</button>
+					{/each}
+				</div>
 				<button class="context-item context-folder-item" onclick={contextNewFolder} type="button">
 					<svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="ctx-folder-icon">
 						<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -1094,12 +1103,22 @@
 	.context-menu {
 		position: fixed;
 		min-width: 180px;
+		max-width: 280px;
 		padding: 4px 0;
 		background-color: var(--color-bg-elevated, #1c1c1e);
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
 		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 		z-index: 1000;
+	}
+
+	/* Folder list scrolls so a huge number of folders can't blow out the menu
+	   height — ~5 rows visible, the rest reachable by scrolling. */
+	.context-folders {
+		max-height: 150px;
+		overflow-y: auto;
+		scrollbar-width: thin;
+		scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
 	}
 
 	.context-item {

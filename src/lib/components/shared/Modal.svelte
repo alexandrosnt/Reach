@@ -7,6 +7,9 @@
 		onclose: () => void;
 		title?: string;
 		maxWidth?: string;
+		/** Stacking order of the backdrop. Default 100; raise for dialogs that
+		 *  must sit above other modals (e.g. host-key verification over Connect). */
+		zIndex?: number;
 		children: Snippet;
 		actions?: Snippet;
 	}
@@ -16,6 +19,7 @@
 		onclose,
 		title = '',
 		maxWidth,
+		zIndex = 100,
 		children,
 		actions
 	}: Props = $props();
@@ -47,6 +51,7 @@
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="backdrop glass"
+		style:z-index={zIndex}
 		onkeydown={() => {}}
 		onclick={onBackdropClick}
 	>

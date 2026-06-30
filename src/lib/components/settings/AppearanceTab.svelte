@@ -1,12 +1,10 @@
 <script lang="ts">
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
 	import { t } from '$lib/state/i18n.svelte';
-	import { onMount } from 'svelte';
 
 	const settings = getSettings();
 	let currentFont = $derived(settings.fontFamily || 'monospace');
 	let currentSize = $derived(settings.fontSize || 14);
-	let previewStyle = $derived(`font-family: '${currentFont}', monospace; font-size: ${currentSize}px`);
 
 	type ThemeValue = 'dark' | 'light' | 'system';
 
@@ -34,90 +32,58 @@
 	}
 
 
-	// Google Fonts
-	const MONOSPACE_FONTS = [
-		'JetBrains Mono', 'Fira Code', 'Source Code Pro', 'Roboto Mono', 'Ubuntu Mono',
-		'IBM Plex Mono', 'Space Mono', 'Inconsolata', 'Courier Prime', 'Anonymous Pro',
-		'Share Tech Mono', 'Overpass Mono', 'Red Hat Mono', 'Martian Mono', 'Geist Mono',
-		'DM Mono', 'Noto Sans Mono', 'B612 Mono', 'Azeret Mono', 'Major Mono Display',
-		'Syne Mono', 'Xanh Mono', 'Cutive Mono', 'Nova Mono',
-	];
-
+	// Local + system monospace fonts only — NO network (Google Fonts) fetches.
+	// `JetBrains Mono` is bundled (app.css @font-face); the rest resolve to
+	// whatever the OS has installed, falling back to `monospace`. Any other
+	// installed font can be entered as a custom family.
 	const SYSTEM_FONTS = [
-		{ name: 'System Default', value: 'monospace' },
+		{ name: 'JetBrains Mono (bundled)', value: 'JetBrains Mono' },
+		{ name: 'System Monospace', value: 'monospace' },
 		{ name: 'SF Mono', value: 'SF Mono' },
-		{ name: 'Cascadia Code', value: 'Cascadia Code' },
-		{ name: 'Consolas', value: 'Consolas' },
 		{ name: 'Menlo', value: 'Menlo' },
+		{ name: 'Monaco', value: 'Monaco' },
+		{ name: 'Cascadia Code', value: 'Cascadia Code' },
+		{ name: 'Cascadia Mono', value: 'Cascadia Mono' },
+		{ name: 'Consolas', value: 'Consolas' },
+		{ name: 'Courier New', value: 'Courier New' },
+		{ name: 'DejaVu Sans Mono', value: 'DejaVu Sans Mono' },
+		{ name: 'Liberation Mono', value: 'Liberation Mono' },
+		{ name: 'Ubuntu Mono', value: 'Ubuntu Mono' },
+		{ name: 'Noto Sans Mono', value: 'Noto Sans Mono' },
+		{ name: 'Source Code Pro', value: 'Source Code Pro' },
 	];
 
-	let pvFont = $state(settings.fontFamily || 'monospace');
+	// Mixes ASCII, box-drawing, halfwidth kana, fullwidth latin and CJK so the
+	// user can check fullwidth/halfwidth column alignment of the chosen font.
+	const PREVIEW_TEXT =
+		'user@server:~$ ls -la\n' +
+		'0123456789  abcXYZ  {}[]()<>=>|\n' +
+		'CJK 日本語 中文 한국어   Kana ｱｲｳﾊﾝｶｸ\n' +
+		'全角ＡＢＣ 漢字  ┌─┬─┐│x│y│└─┴─┘';
 
 	let fontSearch = $state('');
 	let fontDropdownOpen = $state(false);
-	let loadedFonts = $state<Set<string>>(new Set());
 
-	let filteredFonts = $derived.by(() => {
-		const q = fontSearch.toLowerCase();
-		const google = MONOSPACE_FONTS.filter(f => f.toLowerCase().includes(q));
-		const system = SYSTEM_FONTS.filter(f => f.name.toLowerCase().includes(q));
-		return { google, system };
+	let filteredFonts = $derived(
+		SYSTEM_FONTS.filter((f) => f.name.toLowerCase().includes(fontSearch.toLowerCase()))
+	);
+
+	// Full configurability: if the query matches no known entry, offer it as a
+	// custom font family (any font installed on the user's system).
+	let customFont = $derived.by(() => {
+		const q = fontSearch.trim();
+		if (!q) return null;
+		const known = SYSTEM_FONTS.some(
+			(f) => f.name.toLowerCase() === q.toLowerCase() || f.value.toLowerCase() === q.toLowerCase()
+		);
+		return known ? null : q;
 	});
 
-	function loadGoogleFont(family: string): void {
-		if (loadedFonts.has(family)) return;
-		const id = `gf-${family.replace(/\s+/g, '-').toLowerCase()}`;
-		if (document.getElementById(id)) {
-			loadedFonts = new Set([...loadedFonts, family]);
-			return;
-		}
-		const link = document.createElement('link');
-		link.id = id;
-		link.rel = 'stylesheet';
-		link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@400;700&display=swap`;
-		document.head.appendChild(link);
-		loadedFonts = new Set([...loadedFonts, family]);
-	}
-
-	function selectFont(family: string): void {
-		loadGoogleFont(family);
-		updateSetting('fontFamily', family);
-		pvFont = family;
-		fontDropdownOpen = false;
-		fontSearch = '';
-	}
-
-	function selectSystemFont(value: string): void {
+	function selectFont(value: string): void {
 		updateSetting('fontFamily', value);
-		pvFont = value;
 		fontDropdownOpen = false;
 		fontSearch = '';
 	}
-
-	// Preload visible fonts for preview
-	function preloadVisibleFonts(): void {
-		for (const f of MONOSPACE_FONTS.slice(0, 8)) {
-			loadGoogleFont(f);
-		}
-	}
-
-	// Load the currently selected font on mount
-	onMount(() => {
-		if (settings.fontFamily && !SYSTEM_FONTS.some(s => s.value === settings.fontFamily)) {
-			loadGoogleFont(settings.fontFamily);
-		}
-	});
-
-	// Load fonts when dropdown opens
-	$effect(() => {
-		if (fontDropdownOpen) {
-			preloadVisibleFonts();
-			// Load filtered fonts as user types
-			for (const f of filteredFonts.google.slice(0, 10)) {
-				loadGoogleFont(f);
-			}
-		}
-	});
 </script>
 
 <div class="tab-content">
@@ -193,31 +159,31 @@
 							bind:value={fontSearch}
 						/>
 						<div class="font-list">
-							{#if filteredFonts.system.length > 0}
-								<div class="font-group-label">System Fonts</div>
-								{#each filteredFonts.system as font (font.value)}
+							{#if filteredFonts.length > 0}
+								<div class="font-group-label">{t('settings.system_fonts')}</div>
+								{#each filteredFonts as font (font.value)}
 									<button
 										class="font-option"
 										class:active={currentFont === font.value}
 										style:font-family="'{font.value}', monospace"
-										onclick={() => selectSystemFont(font.value)}
+										onclick={() => selectFont(font.value)}
 									>
 										{font.name}
 									</button>
 								{/each}
 							{/if}
-							{#if filteredFonts.google.length > 0}
-								<div class="font-group-label">Google Fonts</div>
-								{#each filteredFonts.google as font (font)}
-									<button
-										class="font-option"
-										class:active={currentFont === font}
-										style:font-family="'{font}', monospace"
-										onclick={() => selectFont(font)}
-									>
-										{font}
-									</button>
-								{/each}
+							{#if customFont}
+								<div class="font-group-label">{t('settings.custom_font')}</div>
+								<button
+									class="font-option"
+									style:font-family="'{customFont}', monospace"
+									onclick={() => selectFont(customFont)}
+								>
+									{t('settings.use_font', { font: customFont })}
+								</button>
+							{/if}
+							{#if filteredFonts.length === 0 && !customFont}
+								<div class="font-empty">{t('settings.no_fonts')}</div>
 							{/if}
 						</div>
 					</div>
@@ -226,16 +192,25 @@
 		</div>
 	</div>
 
-	{#key `${pvFont}-${currentSize}`}
-		<div class="font-preview-box">
-			<span class="preview-label">Preview — {pvFont} @ {currentSize}px</span>
-			<iframe
-				title="Font Preview"
-				class="preview-iframe"
-				srcdoc={`<!DOCTYPE html><html><head><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=${encodeURIComponent(pvFont)}:wght@400;700&display=swap"><style>*{margin:0;padding:0;background:#0a0a0a;color:#f5f5f7;}html,body{overflow:hidden;width:100%;height:100%;}pre{overflow:hidden;}</style></head><body><pre style="font-family:'${pvFont}',monospace;font-size:${currentSize}px;padding:12px;line-height:1.5;white-space:pre;">user@server:~$ ls -la\ntotal 42\ndrwxr-xr-x  2 root root 4096 Mar 20 08:00 .\n0123456789 ABCDEF abcdef</pre></body></html>`}
-			></iframe>
+	<div class="font-preview-box">
+		<span class="preview-label">{t('settings.preview')} — {currentFont} @ {currentSize}px</span>
+		<pre class="preview-pre" style="font-family: '{currentFont}', monospace; font-size: {currentSize}px;">{PREVIEW_TEXT}</pre>
+	</div>
+
+	<div class="setting-row">
+		<div class="setting-info">
+			<span class="setting-label">{t('settings.shell_colors')}</span>
+			<span class="setting-description">{t('settings.shell_colors_desc')}</span>
 		</div>
-	{/key}
+		<div class="setting-control">
+			<input
+				type="checkbox"
+				class="toggle-checkbox"
+				checked={settings.injectShellColors}
+				onchange={(e) => updateSetting('injectShellColors', e.currentTarget.checked)}
+			/>
+		</div>
+	</div>
 </div>
 
 <style>
@@ -379,8 +354,29 @@
 		font-family: var(--font-sans);
 	}
 
-	.preview-iframe {
-		width: 100%; height: 120px; border: none; display: block;
-		border-radius: 0 0 8px 8px; overflow: hidden;
+	.preview-pre {
+		margin: 0;
+		padding: 12px;
+		min-height: 96px;
+		line-height: 1.6;
+		white-space: pre;
+		overflow-x: auto;
+		color: var(--color-text-primary);
+		background: #0a0a0a;
+		border-radius: 0 0 8px 8px;
+	}
+
+	.font-empty {
+		padding: 10px 12px;
+		font-size: 0.75rem;
+		color: var(--color-text-secondary);
+		font-family: var(--font-sans);
+	}
+
+	.toggle-checkbox {
+		width: 18px;
+		height: 18px;
+		accent-color: var(--color-accent);
+		cursor: pointer;
 	}
 </style>

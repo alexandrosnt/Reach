@@ -18,7 +18,12 @@
 				gap: 20px;
 				background: #0a0a0a;
 				transition: opacity 0.4s ease, visibility 0.4s ease;
+				-webkit-user-select: none;
+				user-select: none;
+				cursor: default;
 			}
+			/* Let mousedown reach the drag-region container anywhere on the splash. */
+			#preloader > * { pointer-events: none; }
 			#preloader.hidden {
 				opacity: 0;
 				visibility: hidden;
@@ -58,11 +63,27 @@
 		%sveltekit.head%
 	</head>
 	<body data-sveltekit-preload-data="hover">
-		<div id="preloader">
+		<div id="preloader" data-tauri-drag-region>
 			<img class="logo" src="%sveltekit.assets%/app-icon.png" alt="Reach" />
 			<span class="app-name">Reach</span>
 			<div class="loader"></div>
 		</div>
+		<script>
+			// Fade out the splash exactly when the app reports it has mounted and
+			// finished its initial load (the `app-ready` event dispatched from the
+			// root layout's onMount) — no timer, no fake delay. The element is
+			// removed only after its fade-out transition ends.
+			window.addEventListener(
+				'app-ready',
+				function () {
+					var p = document.getElementById('preloader');
+					if (!p) return;
+					p.addEventListener('transitionend', function () { p.remove(); }, { once: true });
+					p.classList.add('hidden');
+				},
+				{ once: true }
+			);
+		</script>
 		<div style="display: contents">%sveltekit.body%</div>
 	</body>
 </html>

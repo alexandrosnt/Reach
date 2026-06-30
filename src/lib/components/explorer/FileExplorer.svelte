@@ -7,6 +7,8 @@
 	import { sshSend } from '$lib/ipc/ssh';
 	import { openEditor } from '$lib/state/editor.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { positionMenu } from '$lib/utils/positionMenu';
+	import ContextMenuBackdrop from '$lib/components/shared/ContextMenuBackdrop.svelte';
 	import FileNode from './FileNode.svelte';
 	import type { FileEntry } from '$lib/state/explorer.svelte';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
@@ -874,9 +876,10 @@
 {/if}
 
 {#if contextMenu}
+	<ContextMenuBackdrop onclose={closeContextMenu} />
 	<div
 		class="context-menu"
-		style="left: {contextMenu.x}px; top: {contextMenu.y}px;"
+		use:positionMenu={{ x: contextMenu.x, y: contextMenu.y }}
 	>
 		{#if contextMenu.entry}
 			{#if !contextMenu.entry.isDirectory}

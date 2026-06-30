@@ -2,6 +2,8 @@
 	import type { Snippet } from 'svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
+	import { invoke } from '@tauri-apps/api/core';
+	import { listen } from '@tauri-apps/api/event';
 	import TitleBar from './TitleBar.svelte';
 	import TabBar from './TabBar.svelte';
 	import Sidebar from './Sidebar.svelte';
@@ -10,6 +12,7 @@
 	import UpdateBanner from '$lib/components/shared/UpdateBanner.svelte';
 	import UpdateDialog from '$lib/components/shared/UpdateDialog.svelte';
 	import ActiveSessionsDialog from '$lib/components/shared/ActiveSessionsDialog.svelte';
+	import HostKeyDialog from '$lib/components/shared/HostKeyDialog.svelte';
 	import { getUpdaterState, relaunchNow, postponeRelaunch } from '$lib/state/updater.svelte';
 	import { getActiveTab, getTabs } from '$lib/state/tabs.svelte';
 	import { getSettings } from '$lib/state/settings.svelte';
@@ -28,9 +31,10 @@
 	let activeTab = $derived(getActiveTab());
 	let activeConnectionId = $derived(activeTab?.connectionId);
 
-	// --- Active-session guards for window close + update relaunch ---
+	// --- Active-session guards for window close / app quit + update relaunch ---
 	let closeOpen = $state(false);
 	let closeCount = $state(0);
+	let closeMode = $state<'window' | 'quit'>('window');
 	let updateOpen = $state(false);
 	let updateCount = $state(0);
 
@@ -43,37 +47,65 @@
 		}
 	}
 
-	// Intercept window close (X / Alt+F4 / Cmd+Q) when SSH sessions are live.
+	/** Actually leave: quit the whole app (tray Quit) or just close the window. */
+	async function doExit(mode: 'window' | 'quit'): Promise<void> {
+		try {
+			if (mode === 'quit') {
+				await invoke('quit_app');
+			} else {
+				await getCurrentWindow().destroy();
+			}
+		} catch (e) {
+			console.error('Exit failed:', e);
+		}
+	}
+
+	/** Confirm first if SSH sessions are live; otherwise exit straight away. */
+	async function requestExit(mode: 'window' | 'quit'): Promise<void> {
+		const count = await countActiveConnections();
+		if (count === 0) {
+			await doExit(mode);
+			return;
+		}
+		closeMode = mode;
+		closeCount = count;
+		closeOpen = true;
+	}
+
 	let unlistenClose: (() => void) | undefined;
+	let unlistenQuit: (() => void) | undefined;
 	onMount(async () => {
 		try {
+			// Window close (X / Alt+F4 / Cmd+Q). The frontend owns the decision
+			// (single source of truth) — always prevent, then either hide to tray
+			// or run the active-session guard. This avoids relying on the Rust
+			// close-to-tray flag staying in sync (which caused X to close instead
+			// of hiding to tray).
 			unlistenClose = await getCurrentWindow().onCloseRequested(async (event) => {
-				// Minimize-to-tray isn't a termination — let the Rust handler hide it.
-				if (getSettings().minimizeToTray) return;
-				// Hold the close synchronously, then decide async (avoids any race
-				// where the window closes before our connection check resolves).
-				event.preventDefault();
-				const count = await countActiveConnections();
-				if (count === 0) {
-					await getCurrentWindow().destroy(); // nothing to lose — close for real
+				event.preventDefault(); // hold synchronously; we decide what to do
+				if (getSettings().minimizeToTray) {
+					await getCurrentWindow().hide(); // minimize to tray, not a termination
 					return;
 				}
-				closeCount = count;
-				closeOpen = true;
+				await requestExit('window');
+			});
+			// Tray "Quit" routes here (instead of a hard exit) so it warns about
+			// active SSH sessions too.
+			unlistenQuit = await listen('app-quit-requested', () => {
+				void requestExit('quit');
 			});
 		} catch (e) {
-			console.error('Failed to register close handler:', e);
+			console.error('Failed to register exit handlers:', e);
 		}
 	});
-	onDestroy(() => unlistenClose?.());
+	onDestroy(() => {
+		unlistenClose?.();
+		unlistenQuit?.();
+	});
 
 	async function confirmClose(): Promise<void> {
 		closeOpen = false;
-		try {
-			await getCurrentWindow().destroy();
-		} catch (e) {
-			console.error('Window destroy failed:', e);
-		}
+		await doExit(closeMode);
 	}
 	function cancelClose(): void {
 		closeOpen = false;
@@ -144,6 +176,7 @@
 		onconfirm={confirmUpdate}
 		oncancel={postponeUpdate}
 	/>
+	<HostKeyDialog />
 </div>
 
 <style>

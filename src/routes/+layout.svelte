@@ -25,15 +25,9 @@
 		startupUpdateCheck();
 		startPeriodicChecks();
 
-		// Dismiss the preloader after a minimum display time so the
-		// splash screen is actually visible during startup.
-		const preloader = document.getElementById('preloader');
-		if (preloader) {
-			setTimeout(() => {
-				preloader.classList.add('hidden');
-				setTimeout(() => preloader.remove(), 500);
-			}, 800);
-		}
+		// The Svelte app has loaded and mounted — signal real readiness. The
+		// preloader listener in app.html reacts to this (no timer, no fake delay).
+		window.dispatchEvent(new CustomEvent('app-ready'));
 
 		return () => {
 			cleanupShortcuts();
@@ -56,20 +50,9 @@
 		document.documentElement.style.setProperty('--app-font-size', `${settings.fontSize}px`);
 	});
 
-	// Load saved Google Font on startup so terminal has it ready
-	$effect(() => {
-		const family = settings.fontFamily;
-		if (family && family !== 'monospace') {
-			const id = `gf-${family.replace(/\s+/g, '-').toLowerCase()}`;
-			if (!document.getElementById(id)) {
-				const link = document.createElement('link');
-				link.id = id;
-				link.rel = 'stylesheet';
-				link.href = `https://fonts.googleapis.com/css2?family=${encodeURIComponent(family)}:wght@400;700&display=swap`;
-				document.head.appendChild(link);
-			}
-		}
-	});
+	// Fonts are local/system only — no Google Fonts network fetch. The terminal
+	// font resolves from what the OS has installed (JetBrains Mono is bundled
+	// via app.css @font-face), falling back to `monospace`.
 
 	$effect(() => {
 		const theme = settings.theme;

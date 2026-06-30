@@ -144,26 +144,27 @@
 		{/each}
 	</nav>
 
-	{#if !collapsed}
-		<div class="sidebar-content">
-			<div class="section-header">
-				{sections.find((s) => s.id === activeSection)?.label ?? ''}
-			</div>
-			<div class="section-body">
-				{#if activeSection === 'sessions'}
-					<SessionList />
-				{:else if activeSection === 'explorer'}
-					<FileExplorer {connectionId} />
-				{:else if activeSection === 'tunnels'}
-					<TunnelManager {connectionId} />
-				{:else if activeSection === 'snippets'}
-					<SnippetPanel {connectionId} />
-				{:else if activeSection === 'plugins'}
-					<PluginPanel {connectionId} />
-				{/if}
-			</div>
+	<!-- Kept mounted (hidden when collapsed) so collapsing/expanding the sidebar
+	     does NOT unmount the active panel and re-read the DB. Panels still mount/
+	     unmount on section switch, just not on collapse. -->
+	<div class="sidebar-content" class:hidden={collapsed}>
+		<div class="section-header">
+			{sections.find((s) => s.id === activeSection)?.label ?? ''}
 		</div>
-	{/if}
+		<div class="section-body">
+			{#if activeSection === 'sessions'}
+				<SessionList />
+			{:else if activeSection === 'explorer'}
+				<FileExplorer {connectionId} />
+			{:else if activeSection === 'tunnels'}
+				<TunnelManager {connectionId} />
+			{:else if activeSection === 'snippets'}
+				<SnippetPanel {connectionId} />
+			{:else if activeSection === 'plugins'}
+				<PluginPanel {connectionId} />
+			{/if}
+		</div>
+	</div>
 
 	<div class="sidebar-footer">
 		<button
@@ -285,6 +286,12 @@
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
+	}
+
+	/* Hidden (not unmounted) when the sidebar is collapsed, so the active panel
+	   keeps its loaded state instead of re-fetching on expand. */
+	.sidebar-content.hidden {
+		display: none;
 	}
 
 	.section-header {
