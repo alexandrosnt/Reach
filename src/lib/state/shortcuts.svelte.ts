@@ -86,7 +86,7 @@ function matchesShortcut(e: KeyboardEvent, shortcut: Shortcut): boolean {
 	if (!shortcut.ctrl && modKey) return false;
 
 	if (shortcut.shift && !e.shiftKey) return false;
-	if (!shortcut.shift && e.shiftKey && shortcut.key !== 'Tab') return false;
+	if (!shortcut.shift && e.shiftKey) return false;
 
 	if (shortcut.alt && !e.altKey) return false;
 

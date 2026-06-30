@@ -2,6 +2,7 @@
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import Button from '$lib/components/shared/Button.svelte';
 	import Input from '$lib/components/shared/Input.svelte';
+	import KeyPathInput from '$lib/components/sessions/KeyPathInput.svelte';
 	import { sshConnect, type JumpHostConnectParams } from '$lib/ipc/ssh';
 	import { createTab } from '$lib/state/tabs.svelte';
 	import { t } from '$lib/state/i18n.svelte';
@@ -19,6 +20,7 @@
 	let password = $state('');
 	let keyPath = $state('');
 	let keyPassphrase = $state('');
+	let shell = $state('');
 	let jumpEnabled = $state(false);
 	let jumpHost = $state('');
 	let jumpPortStr = $state('22');
@@ -70,6 +72,7 @@
 				keyPassphrase: authMethod === 'key' && keyPassphrase ? keyPassphrase : undefined,
 				cols: 80,
 				rows: 24,
+				shell: shell.trim() || undefined,
 				jumpChain,
 				proxy: proxyEnabled ? {
 					proxy_type: proxyType,
@@ -91,6 +94,7 @@
 			password = '';
 			keyPath = '';
 			keyPassphrase = '';
+			shell = '';
 			jumpEnabled = false;
 			jumpHost = '';
 			jumpPortStr = '22';
@@ -160,9 +164,14 @@
 		{#if authMethod === 'password'}
 			<Input label={t('session.password')} bind:value={password} type="password" disabled={connecting} />
 		{:else}
-			<Input label={t('session.key_path')} bind:value={keyPath} placeholder="~/.ssh/id_rsa" disabled={connecting} />
+			<KeyPathInput label={t('session.key_path')} bind:value={keyPath} placeholder="~/.ssh/id_rsa" disabled={connecting} />
 			<Input label={t('session.passphrase_optional')} bind:value={keyPassphrase} type="password" disabled={connecting} />
 		{/if}
+
+		<div class="shell-field">
+			<Input label={t('session.login_shell_optional')} bind:value={shell} placeholder="fish -l" disabled={connecting} />
+			<p class="shell-hint">{t('session.login_shell_hint')}</p>
+		</div>
 
 		<div class="jump-section">
 			<label class="jump-toggle">
@@ -199,7 +208,7 @@
 					{#if jumpAuthMethod === 'password'}
 						<Input label={t('session.password')} bind:value={jumpPassword} type="password" disabled={connecting} />
 					{:else}
-						<Input label={t('session.key_path')} bind:value={jumpKeyPath} placeholder="~/.ssh/id_rsa" disabled={connecting} />
+						<KeyPathInput label={t('session.key_path')} bind:value={jumpKeyPath} placeholder="~/.ssh/id_rsa" disabled={connecting} />
 						<Input label={t('session.passphrase_optional')} bind:value={jumpKeyPassphrase} type="password" disabled={connecting} />
 					{/if}
 				</div>
@@ -296,6 +305,18 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+		color: var(--color-text-secondary);
+	}
+
+	.shell-field {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.shell-hint {
+		margin: 0;
+		font-size: 0.6875rem;
 		color: var(--color-text-secondary);
 	}
 

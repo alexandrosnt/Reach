@@ -31,6 +31,8 @@ export interface SshConnectParams {
   rows: number;
   jumpChain?: JumpHostConnectParams[];
   proxy?: ProxyConfig;
+  /** Optional per-session login shell (e.g. "fish" or "fish -l"). Empty = remote default. */
+  shell?: string;
 }
 
 export interface ConnectionInfo {
@@ -54,6 +56,7 @@ export async function sshConnect(params: SshConnectParams): Promise<string> {
     rows: params.rows,
     jumpChain: params.jumpChain ?? null,
     proxy: params.proxy ?? null,
+    shell: params.shell?.trim() ? params.shell.trim() : null,
   });
 }
 
@@ -75,4 +78,28 @@ export async function sshListConnections(): Promise<ConnectionInfo[]> {
 
 export async function sshDetectOs(connectionId: string): Promise<string> {
   return invoke<string>('ssh_detect_os', { connectionId });
+}
+
+export type KeyFileKind = 'private_key' | 'public_key' | 'not_a_key' | 'not_found';
+
+export interface KeyCandidate {
+  path: string;
+  name: string;
+  algo?: string | null;
+}
+
+export interface KeyFileInfo {
+  path: string;
+  kind: KeyFileKind;
+  algo?: string | null;
+  comment?: string | null;
+  encrypted: boolean;
+  suggestedPrivateKey?: KeyCandidate | null;
+  siblingPrivateKeys: KeyCandidate[];
+}
+
+/** Inspect a key-file path to detect wrong-file selections (e.g. a public key)
+ *  and surface private-key suggestions from the same folder. */
+export async function inspectKeyFile(path: string): Promise<KeyFileInfo> {
+  return invoke<KeyFileInfo>('inspect_key_file', { path });
 }

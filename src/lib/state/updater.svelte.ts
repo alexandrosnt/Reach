@@ -11,6 +11,12 @@ let startupBlocking = $state(false);
 let downloadAttempts = $state(0);
 let error = $state<string | null>(null);
 let dismissed = $state(false);
+// Update is downloaded + installed and waiting for a relaunch decision. The
+// relaunch is NOT fired automatically so the UI can confirm first when active
+// SSH sessions would be terminated.
+let readyToRelaunch = $state(false);
+// User chose to postpone the relaunch; the staged update applies on next start.
+let relaunchPostponed = $state(false);
 
 let periodicInterval: ReturnType<typeof setInterval> | null = null;
 
@@ -25,7 +31,9 @@ export function getUpdaterState() {
 		get startupBlocking() { return startupBlocking; },
 		get downloadAttempts() { return downloadAttempts; },
 		get error() { return error; },
-		get dismissed() { return dismissed; }
+		get dismissed() { return dismissed; },
+		get readyToRelaunch() { return readyToRelaunch; },
+		get relaunchPostponed() { return relaunchPostponed; }
 	};
 }
 
@@ -83,7 +91,11 @@ export async function downloadAndInstall(): Promise<void> {
 			}
 		});
 
-		await relaunch();
+		// Update is staged; hand off to the caller (AppShell) to confirm before
+		// relaunching when active SSH sessions would be terminated.
+		installing = false;
+		relaunchPostponed = false;
+		readyToRelaunch = true;
 	} catch (e) {
 		downloading = false;
 		installing = false;
@@ -91,6 +103,24 @@ export async function downloadAndInstall(): Promise<void> {
 		error = e instanceof Error ? e.message : String(e);
 		console.error('Download/install failed:', e);
 	}
+}
+
+/** Relaunch into the freshly-installed update now. Terminates SSH sessions. */
+export async function relaunchNow(): Promise<void> {
+	readyToRelaunch = false;
+	relaunchPostponed = false;
+	try {
+		await relaunch();
+	} catch (e) {
+		error = e instanceof Error ? e.message : String(e);
+		console.error('Relaunch failed:', e);
+	}
+}
+
+/** Keep the staged update but don't restart now; it applies on next launch. */
+export function postponeRelaunch(): void {
+	readyToRelaunch = false;
+	relaunchPostponed = true;
 }
 
 export function dismissUpdate(): void {

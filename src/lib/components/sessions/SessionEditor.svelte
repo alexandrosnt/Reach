@@ -24,6 +24,7 @@
 	let password = $state('');
 	let keyPath = $state('');
 	let keyPassphrase = $state('');
+	let shell = $state('');
 	let tagsStr = $state('');
 	let folderIdStr = $state('');
 	let jumpEnabled = $state(false);
@@ -51,6 +52,7 @@
 			password = editSession.auth_method.password ?? '';
 			keyPath = editSession.auth_method.path ?? '';
 			keyPassphrase = editSession.auth_method.passphrase ?? '';
+			shell = editSession.shell ?? '';
 			tagsStr = editSession.tags.join(', ');
 			folderIdStr = editSession.folder_id ?? '';
 			if (editSession.jump_chain && editSession.jump_chain.length > 0) {
@@ -87,6 +89,7 @@
 			password = '';
 			keyPath = '';
 			keyPassphrase = '';
+			shell = '';
 			tagsStr = '';
 			folderIdStr = '';
 			jumpEnabled = false;
@@ -151,6 +154,7 @@
 					tags,
 					jump_chain: jumpChain ?? editSession.jump_chain ?? null,
 					proxy: proxyConfig,
+					shell: shell.trim() || null,
 				});
 			} else {
 				await sessionCreate({
@@ -164,6 +168,7 @@
 					vaultId,
 					jumpChain: jumpChain ?? null,
 					proxy: proxyConfig,
+					shell: shell.trim() || null,
 				});
 			}
 			onsave?.();
@@ -268,6 +273,11 @@
 			</div>
 			<Input label={t('session.passphrase_optional')} bind:value={keyPassphrase} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
 		{/if}
+
+		<div class="shell-field">
+			<Input label={t('session.login_shell_optional')} bind:value={shell} placeholder="fish -l" disabled={saving} />
+			<p class="shell-hint">{t('session.login_shell_hint')}</p>
+		</div>
 
 		<div class="jump-section">
 			<label class="jump-toggle">
@@ -484,6 +494,18 @@
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
+		color: var(--color-text-secondary);
+	}
+
+	.shell-field {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+	}
+
+	.shell-hint {
+		margin: 0;
+		font-size: 0.6875rem;
 		color: var(--color-text-secondary);
 	}
 
