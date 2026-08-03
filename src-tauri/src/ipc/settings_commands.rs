@@ -158,6 +158,40 @@ pub async fn settings_save_all(
 
 // --- Helper functions (all O(1)) ---
 
+/// Read a setting by key without resolving the vault first. Returns `None`
+/// when the settings vault does not exist or the key is absent. Used by
+/// non-settings commands (e.g. marketplace) that persist a single value.
+pub(crate) async fn read_setting_by_key(
+    manager: &crate::vault::VaultManager,
+    key: &str,
+) -> Option<String> {
+    let vault_id = get_settings_vault_id_if_exists(manager)?;
+    read_setting(manager, &vault_id, key).await
+}
+
+/// Upsert a setting by key, creating the settings vault if needed. The
+/// manager must be unlocked. Used by non-settings commands that persist a
+/// single value.
+pub(crate) async fn write_setting_by_key(
+    manager: &mut crate::vault::VaultManager,
+    key: &str,
+    value: &str,
+) -> Result<(), String> {
+    let vault_id = ensure_settings_vault(manager).await?;
+    save_setting(manager, &vault_id, key, value).await
+}
+
+/// Delete a setting by key if the settings vault exists. No-op otherwise.
+pub(crate) async fn delete_setting_by_key(
+    manager: &mut crate::vault::VaultManager,
+    key: &str,
+) -> Result<(), String> {
+    if let Some(vault_id) = get_settings_vault_id_if_exists(manager) {
+        let _ = manager.delete_secret(&vault_id, key).await;
+    }
+    Ok(())
+}
+
 /// Read a single setting. O(1).
 async fn read_setting(
     manager: &crate::vault::VaultManager,

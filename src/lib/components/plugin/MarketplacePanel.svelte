@@ -2,6 +2,10 @@
 	import {
 		marketplaceFetch,
 		marketplaceInstall,
+		marketplaceGetUrl,
+		marketplaceLoadUrl,
+		marketplaceResetUrl,
+		marketplaceSetUrl,
 		type MarketplaceEntry
 	} from '$lib/ipc/marketplace';
 	import { pluginList } from '$lib/ipc/plugin';
@@ -15,6 +19,9 @@
 	let loading = $state(false);
 	let installingId = $state<string | null>(null);
 	let error = $state<string | null>(null);
+	let registryUrl = $state('');
+	let registryInput = $state('');
+	let showRegistry = $state(false);
 
 	async function refresh(): Promise<void> {
 		loading = true;
@@ -46,7 +53,39 @@
 		}
 	}
 
-	onMount(() => {
+	async function saveRegistry(): Promise<void> {
+		const url = registryInput.trim();
+		if (!url) return;
+		try {
+			await marketplaceSetUrl(url);
+			registryUrl = url;
+			addToast(t('marketplace.registry_saved'), 'info');
+			await refresh();
+		} catch (err) {
+			addToast(String(err), 'error');
+		}
+	}
+
+	async function resetRegistry(): Promise<void> {
+		try {
+			await marketplaceResetUrl();
+			registryUrl = await marketplaceGetUrl();
+			registryInput = registryUrl;
+			addToast(t('marketplace.registry_reset_done'), 'info');
+			await refresh();
+		} catch (err) {
+			addToast(String(err), 'error');
+		}
+	}
+
+	onMount(async () => {
+		try {
+			// Apply any persisted registry override before the first fetch.
+			registryUrl = await marketplaceLoadUrl();
+		} catch {
+			registryUrl = await marketplaceGetUrl().catch(() => '');
+		}
+		registryInput = registryUrl;
 		refresh();
 	});
 </script>
@@ -70,7 +109,41 @@
 				<path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" />
 			</svg>
 		</button>
+		<button
+			class="toolbar-btn"
+			onclick={() => (showRegistry = !showRegistry)}
+			title={t('marketplace.registry_label')}
+		>
+			<svg
+				width="14"
+				height="14"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.5"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+			>
+				<circle cx="12" cy="12" r="3" />
+				<path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z" />
+			</svg>
+		</button>
 	</div>
+
+	{#if showRegistry}
+		<div class="registry-row">
+			<input
+				class="registry-input"
+				type="text"
+				bind:value={registryInput}
+				placeholder="https://…/plugins.json"
+				spellcheck="false"
+			/>
+			<button class="registry-btn" onclick={saveRegistry}>{t('marketplace.registry_save')}</button>
+			<button class="registry-btn" onclick={resetRegistry}>{t('marketplace.registry_reset')}</button>
+			<p class="registry-hint">{t('marketplace.registry_locked_hint')}</p>
+		</div>
+	{/if}
 
 	{#if loading && entries.length === 0}
 		<div class="empty-state">
@@ -143,6 +216,51 @@
 		align-items: center;
 		justify-content: space-between;
 		padding: 4px 8px;
+	}
+
+	.registry-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 8px;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		background: var(--color-bg-secondary);
+	}
+
+	.registry-input {
+		flex: 1 1 240px;
+		min-width: 0;
+		padding: 5px 8px;
+		font-size: 0.75rem;
+		font-family: inherit;
+		color: var(--color-text-primary);
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
+		border-radius: 4px;
+	}
+
+	.registry-btn {
+		padding: 5px 10px;
+		font-size: 0.6875rem;
+		font-weight: 600;
+		color: var(--color-text-primary);
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
+		border-radius: 4px;
+		cursor: pointer;
+	}
+
+	.registry-btn:hover {
+		background: var(--color-bg-secondary);
+	}
+
+	.registry-hint {
+		flex-basis: 100%;
+		margin: 0;
+		font-size: 0.625rem;
+		color: var(--color-text-secondary);
 	}
 
 	.toolbar-title {
