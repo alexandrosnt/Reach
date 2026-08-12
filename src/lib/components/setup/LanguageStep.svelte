@@ -89,31 +89,16 @@
 						<rect y="26.67" width="60" height="13.33" fill="#D52B1E"/>
 					{:else if lang.code === 'zh'}
 						<!-- China -->
-						<rect width="60" height="40" fill="#DE2910"/>
-						<polygon
-							fill="#FFDE00"
-							points="10,7 10.7,9.1 12.9,9.1 11.1,10.4 11.8,12.4 10,11.1 8.2,12.4 8.9,10.4 7.1,9.1 9.3,9.1"
-						/>
-						<polygon
-							fill="#FFDE00"
-							transform="translate(20 4) rotate(-121)"
-							points="0,-1 0.225,-0.309 0.951,-0.309 0.363,0.118 0.588,0.809 0,0.382 -0.588,0.809 -0.363,0.118 -0.951,-0.309 -0.225,-0.309"
-						/>
-						<polygon
-							fill="#FFDE00"
-							transform="translate(24 8) rotate(-98)"
-							points="0,-1 0.225,-0.309 0.951,-0.309 0.363,0.118 0.588,0.809 0,0.382 -0.588,0.809 -0.363,0.118 -0.951,-0.309 -0.225,-0.309"
-						/>
-						<polygon
-							fill="#FFDE00"
-							transform="translate(24 14) rotate(-74)"
-							points="0,-1 0.225,-0.309 0.951,-0.309 0.363,0.118 0.588,0.809 0,0.382 -0.588,0.809 -0.363,0.118 -0.951,-0.309 -0.225,-0.309"
-						/>
-						<polygon
-							fill="#FFDE00"
-							transform="translate(20 18) rotate(-51)"
-							points="0,-1 0.225,-0.309 0.951,-0.309 0.363,0.118 0.588,0.809 0,0.382 -0.588,0.809 -0.363,0.118 -0.951,-0.309 -0.225,-0.309"
-						/>
+						<rect width="60" height="40" fill="#EE1C25" />
+						<!-- From https://flagpedia.net/the-people-s-republic-of-china, scale(0.0666667) because original image is 900x600, 60 / 900 = 0.0666667 -->
+						<g transform="scale(0.0666667)">
+							<path id="star" fill="#FF0" d="m0-30 17.634 54.27-46.166-33.54h57.064l-46.166 33.54Z" />
+							<use href="#star" transform="matrix(3 0 0 3 150 150)" />
+							<use href="#star" transform="rotate(23.036 2.784 766.082)" />
+							<use href="#star" transform="rotate(45.87 38.201 485.396)" />
+							<use href="#star" transform="rotate(69.945 29.892 362.328)" />
+							<use href="#star" transform="rotate(20.66 -590.66 957.955)" />
+						</g>
 					{/if}
 				</svg>
 				<span class="lang-name">{lang.name}</span>
