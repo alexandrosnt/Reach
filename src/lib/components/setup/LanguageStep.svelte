@@ -18,7 +18,8 @@
 		{ code: 'el', name: 'Ελληνικά', subtitle: 'Greek' },
 		{ code: 'it', name: 'Italiano', subtitle: 'Italian' },
 		{ code: 'bg', name: 'Български', subtitle: 'Bulgarian' },
-		{ code: 'ru', name: 'Русский', subtitle: 'Russian' }
+		{ code: 'ru', name: 'Русский', subtitle: 'Russian' },
+		{ code: 'zh', name: '中文', subtitle: 'Chinese' }
 	];
 
 	let selected = $state(settings.locale || 'en');
@@ -86,6 +87,33 @@
 						<rect width="60" height="13.33" fill="#fff"/>
 						<rect y="13.33" width="60" height="13.34" fill="#0039A6"/>
 						<rect y="26.67" width="60" height="13.33" fill="#D52B1E"/>
+					{:else if lang.code === 'zh'}
+						<!-- China -->
+						<rect width="60" height="40" fill="#DE2910"/>
+						<polygon
+							fill="#FFDE00"
+							points="10,7 10.7,9.1 12.9,9.1 11.1,10.4 11.8,12.4 10,11.1 8.2,12.4 8.9,10.4 7.1,9.1 9.3,9.1"
+						/>
+						<polygon
+							fill="#FFDE00"
+							transform="translate(20 4) rotate(-121)"
+							points="0,-1 0.225,-0.309 0.951,-0.309 0.363,0.118 0.588,0.809 0,0.382 -0.588,0.809 -0.363,0.118 -0.951,-0.309 -0.225,-0.309"
+						/>
+						<polygon
+							fill="#FFDE00"
+							transform="translate(24 8) rotate(-98)"
+							points="0,-1 0.225,-0.309 0.951,-0.309 0.363,0.118 0.588,0.809 0,0.382 -0.588,0.809 -0.363,0.118 -0.951,-0.309 -0.225,-0.309"
+						/>
+						<polygon
+							fill="#FFDE00"
+							transform="translate(24 14) rotate(-74)"
+							points="0,-1 0.225,-0.309 0.951,-0.309 0.363,0.118 0.588,0.809 0,0.382 -0.588,0.809 -0.363,0.118 -0.951,-0.309 -0.225,-0.309"
+						/>
+						<polygon
+							fill="#FFDE00"
+							transform="translate(20 18) rotate(-51)"
+							points="0,-1 0.225,-0.309 0.951,-0.309 0.363,0.118 0.588,0.809 0,0.382 -0.588,0.809 -0.363,0.118 -0.951,-0.309 -0.225,-0.309"
+						/>
 					{/if}
 				</svg>
 				<span class="lang-name">{lang.name}</span>
