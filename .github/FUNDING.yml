@@ -1,0 +1,11 @@
+# Real paid path for this fork. GitHub Sponsors is not enabled on
+# thefiredev-cloud or TheFireDEV (those /sponsors URLs redirect to the
+# profile). The only live checkout from this maintainer is the MeshVault
+# Agent Skills Starter Pack ($49, one-time Stripe payment).
+#
+# Storefront (what GitHub's Sponsor button should open):
+#   https://meshvault.ai/skills
+# Checkout URL returned by POST /api/create-checkout?offer=meshvault-skill-pack-starter:
+#   https://buy.stripe.com/3cI28k0Jf2fn4ZC0L12go0o
+custom:
+  - https://meshvault.ai/skills
