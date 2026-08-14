@@ -20,7 +20,7 @@ sudo apt install libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchel
 ## Clone and run
 
 ```bash
-git clone https://github.com/alexandrosnt/Reach.git
+git clone https://github.com/thefiredev-cloud/Reach.git
 cd Reach
 npm install
 npm run tauri dev

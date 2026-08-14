@@ -411,6 +411,9 @@
   "settings.tray_desc": "Im Infobereich weiterlaufen, wenn das Fenster geschlossen wird",
   "settings.start_with_system": "Mit dem System starten",
   "settings.system_startup_desc": "Reach automatisch beim Anmelden starten",
+  "settings.support": "Reach unterstützen",
+  "settings.support_desc": "Reach hat kein Abo. Das MeshVault Agent Skills Starter Pack (49 $, einmalig) unterstützt die Entwicklung.",
+  "settings.support_buy": "49-$-Paket kaufen",
   "settings.font_size_desc": "Terminal-Textgröße ({{size}}px)",
   "settings.font_desc": "Schriftart, die im Terminal-Emulator verwendet wird",
 

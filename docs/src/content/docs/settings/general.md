@@ -29,6 +29,10 @@ When enabled, clicking the close button minimizes the app to the system tray ins
 
 Launch Reach automatically when you log in. Uses the OS autostart mechanism (Startup folder on Windows, Launch Agents on macOS, autostart entries on Linux).
 
+### Support Reach
+
+Reach has no in-app subscription. A **Buy the $49 pack** button opens the MeshVault [Agent Skills Starter Pack](https://meshvault.ai/skills) storefront in your browser — the only live paid download from this maintainer. Payment is a one-time Stripe checkout.
+
 ## Appearance
 
 Visual customization.

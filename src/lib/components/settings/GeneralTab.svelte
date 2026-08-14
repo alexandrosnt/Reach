@@ -1,10 +1,15 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/core';
 	import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
+	import { open as shellOpen } from '@tauri-apps/plugin-shell';
 	import Dropdown from '$lib/components/shared/Dropdown.svelte';
 	import Toggle from '$lib/components/shared/Toggle.svelte';
+	import Button from '$lib/components/shared/Button.svelte';
 	import { getSettings, updateSetting, syncTraySettings } from '$lib/state/settings.svelte';
 	import { t, changeLocale } from '$lib/state/i18n.svelte';
+
+	/** Official MeshVault storefront for the only live paid download. */
+	const SUPPORT_URL = 'https://meshvault.ai/skills';
 
 	const settings = getSettings();
 
@@ -50,6 +55,10 @@
 			await disable();
 		}
 		updateSetting('startWithSystem', checked);
+	}
+
+	async function openSupportCheckout() {
+		await shellOpen(SUPPORT_URL);
 	}
 </script>
 
@@ -120,6 +129,18 @@
 				label={t('settings.start_with_system')}
 				onchange={onStartWithSystemChange}
 			/>
+		</div>
+	</div>
+
+	<div class="setting-row">
+		<div class="setting-info">
+			<span class="setting-label">{t('settings.support')}</span>
+			<span class="setting-description">{t('settings.support_desc')}</span>
+		</div>
+		<div class="setting-control">
+			<Button variant="secondary" size="sm" onclick={openSupportCheckout}>
+				{t('settings.support_buy')}
+			</Button>
 		</div>
 	</div>
 </div>
