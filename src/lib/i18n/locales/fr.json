@@ -411,6 +411,9 @@
   "settings.tray_desc": "Continuer a fonctionner dans la zone de notification lorsque la fenetre est fermee",
   "settings.start_with_system": "Demarrer avec le systeme",
   "settings.system_startup_desc": "Lancer Reach automatiquement a la connexion",
+  "settings.support": "Soutenir Reach",
+  "settings.support_desc": "Reach n'a pas d'abonnement. Achetez le Agent Skills Starter Pack MeshVault (49 $, une fois) pour soutenir le projet.",
+  "settings.support_buy": "Acheter le pack 49 $",
   "settings.font_size_desc": "Taille du texte du terminal ({{size}}px)",
   "settings.font_desc": "Police utilisee dans l'emulateur de terminal",
 

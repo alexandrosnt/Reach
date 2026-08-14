@@ -411,6 +411,9 @@
   "settings.tray_desc": "Continua l'esecuzione nell'area di notifica quando la finestra viene chiusa",
   "settings.start_with_system": "Avvia con il Sistema",
   "settings.system_startup_desc": "Avvia Reach automaticamente all'accesso",
+  "settings.support": "Supporta Reach",
+  "settings.support_desc": "Reach non ha un abbonamento. Acquista l'Agent Skills Starter Pack MeshVault (49 $, una tantum) per sostenere lo sviluppo.",
+  "settings.support_buy": "Acquista il pack da 49 $",
   "settings.font_size_desc": "Dimensione del testo nel terminale ({{size}}px)",
   "settings.font_desc": "Font utilizzato nell'emulatore di terminale",
 

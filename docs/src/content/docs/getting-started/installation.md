@@ -5,6 +5,8 @@ description: How to install Reach on your platform.
 
 Grab the latest release from the [GitHub Releases page](https://github.com/alexandrosnt/Reach/releases). Pick the installer for your platform and you're good to go.
 
+Reach itself has no subscription. The only live paid path from this maintainer is the MeshVault [Agent Skills Starter Pack](https://meshvault.ai/skills) ($49, one-time Stripe checkout).
+
 ## Windows
 
 Download the `.exe` installer (NSIS). Run it, click through the prompts, done. It supports both per-user and system-wide installation. If you install per-user, you don't need admin rights.
