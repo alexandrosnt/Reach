@@ -411,6 +411,9 @@
   "settings.tray_desc": "Συνέχιση λειτουργίας στο δίσκο συστήματος όταν κλείνει το παράθυρο",
   "settings.start_with_system": "Εκκίνηση με το Σύστημα",
   "settings.system_startup_desc": "Αυτόματη εκκίνηση του Reach κατά τη σύνδεση",
+  "settings.support": "Υποστήριξη του Reach",
+  "settings.support_desc": "Το Reach δεν έχει συνδρομή. Αγοράστε το MeshVault Agent Skills Starter Pack (49 $, εφάπαξ) για να στηρίξετε την ανάπτυξη.",
+  "settings.support_buy": "Αγορά πακέτου 49 $",
   "settings.font_size_desc": "Μέγεθος κειμένου τερματικού ({{size}}px)",
   "settings.font_desc": "Γραμματοσειρά που χρησιμοποιείται στον εξομοιωτή τερματικού",
 
