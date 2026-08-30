@@ -15,7 +15,8 @@
 		{ label: 'Ελληνικά', value: 'el' },
 		{ label: 'Italiano', value: 'it' },
 		{ label: 'Български', value: 'bg' },
-		{ label: 'Русский', value: 'ru' }
+		{ label: 'Русский', value: 'ru' },
+		{ label: '中文', value: 'zh' }
 	];
 
 	function onLanguageChange(value: string) {
