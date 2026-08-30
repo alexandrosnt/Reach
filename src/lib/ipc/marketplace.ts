@@ -32,3 +32,11 @@ export async function marketplaceGetUrl(): Promise<string> {
 export async function marketplaceSetUrl(url: string): Promise<void> {
 	return invoke('marketplace_set_url', { url });
 }
+
+export async function marketplaceLoadUrl(): Promise<string> {
+	return invoke<string>('marketplace_load_url');
+}
+
+export async function marketplaceResetUrl(): Promise<void> {
+	return invoke('marketplace_reset_url');
+}

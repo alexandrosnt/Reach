@@ -333,6 +333,8 @@ pub fn run() {
             marketplace_uninstall,
             marketplace_get_url,
             marketplace_set_url,
+            marketplace_load_url,
+            marketplace_reset_url,
             // Editor commands
             editor_open_file,
             editor_get_pending_file,
@@ -539,6 +541,8 @@ pub fn run() {
             marketplace_uninstall,
             marketplace_get_url,
             marketplace_set_url,
+            marketplace_load_url,
+            marketplace_reset_url,
             // Editor commands
             editor_open_file,
             editor_get_pending_file,
