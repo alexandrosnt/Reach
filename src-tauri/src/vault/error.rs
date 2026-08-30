@@ -11,6 +11,9 @@ pub enum VaultError {
     #[error("Identity already exists")]
     IdentityAlreadyExists,
 
+    #[error("No password is set for this identity. Unlock via system keychain, then set a password in Settings > Security.")]
+    PasswordNotSet,
+
     #[error("Vault not found: {0}")]
     NotFound(String),
 
