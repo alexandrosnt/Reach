@@ -18,7 +18,8 @@
 		{ code: 'el', name: 'Ελληνικά', subtitle: 'Greek' },
 		{ code: 'it', name: 'Italiano', subtitle: 'Italian' },
 		{ code: 'bg', name: 'Български', subtitle: 'Bulgarian' },
-		{ code: 'ru', name: 'Русский', subtitle: 'Russian' }
+		{ code: 'ru', name: 'Русский', subtitle: 'Russian' },
+		{ code: 'zh', name: '中文', subtitle: 'Chinese' }
 	];
 
 	let selected = $state(settings.locale || 'en');
@@ -86,6 +87,18 @@
 						<rect width="60" height="13.33" fill="#fff"/>
 						<rect y="13.33" width="60" height="13.34" fill="#0039A6"/>
 						<rect y="26.67" width="60" height="13.33" fill="#D52B1E"/>
+					{:else if lang.code === 'zh'}
+						<!-- China -->
+						<rect width="60" height="40" fill="#EE1C25" />
+						<!-- From https://flagpedia.net/the-people-s-republic-of-china, scale(0.0666667) because original image is 900x600, 60 / 900 = 0.0666667 -->
+						<g transform="scale(0.0666667)">
+							<path id="star" fill="#FF0" d="m0-30 17.634 54.27-46.166-33.54h57.064l-46.166 33.54Z" />
+							<use href="#star" transform="matrix(3 0 0 3 150 150)" />
+							<use href="#star" transform="rotate(23.036 2.784 766.082)" />
+							<use href="#star" transform="rotate(45.87 38.201 485.396)" />
+							<use href="#star" transform="rotate(69.945 29.892 362.328)" />
+							<use href="#star" transform="rotate(20.66 -590.66 957.955)" />
+						</g>
 					{/if}
 				</svg>
 				<span class="lang-name">{lang.name}</span>
