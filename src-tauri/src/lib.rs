@@ -580,6 +580,108 @@ pub fn run() {
             tracing::info!("App data dir: {:?}", data_dir);
             app.manage(AppState::new());
 
+            // Build application menu (macOS menu bar).
+            // We replace the default Copy/Paste menu items with custom ones that
+            // have NO keyboard accelerators.  The default ones (Cmd+C / Cmd+V)
+            // consume the key events before xterm's attachCustomKeyEventHandler
+            // can see them, which breaks clipboard in the terminal.
+            //
+            // When the user clicks Edit > Copy / Paste we emit an event to the
+            // webview; the webview forwards it to the active terminal.
+            #[cfg(desktop)]
+            {
+                use tauri::menu::{
+                    MenuBuilder, SubmenuBuilder, MenuItemBuilder, PredefinedMenuItem,
+                };
+                use tauri::Emitter;
+
+                let app_name = "Reach";
+
+                // --- Reach menu ---
+                let about = PredefinedMenuItem::about(app, Some("About Reach"), None)?;
+                let services = PredefinedMenuItem::services(app, None)?;
+                let separator1 = PredefinedMenuItem::separator(app)?;
+                let hide = PredefinedMenuItem::hide(app, Some("Hide Reach"))?;
+                let hide_others = PredefinedMenuItem::hide_others(app, None)?;
+                let show_all = PredefinedMenuItem::show_all(app, None)?;
+                let separator2 = PredefinedMenuItem::separator(app)?;
+                let quit = PredefinedMenuItem::quit(app, Some("Quit Reach"))?;
+                let reach_menu = SubmenuBuilder::new(app, app_name)
+                    .item(&about)
+                    .item(&services)
+                    .item(&separator1)
+                    .item(&hide)
+                    .item(&hide_others)
+                    .item(&show_all)
+                    .item(&separator2)
+                    .item(&quit)
+                    .build()?;
+
+                // --- File menu ---
+                let file_menu = SubmenuBuilder::new(app, "File")
+                    .item(&PredefinedMenuItem::close_window(app, Some("Close Window"))?)
+                    .build()?;
+
+                // --- Edit menu (custom Copy/Paste WITHOUT accelerators) ---
+                let copy_item = MenuItemBuilder::with_id("copy", "Copy").build(app)?;
+                let paste_item = MenuItemBuilder::with_id("paste", "Paste").build(app)?;
+                let cut_item = PredefinedMenuItem::cut(app, None)?;
+                let select_all = PredefinedMenuItem::select_all(app, None)?;
+                let edit_menu = SubmenuBuilder::new(app, "Edit")
+                    .item(&copy_item)
+                    .item(&paste_item)
+                    .item(&cut_item)
+                    .separator()
+                    .item(&select_all)
+                    .build()?;
+
+                // --- View menu ---
+                let view_menu = SubmenuBuilder::new(app, "View")
+                    .item(&PredefinedMenuItem::fullscreen(app, None)?)
+                    .build()?;
+
+                // --- Window menu ---
+                let minimize = PredefinedMenuItem::minimize(app, None)?;
+                let zoom = PredefinedMenuItem::maximize(app, None)?;
+                let window_menu = SubmenuBuilder::new(app, "Window")
+                    .item(&minimize)
+                    .item(&zoom)
+                    .build()?;
+
+                // --- Help menu ---
+                let help_menu = SubmenuBuilder::new(app, "Help")
+                    .build()?;
+
+                let app_menu = MenuBuilder::new(app)
+                    .item(&reach_menu)
+                    .item(&file_menu)
+                    .item(&edit_menu)
+                    .item(&view_menu)
+                    .item(&window_menu)
+                    .item(&help_menu)
+                    .build()?;
+
+                app.set_menu(app_menu)?;
+
+                // Route menu-bar Copy/Paste clicks to the webview so the active
+                // terminal can handle them.
+                app.on_menu_event(move |app_handle, event| {
+                    match event.id().as_ref() {
+                        "copy" => {
+                            if let Some(w) = app_handle.get_webview_window("main") {
+                                let _ = w.emit("menu-copy", ());
+                            }
+                        }
+                        "paste" => {
+                            if let Some(w) = app_handle.get_webview_window("main") {
+                                let _ = w.emit("menu-paste", ());
+                            }
+                        }
+                        _ => {}
+                    }
+                });
+            }
+
             // Build system tray
             #[cfg(desktop)]
             {

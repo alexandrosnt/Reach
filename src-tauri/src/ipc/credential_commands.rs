@@ -13,7 +13,10 @@ const CREDENTIALS_VAULT_NAME: &str = "__credentials__";
 
 /// Set the master password for the credential vault.
 ///
-/// Initializes the vault identity if not already done, or unlocks if it exists.
+/// Initializes the vault identity if none exists. When an identity already
+/// exists this CHANGES its password (requires the vault to be unlocked,
+/// e.g. via OS keychain auto-unlock) — previously it attempted an unlock
+/// with the new password, which always failed (issue #25).
 #[tauri::command]
 #[tracing::instrument(skip(password, state))]
 pub async fn credential_set_master_password(
@@ -23,9 +26,14 @@ pub async fn credential_set_master_password(
     let mut manager = state.vault_manager.lock().await;
 
     if manager.has_identity().await {
-        // Identity exists, just unlock
+        if manager.is_locked() {
+            return Err(
+                "Vault is locked. Unlock it with your current method first, then set a new password."
+                    .into(),
+            );
+        }
         manager
-            .unlock(&password)
+            .change_password(&password)
             .await
             .map_err(|e| e.to_string())?;
     } else {

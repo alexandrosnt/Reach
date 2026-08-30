@@ -377,7 +377,21 @@
 				return false;
 			}
 
+			// macOS: Cmd+C copies the selection (Cmd is never used as a terminal
+			// control key, so this is safe on all platforms).
+			if (event.metaKey && event.key === 'c' && term.hasSelection()) {
+				event.preventDefault();
+				void copySelection(term);
+				return false;
+			}
+
 			if (event.ctrlKey && event.key === 'v') {
+				event.preventDefault();
+				void pasteFromClipboard(term);
+				return false;
+			}
+
+			if (event.metaKey && event.key === 'v') {
 				event.preventDefault();
 				void pasteFromClipboard(term);
 				return false;
@@ -524,6 +538,19 @@
 			}
 			termEl.addEventListener('wheel', onWheel, { passive: false });
 
+			// Listen for menu-bar Copy/Paste events (Rust emits these when the
+			// user clicks Edit > Copy / Paste since the menu items have no
+			// keyboard accelerators — Cmd+C / Cmd+V are handled by xterm's
+			// attachCustomKeyEventHandler below).
+			let unlistenMenuCopy: UnlistenFn | undefined;
+			let unlistenMenuPaste: UnlistenFn | undefined;
+			listen('menu-copy', () => {
+				if (term.hasSelection()) void copySelection(term);
+			}).then((fn) => { unlistenMenuCopy = fn; });
+			listen('menu-paste', () => {
+				void pasteFromClipboard(term);
+			}).then((fn) => { unlistenMenuPaste = fn; });
+
 			// Note: selection deliberately does NOT auto-copy. Copy is explicit
 			// via Ctrl+C (with a selection) or right-click — so drag-selecting
 			// never clobbers the clipboard. (xterm has no copy-on-select here.)
@@ -553,6 +580,8 @@
 			unregisterBufferReader(bufferId);
 			unlistenData?.();
 			unlistenExit?.();
+			unlistenMenuCopy?.();
+			unlistenMenuPaste?.();
 			resizeObserver?.disconnect();
 			term.dispose();
 			terminal = undefined;

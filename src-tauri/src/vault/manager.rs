@@ -160,11 +160,12 @@ impl VaultManager {
             tracing::warn!("Failed to store key in keychain: {}", e);
         }
 
-        // Encrypt secret key with password for backup
+        // Encrypt secret key with password for backup and persist it —
+        // without this, password unlock is impossible (issue #25).
         let password_kek = derive_kek_from_password(password.as_bytes(), &salt)?;
-        let (_encrypted_key, _nonce) = encrypt_with_password(&password_kek, secret_key.as_bytes())?;
+        let (encrypted_key, nonce) = encrypt_with_password(&password_kek, secret_key.as_bytes())?;
 
-        self.save_identity(&salt).await?;
+        self.save_identity(&salt, Some((encrypted_key, nonce))).await?;
         tracing::info!("init_identity: saved identity file");
 
         // Create internal vaults
@@ -202,6 +203,9 @@ impl VaultManager {
         salt.copy_from_slice(&salt_bytes);
 
         // Decrypt secret key with password
+        if stored.encrypted_key.is_empty() || stored.nonce.is_empty() {
+            return Err(VaultError::PasswordNotSet);
+        }
         let encrypted_key = BASE64
             .decode(&stored.encrypted_key)
             .map_err(|e| VaultError::SerializationError(e.to_string()))?;
@@ -262,6 +266,48 @@ impl VaultManager {
         self.reopen_user_vaults().await?;
 
         Ok(true)
+    }
+
+    /// Change the password that protects the identity's secret key.
+    ///
+    /// Requires an unlocked manager. The salt is intentionally kept: it also
+    /// feeds the secret-key-derived KEK that encrypts every vault, so a new
+    /// salt would invalidate all existing vault data. Only the
+    /// password-encrypted copy of the secret key is re-encrypted.
+    ///
+    /// This is also the recovery path for identities created before the fix
+    /// for issue #25, where the password-encrypted key was never persisted:
+    /// unlock via OS keychain, then set a password here.
+    pub async fn change_password(&mut self, new_password: &str) -> Result<(), VaultError> {
+        let identity = self.identity.as_ref().ok_or(VaultError::Locked)?;
+        let secret_key_bytes = identity.secret_key().to_bytes();
+
+        let identity_path = self.app_dir.join("vault_identity.json");
+        if !identity_path.exists() {
+            return Err(VaultError::IdentityNotInitialized);
+        }
+        let data = tokio::fs::read_to_string(&identity_path).await?;
+        let stored: StoredIdentity = serde_json::from_str(&data)?;
+
+        let salt_bytes = BASE64
+            .decode(&stored.salt)
+            .map_err(|e| VaultError::SerializationError(e.to_string()))?;
+        if salt_bytes.len() != 32 {
+            return Err(VaultError::InvalidKeyLength {
+                expected: 32,
+                got: salt_bytes.len(),
+            });
+        }
+        let mut salt = [0u8; 32];
+        salt.copy_from_slice(&salt_bytes);
+
+        let password_kek = derive_kek_from_password(new_password.as_bytes(), &salt)?;
+        let (encrypted_key, nonce) =
+            encrypt_with_password(&password_kek, &secret_key_bytes)?;
+
+        self.save_identity(&salt, Some((encrypted_key, nonce))).await?;
+        tracing::info!("change_password: identity re-encrypted with new password");
+        Ok(())
     }
 
     /// Auto-unlock using OS keychain (TLS-style, no password needed).
@@ -427,7 +473,7 @@ impl VaultManager {
             if salt_bytes.len() == 32 {
                 let mut salt = [0u8; 32];
                 salt.copy_from_slice(&salt_bytes);
-                self.save_identity(&salt).await?;
+                self.save_identity(&salt, None).await?;
             }
         }
 
@@ -828,19 +874,28 @@ impl VaultManager {
     }
 
     /// Save identity to file.
-    async fn save_identity(&self, salt: &[u8; 32]) -> Result<(), VaultError> {
+    /// Save identity. `password_key` carries fresh password-encrypted secret
+    /// key material `(encrypted_key_b64, nonce_b64)` when setting or changing
+    /// the password; otherwise the previously stored material is preserved.
+    async fn save_identity(
+        &self,
+        salt: &[u8; 32],
+        password_key: Option<(String, String)>,
+    ) -> Result<(), VaultError> {
         let identity = self.identity.as_ref().ok_or(VaultError::Locked)?;
         let public_key = identity.public_key;
 
-        // For encrypted_key and nonce, we need the password-encrypted version
-        // which should already be stored. Read existing if available.
+        // For encrypted_key and nonce, we need the password-encrypted version.
+        // Use fresh material when provided; otherwise keep what is on disk.
         let identity_path = self.app_dir.join("vault_identity.json");
-        let (encrypted_key, nonce) = if identity_path.exists() {
+        let (encrypted_key, nonce) = if let Some((ek, n)) = password_key {
+            (ek, n)
+        } else if identity_path.exists() {
             let data = tokio::fs::read_to_string(&identity_path).await?;
             let stored: StoredIdentity = serde_json::from_str(&data)?;
             (stored.encrypted_key, stored.nonce)
         } else {
-            // New identity - encrypted_key should be set during init
+            // New identity without password material yet.
             (String::new(), String::new())
         };
 
@@ -875,7 +930,7 @@ impl VaultManager {
             if salt_bytes.len() == 32 {
                 let mut salt = [0u8; 32];
                 salt.copy_from_slice(&salt_bytes);
-                self.save_identity(&salt).await?;
+                self.save_identity(&salt, None).await?;
             }
         }
         Ok(())
@@ -1881,7 +1936,7 @@ impl VaultManager {
             tracing::warn!("Failed to store key in keychain: {}", e);
         }
 
-        self.save_identity(&salt).await?;
+        self.save_identity(&salt, None).await?;
 
         // Create internal vaults
         self.ensure_internal_vaults().await?;
@@ -2512,4 +2567,80 @@ fn get_key_from_keychain(user_uuid: &str) -> Result<Vec<u8>, VaultError> {
     BASE64
         .decode(&password)
         .map_err(|e| VaultError::SerializationError(e.to_string()))
+}
+
+#[cfg(test)]
+mod password_tests {
+    use super::*;
+
+    fn tmp_dir(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!(
+            "reach-vault-test-{}-{}",
+            name,
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    /// Regression test for issue #25: the password-encrypted secret key was
+    /// computed at identity init but discarded, so password unlock never
+    /// worked after a restart — only OS-keychain auto-unlock did.
+    #[tokio::test]
+    async fn password_roundtrip_and_change_issue_25() {
+        let dir = tmp_dir("roundtrip");
+
+        // Init identity with a password.
+        let mut mgr = VaultManager::new(dir.clone());
+        mgr.init_identity("hunter2hunter2").await.unwrap();
+        mgr.lock();
+
+        // Fresh manager (simulated restart): unlock with the init password.
+        let mut mgr2 = VaultManager::new(dir.clone());
+        assert!(
+            mgr2.unlock("hunter2hunter2").await.unwrap(),
+            "unlock with the init password must succeed (issue #25)"
+        );
+
+        // Wrong password must not unlock.
+        mgr2.lock();
+        let mut mgr3 = VaultManager::new(dir.clone());
+        let bad = mgr3.unlock("wrong-password").await;
+        assert!(bad.is_err() || matches!(bad, Ok(false)));
+
+        // Change password while unlocked, then the new one works.
+        let mut mgr4 = VaultManager::new(dir.clone());
+        mgr4.unlock("hunter2hunter2").await.unwrap();
+        mgr4.change_password("second-password").await.unwrap();
+        mgr4.lock();
+
+        let mut mgr5 = VaultManager::new(dir.clone());
+        assert!(mgr5.unlock("second-password").await.unwrap());
+        mgr5.lock();
+
+        // The old password no longer works.
+        let mut mgr6 = VaultManager::new(dir.clone());
+        let old = mgr6.unlock("hunter2hunter2").await;
+        assert!(old.is_err() || matches!(old, Ok(false)));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Changing the password requires an unlocked manager.
+    #[tokio::test]
+    async fn change_password_requires_unlock() {
+        let dir = tmp_dir("locked-change");
+        let mut mgr = VaultManager::new(dir.clone());
+        mgr.init_identity("initial-pass-123").await.unwrap();
+        mgr.lock();
+
+        let err = mgr
+            .change_password("whatever-else")
+            .await
+            .expect_err("change_password while locked must fail");
+        assert!(matches!(err, VaultError::Locked));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }
