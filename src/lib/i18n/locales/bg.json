@@ -411,6 +411,9 @@
   "settings.tray_desc": "Продължи работа в системния трей при затваряне на прозореца",
   "settings.start_with_system": "Стартирай със системата",
   "settings.system_startup_desc": "Стартирай Reach автоматично при влизане в системата",
+  "settings.support": "Подкрепи Reach",
+  "settings.support_desc": "Reach няма абонамент. Купете MeshVault Agent Skills Starter Pack (49 $, еднократно), за да подкрепите разработката.",
+  "settings.support_buy": "Купи пакета за 49 $",
   "settings.font_size_desc": "Размер на текста в терминала ({{size}}px)",
   "settings.font_desc": "Шрифт, използван в емулатора на терминала",
 
