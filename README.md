@@ -16,7 +16,7 @@
 </p>
 
 <p align="center">
-  <a href="https://alexandrosnt.github.io/Reach/"><strong>Documentation</strong></a> · <a href="https://github.com/alexandrosnt/Reach/releases">Download</a> · <a href="https://github.com/alexandrosnt/Reach/issues">Report a Bug</a>
+  <a href="https://alexandrosnt.github.io/Reach/"><strong>Documentation</strong></a> · <a href="https://github.com/alexandrosnt/Reach/releases">Download</a> · <a href="https://github.com/thefiredev-cloud/Reach/issues">Report a Bug</a> · <a href="https://meshvault.ai/skills">Buy the $49 pack</a>
 </p>
 
 ---
@@ -31,7 +31,7 @@
 
 Most SSH tools feel like they were designed in 2005, because they were. MobaXterm is Windows-only and bloated, PuTTY hasn't changed in decades, and Termius wants a subscription for basic features.
 
-Reach is what happens when you build an SSH client from scratch with a native UI, proper encryption, and the kind of workflow you'd actually want to use every day. No Electron. No monthly fee. Just a fast, clean tool that runs everywhere.
+Reach is what happens when you build an SSH client from scratch with a native UI, proper encryption, and the kind of workflow you'd actually want to use every day. No Electron. No Reach subscription. Just a fast, clean tool that runs everywhere. If you want to support this fork, the maintainer sells a [one-time $49 Agent Skills Starter Pack](https://meshvault.ai/skills) — that is the only live paid path today.
 
 ## What's inside
 
@@ -83,7 +83,7 @@ Grab the latest release from the [Releases page](https://github.com/alexandrosnt
 You'll need [Rust](https://rustup.rs), [Node.js 22+](https://nodejs.org), and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS.
 
 ```bash
-git clone https://github.com/alexandrosnt/Reach.git
+git clone https://github.com/thefiredev-cloud/Reach.git
 cd Reach
 npm install
 npm run tauri dev
@@ -164,6 +164,15 @@ Thanks to those who have contributed to Reach:
     </td>
   </tr>
 </table>
+
+## Support / pay
+
+Reach itself stays free to use. There is no GitHub Sponsors listing on `thefiredev-cloud` (that page redirects to the profile). The only real checkout from this maintainer is the MeshVault [Agent Skills Starter Pack](https://meshvault.ai/skills): **$49 once**, Stripe, delivered by signed download link.
+
+- Storefront: [https://meshvault.ai/skills](https://meshvault.ai/skills)
+- Pay: [https://buy.stripe.com/3cI28k0Jf2fn4ZC0L12go0o](https://buy.stripe.com/3cI28k0Jf2fn4ZC0L12go0o)
+
+A smaller MIT set is free at [thefiredev-cloud/meshvault-skills-starter](https://github.com/thefiredev-cloud/meshvault-skills-starter).
 
 ## Contributing
 
