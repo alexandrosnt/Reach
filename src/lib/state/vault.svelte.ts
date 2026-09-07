@@ -176,9 +176,21 @@ export async function checkState(): Promise<void> {
 	}
 
 	if (!vaultState.locked) {
-		vaultState.userUuid = await vaultIpc.getUserUuid();
-		vaultState.publicKey = await vaultIpc.getPublicKey();
-		await refreshVaults();
+		// Identity metadata and the vault list are not needed to consider the
+		// vault open. Letting one of them reject would throw away the fact that
+		// the unlock succeeded and leave callers believing the whole check
+		// failed — which is what stranded the session list on its spinner.
+		try {
+			vaultState.userUuid = await vaultIpc.getUserUuid();
+			vaultState.publicKey = await vaultIpc.getPublicKey();
+		} catch (err) {
+			console.error('Vault unlocked but identity metadata is unavailable:', err);
+		}
+		try {
+			await refreshVaults();
+		} catch (err) {
+			console.error('Vault unlocked but the vault list could not be read:', err);
+		}
 		restoreLocalSettingsFromVault();
 	}
 }
