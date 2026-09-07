@@ -227,6 +227,7 @@
   "ai.copied": "Kopiert!",
 
   "vault.unlock": "Tresor entsperren",
+  "vault.no_password_warning": "Kein Master-Passwort gesetzt. Der Tresor lässt sich nur über den OS-Schlüsselbund öffnen — vergeben Sie eines unter Einstellungen > Sicherheit.",
   "vault.enter_password": "Master-Passwort eingeben...",
   "vault.master_password": "Master-Passwort",
   "vault.unlocking": "Wird entsperrt...",
