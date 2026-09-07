@@ -15,13 +15,63 @@
 	import { onMount } from 'svelte';
 
 	let entries = $state<MarketplaceEntry[]>([]);
-	let installedIds = $state<Set<string>>(new Set());
+	/** plugin id -> installed manifest version, for update detection. */
+	let installedVersions = $state<Map<string, string>>(new Map());
 	let loading = $state(false);
 	let installingId = $state<string | null>(null);
+	let search = $state('');
 	let error = $state<string | null>(null);
 	let registryUrl = $state('');
 	let registryInput = $state('');
 	let showRegistry = $state(false);
+
+	/**
+	 * Compare two semver-ish strings. Returns >0 if a is newer than b, 0 if
+	 * equal, <0 if older. Build metadata is ignored; a prerelease sorts before
+	 * its own release (1.0.0-rc1 < 1.0.0), matching semver precedence.
+	 * Unparseable parts compare as 0 so a malformed version never claims to be
+	 * an upgrade.
+	 */
+	function compareVersions(a: string, b: string): number {
+		const split = (v: string) => {
+			const [core, pre] = v.trim().split('+')[0].split('-', 2);
+			const nums = core.split('.').map((n) => Number.parseInt(n, 10) || 0);
+			return { nums, pre: pre ?? '' };
+		};
+		const va = split(a);
+		const vb = split(b);
+		const len = Math.max(va.nums.length, vb.nums.length);
+		for (let i = 0; i < len; i++) {
+			const d = (va.nums[i] ?? 0) - (vb.nums[i] ?? 0);
+			if (d !== 0) return d;
+		}
+		if (va.pre === vb.pre) return 0;
+		// A version with no prerelease tag outranks one that has it.
+		if (va.pre === '') return 1;
+		if (vb.pre === '') return -1;
+		return va.pre < vb.pre ? -1 : 1;
+	}
+
+	/** True when the registry offers a strictly newer version than installed. */
+	function hasUpdate(entry: MarketplaceEntry): boolean {
+		const current = installedVersions.get(entry.id);
+		if (current === undefined) return false;
+		return compareVersions(entry.version, current) > 0;
+	}
+
+	const visibleEntries = $derived.by(() => {
+		const q = search.trim().toLowerCase();
+		if (!q) return entries;
+		return entries.filter((e) =>
+			[e.name, e.description, e.author, e.id, ...(e.keywords ?? [])]
+				.filter(Boolean)
+				.some((field) => field.toLowerCase().includes(q))
+		);
+	});
+
+	function indexInstalled(plugins: { manifest: { id: string; version: string } }[]): void {
+		installedVersions = new Map(plugins.map((p) => [p.manifest.id, p.manifest.version]));
+	}
 
 	async function refresh(): Promise<void> {
 		loading = true;
@@ -29,7 +79,7 @@
 		try {
 			const [list, plugins] = await Promise.all([marketplaceFetch(), pluginList()]);
 			entries = list;
-			installedIds = new Set(plugins.map((p) => p.manifest.id));
+			indexInstalled(plugins);
 			setPlugins(plugins);
 		} catch (err) {
 			error = String(err);
@@ -38,14 +88,24 @@
 		}
 	}
 
+	/**
+	 * Install or update. The backend replaces the plugin directory wholesale,
+	 * so the same call serves both; only the toast differs.
+	 */
 	async function install(entry: MarketplaceEntry): Promise<void> {
+		const updating = hasUpdate(entry);
 		installingId = entry.id;
 		try {
 			await marketplaceInstall(entry);
-			addToast(t('marketplace.installed', { name: entry.name }), 'info');
+			addToast(
+				updating
+					? t('marketplace.updated', { name: entry.name, version: entry.version })
+					: t('marketplace.installed', { name: entry.name }),
+				'info'
+			);
 			const plugins = await pluginList();
 			setPlugins(plugins);
-			installedIds = new Set(plugins.map((p) => p.manifest.id));
+			indexInstalled(plugins);
 		} catch (err) {
 			addToast(String(err), 'error');
 		} finally {
@@ -145,6 +205,34 @@
 		</div>
 	{/if}
 
+	{#if entries.length > 0}
+		<div class="search-row">
+			<svg
+				class="search-icon"
+				width="14"
+				height="14"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="1.5"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				aria-hidden="true"
+			>
+				<circle cx="11" cy="11" r="7" />
+				<path d="M21 21l-4.35-4.35" />
+			</svg>
+			<input
+				class="search-input"
+				type="text"
+				bind:value={search}
+				placeholder={t('marketplace.search')}
+				spellcheck="false"
+				aria-label={t('marketplace.search')}
+			/>
+		</div>
+	{/if}
+
 	{#if loading && entries.length === 0}
 		<div class="empty-state">
 			<p class="empty-text">{t('marketplace.loading')}</p>
@@ -159,14 +247,24 @@
 			<p class="empty-text">{t('marketplace.no_entries')}</p>
 			<p class="empty-hint">{t('marketplace.no_entries_hint')}</p>
 		</div>
+	{:else if visibleEntries.length === 0}
+		<div class="empty-state">
+			<p class="empty-text">{t('marketplace.no_results')}</p>
+			<p class="empty-hint">{t('marketplace.no_results_hint', { query: search.trim() })}</p>
+		</div>
 	{:else}
 		<div class="entry-list">
-			{#each entries as entry (entry.id)}
-				{@const installed = installedIds.has(entry.id)}
+			{#each visibleEntries as entry (entry.id)}
+				{@const installedVersion = installedVersions.get(entry.id)}
+				{@const installed = installedVersion !== undefined}
+				{@const updatable = hasUpdate(entry)}
 				<div class="entry">
 					<div class="entry-row">
 						<span class="entry-name">{entry.name}</span>
 						<span class="entry-version">v{entry.version}</span>
+						{#if updatable}
+							<span class="update-badge">{t('marketplace.update')}</span>
+						{/if}
 					</div>
 					{#if entry.author}
 						<span class="entry-author">{entry.author}</span>
@@ -184,18 +282,24 @@
 					<div class="entry-actions">
 						<button
 							class="install-btn"
-							class:installed
+							class:installed={installed && !updatable}
+							class:updatable
 							onclick={() => install(entry)}
-							disabled={installed || installingId !== null}
+							disabled={(installed && !updatable) || installingId !== null}
 						>
 							{#if installingId === entry.id}
-								{t('marketplace.installing')}
+								{updatable ? t('marketplace.updating') : t('marketplace.installing')}
+							{:else if updatable}
+								{t('marketplace.update')}
 							{:else if installed}
 								{t('marketplace.installed_label')}
 							{:else}
 								{t('marketplace.install')}
 							{/if}
 						</button>
+						{#if installed && installedVersion}
+							<span class="installed-version">v{installedVersion}</span>
+						{/if}
 					</div>
 				</div>
 			{/each}
@@ -411,6 +515,57 @@
 
 	.install-btn.installed {
 		background-color: rgba(255, 255, 255, 0.06);
+		color: var(--color-text-secondary);
+	}
+
+	.install-btn.updatable {
+		background-color: var(--color-warning, #d98322);
+	}
+
+	.search-row {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 0 8px;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		background: var(--color-bg-secondary);
+	}
+
+	.search-icon {
+		flex: none;
+		color: var(--color-text-secondary);
+	}
+
+	.search-input {
+		flex: 1 1 auto;
+		min-width: 0;
+		padding: 6px 0;
+		font-size: 0.75rem;
+		font-family: inherit;
+		color: var(--color-text-primary);
+		background: transparent;
+		border: none;
+		outline: none;
+	}
+
+	.search-input::placeholder {
+		color: var(--color-text-secondary);
+	}
+
+	.update-badge {
+		padding: 1px 5px;
+		font-size: 0.5625rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: #fff;
+		background-color: var(--color-warning, #d98322);
+		border-radius: 3px;
+	}
+
+	.installed-version {
+		font-size: 0.625rem;
 		color: var(--color-text-secondary);
 	}
 </style>
