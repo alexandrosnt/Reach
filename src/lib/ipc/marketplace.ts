@@ -8,6 +8,7 @@ export interface MarketplaceEntry {
 	description: string;
 	author: string;
 	repo: string;
+	keywords: string[];
 	downloadUrl: string;
 	sha256: string;
 	permissions: PluginPermission[];

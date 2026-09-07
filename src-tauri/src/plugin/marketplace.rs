@@ -46,6 +46,10 @@ pub struct MarketplaceEntry {
     /// "user/repo" GitHub identifier — informational, used for the "Source" link.
     #[serde(default)]
     pub repo: String,
+    /// Extra search terms, matched alongside name/description/author in the
+    /// Marketplace search box. Optional — older registry files omit it.
+    #[serde(default)]
+    pub keywords: Vec<String>,
     /// Direct URL to the plugin's release zip archive.
     pub download_url: String,
     /// Hex-encoded SHA-256 of the bytes at `download_url`. Verified before
