@@ -4,6 +4,8 @@ import type { AppSettings } from '$lib/ipc/settings';
 
 export interface Settings {
 	theme: 'dark' | 'light' | 'system';
+	/** Id of an installed theme. Overrides `theme` when set. */
+	themeId?: string;
 	fontSize: number;
 	fontFamily: string;
 	defaultShell: string;
@@ -28,6 +30,7 @@ const STORAGE_KEY = 'reach-settings';
 
 const defaults: Settings = {
 	theme: 'dark',
+	themeId: undefined,
 	fontSize: 14,
 	fontFamily: 'monospace',
 	defaultShell: '/bin/bash',
