@@ -100,7 +100,7 @@
 	}
 
 	.session-card:hover {
-		background-color: rgba(255, 255, 255, 0.04);
+		background-color: var(--color-surface-hover);
 	}
 
 	.card-main {
@@ -127,7 +127,7 @@
 	}
 
 	.session-name {
-		font-size: 0.6875rem;
+		font-size: var(--text-sm);
 		font-weight: 500;
 		color: var(--color-text-primary);
 		white-space: nowrap;
@@ -136,7 +136,7 @@
 	}
 
 	.session-detail {
-		font-size: 0.5625rem;
+		font-size: var(--text-2xs);
 		color: var(--color-text-secondary);
 		white-space: nowrap;
 		overflow: hidden;
@@ -147,12 +147,12 @@
 	.auth-badge {
 		flex-shrink: 0;
 		padding: 2px 6px;
-		font-size: 0.5625rem;
+		font-size: var(--text-2xs);
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		color: var(--color-text-secondary);
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		border-radius: 4px;
 	}
 
@@ -217,7 +217,7 @@
 	}
 
 	.action-btn:hover {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 

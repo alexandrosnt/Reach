@@ -16,7 +16,37 @@
   --color-warning: #ffd60a;
   --color-danger: #ff453a;
 
+  /* Surfaces — components previously hardcoded rgba(255,255,255,x) overlays for
+     these, which are invisible against a white background in light mode. */
+  --color-surface-hover: rgba(255, 255, 255, 0.06);
+  --color-surface-active: rgba(255, 255, 255, 0.10);
+  --color-surface-sunken: rgba(0, 0, 0, 0.20);
+
+  /* A third text level. Two were not enough, so components reached for opacity
+     or ad-hoc greys to express "less important than secondary". */
+  --color-text-tertiary: #6e6e73;
+
+  /* Type scale. The old floor was 9px with 11px body, which is not readable for
+     a tool people keep open all day. 11px is now the smallest permitted size and
+     is reserved for badges; 13px is the default. */
+  --text-2xs: 0.6875rem;  /* 11px — badges, uppercase labels */
+  --text-xs: 0.75rem;     /* 12px — meta, secondary lines */
+  --text-sm: 0.8125rem;   /* 13px — default body */
+  --text-md: 0.875rem;    /* 14px — emphasis, list primaries */
+  --text-lg: 1rem;        /* 16px — section titles */
+  --text-xl: 1.25rem;     /* 20px — page titles */
+
+  /* Spacing scale on a 4px grid. Replaces the 8+ ad-hoc padding values that made
+     spacing differ from panel to panel. */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+
   /* Radii */
+  --radius-sm: 4px;
   --radius-btn: 8px;
   --radius-card: 12px;
   --radius-modal: 16px;
@@ -88,6 +118,10 @@ body {
   --color-danger: #ff3b30;
   --shadow-subtle: 0 2px 8px rgba(0, 0, 0, 0.08);
   --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12);
+  --color-surface-hover: rgba(0, 0, 0, 0.04);
+  --color-surface-active: rgba(0, 0, 0, 0.08);
+  --color-surface-sunken: rgba(0, 0, 0, 0.03);
+  --color-text-tertiary: #8e8e93;
 }
 
 /* ─── Glass Effect ─── */
