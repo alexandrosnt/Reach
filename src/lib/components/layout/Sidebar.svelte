@@ -214,6 +214,21 @@
 		}
 	}
 
+	/* On a phone a 240px sidebar beside the terminal left the terminal 149px of a
+	   390px screen — 62% of the display spent on navigation. Below 700px the
+	   sidebar stops taking a column and overlays the content as a drawer, so the
+	   terminal gets the full width and the existing collapse control opens and
+	   closes the drawer. */
+	@media (max-width: 700px) {
+		.sidebar:not(.collapsed) {
+			position: absolute;
+			inset: 0 auto 0 0;
+			z-index: 20;
+			max-width: 85vw;
+			box-shadow: var(--shadow-elevated);
+		}
+	}
+
 	/* Finger-sized hit targets where there is no mouse. */
 	@media (pointer: coarse) {
 		.nav-btn {
