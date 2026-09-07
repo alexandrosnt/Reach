@@ -199,6 +199,7 @@
 	}
 
 	.app-body {
+		position: relative;
 		display: flex;
 		overflow: hidden;
 	}
