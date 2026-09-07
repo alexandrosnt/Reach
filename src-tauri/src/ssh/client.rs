@@ -913,6 +913,7 @@ pub async fn exec_on_connection(
     channel.exec(true, command).await
         .map_err(|e| SshError::ChannelError(format!("{}", e)))?;
     let mut output = String::new();
+    let mut decoder = crate::text::Utf8Stream::new();
     let mut got_eof = false;
     let mut got_exit = false;
     loop {
@@ -924,7 +925,7 @@ pub async fn exec_on_connection(
 
         match msg {
             Ok(Some(ChannelMsg::Data { ref data })) => {
-                output.push_str(&String::from_utf8_lossy(data));
+                output.push_str(&decoder.push(data));
             }
             Ok(Some(ChannelMsg::ExtendedData { .. })) => {
                 // stderr — skip
@@ -963,6 +964,8 @@ pub async fn exec_on_connection_with_exit_code(
     let mut stdout = String::new();
     let mut stderr = String::new();
     let mut exit_code: i32 = -1;
+    let mut out_decoder = crate::text::Utf8Stream::new();
+    let mut err_decoder = crate::text::Utf8Stream::new();
     let mut got_eof = false;
     let mut got_exit = false;
 
@@ -974,10 +977,10 @@ pub async fn exec_on_connection_with_exit_code(
 
         match msg {
             Ok(Some(ChannelMsg::Data { ref data })) => {
-                stdout.push_str(&String::from_utf8_lossy(data));
+                stdout.push_str(&out_decoder.push(data));
             }
             Ok(Some(ChannelMsg::ExtendedData { ref data, .. })) => {
-                stderr.push_str(&String::from_utf8_lossy(data));
+                stderr.push_str(&err_decoder.push(data));
             }
             Ok(Some(ChannelMsg::Eof)) => {
                 got_eof = true;
@@ -1026,6 +1029,8 @@ pub async fn exec_on_connection_streaming(
     let mut exit_code: i32 = -1;
     let mut got_eof = false;
     let mut got_exit = false;
+    let mut out_decoder = crate::text::Utf8Stream::new();
+    let mut err_decoder = crate::text::Utf8Stream::new();
 
     loop {
         let msg = tokio::time::timeout(
@@ -1035,7 +1040,10 @@ pub async fn exec_on_connection_streaming(
 
         match msg {
             Ok(Some(ChannelMsg::Data { ref data })) => {
-                let text = String::from_utf8_lossy(data).to_string();
+                let text = out_decoder.push(data);
+                if text.is_empty() {
+                    continue;
+                }
                 let _ = app_handle.emit(
                     &output_event,
                     StreamingOutputEvent {
@@ -1046,7 +1054,10 @@ pub async fn exec_on_connection_streaming(
                 );
             }
             Ok(Some(ChannelMsg::ExtendedData { ref data, .. })) => {
-                let text = String::from_utf8_lossy(data).to_string();
+                let text = err_decoder.push(data);
+                if text.is_empty() {
+                    continue;
+                }
                 let _ = app_handle.emit(
                     &output_event,
                     StreamingOutputEvent {
@@ -1289,6 +1300,13 @@ async fn ssh_session_task(
     let data_event = format!("ssh-data-{}", connection_id);
     let exit_event = format!("ssh-exit-{}", connection_id);
 
+    // Remote output arrives in arbitrary packet-sized chunks, so a
+    // multi-byte character can straddle two of them. Decode as a stream,
+    // not per chunk. stdout and stderr are independent streams and each
+    // needs its own carry-over.
+    let mut out_decoder = crate::text::Utf8Stream::new();
+    let mut err_decoder = crate::text::Utf8Stream::new();
+
     // Hold remote output until the frontend signals it's listening
     // (SessionCommand::Ready) so the motd/banner emitted before the terminal
     // mounts isn't dropped. A safety cap flushes anyway if Ready never arrives.
@@ -1324,10 +1342,16 @@ async fn ssh_session_task(
             msg = channel.wait() => {
                 match msg {
                     Some(ChannelMsg::Data { ref data }) => {
-                        deliver!(String::from_utf8_lossy(data).to_string());
+                        let text = out_decoder.push(data);
+                        if !text.is_empty() {
+                            deliver!(text);
+                        }
                     }
                     Some(ChannelMsg::ExtendedData { ref data, .. }) => {
-                        deliver!(String::from_utf8_lossy(data).to_string());
+                        let text = err_decoder.push(data);
+                        if !text.is_empty() {
+                            deliver!(text);
+                        }
                     }
                     Some(ChannelMsg::ExitStatus { exit_status }) => {
                         tracing::info!("SSH '{}' exited with status {}", connection_id, exit_status);
@@ -1374,6 +1398,12 @@ async fn ssh_session_task(
                 }
             }
         }
+    }
+
+    // The stream ended; surface any bytes held back mid-character rather
+    // than swallowing them.
+    for tail in [out_decoder.flush(), err_decoder.flush()].into_iter().flatten() {
+        let _ = app_handle.emit(&data_event, &tail);
     }
 
     if let Err(e) = app_handle.emit(&exit_event, ()) {
