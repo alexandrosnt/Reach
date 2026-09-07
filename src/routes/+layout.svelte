@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { applyTheme, themeState, DARK, LIGHT } from '$lib/state/theme.svelte';
 	import type { Snippet } from 'svelte';
 	import '../app.css';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
@@ -54,16 +55,26 @@
 	// font resolves from what the OS has installed (JetBrains Mono is bundled
 	// via app.css @font-face), falling back to `monospace`.
 
+	// Resolve the setting to an actual theme and apply it. Previously this only
+	// toggled a class, so the palette lived in two places (CSS for the app,
+	// hardcoded JS for the terminal) and could not be extended past two options.
 	$effect(() => {
-		const theme = settings.theme;
-		const root = document.documentElement;
-		root.classList.remove('dark', 'light');
+		const setting = settings.theme;
+		const themeId = settings.themeId;
 
-		if (theme === 'system') {
+		// An installed theme wins; otherwise fall back to the light/dark/system
+		// setting so existing preferences keep working.
+		const chosen = themeId ? themeState.all.find((t) => t.id === themeId) : undefined;
+		if (chosen) {
+			applyTheme(chosen);
+			return;
+		}
+
+		if (setting === 'system') {
 			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-			root.classList.add(prefersDark ? 'dark' : 'light');
+			applyTheme(prefersDark ? DARK : LIGHT);
 		} else {
-			root.classList.add(theme);
+			applyTheme(setting === 'light' ? LIGHT : DARK);
 		}
 	});
 </script>
