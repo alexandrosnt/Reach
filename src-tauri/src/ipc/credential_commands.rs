@@ -96,7 +96,11 @@ pub async fn credential_lock(state: State<'_, AppState>) -> Result<(), String> {
 #[tracing::instrument(skip(state))]
 pub async fn credential_has_master_password(state: State<'_, AppState>) -> Result<bool, String> {
     let manager = state.vault_manager.lock().await;
-    Ok(manager.has_identity().await)
+    // Deliberately not has_identity(): that only checks the identity file
+    // exists. An identity created before the issue-25 fix has no
+    // password-encrypted key at all, and reporting "password set" for it told
+    // the user they had a recovery path they did not have (issue #30).
+    Ok(manager.has_password().await)
 }
 
 /// Save an encrypted password for a session. O(1) upsert.

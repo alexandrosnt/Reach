@@ -226,6 +226,7 @@
   "ai.copied": "已复制！",
 
   "vault.unlock": "解锁保险库",
+  "vault.no_password_warning": "未设置主密码。保管库只能通过系统钥匙串打开 — 请在“设置 > 安全”中设置密码。",
   "vault.enter_password": "输入你的主密码...",
   "vault.master_password": "主密码",
   "vault.unlocking": "解锁中...",
