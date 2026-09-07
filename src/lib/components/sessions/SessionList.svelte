@@ -871,9 +871,25 @@
 		overflow: hidden;
 	}
 
+	/* Three equal columns forced "Import SSH Config" to wrap onto three lines and
+	   pushed all three buttons to 61px tall. Quick Connect is the primary action,
+	   so it gets its own full-width row and the two secondary actions share the
+	   next one — the sidebar has vertical room to spare. */
 	.actions-row {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 4px;
+	}
+
+	.actions-row .quick-connect-btn {
+		flex: 1 1 100%;
+		justify-content: center;
+	}
+
+	.actions-row .save-session-btn {
+		flex: 1 1 calc(50% - 2px);
+		min-width: 0;
+		justify-content: center;
 	}
 
 

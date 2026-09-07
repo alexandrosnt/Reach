@@ -90,6 +90,7 @@
 	}
 
 	.session-card {
+		position: relative;
 		display: flex;
 		align-items: center;
 		gap: 3px;
@@ -155,16 +156,47 @@
 		border-radius: 4px;
 	}
 
+	/* These buttons were already meant to be hover-only, but `opacity: 0` hides
+	   them without giving their width back — they kept reserving ~76px of a
+	   ~209px row, which is why session names rendered as "prod…" even on a wide
+	   monitor. Taking them out of flow lets the name use the full row at rest
+	   and the buttons fade in over the right edge on hover. */
 	.session-actions {
+		position: absolute;
+		right: 6px;
+		top: 50%;
+		transform: translateY(-50%);
 		display: flex;
 		align-items: center;
 		gap: 2px;
+		padding-left: 20px;
 		opacity: 0;
+		pointer-events: none;
+		/* Fade the name out behind the buttons rather than letting the two overlap. */
+		background: linear-gradient(
+			to right,
+			transparent 0,
+			var(--color-bg-secondary) 20px
+		);
 		transition: opacity var(--duration-default) var(--ease-default);
 	}
 
-	.session-card:hover .session-actions {
+	.session-card:hover .session-actions,
+	.session-card:focus-within .session-actions {
 		opacity: 1;
+		pointer-events: auto;
+	}
+
+	/* No hover on touch, so the actions have to stay put and visible. */
+	@media (pointer: coarse) {
+		.session-actions {
+			position: static;
+			transform: none;
+			padding-left: 0;
+			background: none;
+			opacity: 1;
+			pointer-events: auto;
+		}
 	}
 
 	.action-btn {
