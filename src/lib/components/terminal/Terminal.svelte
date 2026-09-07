@@ -93,6 +93,8 @@
 
 	let unlistenData: UnlistenFn | undefined;
 	let unlistenExit: UnlistenFn | undefined;
+	let unlistenMenuCopy: UnlistenFn | undefined;
+	let unlistenMenuPaste: UnlistenFn | undefined;
 	let resizeObserver: ResizeObserver | undefined;
 
 	// Snippet autocomplete (Trie-based, ghost text via xterm Decoration API)
@@ -542,8 +544,6 @@
 			// user clicks Edit > Copy / Paste since the menu items have no
 			// keyboard accelerators — Cmd+C / Cmd+V are handled by xterm's
 			// attachCustomKeyEventHandler below).
-			let unlistenMenuCopy: UnlistenFn | undefined;
-			let unlistenMenuPaste: UnlistenFn | undefined;
 			listen('menu-copy', () => {
 				if (term.hasSelection()) void copySelection(term);
 			}).then((fn) => { unlistenMenuCopy = fn; });
