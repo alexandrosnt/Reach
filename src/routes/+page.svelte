@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getTabs, getActiveTab, updateTabTitle, updateTabConnection } from '$lib/state/tabs.svelte';
+	import { getTabs, getActiveTab, updateTabTitle, updateTabConnection, createTab } from '$lib/state/tabs.svelte';
 	import { getActivePage } from '$lib/state/navigation.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { ptySpawn, ptyClose } from '$lib/ipc/pty';
@@ -164,6 +164,9 @@
 					</svg>
 					<h2 class="empty-title">{t('terminal.title')}</h2>
 					<p class="empty-subtitle">{t('terminal.empty_hint')}</p>
+					<button class="empty-action" onclick={() => createTab('local')}>
+						{t('terminal.new_tab')}
+					</button>
 				</div>
 			{:else}
 				<div class="terminal-area">
@@ -219,29 +222,66 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		gap: 12px;
-		padding: 32px;
+		gap: var(--space-3);
+		padding: var(--space-6);
 		flex: 1;
 	}
 
 	.empty-icon {
-		color: var(--color-text-secondary);
-		opacity: 0.4;
+		color: var(--color-text-tertiary);
 	}
 
+	/* Was --color-text-secondary at 40%/60% opacity: a grey heading on a grey
+	   ground, which reads as disabled rather than as a title. */
 	.empty-title {
 		margin: 0;
-		font-size: 1.5rem;
-		font-weight: 500;
-		color: var(--color-text-secondary);
+		font-size: var(--text-xl);
+		font-weight: 600;
+		color: var(--color-text-primary);
 		letter-spacing: -0.01em;
 	}
 
 	.empty-subtitle {
 		margin: 0;
-		font-size: 0.8125rem;
+		font-size: var(--text-sm);
 		color: var(--color-text-secondary);
-		opacity: 0.6;
+		text-align: center;
+	}
+
+	.empty-action {
+		margin-top: var(--space-1);
+		padding: var(--space-2) var(--space-4);
+		font-family: var(--font-sans);
+		font-size: var(--text-sm);
+		font-weight: 500;
+		color: #fff;
+		background-color: var(--color-accent);
+		border: none;
+		border-radius: var(--radius-btn);
+		cursor: pointer;
+		transition: background-color var(--duration-default) var(--ease-default);
+	}
+
+	.empty-action:hover {
+		background-color: var(--color-accent-hover);
+	}
+
+	/* A 48px icon plus a 20px heading is most of a phone's terminal pane. Shrink
+	   the decoration and keep the action. */
+	@media (max-width: 600px), (max-height: 480px) {
+		.empty-state {
+			gap: var(--space-2);
+			padding: var(--space-4);
+		}
+
+		.empty-icon {
+			width: 32px;
+			height: 32px;
+		}
+
+		.empty-title {
+			font-size: var(--text-lg);
+		}
 	}
 
 	.terminal-area {
