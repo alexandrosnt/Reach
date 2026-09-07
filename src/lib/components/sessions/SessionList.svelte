@@ -886,10 +886,19 @@
 		justify-content: center;
 	}
 
+	/* Side by side, "Import SSH Config" still wrapped onto two lines and stood
+	   44px tall next to a 28px sibling. There is vertical room in this column;
+	   there is not horizontal room for two labels of that length. Full-width
+	   rows, so nothing wraps and the labels stay legible. */
 	.actions-row .save-session-btn {
-		flex: 1 1 calc(50% - 2px);
+		flex: 1 1 100%;
 		min-width: 0;
 		justify-content: center;
+		white-space: nowrap;
+	}
+
+	.actions-row .quick-connect-btn {
+		white-space: nowrap;
 	}
 
 
