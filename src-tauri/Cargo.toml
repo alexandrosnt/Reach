@@ -12,7 +12,6 @@ crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
-openssl-sys = { version = "0.9", features = ["vendored"] }
 
 [dependencies]
 tauri = { version = "2", features = ["tray-icon", "image-png"] }
@@ -27,10 +26,6 @@ anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1", features = ["v4"] }
-
-# Transitive dep openssl-sys (via ssh2-config -> git2 -> libgit2-sys) needs
-# dev headers. Vendored builds without system OpenSSL.
-openssl-sys = { version = "0.9", features = ["vendored"] }
 
 # SSH
 russh = { version = "0.46", default-features = false }
@@ -84,6 +79,22 @@ serialport = "4"
 tauri-plugin-autostart = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-single-instance = "2"
+
+# libgit2-sys links OpenSSL on Linux. It reaches us through ssh2-config's
+# build-dependency on git2, so the feature has to be unified in *both* the
+# normal and build-dependency graphs — hence the two entries. `vendored` builds
+# OpenSSL from source because the CI image installs no libssl-dev.
+#
+# Scoped to Linux deliberately. Windows does not need OpenSSL at all here, and
+# declaring it unconditionally broke every Windows build: the vendored build
+# shells out to perl, and Git Bash's MSYS perl lacks Locale::Maketext::Simple,
+# so `cargo build` failed before compiling a single line of this crate.
+# macOS uses SecureTransport rather than OpenSSL.
+[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+openssl-sys = { version = "0.9", features = ["vendored"] }
+
+[target.'cfg(all(unix, not(target_os = "macos")))'.build-dependencies]
+openssl-sys = { version = "0.9", features = ["vendored"] }
 
 [features]
 custom-protocol = ["tauri/custom-protocol"]
