@@ -216,6 +216,9 @@ fn pty_reader_loop(
     let data_event = format!("pty-data-{}", id);
     let exit_event = format!("pty-exit-{}", id);
     let mut buf = [0u8; 4096];
+    // Reads cut at 4096 bytes regardless of character boundaries, so decode
+    // as a stream rather than per chunk.
+    let mut decoder = crate::text::Utf8Stream::new();
 
     loop {
         match reader.read(&mut buf) {
@@ -225,7 +228,10 @@ fn pty_reader_loop(
                 break;
             }
             Ok(n) => {
-                let payload = String::from_utf8_lossy(&buf[..n]).to_string();
+                let payload = decoder.push(&buf[..n]);
+                if payload.is_empty() {
+                    continue;
+                }
                 if let Err(e) = app_handle.emit(&data_event, payload) {
                     tracing::error!("Failed to emit '{}': {}", data_event, e);
                     break;
@@ -236,6 +242,10 @@ fn pty_reader_loop(
                 break;
             }
         }
+    }
+
+    if let Some(tail) = decoder.flush() {
+        let _ = app_handle.emit(&data_event, tail);
     }
 
     // Notify frontend that the PTY has exited.
