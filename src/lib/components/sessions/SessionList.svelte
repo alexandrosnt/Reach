@@ -14,7 +14,7 @@
 	import { t } from '$lib/state/i18n.svelte';
 	import { untrack } from 'svelte';
 	import { positionMenu } from '$lib/utils/positionMenu';
-	import { vaultState, checkState, initIdentity, refreshVaults, importIdentity } from '$lib/state/vault.svelte';
+	import { vaultState, checkState, initIdentity, importIdentity } from '$lib/state/vault.svelte';
 
 	let showQuickConnect = $state(false);
 	let showEditor = $state(false);
@@ -475,17 +475,34 @@
 		}
 	}
 
-	// Load sessions and vaults on mount (auto-unlock via OS keychain)
+	// Load sessions and vaults on mount (auto-unlock via OS keychain).
+	//
+	// Every path out of here must clear `loading`. Without the catch, a single
+	// rejected vault IPC left the spinner up forever and the session list never
+	// appeared — the panel looked like it was loading endlessly. That is easy to
+	// hit in normal use: open a session, use the file manager (which reads
+	// credentials out of the vault), then switch back to Sessions, which
+	// remounts this component and re-runs the whole check against a vault that
+	// is busy.
+	//
+	// checkState() already refreshes the vault list once it unlocks, so the
+	// second refreshVaults() that used to be here was a redundant round-trip and
+	// one more thing that could reject.
 	$effect(() => {
 		untrack(() => {
-			checkState().then(async () => {
-				if (!vaultState.locked) {
-					await refreshVaults();
-					await loadSessions();
-				} else {
+			checkState()
+				.then(async () => {
+					if (!vaultState.locked) {
+						await loadSessions();
+					} else {
+						loading = false;
+					}
+				})
+				.catch((err) => {
+					console.error('Failed to load the session list:', err);
+					addToast(String(err), 'error');
 					loading = false;
-				}
-			});
+				});
 		});
 	});
 </script>
