@@ -11,6 +11,7 @@
 	import { createTab, updateTabOs } from '$lib/state/tabs.svelte';
 	import { getSettings } from '$lib/state/settings.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { hasMasterPassword } from '$lib/ipc/credentials';
 	import { t } from '$lib/state/i18n.svelte';
 	import { untrack } from 'svelte';
 	import { positionMenu } from '$lib/utils/positionMenu';
@@ -245,6 +246,25 @@
 			console.error('Failed to load sessions:', err);
 		} finally {
 			loading = false;
+		}
+		void warnIfNoMasterPassword();
+	}
+
+	// Identities created before the issue-25 fix never persisted a
+	// password-encrypted copy of the secret key, so the OS keychain is the only
+	// thing that can open them. If that entry is ever lost the vault is
+	// unrecoverable — the failure reported in issue #30. Say so while the vault
+	// is still open and the user can still act on it. Once per launch.
+	let warnedNoPassword = false;
+	async function warnIfNoMasterPassword(): Promise<void> {
+		if (warnedNoPassword) return;
+		try {
+			if (!(await hasMasterPassword())) {
+				warnedNoPassword = true;
+				addToast(t('vault.no_password_warning'), 'error');
+			}
+		} catch {
+			// A diagnostic must never break loading the session list.
 		}
 	}
 

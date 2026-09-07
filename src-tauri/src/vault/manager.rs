@@ -400,6 +400,28 @@ impl VaultManager {
         self.app_dir.join("vault_identity.json").exists()
     }
 
+    /// Whether a password can actually open this identity.
+    ///
+    /// Distinct from [`has_identity`]: an identity created before the fix for
+    /// issue #25 has the password-encrypted copy of the secret key missing,
+    /// because it was computed at init and then discarded. Those vaults open
+    /// only via the OS keychain, so the day the keychain entry goes away the
+    /// data is unreachable — which is what issue #30 reports.
+    ///
+    /// Reports false for such an identity so the UI can offer to set a
+    /// password while the vault is still open, rather than claiming one is
+    /// already configured.
+    pub async fn has_password(&self) -> bool {
+        let path = self.app_dir.join("vault_identity.json");
+        let Ok(data) = tokio::fs::read_to_string(&path).await else {
+            return false;
+        };
+        let Ok(stored) = serde_json::from_str::<StoredIdentity>(&data) else {
+            return false;
+        };
+        !stored.encrypted_key.is_empty() && !stored.nonce.is_empty()
+    }
+
     /// Get public key (base64).
     pub fn get_public_key(&self) -> Option<String> {
         self.identity_public_key.map(|pk| BASE64.encode(pk))
@@ -2635,6 +2657,44 @@ mod password_tests {
         let mut mgr6 = VaultManager::new(dir.clone());
         let old = mgr6.unlock("hunter2hunter2").await;
         assert!(old.is_err() || matches!(old, Ok(false)));
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// Issue #30: an identity created before the issue-25 fix has no
+    /// password-encrypted key, so no password can open it — but has_identity()
+    /// is true, and the UI used that to report "password set". The user was
+    /// told they had a recovery path that did not exist.
+    #[tokio::test]
+    async fn has_password_is_false_when_no_password_material_was_persisted() {
+        let dir = tmp_dir("legacy-identity");
+
+        let mut mgr = VaultManager::new(dir.clone());
+        mgr.init_identity("a-real-password").await.unwrap();
+        assert!(mgr.has_identity().await);
+        assert!(
+            mgr.has_password().await,
+            "a freshly created identity does have password material"
+        );
+
+        // Reproduce a pre-fix identity: the file exists, but the
+        // password-encrypted key was discarded rather than written.
+        let path = dir.join("vault_identity.json");
+        let data = std::fs::read_to_string(&path).unwrap();
+        let mut stored: StoredIdentity = serde_json::from_str(&data).unwrap();
+        stored.encrypted_key = String::new();
+        stored.nonce = String::new();
+        std::fs::write(&path, serde_json::to_string(&stored).unwrap()).unwrap();
+
+        let mgr2 = VaultManager::new(dir.clone());
+        assert!(
+            mgr2.has_identity().await,
+            "the identity file is still there, which is why has_identity() misled the UI"
+        );
+        assert!(
+            !mgr2.has_password().await,
+            "no password can open this vault, so has_password() must say so"
+        );
 
         let _ = std::fs::remove_dir_all(&dir);
     }

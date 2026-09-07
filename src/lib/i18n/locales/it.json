@@ -227,6 +227,7 @@
   "ai.copied": "Copiato!",
 
   "vault.unlock": "Sblocca Vault",
+  "vault.no_password_warning": "Nessuna password principale impostata. La cassaforte può essere aperta solo dal portachiavi di sistema — impostane una in Impostazioni > Sicurezza.",
   "vault.enter_password": "Inserisci la tua password principale...",
   "vault.master_password": "Password Principale",
   "vault.unlocking": "Sblocco...",

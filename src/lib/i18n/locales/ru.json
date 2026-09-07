@@ -215,6 +215,7 @@
   "ai.copy_message": "Copy message",
   "ai.copied": "Copied!",
   "vault.unlock": "Unlock Vault",
+  "vault.no_password_warning": "Мастер-пароль не задан. Хранилище можно открыть только через системную связку ключей — задайте пароль в Настройках > Безопасность.",
   "vault.enter_password": "Enter your master password...",
   "vault.master_password": "Master Password",
   "vault.unlocking": "Unlocking...",
