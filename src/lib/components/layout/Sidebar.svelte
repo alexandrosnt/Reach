@@ -42,7 +42,7 @@
 		} catch {}
 	}
 
-	let sections = $derived<Array<{ id: Section; label: string; icon: string; beta?: boolean; isNew?: boolean }>>([
+	let sections = $derived<Array<{ id: Section; label: string; icon: string }>>([
 		{
 			id: 'sessions',
 			label: t('sidebar.sessions'),
@@ -61,15 +61,12 @@
 		{
 			id: 'snippets',
 			label: t('sidebar.snippets'),
-			icon: 'M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2M9 2h6a1 1 0 011 1v1a1 1 0 01-1 1H9a1 1 0 01-1-1V3a1 1 0 011-1z',
-			isNew: true
+			icon: 'M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2M9 2h6a1 1 0 011 1v1a1 1 0 01-1 1H9a1 1 0 01-1-1V3a1 1 0 011-1z'
 		},
 		{
 			id: 'plugins',
 			label: t('sidebar.plugins'),
-			icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z',
-			beta: true,
-			isNew: true
+			icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z'
 		}
 	]);
 
@@ -111,7 +108,7 @@
 	}
 </script>
 
-<aside class="sidebar" class:no-transition={dragging} style:width="{collapsed ? COLLAPSED_WIDTH : sidebarWidth}px">
+<aside class="sidebar" class:collapsed class:no-transition={dragging} style:width="{collapsed ? COLLAPSED_WIDTH : sidebarWidth}px">
 	<nav class="sidebar-nav">
 		{#each sections as section (section.id)}
 			<button
@@ -133,12 +130,6 @@
 
 				{#if !collapsed}
 					<span class="nav-label">{section.label}</span>
-					{#if section.beta || section.isNew}
-						<span class="badge-group">
-							{#if section.beta}<span class="beta-badge">BETA</span>{/if}
-							{#if section.isNew}<span class="new-badge">NEW</span>{/if}
-						</span>
-					{/if}
 				{/if}
 			</button>
 		{/each}
@@ -207,6 +198,33 @@
 		flex-shrink: 0;
 	}
 
+	/* The width is remembered in localStorage and applied inline, so a sidebar
+	   dragged to 600px on a desktop would still be 600px on a phone, leaving no
+	   room for the terminal. Cap it against the viewport instead of the stored
+	   value; the inline width still wins whenever it is the smaller of the two. */
+	@media (max-width: 900px) {
+		.sidebar:not(.collapsed) {
+			max-width: 55vw;
+		}
+	}
+
+	@media (max-width: 600px) {
+		.sidebar:not(.collapsed) {
+			max-width: 75vw;
+		}
+	}
+
+	/* Finger-sized hit targets where there is no mouse. */
+	@media (pointer: coarse) {
+		.nav-btn {
+			padding: 9px 10px;
+		}
+
+		.resize-handle {
+			width: 12px;
+		}
+	}
+
 	.sidebar-nav {
 		display: flex;
 		flex-direction: column;
@@ -248,38 +266,8 @@
 		text-overflow: ellipsis;
 	}
 
-	.badge-group {
-		margin-left: auto;
-		display: flex;
-		gap: 3px;
-		flex-shrink: 0;
-	}
 
-	.beta-badge {
-		padding: 1px 4px;
-		font-size: 0.5rem;
-		font-weight: 700;
-		letter-spacing: 0.05em;
-		color: rgb(255, 159, 10);
-		background-color: rgba(255, 159, 10, 0.12);
-		border: 1px solid rgba(255, 159, 10, 0.25);
-		border-radius: 3px;
-		line-height: 1.2;
-		flex-shrink: 0;
-	}
 
-	.new-badge {
-		padding: 1px 4px;
-		font-size: 0.5rem;
-		font-weight: 700;
-		letter-spacing: 0.05em;
-		color: rgb(48, 209, 88);
-		background-color: rgba(48, 209, 88, 0.12);
-		border: 1px solid rgba(48, 209, 88, 0.25);
-		border-radius: 3px;
-		line-height: 1.2;
-		flex-shrink: 0;
-	}
 
 	.sidebar-content {
 		flex: 1;
