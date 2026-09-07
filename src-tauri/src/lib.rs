@@ -10,6 +10,7 @@ pub mod session;
 pub mod sftp;
 pub mod ssh;
 pub mod state;
+pub mod text;
 pub mod tofu;
 pub mod toolchain;
 pub mod tunnel;
