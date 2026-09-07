@@ -579,7 +579,6 @@
 					/>
 				</svg>
 				{t('session.import_ssh_config')}
-				<span class="beta-badge">BETA</span>
 			</button>
 		</div>
 
@@ -840,16 +839,6 @@
 		gap: 4px;
 	}
 
-	.beta-badge {
-		padding: 1px 4px;
-		font-size: 0.45rem;
-		font-weight: 700;
-		letter-spacing: 0.05em;
-		color: #fff;
-		background: linear-gradient(135deg, #ff6b35, #f7c948);
-		border-radius: 3px;
-		line-height: 1.4;
-	}
 
 	.quick-connect-btn,
 	.save-session-btn {
