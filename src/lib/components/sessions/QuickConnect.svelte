@@ -179,7 +179,6 @@
 			<label class="jump-toggle">
 				<input type="checkbox" bind:checked={jumpEnabled} disabled={connecting} />
 				<span class="jump-toggle-text">{t('session.jump_host_enable')}</span>
-				<span class="beta-badge">BETA</span>
 			</label>
 
 			{#if jumpEnabled}
@@ -414,16 +413,6 @@
 		color: var(--color-text-primary);
 	}
 
-	.beta-badge {
-		padding: 1px 5px;
-		font-size: 0.5rem;
-		font-weight: 700;
-		letter-spacing: 0.05em;
-		color: #fff;
-		background: linear-gradient(135deg, #ff6b35, #f7c948);
-		border-radius: 3px;
-		line-height: 1.4;
-	}
 
 	.jump-hint {
 		margin: 0;

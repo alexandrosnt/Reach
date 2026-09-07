@@ -169,6 +169,7 @@
 			onclick={() => (activeTab = 'marketplace')}
 		>
 			{t('plugin.tab_marketplace')}
+			<span class="new-badge">NEW</span>
 		</button>
 	</div>
 
@@ -251,6 +252,10 @@
 	}
 
 	.tab-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		gap: 5px;
 		flex: 1;
 		padding: 7px 10px;
 		font-family: var(--font-sans);
@@ -266,6 +271,16 @@
 		transition:
 			color var(--duration-default) var(--ease-default),
 			border-color var(--duration-default) var(--ease-default);
+	}
+
+	.new-badge {
+		padding: 1px 4px;
+		font-size: 0.5rem;
+		font-weight: 700;
+		letter-spacing: 0.04em;
+		color: #fff;
+		background-color: var(--color-accent);
+		border-radius: 3px;
 	}
 
 	.tab-btn:hover {
