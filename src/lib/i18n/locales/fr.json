@@ -227,6 +227,7 @@
   "ai.copied": "Copie !",
 
   "vault.unlock": "Deverrouiller le coffre",
+  "vault.no_password_warning": "Aucun mot de passe principal défini. Le coffre ne peut être ouvert que par le trousseau du système — définissez-en un dans Paramètres > Sécurité.",
   "vault.enter_password": "Entrez votre mot de passe principal...",
   "vault.master_password": "Mot de passe principal",
   "vault.unlocking": "Deverrouillage...",

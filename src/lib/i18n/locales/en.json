@@ -227,6 +227,7 @@
   "ai.copied": "Copied!",
 
   "vault.unlock": "Unlock Vault",
+  "vault.no_password_warning": "No master password is set. Your vault can only be opened by the OS keychain — set a password in Settings > Security so you can still get in if that is lost.",
   "vault.enter_password": "Enter your master password...",
   "vault.master_password": "Master Password",
   "vault.unlocking": "Unlocking...",
