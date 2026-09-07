@@ -157,7 +157,10 @@ impl VaultManager {
 
         // Store secret key in OS keychain
         if let Err(e) = store_key_in_keychain(&user_uuid, secret_key.as_bytes()) {
-            tracing::warn!("Failed to store key in keychain: {}", e);
+            tracing::error!(
+                "Could not store the vault key in the OS keychain: {}. Auto-unlock will not work on the next launch; your password is the only way back in.",
+                e
+            );
         }
 
         // Encrypt secret key with password for backup and persist it —
@@ -246,7 +249,10 @@ impl VaultManager {
 
         // Store in keychain for auto-unlock
         if let Err(e) = store_key_in_keychain(&stored.user_uuid, secret_key.as_bytes()) {
-            tracing::warn!("Failed to store key in keychain: {}", e);
+            tracing::error!(
+                "Could not store the vault key in the OS keychain: {}. Auto-unlock will not work on the next launch.",
+                e
+            );
         }
 
         // Load personal sync config
@@ -1933,7 +1939,10 @@ impl VaultManager {
 
         // Store in keychain
         if let Err(e) = store_key_in_keychain(&user_uuid, secret_key.as_bytes()) {
-            tracing::warn!("Failed to store key in keychain: {}", e);
+            tracing::error!(
+                "Could not store the vault key in the OS keychain: {}. Auto-unlock will not work on the next launch; your password is the only way back in.",
+                e
+            );
         }
 
         self.save_identity(&salt, None).await?;
@@ -2557,12 +2566,15 @@ fn store_key_in_keychain(user_uuid: &str, key: &[u8]) -> Result<(), VaultError> 
 fn get_key_from_keychain(user_uuid: &str) -> Result<Vec<u8>, VaultError> {
     let entry = keyring::Entry::new("reach-vault", user_uuid)
         .map_err(|e| VaultError::KeychainError(e.to_string()))?;
-    let password = entry.get_password().map_err(|e| {
-        if e.to_string().contains("No matching entry") {
-            VaultError::KeychainKeyMissing
-        } else {
-            VaultError::KeychainError(e.to_string())
+    let password = entry.get_password().map_err(|e| match e {
+        keyring::Error::NoEntry => VaultError::KeychainKeyMissing,
+        keyring::Error::NoStorageAccess(ref inner) => {
+            VaultError::KeychainUnavailable(inner.to_string())
         }
+        keyring::Error::PlatformFailure(ref inner) => {
+            VaultError::KeychainUnavailable(inner.to_string())
+        }
+        other => VaultError::KeychainError(other.to_string()),
     })?;
     BASE64
         .decode(&password)

@@ -65,6 +65,9 @@ pub enum VaultError {
     #[error("Keychain key missing - your data exists but the encryption key was lost from the OS keychain. Use 'Import Identity' to restore from backup.")]
     KeychainKeyMissing,
 
+    #[error("No OS keychain available ({0}). On Linux this usually means no Secret Service provider is running - start gnome-keyring-daemon or kwallet, or unlock the vault with your password instead.")]
+    KeychainUnavailable(String),
+
     #[error("Access denied: {0}")]
     AccessDenied(String),
 
