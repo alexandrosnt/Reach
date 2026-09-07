@@ -182,9 +182,13 @@
 <style>
 	.app-shell {
 		display: grid;
-		grid-template-rows: 38px 36px 1fr 24px;
+		grid-template-rows: var(--titlebar-h, 38px) var(--tabbar-h, 36px) 1fr var(--statusbar-h, 24px);
 		width: 100vw;
 		height: 100vh;
+		/* dvh tracks the *visible* viewport, so the status bar is not pushed
+		   under the on-screen keyboard or the mobile browser chrome. Declared
+		   after the vh fallback for engines that do not support it. */
+		height: 100dvh;
 		/* Keep the title/status bars clear of the device status & navigation
 		   bars on mobile. `env(safe-area-inset-*)` is 0 on desktop, so this is
 		   a no-op there (requires viewport-fit=cover, set in app.html). */
@@ -201,7 +205,18 @@
 
 	.main-content {
 		flex: 1;
+		min-width: 0;
 		overflow: auto;
 		background-color: var(--color-bg-primary);
+	}
+
+	/* Phones in landscape, and short desktop windows, have very little vertical
+	   room. Trim the fixed chrome so the terminal keeps a usable number of rows. */
+	@media (max-height: 480px) {
+		.app-shell {
+			--titlebar-h: 32px;
+			--tabbar-h: 30px;
+			--statusbar-h: 20px;
+		}
 	}
 </style>

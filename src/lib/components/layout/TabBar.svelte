@@ -245,4 +245,21 @@
 		background-color: var(--color-bg-secondary);
 		color: var(--color-text-primary);
 	}
+
+	/* 120px per tab overflows a phone at three tabs. Let them compress; the
+	   label already truncates with an ellipsis. */
+	@media (max-width: 600px) {
+		.tab {
+			min-width: 84px;
+			max-width: 140px;
+			padding: 0 6px 0 8px;
+		}
+	}
+
+	@media (pointer: coarse) {
+		.tab-close {
+			width: 24px;
+			height: 24px;
+		}
+	}
 </style>
