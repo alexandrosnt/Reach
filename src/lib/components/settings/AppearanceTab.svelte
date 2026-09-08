@@ -1,11 +1,85 @@
 <script lang="ts">
 	import { themeState, applyTheme, DARK, LIGHT } from '$lib/state/theme.svelte';
+	import { onMount } from 'svelte';
+	import { themeFetchRegistry, themeInstall, themeListInstalled, themeUninstall, type ThemeEntry } from '$lib/ipc/theme';
+	import { validateTheme } from '$lib/state/theme.svelte';
+	import { addToast } from '$lib/state/toasts.svelte';
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
 	const settings = getSettings();
 	let currentFont = $derived(settings.fontFamily || 'monospace');
 	let currentSize = $derived(settings.fontSize || 14);
+
+	let registry = $state<ThemeEntry[]>([]);
+	let registryError = $state<string | null>(null);
+	let loadingRegistry = $state(false);
+	let installingId = $state<string | null>(null);
+
+	let installedIds = $derived(new Set(themeState.installed.map((t) => t.id)));
+
+	/**
+	 * Load installed themes into the engine, then the registry. Installed themes
+	 * are re-validated here as well as in the backend: a theme file could have
+	 * been edited on disk since it was written.
+	 */
+	async function loadThemes(): Promise<void> {
+		try {
+			const docs = await themeListInstalled();
+			themeState.installed = docs.filter((d) => validateTheme(d).ok);
+		} catch (err) {
+			console.error('Could not read installed themes:', err);
+		}
+	}
+
+	async function loadRegistry(): Promise<void> {
+		loadingRegistry = true;
+		registryError = null;
+		try {
+			registry = await themeFetchRegistry();
+		} catch (err) {
+			registryError = String(err);
+		} finally {
+			loadingRegistry = false;
+		}
+	}
+
+	async function install(entry: ThemeEntry): Promise<void> {
+		installingId = entry.id;
+		try {
+			const doc = await themeInstall(entry);
+			const result = validateTheme(doc);
+			if (!result.ok) {
+				addToast(result.error, 'error');
+				return;
+			}
+			themeState.installed = [
+				...themeState.installed.filter((t) => t.id !== result.theme.id),
+				result.theme
+			];
+			addToast(t('themes.installed'), 'info');
+		} catch (err) {
+			addToast(String(err), 'error');
+		} finally {
+			installingId = null;
+		}
+	}
+
+	async function remove(id: string): Promise<void> {
+		try {
+			await themeUninstall(id);
+			themeState.installed = themeState.installed.filter((th) => th.id !== id);
+			// Fall back if the theme in use was the one removed.
+			if (settings.themeId === id) selectTheme(SYSTEM);
+		} catch (err) {
+			addToast(String(err), 'error');
+		}
+	}
+
+	onMount(() => {
+		loadThemes();
+		loadRegistry();
+	});
 
 	/** "System" follows the OS; every other entry is a real theme. */
 	const SYSTEM = '__system__';
@@ -122,6 +196,47 @@
 				</button>
 			{/each}
 		</div>
+	</div>
+
+	<div class="setting-section">
+		<div class="section-head">
+			<span class="section-label">{t('themes.marketplace')}</span>
+			<button class="link-btn" onclick={loadRegistry} disabled={loadingRegistry}>
+				{t('themes.refresh')}
+			</button>
+		</div>
+
+		{#if registryError}
+			<p class="registry-msg">{t('themes.error')}</p>
+			<p class="registry-detail">{registryError}</p>
+		{:else if registry.length === 0}
+			<p class="registry-msg">{t('themes.empty')}</p>
+		{:else}
+			<div class="theme-rows">
+				{#each registry as entry (entry.id)}
+					{@const isInstalled = installedIds.has(entry.id)}
+					<div class="theme-row">
+						<div class="row-info">
+							<span class="row-name">{entry.name}</span>
+							{#if entry.description}
+								<span class="row-desc">{entry.description}</span>
+							{/if}
+						</div>
+						{#if isInstalled}
+							<button class="row-btn" onclick={() => remove(entry.id)}>{t('themes.remove')}</button>
+						{:else}
+							<button
+								class="row-btn primary"
+								onclick={() => install(entry)}
+								disabled={installingId !== null}
+							>
+								{installingId === entry.id ? t('themes.installing') : t('themes.install')}
+							</button>
+						{/if}
+					</div>
+				{/each}
+			</div>
+		{/if}
 	</div>
 
 	<div class="setting-row">
@@ -249,6 +364,102 @@
 		width: 8px;
 		height: 8px;
 		border-radius: 50%;
+	}
+
+	.section-head {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: var(--space-2);
+	}
+
+	.link-btn {
+		padding: 0;
+		font-family: var(--font-sans);
+		font-size: var(--text-xs);
+		color: var(--color-accent);
+		background: none;
+		border: none;
+		cursor: pointer;
+	}
+
+	.link-btn:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+
+	.registry-msg {
+		margin: var(--space-2) 0 0;
+		font-size: var(--text-sm);
+		color: var(--color-text-secondary);
+	}
+
+	.registry-detail {
+		margin: var(--space-1) 0 0;
+		font-size: var(--text-xs);
+		color: var(--color-text-tertiary);
+	}
+
+	.theme-rows {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		margin-top: var(--space-2);
+	}
+
+	.theme-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-3);
+		padding: var(--space-2) var(--space-3);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-btn);
+		background: var(--color-bg-secondary);
+	}
+
+	.row-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		flex: 1;
+		min-width: 0;
+	}
+
+	.row-name {
+		font-size: var(--text-sm);
+		font-weight: 500;
+		color: var(--color-text-primary);
+	}
+
+	.row-desc {
+		font-size: var(--text-xs);
+		color: var(--color-text-secondary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.row-btn {
+		flex: none;
+		padding: var(--space-1) var(--space-3);
+		font-family: var(--font-sans);
+		font-size: var(--text-xs);
+		font-weight: 500;
+		color: var(--color-text-primary);
+		background: var(--color-surface-hover);
+		border: none;
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+	}
+
+	.row-btn.primary {
+		color: #fff;
+		background: var(--color-accent);
+	}
+
+	.row-btn:disabled {
+		opacity: 0.5;
+		cursor: default;
 	}
 
 	.theme-cards {
