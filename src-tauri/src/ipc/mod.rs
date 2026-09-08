@@ -14,6 +14,7 @@ pub mod ssh_commands;
 pub mod sshconfig_commands;
 pub mod ansible_commands;
 pub mod tofu_commands;
+pub mod theme_commands;
 pub mod toolchain_commands;
 pub mod tunnel_commands;
 pub mod vault_commands;
