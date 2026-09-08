@@ -178,7 +178,7 @@
 	}
 
 	.ui-btn:hover {
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--color-surface-active);
 	}
 
 	.ui-btn.primary {
@@ -252,7 +252,7 @@
 		display: inline-block;
 		width: 32px;
 		height: 18px;
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--color-surface-active);
 		border-radius: 9px;
 		flex-shrink: 0;
 		transition: background-color var(--duration-default) var(--ease-default);

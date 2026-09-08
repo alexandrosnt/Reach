@@ -141,7 +141,8 @@
 		el.style.fontSize = `${term.options.fontSize ?? 14}px`;
 		el.style.fontFamily = term.options.fontFamily || 'monospace';
 		el.style.letterSpacing = '0px';
-		el.style.color = 'rgba(255, 255, 255, 0.3)';
+		// Set from JS, so it never followed the theme; read the token instead.
+		el.style.color = 'var(--color-text-tertiary)';
 		el.style.pointerEvents = 'none';
 		el.style.whiteSpace = 'pre';
 		el.style.zIndex = '10';
@@ -691,7 +692,7 @@
 	.terminal-wrapper {
 		width: 100%;
 		height: 100%;
-		background: var(--bg-primary, #0a0a0a);
+		background: var(--bg-primary, var(--color-bg-primary));
 		position: relative;
 	}
 
@@ -708,7 +709,7 @@
 
 	.terminal-container :global(.xterm-viewport) {
 		scrollbar-width: thin;
-		scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+		scrollbar-color: var(--color-surface-strong) transparent;
 	}
 
 	.terminal-container :global(.xterm-viewport::-webkit-scrollbar) {
@@ -720,12 +721,12 @@
 	}
 
 	.terminal-container :global(.xterm-viewport::-webkit-scrollbar-thumb) {
-		background-color: rgba(255, 255, 255, 0.15);
+		background-color: var(--color-surface-strong);
 		border-radius: 3px;
 	}
 
 	.terminal-container :global(.xterm-viewport::-webkit-scrollbar-thumb:hover) {
-		background-color: rgba(255, 255, 255, 0.25);
+		background-color: var(--color-surface-strong);
 	}
 
 	.reconnect-overlay {
@@ -734,7 +735,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(0, 0, 0, 0.6);
+		background: var(--color-surface-sunken);
 		backdrop-filter: blur(4px);
 		z-index: 20;
 	}
@@ -747,7 +748,7 @@
 		padding: 24px 32px;
 		border-radius: 12px;
 		background: rgba(30, 30, 30, 0.95);
-		border: 1px solid rgba(255, 255, 255, 0.1);
+		border: 1px solid var(--color-border);
 		color: var(--color-text-secondary, #a1a1a6);
 	}
 
@@ -764,7 +765,7 @@
 		padding: 6px 20px;
 		border-radius: 6px;
 		border: none;
-		background: var(--color-accent, #0a84ff);
+		background: var(--color-accent, var(--color-accent));
 		color: #fff;
 		font-size: 0.8rem;
 		font-weight: 500;

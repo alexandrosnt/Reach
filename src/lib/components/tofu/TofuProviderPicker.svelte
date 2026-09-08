@@ -134,7 +134,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(0, 0, 0, 0.6);
+		background: var(--color-surface-sunken);
 		animation: fadeIn var(--duration-default) var(--ease-default);
 	}
 
@@ -182,7 +182,7 @@
 	}
 
 	.close-btn:hover {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
@@ -240,7 +240,7 @@
 	}
 
 	.pill:hover {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 
@@ -273,7 +273,7 @@
 
 	.provider-card:hover:not(:disabled) {
 		border-color: var(--color-accent);
-		background-color: rgba(255, 255, 255, 0.03);
+		background-color: var(--color-surface-hover);
 	}
 
 	.provider-card.disabled {

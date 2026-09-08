@@ -68,11 +68,11 @@
 	}
 
 	.plugin-item:hover {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 	}
 
 	.plugin-item.active {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 	}
 
 	.plugin-info {
@@ -151,7 +151,7 @@
 	.toggle-track {
 		position: absolute;
 		inset: 0;
-		background-color: rgba(255, 255, 255, 0.1);
+		background-color: var(--color-surface-active);
 		border-radius: 8px;
 		transition: background-color var(--duration-default) var(--ease-default);
 	}

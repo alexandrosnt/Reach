@@ -330,7 +330,7 @@
 	}
 
 	.toolbar-btn:hover:not(:disabled) {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 

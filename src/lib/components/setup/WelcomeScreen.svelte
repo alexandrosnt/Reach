@@ -66,7 +66,7 @@
 		   the status/navigation bars via safe-area insets. `margin: auto` on the
 		   child centers it when it fits without clipping the top when it doesn't. */
 		overflow-y: auto;
-		background: rgba(0, 0, 0, 0.85);
+		background: var(--color-surface-sunken);
 		backdrop-filter: blur(24px);
 		-webkit-backdrop-filter: blur(24px);
 		padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));

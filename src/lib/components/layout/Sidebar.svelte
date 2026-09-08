@@ -360,7 +360,7 @@
 
 	.resize-handle:hover,
 	.resize-handle:active {
-		background-color: var(--color-accent, #0a84ff);
+		background-color: var(--color-accent, var(--color-accent));
 	}
 
 	.resize-overlay {

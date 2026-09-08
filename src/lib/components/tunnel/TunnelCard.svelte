@@ -86,7 +86,7 @@
 	}
 
 	.tunnel-card:hover {
-		background-color: rgba(255, 255, 255, 0.04);
+		background-color: var(--color-surface-hover);
 	}
 
 	.card-main {
@@ -194,7 +194,7 @@
 	}
 
 	.action-btn:hover {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 

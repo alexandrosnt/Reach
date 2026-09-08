@@ -132,7 +132,7 @@
 	}
 
 	.key-note.ok {
-		color: var(--color-success, #30d158);
+		color: var(--color-success, var(--color-success));
 	}
 
 	.key-note.muted {
@@ -180,7 +180,7 @@
 
 	.chip:hover:not(:disabled) {
 		border-color: var(--color-accent);
-		background-color: rgba(255, 255, 255, 0.04);
+		background-color: var(--color-surface-hover);
 	}
 
 	.chip.primary {

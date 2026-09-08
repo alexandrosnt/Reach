@@ -389,7 +389,7 @@
 
 	.toolbar-btn:hover:not(:disabled) {
 		color: var(--color-text-primary);
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 	}
 
 	.toolbar-btn:disabled {
@@ -439,7 +439,7 @@
 		padding: 8px;
 		border: 1px solid var(--color-border);
 		border-radius: 6px;
-		background: rgba(255, 255, 255, 0.02);
+		background: var(--color-surface-hover);
 	}
 
 	.entry-row {
@@ -481,7 +481,7 @@
 		font-size: 0.5625rem;
 		font-family: var(--font-mono, monospace);
 		color: var(--color-text-secondary);
-		background: rgba(255, 255, 255, 0.04);
+		background: var(--color-surface-hover);
 		border: 1px solid var(--color-border);
 		border-radius: 3px;
 	}
@@ -514,7 +514,7 @@
 	}
 
 	.install-btn.installed {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		color: var(--color-text-secondary);
 	}
 
