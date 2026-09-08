@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { themeState, applyTheme, DARK, LIGHT } from '$lib/state/theme.svelte';
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
@@ -6,29 +7,31 @@
 	let currentFont = $derived(settings.fontFamily || 'monospace');
 	let currentSize = $derived(settings.fontSize || 14);
 
-	type ThemeValue = 'dark' | 'light' | 'system';
+	/** "System" follows the OS; every other entry is a real theme. */
+	const SYSTEM = '__system__';
 
-	let themes = $derived([
-		{ label: t('settings.theme_dark'), value: 'dark' as ThemeValue, icon: 'moon' },
-		{ label: t('settings.theme_light'), value: 'light' as ThemeValue, icon: 'sun' },
-		{ label: t('settings.theme_system'), value: 'system' as ThemeValue, icon: 'monitor' },
+	let choices = $derived([
+		{ id: SYSTEM, name: t('settings.theme_system'), swatch: null },
+		...themeState.all.map((th) => ({ id: th.id, name: th.name, swatch: th }))
 	]);
 
-	function selectTheme(value: ThemeValue) {
-		updateSetting('theme', value);
-		applyTheme(value);
-	}
+	let selectedId = $derived(settings.themeId ?? (settings.theme === 'system' ? SYSTEM : null));
 
-	function applyTheme(theme: ThemeValue) {
-		const root = document.documentElement;
-		root.classList.remove('dark', 'light');
-
-		if (theme === 'system') {
+	function selectTheme(id: string) {
+		if (id === SYSTEM) {
+			updateSetting('themeId', undefined);
+			updateSetting('theme', 'system');
 			const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-			root.classList.add(prefersDark ? 'dark' : 'light');
-		} else {
-			root.classList.add(theme);
+			applyTheme(prefersDark ? DARK : LIGHT);
+			return;
 		}
+		const theme = themeState.all.find((t2) => t2.id === id);
+		if (!theme) return;
+		updateSetting('themeId', theme.id);
+		// Keep `theme` consistent so anything still reading it, and the fallback
+		// path when a themeId no longer resolves, stay sensible.
+		updateSetting('theme', theme.appearance);
+		applyTheme(theme);
 	}
 
 
@@ -90,33 +93,32 @@
 	<div class="setting-section">
 		<span class="section-label">{t('settings.theme')}</span>
 		<div class="theme-cards">
-			{#each themes as theme (theme.value)}
+			{#each choices as choice (choice.id)}
 				<button
 					class="theme-card"
-					class:active={settings.theme === theme.value}
-					onclick={() => selectTheme(theme.value)}
+					class:active={selectedId === choice.id}
+					onclick={() => selectTheme(choice.id)}
+					title={choice.name}
 				>
-					<div class="theme-preview" class:preview-dark={theme.value === 'dark'} class:preview-light={theme.value === 'light'} class:preview-system={theme.value === 'system'}>
-						{#if theme.icon === 'moon'}
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-								<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-							</svg>
-						{:else if theme.icon === 'sun'}
-							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-								<circle cx="12" cy="12" r="5" />
-								<line x1="12" y1="1" x2="12" y2="3" /><line x1="12" y1="21" x2="12" y2="23" />
-								<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" /><line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-								<line x1="1" y1="12" x2="3" y2="12" /><line x1="21" y1="12" x2="23" y2="12" />
-								<line x1="4.22" y1="19.78" x2="5.64" y2="18.36" /><line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-							</svg>
-						{:else}
+					{#if choice.swatch}
+						<!-- Preview drawn from the theme's own tokens, so an installed
+						     theme shows what it actually looks like. -->
+						<div
+							class="theme-preview"
+							style="background: {choice.swatch.colors['bg-primary']}; border-color: {choice.swatch.colors.border};"
+						>
+							<span class="swatch-bar" style="background: {choice.swatch.colors['bg-secondary']};"></span>
+							<span class="swatch-dot" style="background: {choice.swatch.colors.accent};"></span>
+						</div>
+					{:else}
+						<div class="theme-preview preview-system">
 							<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
 								<rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
 								<line x1="8" y1="21" x2="16" y2="21" /><line x1="12" y1="17" x2="12" y2="21" />
 							</svg>
-						{/if}
-					</div>
-					<span class="theme-label">{theme.label}</span>
+						</div>
+					{/if}
+					<span class="theme-label">{choice.name}</span>
 				</button>
 			{/each}
 		</div>
@@ -232,6 +234,23 @@
 		margin-bottom: 12px;
 	}
 
+	.swatch-bar {
+		position: absolute;
+		left: 0;
+		top: 0;
+		bottom: 0;
+		width: 34%;
+	}
+
+	.swatch-dot {
+		position: absolute;
+		right: 7px;
+		bottom: 7px;
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+	}
+
 	.theme-cards {
 		display: grid;
 		grid-template-columns: repeat(3, 1fr);
@@ -256,12 +275,12 @@
 	.theme-card.active { border-color: var(--color-accent); background-color: rgba(10, 132, 255, 0.08); }
 
 	.theme-preview {
+		position: relative;
+		overflow: hidden;
 		width: 48px; height: 48px; border-radius: 10px;
 		display: flex; align-items: center; justify-content: center;
 	}
 
-	.preview-dark { background-color: var(--color-bg-elevated); color: var(--color-text-primary); }
-	.preview-light { background-color: var(--color-text-primary); color: #1d1d1f; }
 	.preview-system { background: linear-gradient(135deg, var(--color-bg-elevated) 50%, var(--color-text-primary) 50%); color: var(--color-text-primary); }
 
 	.theme-label { font-size: 0.75rem; font-weight: 500; color: var(--color-text-primary); }
