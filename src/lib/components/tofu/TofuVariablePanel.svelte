@@ -251,7 +251,7 @@
 	}
 
 	.variable-row:hover {
-		background: rgba(255, 255, 255, 0.03);
+		background: var(--color-surface-hover);
 	}
 
 	/* Column widths */
@@ -288,7 +288,7 @@
 		font-size: 0.6875rem;
 		font-weight: 600;
 		color: var(--color-text-primary);
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--color-surface-active);
 		border-radius: 9999px;
 		text-transform: lowercase;
 	}
@@ -364,7 +364,7 @@
 	}
 
 	.action-btn:hover {
-		background: rgba(255, 255, 255, 0.06);
+		background: var(--color-surface-hover);
 	}
 
 	.edit-btn:hover {

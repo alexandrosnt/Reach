@@ -871,9 +871,34 @@
 		overflow: hidden;
 	}
 
+	/* Three equal columns forced "Import SSH Config" to wrap onto three lines and
+	   pushed all three buttons to 61px tall. Quick Connect is the primary action,
+	   so it gets its own full-width row and the two secondary actions share the
+	   next one — the sidebar has vertical room to spare. */
 	.actions-row {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 4px;
+	}
+
+	.actions-row .quick-connect-btn {
+		flex: 1 1 100%;
+		justify-content: center;
+	}
+
+	/* Side by side, "Import SSH Config" still wrapped onto two lines and stood
+	   44px tall next to a 28px sibling. There is vertical room in this column;
+	   there is not horizontal room for two labels of that length. Full-width
+	   rows, so nothing wraps and the labels stay legible. */
+	.actions-row .save-session-btn {
+		flex: 1 1 100%;
+		min-width: 0;
+		justify-content: center;
+		white-space: nowrap;
+	}
+
+	.actions-row .quick-connect-btn {
+		white-space: nowrap;
 	}
 
 
@@ -885,7 +910,7 @@
 		flex: 1;
 		padding: 5px 8px;
 		font-family: var(--font-sans);
-		font-size: 0.6875rem;
+		font-size: var(--text-sm);
 		font-weight: 500;
 		border-radius: 6px;
 		cursor: pointer;
@@ -911,7 +936,7 @@
 	}
 
 	.save-session-btn:hover {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 
@@ -948,7 +973,7 @@
 		background: transparent;
 		color: var(--color-text-primary);
 		font-family: var(--font-sans);
-		font-size: 0.6875rem;
+		font-size: var(--text-sm);
 		outline: none;
 	}
 
@@ -972,7 +997,7 @@
 	}
 
 	.search-clear:hover {
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 
@@ -982,14 +1007,14 @@
 		align-items: center;
 		gap: 6px;
 		padding: 6px 8px;
-		background: rgba(255, 255, 255, 0.02);
+		background: var(--color-surface-hover);
 		border-radius: 6px;
 		border: 1px solid var(--color-border);
 	}
 
 	.new-folder-icon {
 		flex-shrink: 0;
-		color: var(--color-warning, #ffd60a);
+		color: var(--color-warning, var(--color-warning));
 		opacity: 0.7;
 	}
 
@@ -1009,7 +1034,7 @@
 		background: var(--color-bg-primary);
 		color: var(--color-text-primary);
 		font-family: var(--font-sans);
-		font-size: 0.6875rem;
+		font-size: var(--text-sm);
 		outline: none;
 	}
 
@@ -1021,7 +1046,7 @@
 	.new-folder-cancel {
 		padding: 4px 8px;
 		font-family: var(--font-sans);
-		font-size: 0.625rem;
+		font-size: var(--text-xs);
 		font-weight: 500;
 		border: none;
 		border-radius: 4px;
@@ -1063,14 +1088,14 @@
 		background: transparent;
 		color: var(--color-text-secondary);
 		font-family: var(--font-sans);
-		font-size: 0.6875rem;
+		font-size: var(--text-sm);
 		cursor: pointer;
 		pointer-events: auto;
 		transition: background-color var(--duration-default) var(--ease-default);
 	}
 
 	.folder-toggle:hover {
-		background-color: rgba(255, 255, 255, 0.04);
+		background-color: var(--color-surface-hover);
 	}
 
 	.folder-chevron {
@@ -1083,7 +1108,7 @@
 	}
 
 	.folder-icon {
-		color: var(--color-warning, #ffd60a);
+		color: var(--color-warning, var(--color-warning));
 		opacity: 0.7;
 	}
 
@@ -1093,7 +1118,7 @@
 	}
 
 	.folder-count {
-		font-size: 0.5625rem;
+		font-size: var(--text-2xs);
 		color: var(--color-text-secondary);
 		opacity: 0.6;
 	}
@@ -1131,10 +1156,10 @@
 		min-width: 180px;
 		max-width: 280px;
 		padding: 4px 0;
-		background-color: var(--color-bg-elevated, #1c1c1e);
+		background-color: var(--color-bg-elevated, var(--color-bg-elevated));
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
-		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+		box-shadow: var(--shadow-elevated);
 		z-index: 1000;
 	}
 
@@ -1144,7 +1169,7 @@
 		max-height: 150px;
 		overflow-y: auto;
 		scrollbar-width: thin;
-		scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+		scrollbar-color: var(--color-surface-strong) transparent;
 	}
 
 	.context-item {
@@ -1157,14 +1182,14 @@
 		background: transparent;
 		color: var(--color-text-primary);
 		font-family: var(--font-sans);
-		font-size: 0.75rem;
+		font-size: var(--text-sm);
 		cursor: pointer;
 		text-align: left;
 		transition: background-color 0.1s ease;
 	}
 
 	.context-item:hover {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-hover);
 	}
 
 	.context-folder-item {
@@ -1172,7 +1197,7 @@
 	}
 
 	.context-danger {
-		color: var(--color-danger, #ff453a);
+		color: var(--color-danger, var(--color-danger));
 	}
 
 	.context-danger:hover {
@@ -1181,7 +1206,7 @@
 
 	.context-label {
 		padding: 4px 12px 2px;
-		font-size: 0.625rem;
+		font-size: var(--text-xs);
 		font-weight: 600;
 		text-transform: uppercase;
 		letter-spacing: 0.05em;
@@ -1190,7 +1215,7 @@
 	}
 
 	.ctx-folder-icon {
-		color: var(--color-warning, #ffd60a);
+		color: var(--color-warning, var(--color-warning));
 		opacity: 0.7;
 		flex-shrink: 0;
 	}
@@ -1227,7 +1252,7 @@
 	}
 
 	.loading-text {
-		font-size: 0.75rem;
+		font-size: var(--text-sm);
 		color: var(--color-text-secondary);
 	}
 
@@ -1243,7 +1268,7 @@
 	.empty-state {
 		margin: 0;
 		padding: 0;
-		font-size: 0.6875rem;
+		font-size: var(--text-sm);
 		color: var(--color-text-secondary);
 		opacity: 0.7;
 		text-align: center;
@@ -1261,7 +1286,7 @@
 
 	.delete-confirm-text {
 		flex: 1;
-		font-size: 0.75rem;
+		font-size: var(--text-sm);
 		color: var(--color-danger);
 		white-space: nowrap;
 		overflow: hidden;
@@ -1273,7 +1298,7 @@
 		flex-shrink: 0;
 		padding: 3px 8px;
 		font-family: var(--font-sans);
-		font-size: 0.6875rem;
+		font-size: var(--text-sm);
 		font-weight: 500;
 		border: none;
 		border-radius: 4px;
@@ -1293,19 +1318,19 @@
 	}
 
 	.delete-cancel-btn {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-hover);
 		color: var(--color-text-secondary);
 	}
 
 	.delete-cancel-btn:hover {
-		background-color: rgba(255, 255, 255, 0.12);
+		background-color: var(--color-surface-active);
 	}
 
 	.spinner {
 		display: inline-block;
 		width: 14px;
 		height: 14px;
-		border: 2px solid rgba(255, 255, 255, 0.15);
+		border: 2px solid var(--color-border);
 		border-top-color: var(--color-accent);
 		border-radius: 50%;
 		animation: spin 0.6s linear infinite;
@@ -1325,7 +1350,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(0, 0, 0, 0.5);
+		background: var(--color-surface-sunken);
 		backdrop-filter: blur(4px);
 	}
 
@@ -1347,13 +1372,13 @@
 	}
 
 	.prompt-title {
-		font-size: 0.8125rem;
+		font-size: var(--text-md);
 		font-weight: 600;
 		color: var(--color-text-primary);
 	}
 
 	.prompt-detail {
-		font-size: 0.6875rem;
+		font-size: var(--text-sm);
 		color: var(--color-text-secondary);
 		font-family: var(--font-mono);
 	}
@@ -1369,7 +1394,7 @@
 		width: 100%;
 		padding: 8px 10px;
 		font-family: var(--font-sans);
-		font-size: 0.8125rem;
+		font-size: var(--text-md);
 		color: var(--color-text-primary);
 		background-color: var(--color-bg-primary);
 		border: 1px solid var(--color-border);
@@ -1403,13 +1428,13 @@
 	}
 
 	.remember-text {
-		font-size: 0.6875rem;
+		font-size: var(--text-sm);
 		color: var(--color-text-secondary);
 	}
 
 	.fallback-hint {
 		padding: 6px 10px;
-		font-size: 0.6875rem;
+		font-size: var(--text-sm);
 		color: var(--color-text-secondary);
 		background-color: rgba(10, 132, 255, 0.08);
 		border: 1px solid rgba(10, 132, 255, 0.2);
@@ -1419,7 +1444,7 @@
 
 	.prompt-error {
 		padding: 6px 10px;
-		font-size: 0.6875rem;
+		font-size: var(--text-sm);
 		color: var(--color-danger);
 		background-color: rgba(255, 69, 58, 0.08);
 		border-radius: 4px;
@@ -1434,7 +1459,7 @@
 	.prompt-btn {
 		padding: 6px 14px;
 		font-family: var(--font-sans);
-		font-size: 0.75rem;
+		font-size: var(--text-sm);
 		font-weight: 500;
 		border: none;
 		border-radius: 6px;
@@ -1453,7 +1478,7 @@
 	}
 
 	.prompt-cancel:hover:not(:disabled) {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 	}
 
 	.prompt-connect {
@@ -1490,7 +1515,7 @@
 		max-width: 240px;
 		padding: 8px 12px;
 		font-family: var(--font-mono);
-		font-size: 0.75rem;
+		font-size: var(--text-sm);
 		color: var(--color-text-primary);
 		background: var(--color-bg-primary);
 		border: 1px solid var(--color-border);
@@ -1510,7 +1535,7 @@
 	.reset-btn {
 		padding: 8px 16px;
 		font-family: var(--font-sans);
-		font-size: 0.75rem;
+		font-size: var(--text-sm);
 		font-weight: 500;
 		color: var(--color-text-secondary);
 		background: transparent;
@@ -1521,7 +1546,7 @@
 	}
 
 	.reset-btn:hover:not(:disabled) {
-		background-color: rgba(255, 255, 255, 0.05);
+		background-color: var(--color-surface-hover);
 	}
 
 	.reset-btn:disabled {
@@ -1531,14 +1556,14 @@
 
 	.init-title {
 		margin: 0;
-		font-size: 0.875rem;
+		font-size: var(--text-md);
 		font-weight: 600;
 		color: var(--color-text-primary);
 	}
 
 	.init-desc {
 		margin: 0;
-		font-size: 0.75rem;
+		font-size: var(--text-sm);
 		color: var(--color-text-secondary);
 		max-width: 200px;
 		line-height: 1.4;
@@ -1546,14 +1571,14 @@
 
 	.init-error {
 		margin: 0;
-		font-size: 0.6875rem;
+		font-size: var(--text-sm);
 		color: var(--color-danger);
 	}
 
 	.init-btn {
 		padding: 8px 20px;
 		font-family: var(--font-sans);
-		font-size: 0.75rem;
+		font-size: var(--text-sm);
 		font-weight: 500;
 		color: #fff;
 		background-color: var(--color-accent);

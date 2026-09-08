@@ -9,10 +9,15 @@
 	type Section = 'sessions' | 'explorer' | 'tunnels' | 'snippets' | 'plugins';
 
 	const STORAGE_KEY = 'reach-sidebar-width';
+	/* `sidebarWidth` is the width of the *panel*, not of the whole sidebar. The
+	   rail is added on top when rendering. Keeping the stored value meaning the
+	   same thing as before the rail existed means saved widths stay correct
+	   instead of every existing user losing 48px of panel. */
 	const MIN_WIDTH = 160;
 	const MAX_WIDTH = 600;
 	const DEFAULT_WIDTH = 240;
-	const COLLAPSED_WIDTH = 48;
+	const RAIL_WIDTH = 48;
+	const COLLAPSED_WIDTH = RAIL_WIDTH;
 
 	interface Props {
 		collapsed: boolean;
@@ -92,6 +97,8 @@
 		const startW = sidebarWidth;
 
 		function onMove(ev: MouseEvent): void {
+			// startW is the panel width, and the pointer moves the sidebar's outer
+			// edge, so the delta applies to the panel directly.
 			const w = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startW + ev.clientX - startX));
 			sidebarWidth = w;
 		}
@@ -108,17 +115,17 @@
 	}
 </script>
 
-<aside class="sidebar" class:collapsed class:no-transition={dragging} style:width="{collapsed ? COLLAPSED_WIDTH : sidebarWidth}px">
+<aside class="sidebar" class:collapsed class:no-transition={dragging} style:width="{collapsed ? COLLAPSED_WIDTH : sidebarWidth + RAIL_WIDTH}px">
 	<nav class="sidebar-nav">
 		{#each sections as section (section.id)}
 			<button
 				class="nav-btn"
-				class:active={activeSection === section.id && !collapsed}
+				class:active={activeSection === section.id}
 				onclick={() => handleSectionClick(section.id)}
 				title={section.label}
 				aria-label={section.label}
 			>
-				<svg width="15" height="15" viewBox="0 0 24 24" fill="none">
+				<svg width="19" height="19" viewBox="0 0 24 24" fill="none">
 					<path
 						d={section.icon}
 						stroke="currentColor"
@@ -128,11 +135,23 @@
 					/>
 				</svg>
 
-				{#if !collapsed}
-					<span class="nav-label">{section.label}</span>
-				{/if}
 			</button>
 		{/each}
+
+		<button
+			class="nav-btn rail-toggle"
+			onclick={toggleCollapsed}
+			title={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
+			aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
+		>
+			<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+				{#if collapsed}
+					<path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+				{:else}
+					<path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+				{/if}
+			</svg>
+		</button>
 	</nav>
 
 	<!-- Kept mounted (hidden when collapsed) so collapsing/expanding the sidebar
@@ -157,22 +176,6 @@
 		</div>
 	</div>
 
-	<div class="sidebar-footer">
-		<button
-			class="toggle-btn"
-			onclick={toggleCollapsed}
-			aria-label={collapsed ? t('sidebar.expand') : t('sidebar.collapse')}
-		>
-			<svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-				{#if collapsed}
-					<path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-				{:else}
-					<path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-				{/if}
-			</svg>
-		</button>
-	</div>
-
 	{#if !collapsed}
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div class="resize-handle" onmousedown={startResize}></div>
@@ -185,10 +188,18 @@
 {/if}
 
 <style>
+	/* Navigation and panel content are orthogonal concerns. Stacking them meant
+	   the five nav buttons (149px) and the collapse row took their cut off the
+	   top before the active panel got anything, so the session tree was left
+	   ~186px of a 601px column — four rows — and every new tool would have taken
+	   another slice. The nav is now a fixed rail beside the panel, so the panel
+	   gets the full height and stays that size however many tools exist.
+	   COLLAPSED_WIDTH is 48px, which is exactly the rail, so collapsing simply
+	   hides the panel and leaves the rail. */
 	.sidebar {
 		position: relative;
 		display: flex;
-		flex-direction: column;
+		flex-direction: row;
 		height: 100%;
 		background-color: var(--color-bg-secondary);
 		border-right: 1px solid var(--color-border);
@@ -214,10 +225,26 @@
 		}
 	}
 
+	/* On a phone a 240px sidebar beside the terminal left the terminal 149px of a
+	   390px screen — 62% of the display spent on navigation. Below 700px the
+	   sidebar stops taking a column and overlays the content as a drawer, so the
+	   terminal gets the full width and the existing collapse control opens and
+	   closes the drawer. */
+	@media (max-width: 700px) {
+		.sidebar:not(.collapsed) {
+			position: absolute;
+			inset: 0 auto 0 0;
+			z-index: 20;
+			max-width: 85vw;
+			box-shadow: var(--shadow-elevated);
+		}
+	}
+
 	/* Finger-sized hit targets where there is no mouse. */
 	@media (pointer: coarse) {
 		.nav-btn {
-			padding: 9px 10px;
+			width: 40px;
+			height: 40px;
 		}
 
 		.resize-handle {
@@ -226,45 +253,60 @@
 	}
 
 	.sidebar-nav {
+		flex: 0 0 48px;
 		display: flex;
 		flex-direction: column;
-		gap: 1px;
-		padding: 6px 5px;
+		align-items: center;
+		gap: var(--space-1);
+		padding: var(--space-2) 0;
+		border-right: 1px solid var(--color-border);
+	}
+
+	.rail-toggle {
+		margin-top: auto;
 	}
 
 	.nav-btn {
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		width: 100%;
-		padding: 5px 7px;
+		justify-content: center;
+		flex: 0 0 auto;
+		width: 36px;
+		height: 36px;
+		padding: 0;
 		border: none;
-		border-radius: 6px;
+		border-radius: var(--radius-btn);
 		background: transparent;
 		color: var(--color-text-secondary);
-		font-family: var(--font-sans);
-		font-size: 0.6875rem;
 		cursor: pointer;
-		white-space: nowrap;
-		overflow: hidden;
 		transition: background-color var(--duration-default) var(--ease-default),
 			color var(--duration-default) var(--ease-default);
 	}
 
 	.nav-btn:hover {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 
 	.nav-btn.active {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
-	.nav-label {
-		overflow: hidden;
-		text-overflow: ellipsis;
+	.nav-btn.active::before {
+		content: '';
+		position: absolute;
+		left: -6px;
+		top: 50%;
+		transform: translateY(-50%);
+		width: 3px;
+		height: 20px;
+		border-radius: 0 2px 2px 0;
+		background-color: var(--color-accent);
 	}
+
+
 
 
 
@@ -298,30 +340,8 @@
 		padding: 2px 6px;
 	}
 
-	.sidebar-footer {
-		padding: 6px;
-		border-top: 1px solid var(--color-border);
-	}
 
-	.toggle-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 100%;
-		height: 28px;
-		border: none;
-		border-radius: var(--radius-btn);
-		background: transparent;
-		color: var(--color-text-secondary);
-		cursor: pointer;
-		transition: background-color var(--duration-default) var(--ease-default),
-			color var(--duration-default) var(--ease-default);
-	}
 
-	.toggle-btn:hover {
-		background-color: rgba(255, 255, 255, 0.06);
-		color: var(--color-text-primary);
-	}
 
 	.sidebar.no-transition {
 		transition: none;
@@ -340,7 +360,7 @@
 
 	.resize-handle:hover,
 	.resize-handle:active {
-		background-color: var(--color-accent, #0a84ff);
+		background-color: var(--color-accent, var(--color-accent));
 	}
 
 	.resize-overlay {

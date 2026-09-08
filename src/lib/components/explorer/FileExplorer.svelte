@@ -1026,7 +1026,7 @@
 	}
 
 	.tool-btn:hover {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 
@@ -1095,7 +1095,7 @@
 	}
 
 	.explorer-search-clear:hover {
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--color-surface-active);
 	}
 
 	.breadcrumb-bar {
@@ -1155,7 +1155,7 @@
 	}
 
 	.breadcrumb-segment:hover {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 
@@ -1174,7 +1174,7 @@
 
 	.error-text {
 		font-size: 0.6875rem;
-		color: #ff453a;
+		color: var(--color-danger);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -1185,7 +1185,7 @@
 	.retry-btn {
 		border: none;
 		background: transparent;
-		color: #ff453a;
+		color: var(--color-danger);
 		font-family: var(--font-sans);
 		font-size: 0.6875rem;
 		font-weight: 500;
@@ -1205,7 +1205,7 @@
 		overflow-y: auto;
 		position: relative;
 		scrollbar-width: thin;
-		scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+		scrollbar-color: var(--color-surface-strong) transparent;
 		transition: border-color 0.15s ease;
 	}
 
@@ -1218,7 +1218,7 @@
 	}
 
 	.file-list::-webkit-scrollbar-thumb {
-		background-color: rgba(255, 255, 255, 0.15);
+		background-color: var(--color-surface-strong);
 		border-radius: 3px;
 	}
 
@@ -1262,7 +1262,7 @@
 
 	.transfer-item {
 		padding: 6px 8px;
-		border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+		border-bottom: 1px solid var(--color-border);
 	}
 
 	.transfer-item:last-child {
@@ -1301,7 +1301,7 @@
 	.transfer-bar-track {
 		width: 100%;
 		height: 2px;
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		border-radius: 1px;
 		overflow: hidden;
 	}
@@ -1359,7 +1359,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(0, 0, 0, 0.6);
+		background: var(--color-surface-sunken);
 		backdrop-filter: blur(4px);
 	}
 
@@ -1371,7 +1371,7 @@
 		background: var(--color-bg-elevated);
 		border: 1px solid var(--color-border);
 		border-radius: 10px;
-		box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+		box-shadow: var(--shadow-elevated);
 		overflow: hidden;
 	}
 
@@ -1415,7 +1415,7 @@
 	}
 
 	.preview-close:hover {
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
@@ -1437,10 +1437,10 @@
 		position: fixed;
 		min-width: 160px;
 		padding: 4px 0;
-		background-color: var(--color-bg-elevated, #1c1c1e);
+		background-color: var(--color-bg-elevated, var(--color-bg-elevated));
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
-		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+		box-shadow: var(--shadow-elevated);
 		z-index: 1000;
 	}
 
@@ -1461,11 +1461,11 @@
 	}
 
 	.context-item:hover {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 	}
 
 	.context-item.danger {
-		color: var(--color-danger, #ff453a);
+		color: var(--color-danger, var(--color-danger));
 	}
 
 	.context-item.danger:hover {
@@ -1492,7 +1492,7 @@
 	}
 
 	.transfer-icon.download {
-		color: var(--color-success, #30d158);
+		color: var(--color-success, var(--color-success));
 	}
 
 	.rename-input {
@@ -1550,12 +1550,12 @@
 	}
 
 	.delete-confirm-btn.cancel:hover {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 
 	.delete-confirm-btn.confirm {
-		background-color: var(--color-danger, #ff453a);
+		background-color: var(--color-danger, var(--color-danger));
 		color: #fff;
 	}
 
