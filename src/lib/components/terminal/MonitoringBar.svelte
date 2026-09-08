@@ -214,11 +214,11 @@
 	}
 
 	.net-icon.down {
-		color: var(--color-success, #30d158);
+		color: var(--color-success, var(--color-success));
 	}
 
 	.net-icon.up {
-		color: var(--color-accent, #0a84ff);
+		color: var(--color-accent, var(--color-accent));
 	}
 
 	.users {
@@ -243,7 +243,7 @@
 		background-color: var(--color-bg-elevated);
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
-		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+		box-shadow: var(--shadow-elevated);
 		z-index: 100;
 	}
 

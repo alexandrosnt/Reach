@@ -356,7 +356,7 @@
 	.confirm-overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.5);
+		background: var(--color-surface-sunken);
 		display: flex;
 		align-items: center;
 		justify-content: center;

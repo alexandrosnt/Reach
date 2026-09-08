@@ -679,7 +679,7 @@
 	}
 
 	.back-btn:hover {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
@@ -707,7 +707,7 @@
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 		color: var(--color-text-secondary);
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		border-radius: 4px;
 	}
 
@@ -793,7 +793,7 @@
 	}
 
 	.header-btn:hover:not(:disabled) {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
@@ -875,7 +875,7 @@
 		width: 100%;
 		padding: 10px 12px;
 		text-align: left;
-		background-color: rgba(255, 255, 255, 0.02);
+		background-color: var(--color-surface-hover);
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
 		cursor: pointer;
@@ -883,7 +883,7 @@
 	}
 
 	.vault-card:hover {
-		background-color: rgba(255, 255, 255, 0.05);
+		background-color: var(--color-surface-hover);
 		border-color: var(--color-accent);
 	}
 
@@ -898,7 +898,7 @@
 		justify-content: center;
 		width: 32px;
 		height: 32px;
-		background-color: rgba(255, 255, 255, 0.04);
+		background-color: var(--color-surface-hover);
 		border-radius: 6px;
 		color: var(--color-text-secondary);
 		flex-shrink: 0;
@@ -937,7 +937,7 @@
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
 		color: var(--color-text-secondary);
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		border-radius: 4px;
 		flex-shrink: 0;
 	}
@@ -1015,7 +1015,7 @@
 	}
 
 	.type-option:hover:not(:disabled) {
-		background-color: rgba(255, 255, 255, 0.04);
+		background-color: var(--color-surface-hover);
 		border-color: var(--color-text-secondary);
 	}
 

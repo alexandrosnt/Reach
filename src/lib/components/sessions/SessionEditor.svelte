@@ -532,7 +532,7 @@
 	}
 
 	.auth-btn:hover:not(:disabled) {
-		background-color: rgba(255, 255, 255, 0.04);
+		background-color: var(--color-surface-hover);
 	}
 
 	.auth-btn.active {
@@ -562,7 +562,7 @@
 		display: inline-block;
 		width: 14px;
 		height: 14px;
-		border: 2px solid rgba(255, 255, 255, 0.3);
+		border: 2px solid var(--color-border);
 		border-top-color: #fff;
 		border-radius: 50%;
 		animation: spin 0.6s linear infinite;
@@ -606,7 +606,7 @@
 		flex-direction: column;
 		gap: 10px;
 		padding: 10px;
-		background: rgba(255, 255, 255, 0.02);
+		background: var(--color-surface-hover);
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
 	}
@@ -638,7 +638,7 @@
 	}
 
 	.proxy-type-btn:not(.active):hover {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 	}
 
 	.proxy-hint {
@@ -688,7 +688,7 @@
 		padding: 10px;
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-btn);
-		background-color: rgba(255, 255, 255, 0.02);
+		background-color: var(--color-surface-hover);
 	}
 
 	.jump-hop-header {

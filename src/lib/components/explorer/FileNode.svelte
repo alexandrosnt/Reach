@@ -93,11 +93,11 @@
 	}
 
 	.file-node:hover {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 	}
 
 	.file-node:active {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 	}
 
 	.file-icon {
@@ -151,7 +151,7 @@
 	}
 
 	.download-btn:hover {
-		background: rgba(255, 255, 255, 0.08);
-		color: var(--color-accent, #0a84ff);
+		background: var(--color-surface-active);
+		color: var(--color-accent, var(--color-accent));
 	}
 </style>

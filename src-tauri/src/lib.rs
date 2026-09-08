@@ -11,6 +11,7 @@ pub mod sftp;
 pub mod ssh;
 pub mod state;
 pub mod text;
+pub mod theme;
 pub mod tofu;
 pub mod toolchain;
 pub mod tunnel;
@@ -37,6 +38,7 @@ use ipc::sftp_commands::*;
 use ipc::ssh_commands::*;
 use ipc::sshconfig_commands::*;
 use ipc::tofu_commands::*;
+use ipc::theme_commands::*;
 use ipc::toolchain_commands::*;
 use ipc::tunnel_commands::*;
 use ipc::vault_commands::*;
@@ -336,6 +338,11 @@ pub fn run() {
             marketplace_set_url,
             marketplace_load_url,
             marketplace_reset_url,
+            theme_fetch_registry,
+            theme_install,
+            theme_list_installed,
+            theme_uninstall,
+            theme_default_registry_url,
             // Editor commands
             editor_open_file,
             editor_get_pending_file,
@@ -544,6 +551,11 @@ pub fn run() {
             marketplace_set_url,
             marketplace_load_url,
             marketplace_reset_url,
+            theme_fetch_registry,
+            theme_install,
+            theme_list_installed,
+            theme_uninstall,
+            theme_default_registry_url,
             // Editor commands
             editor_open_file,
             editor_get_pending_file,

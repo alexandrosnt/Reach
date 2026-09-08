@@ -467,7 +467,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 	}
 
 	.header-btn:hover:not(:disabled) {
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
@@ -499,7 +499,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 	}
 
 	.add-vault-btn:hover {
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
@@ -526,7 +526,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 	}
 
 	.vault-item:hover {
-		background: rgba(255, 255, 255, 0.05);
+		background: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 
@@ -554,14 +554,14 @@ Go to Settings > Sync > Accept Vault Invite`;
 		font-size: 0.625rem;
 		padding: 1px 5px;
 		border-radius: 10px;
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--color-surface-active);
 	}
 
 	/* Dialog */
 	.dialog-overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.6);
+		background: var(--color-surface-sunken);
 		backdrop-filter: blur(4px);
 		display: flex;
 		align-items: center;
@@ -687,7 +687,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 	}
 
 	.btn-secondary:hover:not(:disabled) {
-		background: rgba(255, 255, 255, 0.05);
+		background: var(--color-surface-hover);
 	}
 
 	.btn-danger {
@@ -827,7 +827,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 	.invite-section {
 		margin-bottom: 16px;
 		padding: 12px;
-		background: rgba(255, 255, 255, 0.02);
+		background: var(--color-surface-hover);
 		border-radius: 8px;
 	}
 

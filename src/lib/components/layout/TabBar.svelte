@@ -223,7 +223,7 @@
 	}
 
 	.tab-close:hover {
-		background-color: rgba(255, 255, 255, 0.1);
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 

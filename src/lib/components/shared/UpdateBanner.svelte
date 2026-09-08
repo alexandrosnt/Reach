@@ -84,8 +84,8 @@
 		z-index: 150;
 		height: 40px;
 		background: linear-gradient(135deg, var(--color-accent) 0%, #0070e0 100%);
-		border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-		box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+		border-bottom: 1px solid var(--color-border);
+		box-shadow: var(--shadow-elevated);
 		animation: slideDown 300ms var(--ease-default) forwards;
 		font-family: var(--font-sans);
 	}
@@ -125,8 +125,8 @@
 		font-weight: 600;
 		font-family: var(--font-sans);
 		color: #fff;
-		background: rgba(255, 255, 255, 0.15);
-		border: 1px solid rgba(255, 255, 255, 0.3);
+		background: var(--color-surface-strong);
+		border: 1px solid var(--color-border);
 		border-radius: 6px;
 		cursor: pointer;
 		white-space: nowrap;
@@ -137,7 +137,7 @@
 	}
 
 	.btn-update:hover {
-		background: rgba(255, 255, 255, 0.25);
+		background: var(--color-surface-strong);
 	}
 
 	.btn-update:active {
@@ -163,7 +163,7 @@
 
 	.btn-later:hover {
 		color: #fff;
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--color-surface-active);
 	}
 
 	.btn-later:active {
@@ -179,7 +179,7 @@
 	.progress-track {
 		width: 140px;
 		height: 4px;
-		background: rgba(255, 255, 255, 0.2);
+		background: var(--color-surface-strong);
 		border-radius: 2px;
 		overflow: hidden;
 	}

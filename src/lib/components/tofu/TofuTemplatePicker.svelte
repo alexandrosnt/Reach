@@ -157,7 +157,7 @@
 	}
 
 	.pill:hover {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 
@@ -190,7 +190,7 @@
 
 	.template-card:hover {
 		border-color: var(--color-accent);
-		background-color: rgba(255, 255, 255, 0.03);
+		background-color: var(--color-surface-hover);
 	}
 
 	.card-header {

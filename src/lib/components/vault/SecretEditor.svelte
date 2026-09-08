@@ -311,7 +311,7 @@
 
 	.action-btn:hover:not(:disabled) {
 		color: var(--color-text-primary);
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		border-color: var(--color-text-secondary);
 	}
 
@@ -377,7 +377,7 @@
 		display: inline-block;
 		width: 14px;
 		height: 14px;
-		border: 2px solid rgba(255, 255, 255, 0.2);
+		border: 2px solid var(--color-border);
 		border-top-color: var(--color-accent);
 		border-radius: 50%;
 		animation: spin 0.6s linear infinite;

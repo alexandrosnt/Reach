@@ -68,17 +68,17 @@
 			},
 			'.cm-gutters': {
 				backgroundColor: '#0a0a0a',
-				color: '#86868b',
+				color: 'var(--color-text-secondary)',
 				border: 'none'
 			},
 			'.cm-activeLineGutter': {
-				backgroundColor: 'rgba(255, 255, 255, 0.03)'
+				backgroundColor: 'var(--color-border)'
 			},
 			'&.cm-focused .cm-selectionBackground, .cm-selectionBackground': {
 				backgroundColor: 'rgba(10, 132, 255, 0.25) !important'
 			},
 			'.cm-activeLine': {
-				backgroundColor: 'rgba(255, 255, 255, 0.03)'
+				backgroundColor: 'var(--color-border)'
 			},
 			'.cm-cursor': {
 				borderLeftColor: '#0a84ff'

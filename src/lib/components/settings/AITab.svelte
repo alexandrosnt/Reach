@@ -300,7 +300,7 @@
 	}
 
 	.status-error {
-		color: #ff453a;
+		color: var(--color-danger);
 	}
 
 	/* Model Browser */
@@ -375,7 +375,7 @@
 	}
 
 	.model-row:hover:not(:disabled) {
-		background-color: rgba(255, 255, 255, 0.04);
+		background-color: var(--color-surface-hover);
 	}
 
 	.model-row.selected {
