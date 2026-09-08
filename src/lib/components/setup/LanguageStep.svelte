@@ -163,7 +163,7 @@
 	}
 
 	.language-card:hover {
-		background: rgba(255, 255, 255, 0.04);
+		background: var(--color-surface-hover);
 	}
 
 	.language-card.selected {

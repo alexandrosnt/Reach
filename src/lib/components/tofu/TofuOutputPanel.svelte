@@ -402,7 +402,7 @@
 	}
 
 	.action-btn.edit:hover:not(:disabled) {
-		background: rgba(255, 255, 255, 0.04);
+		background: var(--color-surface-hover);
 		border-color: var(--color-accent);
 	}
 
@@ -449,7 +449,7 @@
 	.value-type {
 		font-size: 0.6875rem;
 		color: var(--color-text-secondary);
-		background: rgba(255, 255, 255, 0.04);
+		background: var(--color-surface-hover);
 		padding: 2px 8px;
 		border-radius: 4px;
 		white-space: nowrap;
@@ -469,7 +469,7 @@
 		font-size: 0.75rem;
 		font-family: monospace;
 		color: var(--color-text-primary);
-		background: rgba(255, 255, 255, 0.03);
+		background: var(--color-surface-hover);
 		padding: 2px 6px;
 		border-radius: 3px;
 	}

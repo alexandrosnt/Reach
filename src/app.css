@@ -21,6 +21,7 @@
   --color-surface-hover: rgba(255, 255, 255, 0.06);
   --color-surface-active: rgba(255, 255, 255, 0.10);
   --color-surface-sunken: rgba(0, 0, 0, 0.20);
+  --color-surface-strong: rgba(255, 255, 255, 0.18);
 
   /* A third text level. Two were not enough, so components reached for opacity
      or ad-hoc greys to express "less important than secondary". */
@@ -121,6 +122,7 @@ body {
   --color-surface-hover: rgba(0, 0, 0, 0.04);
   --color-surface-active: rgba(0, 0, 0, 0.08);
   --color-surface-sunken: rgba(0, 0, 0, 0.03);
+  --color-surface-strong: rgba(0, 0, 0, 0.16);
   --color-text-tertiary: #8e8e93;
 }
 

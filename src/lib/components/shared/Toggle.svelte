@@ -66,7 +66,7 @@
 		border: none;
 		padding: 0;
 		cursor: pointer;
-		background-color: rgba(255, 255, 255, 0.12);
+		background-color: var(--color-surface-active);
 		transition: background-color 200ms var(--ease-default);
 		flex-shrink: 0;
 	}
@@ -83,7 +83,7 @@
 		height: 20px;
 		border-radius: 50%;
 		background-color: #fff;
-		box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+		box-shadow: var(--shadow-elevated);
 		transition: transform 200ms var(--ease-default);
 	}
 

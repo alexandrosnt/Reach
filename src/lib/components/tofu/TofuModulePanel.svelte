@@ -448,7 +448,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(0, 0, 0, 0.5);
+		background: var(--color-surface-sunken);
 		backdrop-filter: blur(4px);
 		animation: fadeIn var(--duration-default) var(--ease-default);
 	}
@@ -498,7 +498,7 @@
 	}
 
 	.modal-close:hover {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
@@ -636,7 +636,7 @@
 
 	.remove-input-btn:hover {
 		color: var(--color-danger);
-		background: rgba(255, 255, 255, 0.06);
+		background: var(--color-surface-hover);
 	}
 
 	@keyframes fadeIn {

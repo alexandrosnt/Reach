@@ -282,7 +282,7 @@
 		width: 100vw;
 		height: 100vh;
 		overflow: hidden;
-		background: var(--color-bg-primary, #0a0a0a);
+		background: var(--color-bg-primary, var(--color-bg-primary));
 	}
 
 	.titlebar {
@@ -290,7 +290,7 @@
 		align-items: center;
 		height: 38px;
 		min-height: 38px;
-		background: var(--color-bg-primary, #0a0a0a);
+		background: var(--color-bg-primary, var(--color-bg-primary));
 		border-bottom: 1px solid var(--color-border);
 		user-select: none;
 		-webkit-app-region: drag;
@@ -348,7 +348,7 @@
 		width: 6px;
 		height: 6px;
 		border-radius: 50%;
-		background: var(--color-warning, #ffd60a);
+		background: var(--color-warning, var(--color-warning));
 		flex-shrink: 0;
 	}
 
@@ -373,7 +373,7 @@
 	}
 
 	.tab-close-btn:hover {
-		background-color: rgba(255, 255, 255, 0.1);
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
@@ -398,7 +398,7 @@
 	}
 
 	.window-btn:hover {
-		background: rgba(255, 255, 255, 0.06);
+		background: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 

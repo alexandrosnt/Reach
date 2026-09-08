@@ -140,7 +140,7 @@
 	}
 
 	.mode-card:hover {
-		background: rgba(255, 255, 255, 0.04);
+		background: var(--color-surface-hover);
 	}
 
 	.mode-card.selected {

@@ -424,7 +424,7 @@
 	}
 
 	.resource-header:hover {
-		background: rgba(255, 255, 255, 0.02);
+		background: var(--color-surface-hover);
 	}
 
 	.resource-header-left {
@@ -476,7 +476,7 @@
 	}
 
 	.action-badge.action-noop {
-		background: rgba(255, 255, 255, 0.04);
+		background: var(--color-surface-hover);
 		color: var(--color-text-secondary);
 	}
 
@@ -539,7 +539,7 @@
 	}
 
 	.attribute-row:not(:last-child) {
-		border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+		border-bottom: 1px solid var(--color-border);
 	}
 
 	.attr-name {

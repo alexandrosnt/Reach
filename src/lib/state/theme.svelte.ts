@@ -54,6 +54,7 @@ export interface ThemeColors {
 	'surface-hover': string;
 	'surface-active': string;
 	'surface-sunken': string;
+	'surface-strong': string;
 }
 
 export interface Theme {
@@ -83,7 +84,8 @@ export const COLOR_KEYS: (keyof ThemeColors)[] = [
 	'danger',
 	'surface-hover',
 	'surface-active',
-	'surface-sunken'
+	'surface-sunken',
+	'surface-strong'
 ];
 
 export const TERMINAL_KEYS: (keyof TerminalPalette)[] = [
@@ -130,7 +132,8 @@ export const DARK: Theme = {
 		danger: '#ff453a',
 		'surface-hover': 'rgba(255, 255, 255, 0.06)',
 		'surface-active': 'rgba(255, 255, 255, 0.10)',
-		'surface-sunken': 'rgba(0, 0, 0, 0.20)'
+		'surface-sunken': 'rgba(0, 0, 0, 0.20)',
+		'surface-strong': 'rgba(255, 255, 255, 0.18)'
 	},
 	terminal: {
 		background: '#0a0a0a',
@@ -177,7 +180,8 @@ export const LIGHT: Theme = {
 		danger: '#ff3b30',
 		'surface-hover': 'rgba(0, 0, 0, 0.04)',
 		'surface-active': 'rgba(0, 0, 0, 0.08)',
-		'surface-sunken': 'rgba(0, 0, 0, 0.03)'
+		'surface-sunken': 'rgba(0, 0, 0, 0.03)',
+		'surface-strong': 'rgba(0, 0, 0, 0.16)'
 	},
 	terminal: {
 		// The terminal stayed #0a0a0a in light mode before themes existed — a

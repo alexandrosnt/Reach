@@ -112,15 +112,15 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		background: rgba(0, 0, 0, 0.6);
+		background: var(--color-surface-sunken);
 		backdrop-filter: blur(8px);
 		-webkit-backdrop-filter: blur(8px);
 		animation: fadeIn var(--duration-default, 200ms) var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1));
 	}
 
 	.update-card {
-		background-color: var(--color-bg-elevated, #1c1c1e);
-		border: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+		background-color: var(--color-bg-elevated, var(--color-bg-elevated));
+		border: 1px solid var(--color-border, var(--color-border));
 		border-radius: var(--radius-modal, 16px);
 		box-shadow: var(--shadow-elevated, 0 8px 32px rgba(0, 0, 0, 0.25));
 		width: 90%;
@@ -153,7 +153,7 @@
 	.title {
 		font-size: 1.125rem;
 		font-weight: 600;
-		color: var(--color-text-primary, #f5f5f7);
+		color: var(--color-text-primary, var(--color-text-primary));
 		margin: 0;
 		letter-spacing: -0.01em;
 	}
@@ -165,7 +165,7 @@
 		border-radius: 20px;
 		font-size: 0.75rem;
 		font-weight: 500;
-		color: var(--color-accent, #0a84ff);
+		color: var(--color-accent, var(--color-accent));
 		background: rgba(10, 132, 255, 0.12);
 		letter-spacing: 0.01em;
 	}
@@ -177,7 +177,7 @@
 	.release-notes-heading {
 		font-size: 0.75rem;
 		font-weight: 500;
-		color: var(--color-text-secondary, #86868b);
+		color: var(--color-text-secondary, var(--color-text-secondary));
 		margin: 0 0 8px 0;
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
@@ -187,8 +187,8 @@
 		max-height: 200px;
 		overflow-y: auto;
 		border-radius: 8px;
-		background: rgba(255, 255, 255, 0.03);
-		border: 1px solid var(--color-border, rgba(255, 255, 255, 0.08));
+		background: var(--color-surface-hover);
+		border: 1px solid var(--color-border, var(--color-border));
 	}
 
 	.release-notes-text {
@@ -197,7 +197,7 @@
 		font-family: var(--font-sans, 'Inter', system-ui, -apple-system, sans-serif);
 		font-size: 0.8125rem;
 		line-height: 1.55;
-		color: var(--color-text-secondary, #86868b);
+		color: var(--color-text-secondary, var(--color-text-secondary));
 		white-space: pre-wrap;
 		word-wrap: break-word;
 	}
@@ -211,7 +211,7 @@
 	}
 
 	.release-notes-content::-webkit-scrollbar-thumb {
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--color-surface-active);
 		border-radius: 3px;
 	}
 
@@ -222,14 +222,14 @@
 	.progress-track {
 		height: 6px;
 		border-radius: 3px;
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--color-surface-active);
 		overflow: hidden;
 	}
 
 	.progress-fill {
 		height: 100%;
 		border-radius: 3px;
-		background: var(--color-accent, #0a84ff);
+		background: var(--color-accent, var(--color-accent));
 		transition: width 300ms var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1));
 	}
 
@@ -240,7 +240,7 @@
 	.progress-label {
 		margin: 8px 0 0 0;
 		font-size: 0.75rem;
-		color: var(--color-text-secondary, #86868b);
+		color: var(--color-text-secondary, var(--color-text-secondary));
 		text-align: center;
 	}
 
@@ -254,7 +254,7 @@
 		background: rgba(255, 69, 58, 0.08);
 		border: 1px solid rgba(255, 69, 58, 0.15);
 		font-size: 0.8125rem;
-		color: var(--color-danger, #ff453a);
+		color: var(--color-danger, var(--color-danger));
 		line-height: 1.4;
 	}
 
@@ -283,7 +283,7 @@
 		font-size: 0.875rem;
 		font-weight: 500;
 		color: #fff;
-		background-color: var(--color-accent, #0a84ff);
+		background-color: var(--color-accent, var(--color-accent));
 		cursor: pointer;
 		transition:
 			background-color var(--duration-default, 200ms) var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1)),
@@ -294,7 +294,7 @@
 	}
 
 	.btn-primary:hover:not(:disabled) {
-		background-color: var(--color-accent-hover, #409cff);
+		background-color: var(--color-accent-hover, var(--color-accent-hover));
 	}
 
 	.btn-primary:active:not(:disabled) {
@@ -316,7 +316,7 @@
 		font-family: var(--font-sans, 'Inter', system-ui, -apple-system, sans-serif);
 		font-size: 0.8125rem;
 		font-weight: 500;
-		color: var(--color-text-secondary, #86868b);
+		color: var(--color-text-secondary, var(--color-text-secondary));
 		background: transparent;
 		cursor: pointer;
 		transition:
@@ -327,8 +327,8 @@
 	}
 
 	.btn-ghost:hover {
-		background: rgba(255, 255, 255, 0.06);
-		color: var(--color-text-primary, #f5f5f7);
+		background: var(--color-surface-hover);
+		color: var(--color-text-primary, var(--color-text-primary));
 	}
 
 	.btn-ghost:active {

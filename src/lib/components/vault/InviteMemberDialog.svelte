@@ -354,7 +354,7 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 		display: flex;
 		gap: 4px;
 		padding: 4px;
-		background-color: rgba(255, 255, 255, 0.04);
+		background-color: var(--color-surface-hover);
 		border-radius: 8px;
 	}
 
@@ -378,7 +378,7 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 
 	.tab.active {
 		color: var(--color-text-primary);
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 	}
 
 	.tab-content {
@@ -432,7 +432,7 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 		font-family: var(--font-mono);
 		font-size: 0.6875rem;
 		color: var(--color-text-primary);
-		background-color: rgba(255, 255, 255, 0.04);
+		background-color: var(--color-surface-hover);
 		border-radius: 4px;
 		word-break: break-all;
 	}
@@ -485,7 +485,7 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 		gap: 2px;
 		padding: 10px 12px;
 		text-align: left;
-		background-color: rgba(255, 255, 255, 0.02);
+		background-color: var(--color-surface-hover);
 		border: 1px solid var(--color-border);
 		border-radius: 6px;
 		cursor: pointer;
@@ -493,7 +493,7 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 	}
 
 	.role-option:hover:not(:disabled) {
-		background-color: rgba(255, 255, 255, 0.05);
+		background-color: var(--color-surface-hover);
 		border-color: var(--color-text-secondary);
 	}
 
@@ -589,7 +589,7 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 		align-items: center;
 		justify-content: space-between;
 		padding: 10px 12px;
-		background-color: rgba(255, 255, 255, 0.02);
+		background-color: var(--color-surface-hover);
 		border: 1px solid var(--color-border);
 		border-radius: 6px;
 	}

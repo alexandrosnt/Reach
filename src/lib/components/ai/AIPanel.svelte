@@ -268,7 +268,7 @@
 	}
 
 	.icon-btn:hover {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
@@ -356,13 +356,13 @@
 	}
 
 	.msg-copy-btn:hover {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
 	.msg-copy-btn.copied {
 		opacity: 1;
-		color: var(--color-success, #30d158);
+		color: var(--color-success, var(--color-success));
 	}
 
 	.message {
@@ -424,13 +424,13 @@
 	}
 
 	.message :global(.copy-btn:hover) {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 	}
 
 	.message :global(.run-btn) {
 		border: none;
 		background: transparent;
-		color: var(--color-success, #30d158);
+		color: var(--color-success, var(--color-success));
 		cursor: pointer;
 		font-size: 0.6875rem;
 		padding: 2px 6px;

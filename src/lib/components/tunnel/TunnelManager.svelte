@@ -276,7 +276,7 @@
 		justify-content: space-between;
 		padding: 8px 10px;
 		border-bottom: 1px solid var(--color-border);
-		background-color: rgba(255, 255, 255, 0.02);
+		background-color: var(--color-surface-hover);
 	}
 
 	.form-title {
@@ -301,7 +301,7 @@
 	}
 
 	.form-close:hover {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
@@ -315,7 +315,7 @@
 	.type-selector {
 		display: flex;
 		gap: 4px;
-		background-color: rgba(255, 255, 255, 0.03);
+		background-color: var(--color-surface-hover);
 		border-radius: var(--radius-btn);
 		padding: 3px;
 	}
@@ -400,7 +400,7 @@
 	}
 
 	.delete-btn:hover {
-		background-color: rgba(255, 255, 255, 0.08);
+		background-color: var(--color-surface-active);
 		color: var(--color-danger);
 	}
 
@@ -434,7 +434,7 @@
 		display: inline-block;
 		width: 14px;
 		height: 14px;
-		border: 2px solid rgba(255, 255, 255, 0.15);
+		border: 2px solid var(--color-border);
 		border-top-color: var(--color-accent);
 		border-radius: 50%;
 		animation: spin 0.6s linear infinite;

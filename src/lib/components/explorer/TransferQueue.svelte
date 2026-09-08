@@ -115,7 +115,7 @@
 	}
 
 	.clear-btn:hover {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 	}
 
 	.transfer-list {
@@ -176,7 +176,7 @@
 	}
 
 	.dismiss-btn:hover {
-		background-color: rgba(255, 255, 255, 0.1);
+		background-color: var(--color-surface-active);
 	}
 
 	.transfer-detail {
@@ -191,12 +191,12 @@
 
 	.transfer-done {
 		font-size: 0.5625rem;
-		color: #30d158;
+		color: var(--color-success);
 	}
 
 	.transfer-err {
 		font-size: 0.5625rem;
-		color: #ff453a;
+		color: var(--color-danger);
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -204,7 +204,7 @@
 
 	.bar-track {
 		height: 2px;
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--color-surface-active);
 		border-radius: 1px;
 		margin-top: 4px;
 		overflow: hidden;

@@ -283,7 +283,7 @@
 
 	.panel-expand-btn:hover {
 		color: var(--color-accent);
-		background: rgba(255, 255, 255, 0.04);
+		background: var(--color-surface-hover);
 	}
 
 	.panel-header {
@@ -312,7 +312,7 @@
 
 	.panel-collapse-btn:hover {
 		color: var(--color-accent);
-		background: rgba(255, 255, 255, 0.06);
+		background: var(--color-surface-hover);
 	}
 
 	.project-name {
@@ -374,12 +374,12 @@
 	}
 
 	.file-item:hover {
-		background: rgba(255, 255, 255, 0.04);
+		background: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 
 	.file-item.active {
-		background: rgba(255, 255, 255, 0.08);
+		background: var(--color-surface-active);
 		color: var(--color-accent);
 	}
 
@@ -569,7 +569,7 @@
 
 	.close-viewer-btn:hover {
 		color: var(--color-text-primary);
-		background: rgba(255, 255, 255, 0.06);
+		background: var(--color-surface-hover);
 	}
 
 	.file-viewer-content {

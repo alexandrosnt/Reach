@@ -309,7 +309,7 @@
 	}
 
 	.action-btn.show:hover:not(:disabled) {
-		background: rgba(255, 255, 255, 0.04);
+		background: var(--color-surface-hover);
 		border-color: var(--color-accent);
 	}
 
@@ -318,7 +318,7 @@
 	}
 
 	.action-btn.move:hover:not(:disabled) {
-		background: rgba(255, 255, 255, 0.04);
+		background: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 

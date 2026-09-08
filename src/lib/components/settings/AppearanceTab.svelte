@@ -252,7 +252,7 @@
 		font-family: var(--font-sans);
 	}
 
-	.theme-card:hover { background-color: rgba(255, 255, 255, 0.04); }
+	.theme-card:hover { background-color: var(--color-surface-hover); }
 	.theme-card.active { border-color: var(--color-accent); background-color: rgba(10, 132, 255, 0.08); }
 
 	.theme-preview {
@@ -260,9 +260,9 @@
 		display: flex; align-items: center; justify-content: center;
 	}
 
-	.preview-dark { background-color: #1c1c1e; color: #f5f5f7; }
-	.preview-light { background-color: #f5f5f7; color: #1d1d1f; }
-	.preview-system { background: linear-gradient(135deg, #1c1c1e 50%, #f5f5f7 50%); color: var(--color-text-primary); }
+	.preview-dark { background-color: var(--color-bg-elevated); color: var(--color-text-primary); }
+	.preview-light { background-color: var(--color-text-primary); color: #1d1d1f; }
+	.preview-system { background: linear-gradient(135deg, var(--color-bg-elevated) 50%, var(--color-text-primary) 50%); color: var(--color-text-primary); }
 
 	.theme-label { font-size: 0.75rem; font-weight: 500; color: var(--color-text-primary); }
 
@@ -306,7 +306,7 @@
 	.font-dropdown {
 		position: absolute; top: calc(100% + 4px); right: 0; width: 260px;
 		background: var(--color-bg-elevated); border: 1px solid var(--color-border);
-		border-radius: 8px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+		border-radius: 8px; box-shadow: var(--shadow-elevated);
 		z-index: 100; overflow: hidden;
 	}
 
@@ -321,7 +321,7 @@
 
 	.font-list {
 		max-height: 280px; overflow-y: auto; padding: 4px 0;
-		scrollbar-width: thin; scrollbar-color: rgba(255,255,255,0.1) transparent;
+		scrollbar-width: thin; scrollbar-color: var(--color-surface-active) transparent;
 	}
 
 	.font-group-label {
@@ -336,7 +336,7 @@
 		font-size: 0.8125rem; cursor: pointer; text-align: left;
 		transition: background-color 0.1s ease;
 	}
-	.font-option:hover { background-color: rgba(255, 255, 255, 0.06); }
+	.font-option:hover { background-color: var(--color-surface-hover); }
 	.font-option.active { background-color: rgba(10, 132, 255, 0.12); color: var(--color-accent); }
 
 	/* Preview box */
@@ -362,7 +362,7 @@
 		white-space: pre;
 		overflow-x: auto;
 		color: var(--color-text-primary);
-		background: #0a0a0a;
+		background: var(--color-bg-primary);
 		border-radius: 0 0 8px 8px;
 	}
 

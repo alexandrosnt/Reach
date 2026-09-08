@@ -362,7 +362,7 @@
 	}
 
 	.action-btn.edit:hover:not(:disabled) {
-		background: rgba(255, 255, 255, 0.04);
+		background: var(--color-surface-hover);
 		border-color: var(--color-accent);
 	}
 

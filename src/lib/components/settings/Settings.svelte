@@ -118,12 +118,12 @@
 
 	.menu-item:hover {
 		color: var(--color-text-primary);
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 	}
 
 	.menu-item.active {
 		color: var(--color-text-primary);
-		background-color: rgba(255, 255, 255, 0.1);
+		background-color: var(--color-surface-active);
 	}
 
 	.menu-item svg {

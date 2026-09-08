@@ -254,7 +254,7 @@
 		flex-direction: column;
 		gap: 6px;
 		padding: 8px;
-		background: rgba(255, 255, 255, 0.02);
+		background: var(--color-surface-hover);
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
 	}
@@ -316,7 +316,7 @@
 		transition: background-color 0.15s ease;
 	}
 
-	.snippet-card:hover { background: rgba(255, 255, 255, 0.04); }
+	.snippet-card:hover { background: var(--color-surface-hover); }
 
 	.snippet-header {
 		display: flex;
@@ -359,7 +359,7 @@
 		transition: background-color 0.1s ease, color 0.1s ease;
 	}
 
-	.action-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--color-text-primary); }
+	.action-btn:hover { background: var(--color-surface-active); color: var(--color-text-primary); }
 	.run-btn:hover { color: var(--color-accent); }
 	.delete-btn:hover { color: var(--color-danger); }
 
@@ -369,7 +369,7 @@
 		font-family: var(--font-mono, monospace);
 		font-size: 0.625rem;
 		color: var(--color-text-secondary);
-		background: rgba(255, 255, 255, 0.03);
+		background: var(--color-surface-hover);
 		border-radius: 4px;
 		overflow-x: auto;
 		white-space: pre-wrap;
@@ -392,7 +392,7 @@
 		padding: 1px 5px;
 		font-size: 0.5625rem;
 		color: var(--color-text-secondary);
-		background: rgba(255, 255, 255, 0.06);
+		background: var(--color-surface-hover);
 		border-radius: 3px;
 	}
 

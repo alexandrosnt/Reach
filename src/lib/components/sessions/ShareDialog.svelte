@@ -170,7 +170,7 @@
 	.share-overlay {
 		position: fixed;
 		inset: 0;
-		background: rgba(0, 0, 0, 0.6);
+		background: var(--color-surface-sunken);
 		backdrop-filter: blur(4px);
 		display: flex;
 		align-items: center;
@@ -217,7 +217,7 @@
 	}
 
 	.close-btn:hover {
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
@@ -239,7 +239,7 @@
 	}
 
 	.my-info {
-		background: rgba(255, 255, 255, 0.03);
+		background: var(--color-surface-hover);
 		border: 1px solid var(--color-border);
 		border-radius: 8px;
 		padding: 12px;
@@ -272,7 +272,7 @@
 		flex: 1;
 		font-size: 0.6875rem;
 		font-family: var(--font-mono);
-		background: rgba(0, 0, 0, 0.2);
+		background: var(--color-surface-sunken);
 		padding: 4px 8px;
 		border-radius: 4px;
 		overflow: hidden;
@@ -295,7 +295,7 @@
 	}
 
 	.copy-btn:hover {
-		background: rgba(255, 255, 255, 0.1);
+		background: var(--color-surface-active);
 		color: var(--color-text-primary);
 	}
 
@@ -375,7 +375,7 @@
 	}
 
 	.secondary-btn:hover:not(:disabled) {
-		background: rgba(255, 255, 255, 0.05);
+		background: var(--color-surface-hover);
 	}
 
 	.success-content {
@@ -411,7 +411,7 @@
 
 	.share-id code {
 		font-family: var(--font-mono);
-		background: rgba(0, 0, 0, 0.2);
+		background: var(--color-surface-sunken);
 		padding: 2px 6px;
 		border-radius: 4px;
 	}

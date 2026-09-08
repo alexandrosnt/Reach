@@ -260,7 +260,7 @@
 	}
 
 	.select-btn:hover:not(:disabled) {
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 
@@ -288,7 +288,7 @@
 	}
 
 	.host-row:hover:not(.disabled) {
-		background-color: rgba(255, 255, 255, 0.04);
+		background-color: var(--color-surface-hover);
 	}
 
 	.host-row.disabled {
@@ -328,7 +328,7 @@
 		font-size: 0.5625rem;
 		font-weight: 500;
 		color: var(--color-text-secondary);
-		background-color: rgba(255, 255, 255, 0.06);
+		background-color: var(--color-surface-hover);
 		border-radius: 3px;
 		text-transform: uppercase;
 		letter-spacing: 0.03em;
@@ -351,7 +351,7 @@
 		display: inline-block;
 		width: 14px;
 		height: 14px;
-		border: 2px solid rgba(255, 255, 255, 0.15);
+		border: 2px solid var(--color-border);
 		border-top-color: var(--color-accent);
 		border-radius: 50%;
 		animation: spin 0.6s linear infinite;
