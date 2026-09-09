@@ -74,7 +74,7 @@
 	 * ever built: search narrows it, the count says what is being hidden, and
 	 * Settings > Appearance is where the full catalogue lives.
 	 */
-	const MAX_SHOWN = 6;
+	const MAX_SHOWN = 12;
 
 	let themeQuery = $state('');
 
@@ -94,9 +94,10 @@
 			.map((e) => ({ id: e.id, name: e.name, theme: null as Theme | null, entry: e }))
 	);
 
-	/** Only worth a search box once the list is longer than the cap. */
+	/** A search box earns its 34px only once the strip holds more than a screen's
+	 *  worth; below that, scrolling the row is faster than typing. */
 	let themeSearchable = $derived(
-		available.filter((e) => !installedIds.has(e.id)).length > MAX_SHOWN
+		available.filter((e) => !installedIds.has(e.id)).length > 4
 	);
 
 	/** Install a registry theme, then select it — one click, not two. */
@@ -180,7 +181,7 @@
 				<div class="field-head">
 					<span class="field-label">{t('themes.marketplace')}</span>
 					{#if matchingThemes.length > installable.length}
-						<span class="field-count">
+						<span class="field-count" title={t('themes.more_in_settings')}>
 							{t('themes.showing_n_of_m', {
 								shown: installable.length,
 								total: matchingThemes.length
@@ -205,7 +206,7 @@
 					<p class="theme-none">{t('themes.no_match')}</p>
 				{/if}
 
-				<div class="theme-grid">
+				<div class="theme-strip">
 					{#each installable as choice (choice.id)}
 						<button
 							type="button"
@@ -221,9 +222,6 @@
 					{/each}
 				</div>
 
-				{#if matchingThemes.length > installable.length}
-					<p class="theme-more">{t('themes.more_in_settings')}</p>
-				{/if}
 			</div>
 		{/if}
 	</div>
@@ -315,12 +313,33 @@
 		color: var(--color-text-tertiary);
 	}
 
-	.theme-none,
-	.theme-more {
+	.theme-none {
 		margin: 0;
 		font-size: var(--text-xs);
 		color: var(--color-text-tertiary);
 		text-align: center;
+	}
+
+	/*
+	 * Marketplace themes scroll sideways on a single row.
+	 *
+	 * As a wrapping grid this section grew a row per six themes and pushed the
+	 * whole wizard past the viewport — 972px of card in an 882px window, with
+	 * the Next button below the fold. A strip costs one card's height whether
+	 * the registry holds two themes or two thousand, and sideways scrolling is
+	 * the ordinary way to offer a long shelf of choices on a phone or tablet.
+	 */
+	.theme-strip {
+		display: flex;
+		gap: var(--space-2);
+		overflow-x: auto;
+		padding-bottom: var(--space-1);
+		scroll-snap-type: x proximity;
+	}
+
+	.theme-strip .theme-card {
+		flex: 0 0 124px;
+		scroll-snap-align: start;
 	}
 
 	.theme-grid {
@@ -378,6 +397,17 @@
 		justify-content: center;
 		gap: var(--space-3);
 		width: 100%;
+		/* The step body scrolls (see WelcomeScreen .step-content), so the
+		   primary action pins to the bottom of that scroller instead of
+		   disappearing under the fold on a short window. */
+		position: sticky;
+		bottom: 0;
+		padding-top: var(--space-3);
+		background: linear-gradient(
+			to bottom,
+			transparent,
+			var(--color-bg-secondary) 40%
+		);
 	}
 </style>
 

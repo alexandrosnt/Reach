@@ -233,5 +233,16 @@
 		justify-content: center;
 		gap: var(--space-3);
 		width: 100%;
+		/* The step body scrolls (see WelcomeScreen .step-content), so the
+		   primary action pins to the bottom of that scroller instead of
+		   disappearing under the fold on a short window. */
+		position: sticky;
+		bottom: 0;
+		padding-top: var(--space-3);
+		background: linear-gradient(
+			to bottom,
+			transparent,
+			var(--color-bg-secondary) 40%
+		);
 	}
 </style>
