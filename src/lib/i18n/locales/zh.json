@@ -614,6 +614,8 @@
   "mcp.confirm_title": "AI 想要执行此命令",
   "settings.mcp": "MCP",
   "mcp.enable": "MCP 服务器",
+  "mcp.share_tab": "与 AI 共享此会话",
+  "mcp.unshare_tab": "停止与 AI 共享",
   "mcp.enable_desc": "让 AI 客户端读取并输入到你共享的会话。默认关闭；在你开启前不会监听。",
   "mcp.port": "端口",
   "mcp.port_desc": "0 让系统选择空闲端口。",

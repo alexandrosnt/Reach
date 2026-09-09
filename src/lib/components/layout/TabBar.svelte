@@ -1,8 +1,41 @@
 <script lang="ts">
-	import { getTabs, getActiveTab, createTab, closeTab, activateTab } from '$lib/state/tabs.svelte';
+	import { getTabs, getActiveTab, createTab, closeTab, activateTab , type Tab } from '$lib/state/tabs.svelte';
 	import { getActivePage, setActivePage, type Page } from '$lib/state/navigation.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import DistroIcon from '$lib/components/sessions/DistroIcon.svelte';
+	import * as mcp from '$lib/state/mcp.svelte';
+	import { onMount } from 'svelte';
+
+	let mcpStatus = $derived(mcp.getMcpStatus());
+
+	// The share control is only rendered when the MCP server is running. A
+	// button that cannot do anything is worse than no button: it invites a
+	// click, fails, and teaches people the feature is broken.
+	onMount(() => { mcp.refresh(); });
+
+	/** The id the backend keys output on: the SSH connection, or the PTY id. */
+	function shareIdOf(tab: { id: string; type: string; connectionId?: string }): string | null {
+		if (tab.type === 'ssh') return tab.connectionId ?? null;
+		if (tab.type === 'local') return tab.id;
+		return null;
+	}
+
+	async function toggleShare(e: MouseEvent, tab: Tab): Promise<void> {
+		e.stopPropagation();
+		const id = shareIdOf(tab);
+		if (!id) return;
+		if (mcp.isShared(id)) {
+			await mcp.unshare(id);
+			return;
+		}
+		const isSsh = tab.type === 'ssh';
+		await mcp.share(
+			id,
+			isSsh ? 'ssh' : 'local',
+			tab.sshConnectParams?.host ?? 'localhost',
+			tab.sshConnectParams?.username ?? ''
+		);
+	}
 
 	let tabs = $derived(getTabs());
 	let activeTab = $derived(getActiveTab());
@@ -70,6 +103,31 @@
 					{/if}
 
 					<span class="tab-title">{tab.sessionName || tab.title}</span>
+
+					{#if mcpStatus.enabled && shareIdOf(tab)}
+						{@const sid = shareIdOf(tab) as string}
+						{@const on = mcp.isShared(sid)}
+						<button
+							class="tab-share"
+							class:shared={on}
+							onclick={(e) => toggleShare(e, tab)}
+							aria-pressed={on}
+							title={on ? t('mcp.unshare_tab') : t('mcp.share_tab')}
+							aria-label={on ? t('mcp.unshare_tab') : t('mcp.share_tab')}
+						>
+							<svg width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+								{#if on}
+									<!-- Live: a filled eye. Reads as "something is watching this" from
+									     across the room, which is the whole point of this control. -->
+									<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" fill="currentColor" opacity="0.9" />
+									<circle cx="12" cy="12" r="2.6" fill="var(--color-bg-primary)" />
+								{:else}
+									<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+									<circle cx="12" cy="12" r="2.8" stroke="currentColor" stroke-width="1.8" />
+								{/if}
+							</svg>
+						</button>
+					{/if}
 
 					<button
 						class="tab-close"
@@ -200,6 +258,71 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		text-align: left;
+	}
+
+	/* Only rendered while the MCP server runs. When a session is shared this
+	   stays visible at all times, unlike .tab-close which is hover-only: an
+	   AI being able to read a terminal is a state that must never be hidden.
+	   Amber rather than green, for the same reason as the settings dot. */
+	.tab-share {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		flex-shrink: 0;
+		width: 22px;
+		height: 22px;
+		padding: 0;
+		border: none;
+		border-radius: 50%;
+		background: none;
+		color: var(--color-text-tertiary);
+		cursor: pointer;
+		opacity: 0;
+		position: relative;
+	}
+
+	.tab:hover .tab-share {
+		opacity: 1;
+	}
+
+	/* Live. Deliberately loud: a filled amber eye on a tinted disc with a
+	   pulsing ring, always visible and never hover-gated. Everything else on
+	   a tab can afford to be subtle; a terminal an AI can read cannot be, and
+	   the first attempt at 11px and hover-only was far too easy to miss. */
+	.tab-share.shared {
+		opacity: 1;
+		color: var(--color-warning);
+		background: color-mix(in srgb, var(--color-warning) 16%, transparent);
+		box-shadow: 0 0 0 1px color-mix(in srgb, var(--color-warning) 45%, transparent);
+	}
+
+	.tab-share.shared::after {
+		content: '';
+		position: absolute;
+		inset: -3px;
+		border-radius: 50%;
+		border: 1px solid var(--color-warning);
+		animation: mcp-watch 2.4s var(--ease-default) infinite;
+		pointer-events: none;
+	}
+
+	@keyframes mcp-watch {
+		0% { transform: scale(0.85); opacity: 0.55; }
+		70%, 100% { transform: scale(1.3); opacity: 0; }
+	}
+
+	/* The colour and ring carry the state on their own, so motion can go. */
+	@media (prefers-reduced-motion: reduce) {
+		.tab-share.shared::after { animation: none; opacity: 0.55; }
+	}
+
+	.tab-share:hover {
+		background: var(--color-surface-hover);
+		color: var(--color-text-primary);
+	}
+
+	.tab-share.shared:hover {
+		color: var(--color-warning);
 	}
 
 	.tab-close {

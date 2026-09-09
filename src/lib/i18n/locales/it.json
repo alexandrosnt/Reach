@@ -620,6 +620,8 @@
   "mcp.confirm_title": "Un'IA vuole eseguire questo",
   "settings.mcp": "MCP",
   "mcp.enable": "Server MCP",
+  "mcp.share_tab": "Condividi questa sessione con l'IA",
+  "mcp.unshare_tab": "Interrompi la condivisione con l'IA",
   "mcp.enable_desc": "Consenti a un client IA di leggere e scrivere nelle sessioni che condividi. Disattivato per impostazione predefinita; nulla è in ascolto finché non lo attivi.",
   "mcp.port": "Porta",
   "mcp.port_desc": "0 lascia che il sistema scelga una porta libera.",

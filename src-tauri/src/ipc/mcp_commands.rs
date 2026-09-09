@@ -14,7 +14,7 @@ use tauri::{Emitter, Manager};
 use crate::mcp::agents;
 use crate::mcp::server::RunningServer;
 use crate::mcp::session::SessionKind;
-use crate::mcp::{ConfirmRequest, McpState};
+use crate::mcp::{ConfirmRequest, McpState, SendRequest};
 use crate::state::AppState;
 
 /// Pending confirmations, keyed by prompt id. Same shape as the host-key
@@ -124,6 +124,13 @@ pub async fn mcp_start(
     })))
     .await;
 
+    let app_for_send = app.clone();
+    mcp.set_sender(Some(std::sync::Arc::new(move |req: SendRequest| {
+        let app = app_for_send.clone();
+        Box::pin(async move { type_into_session(app, req).await })
+    })))
+    .await;
+
     // 0 asks the OS for a free port. A fixed default that collides becomes a
     // support question; letting the system choose never does.
     let server = crate::mcp::server::start(mcp.clone(), port.unwrap_or(0)).await?;
@@ -148,6 +155,7 @@ pub async fn mcp_stop(state: tauri::State<'_, AppState>) -> Result<McpStatus, St
     // preconditions go with it. Restarting is a clean slate, not a resumption.
     mcp.set_token(None);
     mcp.set_confirmer(None).await;
+    mcp.set_sender(None).await;
     mcp.clear().await;
     pending().lock().unwrap().clear();
 
@@ -280,6 +288,65 @@ async fn ask_user(app: tauri::AppHandle, req: ConfirmRequest) -> bool {
         _ => {
             pending().lock().unwrap().remove(&prompt_id);
             false
+        }
+    }
+}
+
+/// Echo the command into the visible terminal, then actually type it.
+///
+/// The echo is written to the *display only* — it goes out on the same event the
+/// terminal already listens to, so it lands in the scrollback without a byte of
+/// it reaching the remote shell. That matters: an AI typing into a terminal you
+/// are also watching should leave a trace you can scroll back to, and "what did
+/// it just do?" should be answerable from the terminal itself rather than from
+/// a settings panel.
+///
+/// Dim and bracketed with the agent's name, so it reads as annotation rather
+/// than as something the shell printed.
+async fn type_into_session(app: tauri::AppHandle, req: SendRequest) -> Result<(), String> {
+    // \r\n rather than \n: the terminal is in raw mode, so a bare newline moves
+    // down without returning to column zero and the banner walks diagonally.
+    let banner = format!(
+        "\r\n\x1b[2m\x1b[38;5;180m\u{250c}\u{2500} AI \u{00b7} {} \u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\x1b[0m\r\n\
+         \x1b[2m\u{2502}\x1b[0m \x1b[38;5;180m{}\x1b[0m\r\n\
+         \x1b[2m\u{2514}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\u{2500}\x1b[0m\r\n",
+        req.agent_name, req.command
+    );
+
+    let state = app
+        .try_state::<AppState>()
+        .ok_or_else(|| "Reach is still starting up".to_string())?;
+
+    // The newline is added here rather than asked of the caller: the tool
+    // contract says "do not include one", and a model that forgets would leave
+    // a half-typed line sitting at the prompt with no way to notice.
+    let mut bytes = req.command.clone().into_bytes();
+    bytes.push(b'\n');
+
+    match req.kind {
+        SessionKind::Ssh => {
+            let _ = app.emit(&format!("ssh-data-{}", req.session_id), banner);
+            let manager = state.ssh_manager.lock().await;
+            manager
+                .send_data(&req.session_id, &bytes)
+                .map_err(|e| e.to_string())
+        }
+        SessionKind::Local => {
+            #[cfg(desktop)]
+            {
+                let _ = app.emit(&format!("pty-data-{}", req.session_id), banner);
+                let mut manager = state
+                    .pty_manager
+                    .lock()
+                    .map_err(|_| "PTY manager is locked".to_string())?;
+                manager
+                    .write(&req.session_id, &bytes)
+                    .map_err(|e| e.to_string())
+            }
+            #[cfg(not(desktop))]
+            {
+                Err("Local terminals are not available on this platform".to_string())
+            }
         }
     }
 }

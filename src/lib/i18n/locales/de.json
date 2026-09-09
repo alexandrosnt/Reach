@@ -620,6 +620,8 @@
   "mcp.confirm_title": "Eine KI möchte dies ausführen",
   "settings.mcp": "MCP",
   "mcp.enable": "MCP-Server",
+  "mcp.share_tab": "Diese Sitzung mit der KI teilen",
+  "mcp.unshare_tab": "Freigabe für die KI beenden",
   "mcp.enable_desc": "Lass einen KI-Client Sitzungen lesen und darin tippen, die du freigibst. Standardmäßig aus; nichts lauscht, bis du es einschaltest.",
   "mcp.port": "Port",
   "mcp.port_desc": "0 lässt das System einen freien Port wählen.",

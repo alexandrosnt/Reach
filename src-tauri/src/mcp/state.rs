@@ -28,6 +28,28 @@ pub type Confirmer = Arc<
         + Sync,
 >;
 
+/// Types an approved command into the session, and echoes it into the visible
+/// terminal so the user watches it happen.
+///
+/// Separate from [`Confirmer`] and injected the same way, for the same reason:
+/// nothing in this module holds a Tauri handle, and a test can observe what
+/// would have been typed without a terminal existing.
+pub type Sender = Arc<
+    dyn Fn(SendRequest) -> std::pin::Pin<Box<dyn std::future::Future<Output = Result<(), String>> + Send>>
+        + Send
+        + Sync,
+>;
+
+/// What actually reaches the terminal.
+#[derive(Debug, Clone)]
+pub struct SendRequest {
+    pub session_id: String,
+    pub kind: SessionKind,
+    pub command: String,
+    /// Shown in the echo banner so the scrollback records which agent acted.
+    pub agent_name: String,
+}
+
 /// What the user is shown before a command runs. Everything here is on the
 /// dialog: the point is that the human decides with the model's reasoning in
 /// front of them, not that they rubber-stamp an opaque string.
@@ -51,6 +73,7 @@ pub struct McpState {
     sessions: RwLock<HashMap<String, SharedSession>>,
     clients: RwLock<HashMap<String, ClientState>>,
     confirmer: Mutex<Option<Confirmer>>,
+    sender: Mutex<Option<Sender>>,
 }
 
 impl Default for McpState {
@@ -64,6 +87,7 @@ impl Default for McpState {
             sessions: RwLock::new(HashMap::new()),
             clients: RwLock::new(HashMap::new()),
             confirmer: Mutex::new(None),
+            sender: Mutex::new(None),
         }
     }
 }
@@ -110,6 +134,10 @@ impl McpState {
 
     pub async fn set_confirmer(&self, c: Option<Confirmer>) {
         *self.confirmer.lock().await = c;
+    }
+
+    pub async fn set_sender(&self, s: Option<Sender>) {
+        *self.sender.lock().await = s;
     }
 
     /// Share a session. Nothing is visible to any client until this is called.
@@ -264,7 +292,10 @@ impl McpState {
                         }
                     };
 
-                let host = sessions.get(session_id).map(|s| s.host.clone()).unwrap_or_default();
+                let (host, kind) = sessions
+                    .get(session_id)
+                    .map(|s| (s.host.clone(), s.kind))
+                    .unwrap_or_else(|| (String::new(), SessionKind::Ssh));
 
                 // Locks are released before awaiting the human: a confirm
                 // dialog can sit open for minutes, and holding the session lock
