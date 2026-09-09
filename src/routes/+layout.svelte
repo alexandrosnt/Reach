@@ -11,6 +11,7 @@
 	import { changeLocale } from '$lib/state/i18n.svelte';
 	import { loadSnippets } from '$lib/state/snippets.svelte';
 	import { vaultState } from '$lib/state/vault.svelte';
+	import * as mcp from '$lib/state/mcp.svelte';
 	import { onMount } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -48,6 +49,20 @@
 	$effect(() => {
 		if (!vaultState.locked) {
 			loadSnippets();
+		}
+	});
+
+	// MCP settings live in the vault, so they can only be restored once it is
+	// open — reading them at process start would silently find nothing. This
+	// restores the agent, mode and port, and restarts the server if it was
+	// explicitly enabled before. Sharing is never restored: bringing the
+	// server back honours a decision the user made, whereas bringing a shared
+	// session back would be making one for them.
+	let mcpRestored = false;
+	$effect(() => {
+		if (!vaultState.locked && !mcpRestored) {
+			mcpRestored = true;
+			mcp.restore();
 		}
 	});
 

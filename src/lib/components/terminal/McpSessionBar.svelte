@@ -137,13 +137,16 @@
 {/if}
 
 <style>
+	/* Centred in the bar's existing gap: `.users` is pushed right by its own
+	   margin-left:auto, so an auto margin on both sides here lands these chips
+	   between the network stats and the user count without adding a separator
+	   the rest of the bar does not use. */
 	.mcp-bar {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
-		padding-left: var(--space-3);
-		margin-left: var(--space-2);
-		border-left: 1px solid var(--color-border);
+		margin: 0 auto;
+		flex-shrink: 0;
 	}
 
 	.eye {

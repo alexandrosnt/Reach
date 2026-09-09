@@ -88,8 +88,67 @@ struct ConfirmPayload {
     danger_reason: Option<String>,
 }
 
-/// Where the token lives in the settings vault.
+/// Keys under which MCP settings live in the settings vault.
+///
+/// The token was persisted first; everything else was not, so enabling the
+/// server, choosing a port, an agent and a mode all had to be redone on every
+/// launch. That is the same defect the ephemeral token had, and the same fix
+/// applies: it is configuration the user deliberately chose, so it should
+/// survive a restart.
+///
+/// Sharing is deliberately *not* persisted. Server state coming back is
+/// honouring a decision; a session coming back exposed is making one on the
+/// user's behalf. So Reach may start listening on launch, and always starts
+/// with nothing shared.
 const MCP_TOKEN_KEY: &str = "mcp_bearer_token";
+const MCP_ENABLED_KEY: &str = "mcp_enabled";
+const MCP_PORT_KEY: &str = "mcp_port";
+const MCP_AGENT_KEY: &str = "mcp_agent";
+const MCP_MODE_KEY: &str = "mcp_mode";
+
+/// Read one MCP setting. `None` when absent, or when the vault is locked.
+async fn load_setting(state: &AppState, key: &str) -> Option<String> {
+    use secrecy::ExposeSecret;
+    let manager = state.vault_manager.lock().await;
+    if manager.is_locked() {
+        return None;
+    }
+    let vault_id = manager.settings_vault_id().ok()?;
+    if !manager.secret_exists(&vault_id, key).await {
+        return None;
+    }
+    let secret = manager.read_secret(&vault_id, key).await.ok()?;
+    String::from_utf8(secret.expose_secret().clone()).ok().filter(|s| !s.is_empty())
+}
+
+/// Write one MCP setting. Silently does nothing when the vault is locked —
+/// losing a preference is not worth failing the action the user asked for.
+async fn save_setting(state: &AppState, key: &str, value: &str) {
+    let mut manager = state.vault_manager.lock().await;
+    if manager.is_locked() {
+        return;
+    }
+    let Ok(vault_id) = manager.settings_vault_id() else {
+        return;
+    };
+    let plaintext = secrecy::SecretBox::new(Box::new(value.as_bytes().to_vec()));
+    let result = if manager.secret_exists(&vault_id, key).await {
+        manager.update_secret(&vault_id, key, plaintext).await
+    } else {
+        manager
+            .create_secret_with_id(
+                &vault_id,
+                key,
+                key,
+                crate::vault::types::SecretCategory::ApiToken,
+                plaintext,
+            )
+            .await
+    };
+    if let Err(e) = result {
+        tracing::warn!("Could not persist MCP setting {key}: {e}");
+    }
+}
 
 fn new_token() -> String {
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
@@ -118,43 +177,11 @@ fn new_token() -> String {
 /// punishes the wrong thing: the server still demands a bearer token either
 /// way, and the only thing lost is surviving a restart.
 async fn load_or_create_token(state: &AppState) -> String {
-    use secrecy::ExposeSecret;
-
-    let mut manager = state.vault_manager.lock().await;
-    if manager.is_locked() {
-        tracing::info!("Vault locked; using an in-memory MCP token for this run");
-        return new_token();
+    if let Some(existing) = load_setting(state, MCP_TOKEN_KEY).await {
+        return existing;
     }
-
-    let vault_id = match manager.settings_vault_id() {
-        Ok(id) => id,
-        Err(_) => return new_token(),
-    };
-
-    if manager.secret_exists(&vault_id, MCP_TOKEN_KEY).await {
-        if let Ok(secret) = manager.read_secret(&vault_id, MCP_TOKEN_KEY).await {
-            if let Ok(text) = String::from_utf8(secret.expose_secret().clone()) {
-                if !text.is_empty() {
-                    return text;
-                }
-            }
-        }
-    }
-
     let token = new_token();
-    let plaintext = secrecy::SecretBox::new(Box::new(token.clone().into_bytes()));
-    if let Err(e) = manager
-        .create_secret_with_id(
-            &vault_id,
-            MCP_TOKEN_KEY,
-            MCP_TOKEN_KEY,
-            crate::vault::types::SecretCategory::ApiToken,
-            plaintext,
-        )
-        .await
-    {
-        tracing::warn!("Could not persist the MCP token: {e}");
-    }
+    save_setting(state, MCP_TOKEN_KEY, &token).await;
     token
 }
 
@@ -218,6 +245,12 @@ pub async fn mcp_start(
     *running().lock().unwrap() = Some(server);
     mcp.set_enabled(true);
 
+    save_setting(&state, MCP_ENABLED_KEY, "true").await;
+    // The bound port, not the requested one: 0 means "ask the OS", and saving
+    // the 0 would hand out a different port on every launch, which is exactly
+    // the re-add churn this is meant to end.
+    save_setting(&state, MCP_PORT_KEY, &bound.to_string()).await;
+
     tracing::info!("MCP server enabled on port {bound}");
     Ok(status_of(&mcp, Some(bound), mcp.shared_ids().await).await)
 }
@@ -240,6 +273,7 @@ pub async fn mcp_stop(state: tauri::State<'_, AppState>) -> Result<McpStatus, St
     mcp.clear().await;
     pending().lock().unwrap().clear();
 
+    save_setting(&state, MCP_ENABLED_KEY, "false").await;
     tracing::info!("MCP server disabled");
     Ok(status_of(&mcp, None, Vec::new()).await)
 }
@@ -313,12 +347,58 @@ pub async fn mcp_set_agent(
 ) -> Result<McpStatus, String> {
     let mcp = state.mcp.clone();
     mcp.set_agent(&agent_id)?;
+    save_setting(&state, MCP_AGENT_KEY, &agent_id).await;
     let port = running().lock().unwrap().as_ref().map(|r| r.port);
     Ok(status_of(&mcp, port, mcp.shared_ids().await).await)
 }
 
 
 
+
+
+/// Restore MCP settings and, if it was on, start listening again.
+///
+/// Called by the frontend once the vault is available, rather than from
+/// `setup()`: the settings live in the vault, and at process start the vault
+/// may still be locked, so reading there would silently find nothing.
+///
+/// Restores the agent and mode regardless, and only starts the server if it was
+/// explicitly enabled before. Nothing is shared — that is always a fresh
+/// decision.
+#[tauri::command]
+#[tracing::instrument(skip(state, app))]
+pub async fn mcp_restore(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+) -> Result<McpStatus, String> {
+    let mcp = state.mcp.clone();
+
+    if let Some(agent_id) = load_setting(&state, MCP_AGENT_KEY).await {
+        let _ = mcp.set_agent(&agent_id);
+    }
+    if let Some(raw) = load_setting(&state, MCP_MODE_KEY).await {
+        if let Ok(mode) = serde_json::from_str::<Mode>(&raw) {
+            mcp.set_mode(mode);
+        }
+    }
+
+    let was_enabled = load_setting(&state, MCP_ENABLED_KEY).await.as_deref() == Some("true");
+    if was_enabled && running().lock().unwrap().is_none() {
+        let port = load_setting(&state, MCP_PORT_KEY)
+            .await
+            .and_then(|p| p.parse::<u16>().ok());
+        // A saved port can be taken by something else since last launch. Report
+        // it rather than silently falling back to a random one, which would
+        // break the client config this whole feature exists to keep stable.
+        match mcp_start(app, state.clone(), port).await {
+            Ok(status) => return Ok(status),
+            Err(e) => tracing::warn!("Could not restore the MCP server: {e}"),
+        }
+    }
+
+    let port = running().lock().unwrap().as_ref().map(|r| r.port);
+    Ok(status_of(&mcp, port, mcp.shared_ids().await).await)
+}
 
 /// Point one shared session at a different agent. `None` follows the global
 /// agent. Reach's UI only — there is no MCP method that reaches this.
@@ -360,6 +440,7 @@ pub async fn mcp_set_mode(
 ) -> Result<McpStatus, String> {
     let mcp = state.mcp.clone();
     mcp.set_mode(mode);
+    save_setting(&state, MCP_MODE_KEY, &serde_json::to_string(&mode).unwrap_or_default()).await;
     let port = running().lock().unwrap().as_ref().map(|r| r.port);
     tracing::info!("MCP mode set to {mode:?}");
     Ok(status_of(&mcp, port, mcp.shared_ids().await).await)
