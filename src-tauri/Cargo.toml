@@ -1,6 +1,6 @@
 [package]
 name = "reach"
-version = "0.5.0"
+version = "0.5.1"
 description = "Cross-platform SSH & Remote Management Tool"
 authors = ["Reach Contributors"]
 edition = "2021"
@@ -90,10 +90,19 @@ tauri-plugin-single-instance = "2"
 # shells out to perl, and Git Bash's MSYS perl lacks Locale::Maketext::Simple,
 # so `cargo build` failed before compiling a single line of this crate.
 # macOS uses SecureTransport rather than OpenSSL.
-[target.'cfg(all(unix, not(target_os = "macos")))'.dependencies]
+#
+# `target_os = "linux"`, NOT `all(unix, not(target_os = "macos"))`. Android is
+# also unix and also not macOS, so that expression caught it and forced the
+# vendored build on the NDK, where it cannot work: openssl-src calls the
+# prefixed binutils, and NDK r23+ ships only `llvm-ranlib`, so every Android
+# release build died with
+#     /bin/sh: 1: aarch64-linux-android-ranlib: not found
+#     make: *** [Makefile:2807: install_dev] Error 127
+# Android's target_os is "android", so naming Linux explicitly excludes it.
+[target.'cfg(target_os = "linux")'.dependencies]
 openssl-sys = { version = "0.9", features = ["vendored"] }
 
-[target.'cfg(all(unix, not(target_os = "macos")))'.build-dependencies]
+[target.'cfg(target_os = "linux")'.build-dependencies]
 openssl-sys = { version = "0.9", features = ["vendored"] }
 
 [features]

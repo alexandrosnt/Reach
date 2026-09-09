@@ -18,10 +18,11 @@
 			<div
 				class="toast"
 				class:dismissing={toast.dismissing}
+				class:detailed={toast.type === 'error' || toast.type === 'warning'}
 				role="alert"
 			>
 				<span class="toast-dot" style="background-color: {dotColors[toast.type]}"></span>
-				<span class="toast-message">{toast.message}</span>
+				<span class="toast-message" title={toast.message}>{toast.message}</span>
 				<button class="toast-close" onclick={() => dismissToast(toast.id)} aria-label={t('common.dismiss')}>
 					<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
 						<path d="M1 1L9 9M9 1L1 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
@@ -56,8 +57,35 @@
 		background-color: var(--color-bg-elevated);
 		border: 1px solid var(--color-border);
 		border-radius: 20px;
+		/* The pill is sized for "Copied" and clipped a one-line message with an
+		   ellipsis, which made every backend error unreadable — a failure is
+		   precisely the toast worth reading in full. `.detailed` widens it and
+		   lets the text wrap; the radius drops because a 20px pill looks broken
+		   once it is more than one line tall. */
 		box-shadow: var(--shadow-elevated);
 		animation: slideDown 250ms var(--ease-default) forwards;
+	}
+
+	.toast.detailed {
+		max-width: 520px;
+		align-items: flex-start;
+		border-radius: var(--radius-card);
+	}
+
+	.toast.detailed .toast-dot {
+		/* Line it up with the first line of text rather than the block centre. */
+		margin-top: 6px;
+	}
+
+	.toast.detailed .toast-message {
+		white-space: normal;
+		overflow-wrap: anywhere;
+		/* Four lines is enough for a server message without letting a runaway
+		   payload cover the app; the full text stays on the title attribute. */
+		display: -webkit-box;
+		-webkit-line-clamp: 4;
+		line-clamp: 4;
+		-webkit-box-orient: vertical;
 	}
 
 	.toast.dismissing {

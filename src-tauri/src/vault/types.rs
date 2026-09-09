@@ -87,6 +87,15 @@ pub struct VaultInfo {
     pub member_count: Option<usize>,
     pub secret_count: usize,
     pub last_sync: Option<i64>,
+    /// True when the vault is open but its backing store did not answer — a
+    /// shared vault is a *remote-only* Turso connection (see `sync::create_replica`),
+    /// so an expired token, a paused database or a dropped network turns every
+    /// read into an error. Listing still succeeds; this vault is just degraded.
+    #[serde(default)]
+    pub unreachable: bool,
+    /// Why the vault is unreachable, in a form worth showing a human.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub sync_error: Option<String>,
 }
 
 /// Secret metadata (without payload).
