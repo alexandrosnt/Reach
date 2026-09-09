@@ -246,6 +246,7 @@
   "vault.no_vaults": "Aucun coffre pour le moment.",
   "vault.create_prompt": "Creez un coffre pour stocker vos secrets en toute securite.",
   "vault.n_secrets": "{{count}} secret(s)",
+  "vault.unreachable": "Injoignable",
   "vault.n_members": "{{count}} membre(s)",
   "vault.shared": "Partage",
   "vault.private": "Prive",

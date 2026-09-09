@@ -245,6 +245,7 @@
   "vault.no_vaults": "还没有保险库。",
   "vault.create_prompt": "创建一个保险库以安全地存储你的机密信息。",
   "vault.n_secrets": "{{count}} 个机密",
+  "vault.unreachable": "无法连接",
   "vault.n_members": "{{count}} 个成员",
   "vault.shared": "共享",
   "vault.private": "私有",

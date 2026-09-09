@@ -394,9 +394,15 @@
 								<div class="vault-card-content">
 									<span class="vault-card-name">{vault.name}</span>
 									<span class="vault-card-meta">
-										{t('vault.n_secrets', { count: vault.secretCount })}
-										{#if vault.vaultType === 'shared' && vault.memberCount}
-											&middot; {t('vault.n_members', { count: vault.memberCount })}
+										{#if vault.unreachable}
+											<span class="vault-card-unreachable" title={vault.syncError ?? ''}>
+												{t('vault.unreachable')}
+											</span>
+										{:else}
+											{t('vault.n_secrets', { count: vault.secretCount })}
+											{#if vault.vaultType === 'shared' && vault.memberCount}
+												&middot; {t('vault.n_members', { count: vault.memberCount })}
+											{/if}
 										{/if}
 									</span>
 								</div>
@@ -928,6 +934,14 @@
 	.vault-card-meta {
 		font-size: 0.6875rem;
 		color: var(--color-text-secondary);
+	}
+
+	/* A vault whose store did not answer. The reason is on the title attribute,
+	   because it is a server message of unbounded length and does not belong
+	   inline in a card. */
+	.vault-card-unreachable {
+		color: var(--color-warning);
+		cursor: help;
 	}
 
 	.vault-card-badge {

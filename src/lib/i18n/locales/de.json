@@ -246,6 +246,7 @@
   "vault.no_vaults": "Noch keine Tresore.",
   "vault.create_prompt": "Erstelle einen Tresor, um deine Geheimnisse sicher zu speichern.",
   "vault.n_secrets": "{{count}} Geheimnis(se)",
+  "vault.unreachable": "Nicht erreichbar",
   "vault.n_members": "{{count}} Mitglied(er)",
   "vault.shared": "Geteilt",
   "vault.private": "Privat",
