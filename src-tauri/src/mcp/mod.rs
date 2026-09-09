@@ -22,4 +22,6 @@
 
 pub mod agents;
 pub mod guard;
+pub mod protocol;
 pub mod redact;
+pub mod session;
