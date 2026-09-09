@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { applyTheme, themeState, DARK, LIGHT } from '$lib/state/theme.svelte';
+	import { applyTheme, themeState, loadInstalledThemes, DARK, LIGHT } from '$lib/state/theme.svelte';
 	import type { Snippet } from 'svelte';
 	import '../app.css';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
@@ -20,6 +20,10 @@
 
 	onMount(() => {
 		loadSettings();
+		// Before the theme effect below resolves settings.themeId: until these
+		// are in, themeState.all is just the two built-ins, so an installed
+		// theme silently fell back to dark/light on every launch.
+		loadInstalledThemes();
 		syncTraySettings();
 		loadAISettings();
 		initShortcuts();

@@ -1,3 +1,5 @@
+import { themeListInstalled } from '$lib/ipc/theme';
+
 /**
  * Theme engine.
  *
@@ -224,6 +226,30 @@ class ThemeState {
 }
 
 export const themeState = new ThemeState();
+
+/**
+ * Pull installed themes off disk into the engine.
+ *
+ * Must run once at startup. `themeState.all` is what every picker lists and
+ * what the boot-time effect in +layout.svelte resolves `settings.themeId`
+ * against, and until this has run it holds only the two built-ins — so an
+ * installed theme did not apply on launch and did not appear in any picker
+ * until Settings > Appearance happened to be opened, which was the only place
+ * that loaded them.
+ *
+ * Themes are re-validated here as well as in the backend: a theme file could
+ * have been edited on disk since it was written. An unreadable store leaves the
+ * built-ins in place rather than throwing — a bad theme must not stop the app
+ * from starting.
+ */
+export async function loadInstalledThemes(): Promise<void> {
+	try {
+		const docs = await themeListInstalled();
+		themeState.installed = docs.filter((d) => validateTheme(d).ok);
+	} catch (err) {
+		console.error('Could not read installed themes:', err);
+	}
+}
 
 /**
  * Write a theme onto the document.

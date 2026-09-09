@@ -8,6 +8,12 @@ export interface VaultInfo {
 	memberCount?: number;
 	secretCount: number;
 	lastSync?: number;
+	/** The vault is open but its store did not answer — shared vaults are
+	 *  remote-only, so a stale token or a dead link degrades them rather than
+	 *  failing the whole listing. */
+	unreachable?: boolean;
+	/** Why it is unreachable, already made readable by the backend. */
+	syncError?: string;
 }
 
 export interface SecretMetadata {

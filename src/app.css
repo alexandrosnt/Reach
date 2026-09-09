@@ -140,6 +140,19 @@ body {
 
 /* ─── Scrollbar ─── */
 
+/* On tokens, not hardcoded overlays. This was the last of the
+   rgba(255,255,255,x) + `.light` overrides the theme migration replaced
+   everywhere else: an installed theme restyled the whole app and then got
+   Reach's own scrollbar, which is exactly the seam a theme is supposed to
+   remove. --color-surface-strong is the token that exists for this. */
+
+/* Firefox has no ::-webkit pseudo-elements and was left with the default
+   full-width bar; these two properties are all it supports, and all it needs. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-surface-strong) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -150,20 +163,18 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--color-surface-strong);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--color-text-tertiary);
 }
 
-.light ::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-}
-
-.light ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.25);
+/* Only paint a corner when both bars are present; the default is an opaque
+   square that reads as a rendering artefact against a themed surface. */
+::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* ─── Focus Ring ─── */
