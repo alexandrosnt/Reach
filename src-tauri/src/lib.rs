@@ -29,6 +29,7 @@ use ipc::plugin_commands::*;
 use ipc::marketplace_commands::*;
 use ipc::credential_commands::*;
 use ipc::settings_commands::*;
+use ipc::mcp_commands::*;
 use ipc::monitoring_commands::*;
 #[cfg(desktop)]
 use ipc::pty_commands::*;
@@ -140,6 +141,16 @@ pub fn run() {
     #[cfg(desktop)]
     {
         builder = builder.invoke_handler(tauri::generate_handler![
+            // MCP server. Off until the user enables it; nothing here starts
+            // a listener or shares a session on its own.
+            mcp_start,
+            mcp_stop,
+            mcp_status,
+            mcp_share_session,
+            mcp_unshare_session,
+            mcp_list_agents,
+            mcp_set_agent,
+            mcp_confirm_response,
             // SSH commands
             ssh_connect,
             ssh_disconnect,
@@ -363,6 +374,16 @@ pub fn run() {
     #[cfg(not(desktop))]
     {
         builder = builder.invoke_handler(tauri::generate_handler![
+            // MCP server. Off until the user enables it; nothing here starts
+            // a listener or shares a session on its own.
+            mcp_start,
+            mcp_stop,
+            mcp_status,
+            mcp_share_session,
+            mcp_unshare_session,
+            mcp_list_agents,
+            mcp_set_agent,
+            mcp_confirm_response,
             // SSH commands
             ssh_connect,
             ssh_disconnect,
