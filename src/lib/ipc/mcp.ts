@@ -7,7 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
  * echo-off lockout, the secret check, the rate limit, every deny rule — applies
  * in all three modes. Auto removes a question, never a protection.
  */
-export type McpMode = 'ask' | 'auto_safe' | 'auto';
+export type McpMode = 'ask' | 'auto_safe' | 'auto' | 'dangerous';
 
 /** State of the MCP server. Everything defaults to off/empty. */
 export interface McpStatus {

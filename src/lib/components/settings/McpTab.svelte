@@ -1,23 +1,21 @@
 <script lang="ts">
 	/**
-	 * The MCP wizard: pick a port, start listening, then get the exact
-	 * incantation for your client.
+	 * MCP settings.
 	 *
-	 * The last step is the point of the whole panel. Every client spells this
-	 * differently — four top-level keys, three URL keys, three transport
-	 * spellings — and getting one wrong produces a client that silently never
-	 * connects. Reach knows its own URL and token, so it can just hand over the
-	 * finished thing rather than leaving people to translate documentation.
+	 * Ordered as the decisions actually happen: turn it on, decide what the AI
+	 * *is*, decide how much you want to be asked, see what is currently exposed,
+	 * then connect a client. Each section states the consequence rather than
+	 * just naming a knob — this panel is where someone decides how much of their
+	 * infrastructure an AI can touch, and a bare toggle would undersell that.
 	 *
-	 * The token is regenerated on every start and never persisted, so this
-	 * panel is also the only place to read it. That is stated rather than left
-	 * to be discovered after a restart.
+	 * The connect step is the payoff: every client spells this differently, so
+	 * Reach fills in its own URL and token and hands over the finished thing.
 	 */
 	import { onMount } from 'svelte';
-	import Button from '$lib/components/shared/Button.svelte';
 	import Toggle from '$lib/components/shared/Toggle.svelte';
 	import McpClientIcon from '$lib/components/shared/McpClientIcon.svelte';
 	import { MCP_CLIENTS, fill } from '$lib/data/mcp-clients';
+	import type { McpMode } from '$lib/ipc/mcp';
 	import * as mcp from '$lib/state/mcp.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { t } from '$lib/state/i18n.svelte';
@@ -26,16 +24,49 @@
 	let agents = $derived(mcp.getAgents());
 	let busy = $derived(mcp.isBusy());
 
-	/** 0 asks the OS for a free port, which is the right default: a fixed one
+	/** 0 asks the OS for a free port — the right default, because a fixed one
 	 *  that collides turns into "MCP doesn't work". */
 	let portInput = $state('0');
 	let selectedClient = $state(MCP_CLIENTS[0].id);
+	let revealToken = $state(false);
+
+	const MODES: { id: McpMode; label: () => string; hint: () => string }[] = [
+		{ id: 'ask', label: () => t('mcp.mode_ask'), hint: () => t('mcp.mode_ask_hint') },
+		{ id: 'auto_safe', label: () => t('mcp.mode_auto_safe'), hint: () => t('mcp.mode_auto_safe_hint') },
+		{ id: 'auto', label: () => t('mcp.mode_auto'), hint: () => t('mcp.mode_auto_hint') },
+		{ id: 'dangerous', label: () => t('mcp.mode_dangerous'), hint: () => t('mcp.mode_dangerous_hint') }
+	];
+
+	/** Dangerous is the only mode that asks before it stops asking. Not to
+	 *  discourage it — it is a legitimate choice on a machine you are willing
+	 *  to lose — but because "an AI may now wipe this disk unprompted" should
+	 *  never be one stray click away. */
+	let confirmingDangerous = $state(false);
+
+	async function pickMode(id: McpMode): Promise<void> {
+		if (id === 'dangerous' && status.mode !== 'dangerous') {
+			confirmingDangerous = true;
+			return;
+		}
+		confirmingDangerous = false;
+		await mcp.setMode(id);
+	}
 
 	let client = $derived(MCP_CLIENTS.find((c) => c.id === selectedClient) ?? MCP_CLIENTS[0]);
 	let rendered = $derived(
 		status.url && status.token
-			? fill(client.kind === 'cli' ? (client.command ?? '') : (client.snippet ?? ''), status.url, status.token)
+			? fill(
+					client.kind === 'cli' ? (client.command ?? '') : (client.snippet ?? ''),
+					status.url,
+					status.token
+				)
 			: ''
+	);
+
+	/** Masked unless deliberately revealed. It opens a shell; it should not sit
+	 *  in plain text on a screen someone might be sharing. */
+	let shownToken = $derived(
+		!status.token ? '' : revealToken ? status.token : '•'.repeat(Math.min(status.token.length, 44))
 	);
 
 	onMount(() => {
@@ -51,13 +82,20 @@
 			if (err) addToast(err, 'error');
 		} else {
 			await mcp.stop();
+			revealToken = false;
 		}
 	}
 
-	async function copy(text: string): Promise<void> {
+	async function regenerate(): Promise<void> {
+		await mcp.regenerateToken();
+		const err = mcp.getError();
+		addToast(err ?? t('mcp.token_regenerated'), err ? 'error' : 'warning');
+	}
+
+	async function copy(text: string, label: string): Promise<void> {
 		try {
 			await navigator.clipboard.writeText(text);
-			addToast(t('mcp.copied'), 'info');
+			addToast(label, 'info');
 		} catch {
 			addToast(t('mcp.copy_failed'), 'error');
 		}
@@ -65,33 +103,25 @@
 </script>
 
 <div class="tab-content">
-	<!-- Step 1: the switch. Off means no socket exists at all. -->
-	<div class="setting-row">
-		<div class="setting-info">
-			<span class="setting-label">{t('mcp.enable')}</span>
-			<span class="setting-description">{t('mcp.enable_desc')}</span>
-		</div>
-		<div class="setting-control">
+	<!-- 1 · The switch. Off means no socket exists at all. -->
+	<section class="block">
+		<div class="row">
+			<div class="row-info">
+				<span class="row-label">{t('mcp.enable')}</span>
+				<span class="row-desc">{t('mcp.enable_desc')}</span>
+			</div>
 			<Toggle checked={status.enabled} onchange={toggle} disabled={busy} />
 		</div>
-	</div>
 
-	{#if !status.enabled}
-		<div class="setting-row">
-			<div class="setting-info">
-				<span class="setting-label">{t('mcp.port')}</span>
-				<span class="setting-description">{t('mcp.port_desc')}</span>
-			</div>
-			<div class="setting-control">
+		{#if !status.enabled}
+			<div class="row">
+				<div class="row-info">
+					<span class="row-label">{t('mcp.port')}</span>
+					<span class="row-desc">{t('mcp.port_desc')}</span>
+				</div>
 				<input class="port" type="number" min="0" max="65535" bind:value={portInput} />
 			</div>
-		</div>
-	{/if}
-
-	{#if status.enabled}
-		<!-- Step 2: what is actually exposed. Sharing is separate from running,
-		     and the difference is worth stating plainly. -->
-		<div class="panel">
+		{:else}
 			<div class="live">
 				<span class="dot" class:exposing={mcp.isExposing()}></span>
 				<span class="live-text">
@@ -101,25 +131,41 @@
 						{t('mcp.listening_nothing_shared')}
 					{/if}
 				</span>
+				<span class="port-note">{t('mcp.port_locked')}</span>
 			</div>
 
 			<div class="kv">
 				<span class="k">{t('mcp.url')}</span>
 				<code class="v">{status.url}</code>
-				<button class="copy" onclick={() => copy(status.url ?? '')}>{t('mcp.copy')}</button>
+				<button class="mini" onclick={() => copy(status.url ?? '', t('mcp.copied'))}>
+					{t('mcp.copy')}
+				</button>
 			</div>
+
 			<div class="kv">
 				<span class="k">{t('mcp.token')}</span>
-				<code class="v token">{status.token}</code>
-				<button class="copy" onclick={() => copy(status.token ?? '')}>{t('mcp.copy')}</button>
+				<code class="v">{shownToken}</code>
+				<button class="mini" onclick={() => (revealToken = !revealToken)}>
+					{revealToken ? t('mcp.hide') : t('mcp.reveal')}
+				</button>
+				<button class="mini" onclick={() => copy(status.token ?? '', t('mcp.copied'))}>
+					{t('mcp.copy')}
+				</button>
+				<button class="mini danger" onclick={regenerate} disabled={busy}>
+					{t('mcp.regenerate')}
+				</button>
 			</div>
 			<p class="hint">{t('mcp.token_hint')}</p>
-		</div>
+		{/if}
+	</section>
 
-		<!-- Step 3: the agent decides the tool surface, not just the tone. -->
-		<div class="section">
-			<span class="section-label">{t('mcp.agent')}</span>
-			<p class="section-hint">{t('mcp.agent_desc')}</p>
+	{#if status.enabled}
+		<!-- 2 · The agent decides the tool surface, not just the tone. -->
+		<section class="block">
+			<div class="head">
+				<span class="head-label">{t('mcp.agent')}</span>
+				<span class="head-hint">{t('mcp.agent_desc')}</span>
+			</div>
 			<div class="agents">
 				{#each agents as a (a.id)}
 					<button
@@ -127,11 +173,12 @@
 						class:selected={status.agentId === a.id}
 						onclick={() => mcp.setAgent(a.id)}
 						disabled={busy}
+						aria-pressed={status.agentId === a.id}
 					>
 						<span class="agent-head">
 							<span class="agent-name">{a.name}</span>
 							{#if a.readOnly}
-								<span class="ro">{t('mcp.read_only')}</span>
+								<span class="tag ok">{t('mcp.read_only')}</span>
 							{/if}
 						</span>
 						<span class="agent-desc">{a.description}</span>
@@ -139,12 +186,87 @@
 					</button>
 				{/each}
 			</div>
-		</div>
+		</section>
 
-		<!-- Step 4: the payoff. -->
-		<div class="section">
-			<span class="section-label">{t('mcp.connect')}</span>
-			<p class="section-hint">{t('mcp.connect_desc')}</p>
+		<!-- 3 · How much you want to be asked. Mirrors the status bar. -->
+		<section class="block">
+			<div class="head">
+				<span class="head-label">{t('mcp.mode')}</span>
+				<span class="head-hint">{t('mcp.mode_desc')}</span>
+			</div>
+			<div class="modes">
+				{#each MODES as m (m.id)}
+					<button
+						class="mode"
+						class:selected={status.mode === m.id}
+						class:warn={status.mode === m.id && (m.id === 'auto_safe' || m.id === 'auto')}
+						class:danger={m.id === 'dangerous'}
+						class:danger-active={status.mode === 'dangerous' && m.id === 'dangerous'}
+						onclick={() => pickMode(m.id)}
+						disabled={busy || status.readOnly}
+						aria-pressed={status.mode === m.id}
+					>
+						<span class="mode-name">{m.label()}</span>
+						<span class="mode-hint">{m.hint()}</span>
+					</button>
+				{/each}
+			</div>
+
+			{#if confirmingDangerous}
+				<div class="confirm" role="alertdialog" aria-labelledby="mcp-danger-msg">
+					<p id="mcp-danger-msg" class="confirm-msg">{t('mcp.mode_dangerous_confirm')}</p>
+					<div class="confirm-actions">
+						<button class="mini" onclick={() => (confirmingDangerous = false)}>
+							{t('mcp.confirm_reject')}
+						</button>
+						<button
+							class="mini danger-solid"
+							onclick={async () => {
+								confirmingDangerous = false;
+								await mcp.setMode('dangerous');
+							}}
+						>
+							{t('mcp.mode_dangerous')}
+						</button>
+					</div>
+				</div>
+			{/if}
+
+			{#if status.mode === 'dangerous'}
+				<p class="danger-banner">{t('mcp.mode_dangerous_active')}</p>
+			{/if}
+			{#if status.readOnly}
+				<p class="hint">{t('mcp.mode_moot')}</p>
+			{/if}
+		</section>
+
+		<!-- 4 · What is exposed right now, and how to stop it. -->
+		<section class="block">
+			<div class="head">
+				<span class="head-label">{t('mcp.shared')}</span>
+				<span class="head-hint">{t('mcp.shared_desc')}</span>
+			</div>
+			{#if status.sharedSessionIds.length === 0}
+				<p class="empty">{t('mcp.shared_none')}</p>
+			{:else}
+				<ul class="shared">
+					{#each status.sharedSessionIds as id (id)}
+						<li class="shared-row">
+							<span class="dot exposing"></span>
+							<code class="shared-id">{id}</code>
+							<button class="mini" onclick={() => mcp.unshare(id)}>{t('mcp.stop_sharing')}</button>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</section>
+
+		<!-- 5 · The payoff. -->
+		<section class="block">
+			<div class="head">
+				<span class="head-label">{t('mcp.connect')}</span>
+				<span class="head-hint">{t('mcp.connect_desc')}</span>
+			</div>
 
 			<div class="clients">
 				{#each MCP_CLIENTS as c (c.id)}
@@ -154,37 +276,35 @@
 						onclick={() => (selectedClient = c.id)}
 						title={c.name}
 					>
-						<McpClientIcon slug={c.icon} size={20} />
+						<McpClientIcon slug={c.icon} size={18} />
 						<span class="client-name">{c.name}</span>
 					</button>
 				{/each}
 			</div>
 
 			{#if client.path}
-				<div class="path">
+				<div class="kv">
 					<span class="k">{t('mcp.config_path')}</span>
-					<code class="v path-v">{client.path}</code>
+					<code class="v wrap">{client.path}</code>
 				</div>
 			{/if}
 
 			<div class="snippet-wrap">
 				<div class="snippet-bar">
 					<span class="snippet-kind">{client.kind}</span>
-					<button class="copy" onclick={() => copy(rendered)}>{t('mcp.copy')}</button>
+					<button class="mini" onclick={() => copy(rendered, t('mcp.copied'))}>
+						{t('mcp.copy')}
+					</button>
 				</div>
 				<pre class="snippet">{rendered}</pre>
 			</div>
 
-			{#if client.note}
-				<p class="note">{client.note}</p>
-			{/if}
-			{#if !client.verified}
-				<p class="unverified">{t('mcp.unverified')}</p>
-			{/if}
+			{#if client.note}<p class="hint">{client.note}</p>{/if}
+			{#if !client.verified}<p class="warn-text">{t('mcp.unverified')}</p>{/if}
 			<a class="docs" href={client.docs} target="_blank" rel="noreferrer noopener">
 				{t('mcp.client_docs', { name: client.name })}
 			</a>
-		</div>
+		</section>
 	{/if}
 </div>
 
@@ -192,36 +312,61 @@
 	.tab-content {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-4);
+		gap: var(--space-5);
 	}
 
-	.setting-row {
+	.block {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+	}
+
+	.row {
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
 		gap: var(--space-4);
 	}
 
-	.setting-info {
+	.row-info {
 		display: flex;
 		flex-direction: column;
 		gap: 2px;
 		min-width: 0;
 	}
 
-	.setting-label {
+	.row-label {
 		font-size: var(--text-sm);
 		font-weight: 600;
 		color: var(--color-text-primary);
 	}
 
-	.setting-description {
+	.row-desc,
+	.head-hint,
+	.hint,
+	.empty {
 		font-size: var(--text-xs);
 		color: var(--color-text-secondary);
+		margin: 0;
 	}
 
-	.setting-control {
-		flex-shrink: 0;
+	.hint,
+	.empty {
+		color: var(--color-text-tertiary);
+	}
+
+	.head {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+	}
+
+	.head-label {
+		font-size: var(--text-2xs);
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--color-text-tertiary);
 	}
 
 	.port {
@@ -234,16 +379,6 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-sm);
 		outline: none;
-	}
-
-	.panel {
-		display: flex;
-		flex-direction: column;
-		gap: var(--space-2);
-		padding: var(--space-3);
-		background: var(--color-bg-elevated);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-card);
 	}
 
 	.live {
@@ -260,8 +395,8 @@
 		flex-shrink: 0;
 	}
 
-	/* Amber, not green: a session being readable by an AI is a state worth
-	   noticing, not a success to celebrate. */
+	/* Amber, not green: a session an AI can read is a state to notice, not a
+	   success to celebrate. Same colour as the share eye on the tab. */
 	.dot.exposing {
 		background: var(--color-warning);
 	}
@@ -271,8 +406,13 @@
 		color: var(--color-text-secondary);
 	}
 
-	.kv,
-	.path {
+	.port-note {
+		margin-left: auto;
+		font-size: var(--text-2xs);
+		color: var(--color-text-tertiary);
+	}
+
+	.kv {
 		display: flex;
 		align-items: center;
 		gap: var(--space-2);
@@ -280,7 +420,7 @@
 
 	.k {
 		flex-shrink: 0;
-		width: 72px;
+		width: 64px;
 		font-size: var(--text-2xs);
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
@@ -300,18 +440,13 @@
 		white-space: nowrap;
 	}
 
-	.path-v {
+	.v.wrap {
 		white-space: pre-wrap;
 	}
 
-	.token {
-		/* Long and opaque; let it scroll rather than reflow the panel. */
-		letter-spacing: 0.02em;
-	}
-
-	.copy {
+	.mini {
 		flex-shrink: 0;
-		padding: 4px 10px;
+		padding: 4px 9px;
 		font-size: var(--text-2xs);
 		font-family: inherit;
 		color: var(--color-text-secondary);
@@ -321,63 +456,120 @@
 		cursor: pointer;
 	}
 
-	.copy:hover {
+	.mini:hover:not(:disabled) {
 		color: var(--color-text-primary);
 		background: var(--color-surface-hover);
 	}
 
-	.hint,
-	.note,
-	.section-hint {
-		margin: 0;
-		font-size: var(--text-xs);
-		color: var(--color-text-tertiary);
+	.mini:disabled {
+		opacity: 0.5;
+		cursor: default;
 	}
 
-	.unverified {
-		margin: 0;
-		font-size: var(--text-xs);
-		color: var(--color-warning);
+	.mini.danger:hover:not(:disabled) {
+		color: var(--color-danger);
+		border-color: var(--color-danger);
+		background: none;
 	}
 
-	.section {
+	/* Dangerous is drawn as a hazard, not another option in the row: dashed
+	   until chosen, solid red once active, with a standing banner underneath.
+	   The person enabling it should not be able to forget they did. */
+	.mode.danger {
+		border-style: dashed;
+		border-color: color-mix(in srgb, var(--color-danger) 55%, transparent);
+	}
+
+	.mode.danger .mode-name {
+		color: var(--color-danger);
+	}
+
+	.mode.danger-active {
+		border-style: solid;
+		border-color: var(--color-danger);
+		background: color-mix(in srgb, var(--color-danger) 12%, transparent);
+	}
+
+	.confirm {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
+		padding: var(--space-3);
+		border: 1px solid var(--color-danger);
+		border-radius: var(--radius-card);
+		background: color-mix(in srgb, var(--color-danger) 10%, transparent);
 	}
 
-	.section-label {
-		font-size: var(--text-2xs);
+	.confirm-msg {
+		margin: 0;
+		font-size: var(--text-sm);
+		color: var(--color-text-primary);
+	}
+
+	.confirm-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-2);
+	}
+
+	.mini.danger-solid {
+		color: #fff;
+		background: var(--color-danger);
+		border-color: var(--color-danger);
+	}
+
+	.danger-banner {
+		margin: 0;
+		padding: var(--space-2) var(--space-3);
+		font-size: var(--text-xs);
 		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
-		color: var(--color-text-tertiary);
+		color: var(--color-danger);
+		border-left: 3px solid var(--color-danger);
+		background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+		border-radius: var(--radius-sm);
 	}
 
-	.agents {
+	.agents,
+	.modes {
 		display: grid;
 		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
 		gap: var(--space-2);
 	}
 
-	.agent {
+	.agent,
+	.mode {
 		display: flex;
 		flex-direction: column;
 		gap: 3px;
 		padding: var(--space-2) var(--space-3);
 		text-align: left;
+		font-family: inherit;
 		background: var(--color-bg-elevated);
 		border: 2px solid var(--color-border);
 		border-radius: var(--radius-card);
 		cursor: pointer;
 	}
 
-	.agent:hover {
+	.agent:hover:not(:disabled),
+	.mode:hover:not(:disabled) {
 		background: var(--color-surface-hover);
 	}
 
-	.agent.selected {
+	.agent:disabled,
+	.mode:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+
+	.agent.selected,
+	.mode.selected {
 		border-color: var(--color-accent);
+	}
+
+	/* An active auto mode is bordered amber, so the panel says the same thing
+	   the status bar does without needing to be read. */
+	.mode.warn {
+		border-color: var(--color-warning);
 	}
 
 	.agent-head {
@@ -386,23 +578,28 @@
 		gap: var(--space-2);
 	}
 
-	.agent-name {
+	.agent-name,
+	.mode-name {
 		font-size: var(--text-sm);
 		font-weight: 600;
 		color: var(--color-text-primary);
 	}
 
-	.ro {
+	.tag {
 		padding: 1px 6px;
 		font-size: 0.625rem;
 		font-weight: 700;
 		text-transform: uppercase;
-		color: var(--color-success);
-		border: 1px solid var(--color-success);
 		border-radius: var(--radius-sm);
 	}
 
-	.agent-desc {
+	.tag.ok {
+		color: var(--color-success);
+		border: 1px solid var(--color-success);
+	}
+
+	.agent-desc,
+	.mode-hint {
 		font-size: var(--text-xs);
 		color: var(--color-text-secondary);
 	}
@@ -411,6 +608,35 @@
 		font-family: var(--font-mono);
 		font-size: 0.625rem;
 		color: var(--color-text-tertiary);
+	}
+
+	.shared {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
+		margin: 0;
+		padding: 0;
+		list-style: none;
+	}
+
+	.shared-row {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2);
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+	}
+
+	.shared-id {
+		flex: 1;
+		min-width: 0;
+		font-family: var(--font-mono);
+		font-size: var(--text-2xs);
+		color: var(--color-text-secondary);
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.clients {
@@ -422,8 +648,8 @@
 	.client {
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
-		padding: 6px var(--space-3);
+		gap: 6px;
+		padding: 5px var(--space-2);
 		font-family: inherit;
 		background: var(--color-bg-elevated);
 		border: 2px solid var(--color-border);
@@ -451,10 +677,9 @@
 		overflow: hidden;
 	}
 
-	/* The copy button lives in its own bar rather than floating over the code.
-	   Floated, it sat on top of a horizontally scrolling <pre> and hid whatever
-	   scrolled underneath it — on a panel whose whole job is handing over an
-	   exact string. */
+	/* The copy button sits in its own bar rather than floating over the code:
+	   floated, it covered whatever scrolled underneath, on the one panel whose
+	   entire job is handing over an exact string. */
 	.snippet-bar {
 		display: flex;
 		align-items: center;
@@ -481,6 +706,12 @@
 		color: var(--color-text-primary);
 		background: var(--color-surface-sunken);
 		overflow-x: auto;
+	}
+
+	.warn-text {
+		margin: 0;
+		font-size: var(--text-xs);
+		color: var(--color-warning);
 	}
 
 	.docs {
