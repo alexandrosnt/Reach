@@ -37,3 +37,6 @@ npm-debug.log*
 *.enc
 *.key
 *.pem
+# Agent scratch files — do not commit
+CLAUDE.md
+.claude/
