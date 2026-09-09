@@ -2,22 +2,12 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
 	import Dropdown from '$lib/components/shared/Dropdown.svelte';
+	import LanguageSelect from '$lib/components/shared/LanguageSelect.svelte';
 	import Toggle from '$lib/components/shared/Toggle.svelte';
 	import { getSettings, updateSetting, syncTraySettings } from '$lib/state/settings.svelte';
 	import { t, changeLocale } from '$lib/state/i18n.svelte';
 
 	const settings = getSettings();
-
-	const languageOptions = [
-		{ label: 'English', value: 'en' },
-		{ label: 'Deutsch', value: 'de' },
-		{ label: 'Français', value: 'fr' },
-		{ label: 'Ελληνικά', value: 'el' },
-		{ label: 'Italiano', value: 'it' },
-		{ label: 'Български', value: 'bg' },
-		{ label: 'Русский', value: 'ru' },
-		{ label: '中文', value: 'zh' }
-	];
 
 	function onLanguageChange(value: string) {
 		changeLocale(value);
@@ -60,11 +50,7 @@
 			<span class="setting-label">{t('settings.language')}</span>
 		</div>
 		<div class="setting-control">
-			<Dropdown
-				options={languageOptions}
-				selected={settings.locale}
-				onchange={onLanguageChange}
-			/>
+			<LanguageSelect value={settings.locale} onchange={onLanguageChange} />
 		</div>
 	</div>
 

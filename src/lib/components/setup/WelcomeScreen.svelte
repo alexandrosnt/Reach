@@ -1,12 +1,13 @@
 <script lang="ts">
-	import LanguageStep from './LanguageStep.svelte';
+	import PersonalizeStep from './PersonalizeStep.svelte';
+	import PluginsStep from './PluginsStep.svelte';
 	import TursoStep from './TursoStep.svelte';
 	import CompleteStep from './CompleteStep.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { updateSetting } from '$lib/state/settings.svelte';
 
 	let currentStep = $state(0);
-	const totalSteps = 3;
+	const totalSteps = 4;
 
 	function next() {
 		if (currentStep < totalSteps - 1) {
@@ -45,10 +46,12 @@
 		<!-- Step content -->
 		<div class="step-content">
 			{#if currentStep === 0}
-				<LanguageStep onNext={next} />
+				<PersonalizeStep onNext={next} />
 			{:else if currentStep === 1}
-				<TursoStep onNext={next} onBack={back} />
+				<PluginsStep onNext={next} onBack={back} />
 			{:else if currentStep === 2}
+				<TursoStep onNext={next} onBack={back} />
+			{:else if currentStep === 3}
 				<CompleteStep onComplete={complete} onBack={back} />
 			{/if}
 		</div>
