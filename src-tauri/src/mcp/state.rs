@@ -45,9 +45,27 @@ pub enum Mode {
     /// Skip the prompt for commands the classifier calls benign. Anything
     /// Sensitive or Destructive still stops and asks.
     AutoSafe,
-    /// Skip the prompt for everything except Destructive. Destructive always
-    /// asks: there is no mode in which Reach silently runs `rm -rf` for a model.
+    /// Skip the prompt for everything except Destructive.
     Auto,
+    /// Skip the prompt for everything, destructive commands included.
+    ///
+    /// Requested deliberately and against advice, which is recorded here rather
+    /// than argued again at the call site: in this mode an AI can wipe a disk,
+    /// drop a database or take a host down with no human in the loop, and the
+    /// terminal echo is the only trace it happened.
+    ///
+    /// What it still does *not* do — because these are refusals rather than
+    /// questions, and a mode only answers questions:
+    ///   * the echo-off lockout, so it cannot answer a password prompt
+    ///   * the secret-in-command check
+    ///   * read-before-write and describe-before-act
+    ///   * the rate limit
+    ///   * every deny rule the active agent contributes
+    ///
+    /// So a DevSecOps agent in this mode still refuses `ufw disable`. Mode and
+    /// agent policy are separate mechanisms and collapsing them would remove
+    /// the last thing standing between a confused model and a dead machine.
+    Dangerous,
 }
 
 impl Default for Mode {
@@ -64,6 +82,7 @@ impl Mode {
             Mode::Ask => false,
             Mode::AutoSafe => danger == Danger::Benign,
             Mode::Auto => danger < Danger::Destructive,
+            Mode::Dangerous => true,
         }
     }
 }
@@ -454,6 +473,40 @@ mod tests {
             "jsonrpc": "2.0", "id": 1, "method": method, "params": params
         }))
         .unwrap()
+    }
+
+
+    #[test]
+    fn modes_approve_exactly_what_they_claim() {
+        use crate::mcp::guard::Danger;
+        let all = [Danger::Benign, Danger::Mutating, Danger::Sensitive, Danger::Destructive];
+
+        // Ask never skips a prompt.
+        for d in all {
+            assert!(!Mode::Ask.auto_approves(d), "Ask must always ask: {d:?}");
+        }
+
+        // AutoSafe is reads only.
+        assert!(Mode::AutoSafe.auto_approves(Danger::Benign));
+        for d in [Danger::Mutating, Danger::Sensitive, Danger::Destructive] {
+            assert!(!Mode::AutoSafe.auto_approves(d), "AutoSafe must ask for {d:?}");
+        }
+
+        // Auto stops at destructive.
+        for d in [Danger::Benign, Danger::Mutating, Danger::Sensitive] {
+            assert!(Mode::Auto.auto_approves(d), "Auto should run {d:?}");
+        }
+        assert!(!Mode::Auto.auto_approves(Danger::Destructive), "Auto must still ask before destroying");
+
+        // Dangerous asks nothing. Deliberate, and the reason it is named that.
+        for d in all {
+            assert!(Mode::Dangerous.auto_approves(d), "Dangerous approves everything: {d:?}");
+        }
+    }
+
+    #[test]
+    fn the_default_mode_asks() {
+        assert_eq!(Mode::default(), Mode::Ask);
     }
 
     #[tokio::test]
