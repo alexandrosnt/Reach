@@ -84,6 +84,17 @@
 		padding: 40px clamp(20px, 5vw, 48px);
 		max-width: 520px;
 		width: 100%;
+		/*
+		 * Never taller than the window. A step's content is not fixed — it grows
+		 * with the number of themes on offer and with translated strings that
+		 * run longer than the English — so on a short laptop or a tablet in
+		 * landscape the card could exceed the viewport and put the primary
+		 * action below the fold. Capping here and scrolling the step body (not
+		 * the page) keeps the wizard usable at any height. `dvh` rather than
+		 * `vh` so mobile browser chrome is accounted for.
+		 */
+		max-height: calc(100dvh - 2 * max(20px, env(safe-area-inset-top)));
+		min-height: 0;
 		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-modal);
@@ -132,5 +143,11 @@
 
 	.step-content {
 		width: 100%;
+		/* Takes the leftover height and scrolls its own overflow, so the step
+		   dots stay pinned at the top and each step's actions can stick to the
+		   bottom rather than sliding off. */
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
 	}
 </style>
