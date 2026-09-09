@@ -9,6 +9,13 @@ import { invoke } from '@tauri-apps/api/core';
  */
 export type McpMode = 'ask' | 'auto_safe' | 'auto' | 'dangerous';
 
+/** Per-session overrides. `null` on a field means "follow the global value". */
+export interface SessionSettings {
+	sessionId: string;
+	agentId: string | null;
+	mode: McpMode | null;
+}
+
 /** State of the MCP server. Everything defaults to off/empty. */
 export interface McpStatus {
 	enabled: boolean;
@@ -23,6 +30,7 @@ export interface McpStatus {
 	readOnly: boolean;
 	sharedSessionIds: string[];
 	mode: McpMode;
+	sessions: SessionSettings[];
 	/** Ready to paste into a client config. Absent when not listening. */
 	url?: string;
 }
@@ -95,6 +103,30 @@ export async function mcpSetAgent(agentId: string): Promise<McpStatus> {
 /** Choose how much to be asked. Reach-only — no MCP method reaches this. */
 export async function mcpSetMode(mode: McpMode): Promise<McpStatus> {
 	return invoke<McpStatus>('mcp_set_mode', { mode });
+}
+
+/**
+ * Point one shared session at a different agent. `null` follows the global one.
+ *
+ * A per-session agent can only *narrow* the tool surface: MCP advertises one
+ * tool list per connection, so the global agent stays the ceiling.
+ */
+export async function mcpSetSessionAgent(
+	sessionId: string,
+	agentId: string | null
+): Promise<McpStatus> {
+	return invoke<McpStatus>('mcp_set_session_agent', {
+		session_id: sessionId,
+		agent_id: agentId
+	});
+}
+
+/** Point one shared session at a different mode. `null` follows the global one. */
+export async function mcpSetSessionMode(
+	sessionId: string,
+	mode: McpMode | null
+): Promise<McpStatus> {
+	return invoke<McpStatus>('mcp_set_session_mode', { session_id: sessionId, mode });
 }
 
 /** Replace the token, revoking every client configured with the old one. */

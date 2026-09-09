@@ -43,10 +43,24 @@ pub struct McpStatus {
     pub agent_name: String,
     pub read_only: bool,
     pub shared_session_ids: Vec<String>,
-    /// "ask" | "auto_safe" | "auto" — whether writes stop to ask.
+    /// "ask" | "auto_safe" | "auto" | "dangerous" — the global default.
     pub mode: Mode,
+    /// Overrides for individual shared sessions.
+    pub sessions: Vec<SessionSettings>,
     /// Ready to paste into a client's config.
     pub url: Option<String>,
+}
+
+/// Per-session overrides, so the bottom bar can show what applies to the tab
+/// in front of you rather than only the global default.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionSettings {
+    pub session_id: String,
+    /// `None` means "follow the global agent".
+    pub agent_id: Option<String>,
+    /// `None` means "follow the global mode".
+    pub mode: Option<Mode>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -144,7 +158,7 @@ async fn load_or_create_token(state: &AppState) -> String {
     token
 }
 
-fn status_of(state: &McpState, port: Option<u16>, shared: Vec<String>) -> McpStatus {
+async fn status_of(state: &McpState, port: Option<u16>, shared: Vec<String>) -> McpStatus {
     let agent = state.agent();
     McpStatus {
         enabled: state.is_enabled(),
@@ -155,6 +169,12 @@ fn status_of(state: &McpState, port: Option<u16>, shared: Vec<String>) -> McpSta
         read_only: agent.is_read_only(),
         shared_session_ids: shared,
         mode: state.mode(),
+        sessions: state
+            .session_settings()
+            .await
+            .into_iter()
+            .map(|(session_id, agent_id, mode)| SessionSettings { session_id, agent_id, mode })
+            .collect(),
         url: port.map(|p| format!("http://127.0.0.1:{p}/mcp")),
     }
 }
@@ -170,7 +190,7 @@ pub async fn mcp_start(
 
     if running().lock().unwrap().is_some() {
         let p = running().lock().unwrap().as_ref().map(|r| r.port);
-        return Ok(status_of(&mcp, p, mcp.shared_ids().await));
+        return Ok(status_of(&mcp, p, mcp.shared_ids().await).await);
     }
 
     mcp.set_token(Some(load_or_create_token(&state).await));
@@ -199,7 +219,7 @@ pub async fn mcp_start(
     mcp.set_enabled(true);
 
     tracing::info!("MCP server enabled on port {bound}");
-    Ok(status_of(&mcp, Some(bound), mcp.shared_ids().await))
+    Ok(status_of(&mcp, Some(bound), mcp.shared_ids().await).await)
 }
 
 #[tauri::command]
@@ -221,7 +241,7 @@ pub async fn mcp_stop(state: tauri::State<'_, AppState>) -> Result<McpStatus, St
     pending().lock().unwrap().clear();
 
     tracing::info!("MCP server disabled");
-    Ok(status_of(&mcp, None, Vec::new()))
+    Ok(status_of(&mcp, None, Vec::new()).await)
 }
 
 #[tauri::command]
@@ -229,7 +249,7 @@ pub async fn mcp_stop(state: tauri::State<'_, AppState>) -> Result<McpStatus, St
 pub async fn mcp_status(state: tauri::State<'_, AppState>) -> Result<McpStatus, String> {
     let mcp = state.mcp.clone();
     let port = running().lock().unwrap().as_ref().map(|r| r.port);
-    Ok(status_of(&mcp, port, mcp.shared_ids().await))
+    Ok(status_of(&mcp, port, mcp.shared_ids().await).await)
 }
 
 /// Offer one session to the AI. Enabling the server does not do this; every
@@ -294,10 +314,41 @@ pub async fn mcp_set_agent(
     let mcp = state.mcp.clone();
     mcp.set_agent(&agent_id)?;
     let port = running().lock().unwrap().as_ref().map(|r| r.port);
-    Ok(status_of(&mcp, port, mcp.shared_ids().await))
+    Ok(status_of(&mcp, port, mcp.shared_ids().await).await)
 }
 
 
+
+
+/// Point one shared session at a different agent. `None` follows the global
+/// agent. Reach's UI only — there is no MCP method that reaches this.
+#[tauri::command(rename_all = "snake_case")]
+#[tracing::instrument(skip(state))]
+pub async fn mcp_set_session_agent(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+    agent_id: Option<String>,
+) -> Result<McpStatus, String> {
+    let mcp = state.mcp.clone();
+    mcp.set_session_agent(&session_id, agent_id.as_deref()).await?;
+    let port = running().lock().unwrap().as_ref().map(|r| r.port);
+    Ok(status_of(&mcp, port, mcp.shared_ids().await).await)
+}
+
+/// Point one shared session at a different mode. `None` follows the global
+/// mode. Reach's UI only.
+#[tauri::command(rename_all = "snake_case")]
+#[tracing::instrument(skip(state))]
+pub async fn mcp_set_session_mode(
+    state: tauri::State<'_, AppState>,
+    session_id: String,
+    mode: Option<Mode>,
+) -> Result<McpStatus, String> {
+    let mcp = state.mcp.clone();
+    mcp.set_session_mode(&session_id, mode).await?;
+    let port = running().lock().unwrap().as_ref().map(|r| r.port);
+    Ok(status_of(&mcp, port, mcp.shared_ids().await).await)
+}
 
 /// Choose how much to be asked. Reach's UI only — there is no MCP method for
 /// this, because a model able to pick its own mode would pick the quiet one.
@@ -311,7 +362,7 @@ pub async fn mcp_set_mode(
     mcp.set_mode(mode);
     let port = running().lock().unwrap().as_ref().map(|r| r.port);
     tracing::info!("MCP mode set to {mode:?}");
-    Ok(status_of(&mcp, port, mcp.shared_ids().await))
+    Ok(status_of(&mcp, port, mcp.shared_ids().await).await)
 }
 
 /// Replace the token, revoking every client configured with the old one.
@@ -352,7 +403,7 @@ pub async fn mcp_regenerate_token(state: tauri::State<'_, AppState>) -> Result<M
     mcp.set_token(Some(token));
     let port = running().lock().unwrap().as_ref().map(|r| r.port);
     tracing::info!("MCP token regenerated");
-    Ok(status_of(&mcp, port, mcp.shared_ids().await))
+    Ok(status_of(&mcp, port, mcp.shared_ids().await).await)
 }
 
 /// Resolve a pending confirmation. Called by the dialog.

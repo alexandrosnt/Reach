@@ -621,6 +621,7 @@
   "settings.mcp": "MCP",
   "mcp.enable": "MCP-Server",
   "mcp.mode": "Modus",
+  "mcp.follow_global": "Global folgen",
   "mcp.mode_desc": "Wie oft du gefragt werden willst. Die Schutzmechanismen gelten in jedem Modus — ein Modus entscheidet nur, ob ein Mensch gefragt wird.",
   "mcp.mode_moot": "Der aktuelle Agent kann nicht tippen, daher spielt der Modus keine Rolle.",
   "mcp.mode_dangerous": "Gefährlich",

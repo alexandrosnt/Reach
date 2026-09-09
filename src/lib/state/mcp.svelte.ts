@@ -14,7 +14,8 @@ const EMPTY: McpStatus = {
 	agentName: 'Architect',
 	readOnly: true,
 	sharedSessionIds: [],
-	mode: 'ask'
+	mode: 'ask',
+	sessions: []
 };
 
 let status = $state<McpStatus>({ ...EMPTY });
@@ -92,6 +93,16 @@ export async function setMode(mode: McpMode): Promise<void> {
 
 export async function regenerateToken(): Promise<void> {
 	const s = await run(() => mcpIpc.mcpRegenerateToken());
+	if (s) status = s;
+}
+
+export async function setSessionAgent(sessionId: string, agentId: string | null): Promise<void> {
+	const s = await run(() => mcpIpc.mcpSetSessionAgent(sessionId, agentId));
+	if (s) status = s;
+}
+
+export async function setSessionMode(sessionId: string, mode: McpMode | null): Promise<void> {
+	const s = await run(() => mcpIpc.mcpSetSessionMode(sessionId, mode));
 	if (s) status = s;
 }
 

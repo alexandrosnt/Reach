@@ -58,6 +58,22 @@ pub struct SharedSession {
     /// Increments on every write from the remote. A client's read is "current"
     /// only if it saw this value.
     pub seq: u64,
+    /// Per-session agent, overriding the global one.
+    ///
+    /// **Can only remove tools, never add them.** MCP advertises one tool list
+    /// per connection, not per session, so the global agent sets the ceiling
+    /// and this narrows it. A production box can be pinned to a read-only
+    /// agent while a dev box on the same host stays writable, and no
+    /// per-session setting can hand out a tool the connection was never
+    /// offered.
+    pub agent_id: Option<String>,
+    /// Per-session mode, overriding the global one.
+    ///
+    /// Free to be looser than the global setting, unlike the agent: a mode is
+    /// chosen by the user in Reach's own UI and there is no path from the AI to
+    /// it, so "Ask everywhere, Auto on the box I do not mind breaking" is a
+    /// legitimate thing to want.
+    pub mode: Option<crate::mcp::state::Mode>,
 }
 
 impl SharedSession {
@@ -70,6 +86,8 @@ impl SharedSession {
             shell: None,
             buffer: VecDeque::with_capacity(BUFFER_BYTES.min(8 * 1024)),
             seq: 0,
+            agent_id: None,
+            mode: None,
         }
     }
 

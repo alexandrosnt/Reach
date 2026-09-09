@@ -615,6 +615,7 @@
   "settings.mcp": "MCP",
   "mcp.enable": "MCP 服务器",
   "mcp.mode": "模式",
+  "mcp.follow_global": "跟随全局",
   "mcp.mode_desc": "你希望被询问的频率。所有防护在任何模式下都生效 — 模式只决定是否询问人。",
   "mcp.mode_moot": "当前代理无法输入，因此模式没有影响。",
   "mcp.mode_dangerous": "危险",

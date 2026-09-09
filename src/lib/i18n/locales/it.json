@@ -621,6 +621,7 @@
   "settings.mcp": "MCP",
   "mcp.enable": "Server MCP",
   "mcp.mode": "Modalità",
+  "mcp.follow_global": "Segui globale",
   "mcp.mode_desc": "Quanto vuoi che ti si chieda. Le protezioni valgono in ogni modalità — una modalità decide solo se viene chiesto a una persona.",
   "mcp.mode_moot": "L'agente attuale non può scrivere, quindi la modalità non cambia nulla.",
   "mcp.mode_dangerous": "Pericolosa",

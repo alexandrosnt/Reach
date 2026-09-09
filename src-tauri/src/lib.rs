@@ -151,6 +151,8 @@ pub fn run() {
             mcp_list_agents,
             mcp_set_agent,
             mcp_set_mode,
+            mcp_set_session_agent,
+            mcp_set_session_mode,
             mcp_regenerate_token,
             mcp_confirm_response,
             // SSH commands
@@ -386,6 +388,8 @@ pub fn run() {
             mcp_list_agents,
             mcp_set_agent,
             mcp_set_mode,
+            mcp_set_session_agent,
+            mcp_set_session_mode,
             mcp_regenerate_token,
             mcp_confirm_response,
             // SSH commands
