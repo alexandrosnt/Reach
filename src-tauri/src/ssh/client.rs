@@ -4,7 +4,7 @@ use std::sync::Arc;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use russh::ChannelMsg;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 use thiserror::Error;
 use tokio::sync::mpsc;
 
@@ -1315,10 +1315,29 @@ async fn ssh_session_task(
     let mut backlog: Vec<String> = Vec::new();
     let mut backlog_bytes = 0usize;
 
+    // Tap for the MCP server. Output is mirrored into the shared-session
+    // buffer *before* the ready/backlog logic, because an AI client attaches
+    // independently of the terminal UI: a session can be shared while its tab
+    // has never been opened, and waiting for Ready would leave the model
+    // reading an empty screen. A no-op unless the user shared this session.
+    let mcp_state = app_handle.try_state::<crate::state::AppState>().map(|s| s.mcp.clone());
+    let mcp_id = connection_id.clone();
+    macro_rules! mirror_to_mcp {
+        ($text:expr) => {{
+            if let Some(mcp) = mcp_state.clone() {
+                let id = mcp_id.clone();
+                let bytes = $text.as_bytes().to_vec();
+                // Spawned so a slow reader can never stall the SSH loop.
+                tokio::spawn(async move { mcp.push_output(&id, &bytes).await; });
+            }
+        }};
+    }
+
     // Emit live once ready, otherwise buffer. `break`s the loop on emit failure.
     macro_rules! deliver {
         ($payload:expr) => {{
             let payload = $payload;
+            mirror_to_mcp!(payload);
             if ready {
                 if let Err(e) = app_handle.emit(&data_event, &payload) {
                     tracing::error!("Failed to emit '{}': {}", data_event, e);
