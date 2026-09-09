@@ -1,6 +1,7 @@
 pub mod ansible;
 pub mod plugin;
 pub mod ipc;
+pub mod mcp;
 pub mod monitoring;
 #[cfg(desktop)]
 pub mod pty;
