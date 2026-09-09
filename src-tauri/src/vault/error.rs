@@ -98,3 +98,81 @@ impl From<std::io::Error> for VaultError {
         VaultError::IoError(e.to_string())
     }
 }
+
+/// Turn a libsql error message into something worth putting in front of a user.
+///
+/// Shared vaults talk to Turso over Hrana, and libsql renders a rejected
+/// request as ``Hrana: `api error: `<http body>``` — the raw response body,
+/// nested in two layers of backticks. That whole blob reached the vault
+/// panel's toast, where it was both unreadable and far too long to fit, so the
+/// user saw ``Database error: Hrana `ap`` and nothing else.
+///
+/// Takes the rendered message (`e.to_string()`) rather than the error itself:
+/// `libsql::Error::Hrana` wraps a private box that cannot be built outside the
+/// crate, and the string is all this needs anyway.
+pub fn describe_db_error(raw: &str) -> String {
+    // ``Hrana: `api error: `<body>``` — peel both wrappers to reach <body>.
+    let body = raw
+        .strip_prefix("Hrana: `")
+        .and_then(|s| s.strip_suffix('`'))
+        .map(|s| {
+            s.strip_prefix("api error: `")
+                .and_then(|b| b.strip_suffix('`'))
+                .unwrap_or(s)
+        })
+        .unwrap_or(raw);
+
+    // Turso answers with {"error": "..."} on most rejections.
+    let message = serde_json::from_str::<serde_json::Value>(body)
+        .ok()
+        .and_then(|v| v.get("error").and_then(|m| m.as_str()).map(str::to_string))
+        .unwrap_or_else(|| body.to_string());
+
+    let lower = message.to_lowercase();
+    if lower.contains("unauthor") || lower.contains("expired") || lower.contains("invalid token") {
+        format!("{message} (the sync token is no longer accepted — re-authenticate the vault)")
+    } else if lower.contains("not found") || lower.contains("does not exist") {
+        format!("{message} (the remote database is gone or was renamed)")
+    } else {
+        message
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::describe_db_error;
+
+    #[test]
+    fn unwraps_the_hrana_json_body() {
+        let raw = r#"Hrana: `api error: `{"error":"Something broke"}``"#;
+        assert_eq!(describe_db_error(raw), "Something broke");
+    }
+
+    #[test]
+    fn hints_at_the_token_on_an_auth_failure() {
+        let raw = r#"Hrana: `api error: `{"error":"Unauthorized: token expired"}``"#;
+        let msg = describe_db_error(raw);
+        assert!(msg.starts_with("Unauthorized: token expired"), "got: {msg}");
+        assert!(msg.contains("re-authenticate"), "got: {msg}");
+    }
+
+    #[test]
+    fn hints_at_the_database_when_it_is_gone() {
+        let raw = r#"Hrana: `api error: `{"error":"database not found"}``"#;
+        assert!(describe_db_error(raw).contains("remote database is gone"));
+    }
+
+    #[test]
+    fn passes_through_a_non_json_body() {
+        let raw = "Hrana: `http error: `connection refused``";
+        assert_eq!(describe_db_error(raw), "http error: `connection refused`");
+    }
+
+    /// A local (non-Hrana) failure has no wrapper to strip and no JSON to
+    /// parse; it must survive unchanged rather than being mangled.
+    #[test]
+    fn leaves_a_plain_sqlite_error_alone() {
+        let raw = "SQLite failure: `no such table: secrets`";
+        assert_eq!(describe_db_error(raw), raw);
+    }
+}

@@ -246,6 +246,7 @@
   "vault.no_vaults": "Δεν υπάρχουν θησαυροφυλάκια ακόμα.",
   "vault.create_prompt": "Δημιουργήστε ένα θησαυροφυλάκιο για να αποθηκεύσετε τα μυστικά σας με ασφάλεια.",
   "vault.n_secrets": "{{count}} μυστικό(-ά)",
+  "vault.unreachable": "Μη προσβάσιμο",
   "vault.n_members": "{{count}} μέλος(-η)",
   "vault.shared": "Κοινόχρηστο",
   "vault.private": "Ιδιωτικό",

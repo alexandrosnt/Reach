@@ -13,7 +13,7 @@ use x25519_dalek::{PublicKey, StaticSecret};
 use crate::vault::crypto::{
     decrypt_secret, encrypt_secret, generate_dek, unwrap_dek, wrap_dek, wrap_dek_with_key, unwrap_dek_with_key,
 };
-use crate::vault::error::VaultError;
+use crate::vault::error::{describe_db_error, VaultError};
 use crate::vault::schema::init_schema;
 use crate::vault::sync::{create_replica, SyncConfig};
 use crate::vault::types::{
@@ -1090,6 +1090,8 @@ impl VaultManager {
             member_count,
             secret_count: 0,
             last_sync: None,
+            unreachable: false,
+            sync_error: None,
         })
     }
 
@@ -1117,6 +1119,8 @@ impl VaultManager {
                 member_count,
                 secret_count: 0,
                 last_sync: None,
+                unreachable: false,
+                sync_error: None,
             });
         }
 
@@ -1194,12 +1198,17 @@ impl VaultManager {
             VaultType::Shared { members } => Some(members.len()),
         };
 
-        // Count secrets
-        let mut count_rows = conn.query("SELECT COUNT(*) FROM secrets", ()).await?;
-        let secret_count: i64 = if let Some(row) = count_rows.next().await? {
-            row.get(0)?
-        } else {
-            0
+        // Count secrets. Remote-only for shared vaults, so treat a failure the
+        // same way `list_vaults` does: the vault is open and usable, we just
+        // could not reach it to count. Failing here would leave a vault the
+        // user has a valid key for permanently unopenable.
+        let (secret_count, sync_error) = match Self::count_secrets(&conn).await {
+            Ok(n) => (n, None),
+            Err(e) => {
+                let reason = describe_db_error(&e.to_string());
+                tracing::warn!(vault = %name, "vault unreachable on open: {}", reason);
+                (0, Some(reason))
+            }
         };
 
         // Store in memory (O(1))
@@ -1224,8 +1233,10 @@ impl VaultManager {
                 VaultType::Shared { .. } => "shared".to_string(),
             },
             member_count,
-            secret_count: secret_count as usize,
+            secret_count,
             last_sync: None,
+            unreachable: sync_error.is_some(),
+            sync_error,
         })
     }
 
@@ -1357,6 +1368,18 @@ impl VaultManager {
     }
 
     /// List all vaults.
+    /// Count the secrets in a vault. Split out because both `open_vault` and
+    /// `list_vaults` need it and, on a shared vault, it is a remote call that
+    /// can fail on its own.
+    async fn count_secrets(conn: &Connection) -> Result<usize, VaultError> {
+        let mut rows = conn.query("SELECT COUNT(*) FROM secrets", ()).await?;
+        let count: i64 = match rows.next().await? {
+            Some(row) => row.get(0)?,
+            None => 0,
+        };
+        Ok(count as usize)
+    }
+
     pub async fn list_vaults(&self) -> Result<Vec<VaultInfo>, VaultError> {
         let mut vaults = Vec::new();
         for (vault_id, vault) in &self.vaults {
@@ -1370,13 +1393,25 @@ impl VaultManager {
                 VaultType::Shared { members } => Some(members.len()),
             };
 
-            // Count secrets
-            let mut count_rows = vault.conn.query("SELECT COUNT(*) FROM secrets", ()).await?;
-            let secret_count: i64 = if let Some(row) = count_rows.next().await? {
-                row.get(0)?
-            } else {
-                0
-            };
+            // Count secrets. A shared vault is a remote-only Turso connection
+            // (see `sync::create_replica`), so this one line is a network call:
+            // an expired token, a paused database or a dead link makes it fail.
+            // Propagating that would fail the *whole* listing and empty the
+            // vault panel, including local vaults that are perfectly healthy —
+            // so a vault that cannot answer is reported as unreachable instead.
+            let (secret_count, sync_error) =
+                match Self::count_secrets(&vault.conn).await {
+                    Ok(n) => (n, None),
+                    Err(e) => {
+                        let reason = describe_db_error(&e.to_string());
+                        tracing::warn!(
+                            vault = %vault.header.name,
+                            "vault unreachable while listing: {}",
+                            reason
+                        );
+                        (0, Some(reason))
+                    }
+                };
 
             vaults.push(VaultInfo {
                 id: vault_id.clone(),
@@ -1386,8 +1421,10 @@ impl VaultManager {
                     VaultType::Shared { .. } => "shared".to_string(),
                 },
                 member_count,
-                secret_count: secret_count as usize,
+                secret_count,
                 last_sync: None,
+                unreachable: sync_error.is_some(),
+                sync_error,
             });
         }
         Ok(vaults)

@@ -246,6 +246,7 @@
   "vault.no_vaults": "Все още няма трезори.",
   "vault.create_prompt": "Създайте трезор, за да съхранявате вашите тайни сигурно.",
   "vault.n_secrets": "{{count}} тайна(и)",
+  "vault.unreachable": "Недостъпно",
   "vault.n_members": "{{count}} член(а)",
   "vault.shared": "Споделен",
   "vault.private": "Личен",

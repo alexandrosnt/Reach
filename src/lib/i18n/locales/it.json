@@ -246,6 +246,7 @@
   "vault.no_vaults": "Nessun vault ancora.",
   "vault.create_prompt": "Crea un vault per conservare i tuoi segreti in modo sicuro.",
   "vault.n_secrets": "{{count}} segreto/i",
+  "vault.unreachable": "Non raggiungibile",
   "vault.n_members": "{{count}} membro/i",
   "vault.shared": "Condiviso",
   "vault.private": "Privato",
