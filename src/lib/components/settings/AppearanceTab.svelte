@@ -1,11 +1,12 @@
 <script lang="ts">
-	import { themeState, applyTheme, DARK, LIGHT } from '$lib/state/theme.svelte';
+	import { themeState, applyTheme, loadInstalledThemes, DARK, LIGHT } from '$lib/state/theme.svelte';
 	import { onMount } from 'svelte';
-	import { themeFetchRegistry, themeInstall, themeListInstalled, themeUninstall, type ThemeEntry } from '$lib/ipc/theme';
+	import { themeFetchRegistry, themeInstall, themeUninstall, type ThemeEntry } from '$lib/ipc/theme';
 	import { validateTheme } from '$lib/state/theme.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import { matchesQuery } from '$lib/utils/search';
 
 	const settings = getSettings();
 	let currentFont = $derived(settings.fontFamily || 'monospace');
@@ -19,18 +20,28 @@
 	let installedIds = $derived(new Set(themeState.installed.map((t) => t.id)));
 
 	/**
-	 * Load installed themes into the engine, then the registry. Installed themes
-	 * are re-validated here as well as in the backend: a theme file could have
-	 * been edited on disk since it was written.
+	 * The registry is a public, PR-gated index with no size limit, so this list
+	 * has to stay bounded: rendering every entry builds one DOM row per theme
+	 * and would stall the settings panel long before the registry got
+	 * interesting. Search narrows, and the list grows a page at a time on
+	 * request — cheaper and far less fragile than virtualising rows whose
+	 * height varies with whether a theme carries a description.
 	 */
-	async function loadThemes(): Promise<void> {
-		try {
-			const docs = await themeListInstalled();
-			themeState.installed = docs.filter((d) => validateTheme(d).ok);
-		} catch (err) {
-			console.error('Could not read installed themes:', err);
-		}
-	}
+	const PAGE = 40;
+
+	let themeQuery = $state('');
+	let shown = $state(PAGE);
+
+	let matching = $derived(
+		registry.filter((e) => matchesQuery(themeQuery, [e.name, e.description, e.author, e.appearance]))
+	);
+	let visible = $derived(matching.slice(0, shown));
+
+	// A new search starts from the top of its own results.
+	$effect(() => {
+		themeQuery;
+		shown = PAGE;
+	});
 
 	async function loadRegistry(): Promise<void> {
 		loadingRegistry = true;
@@ -77,7 +88,8 @@
 	}
 
 	onMount(() => {
-		loadThemes();
+		// Re-read from disk in case a theme was installed or edited since startup.
+		loadInstalledThemes();
 		loadRegistry();
 	});
 
@@ -212,8 +224,24 @@
 		{:else if registry.length === 0}
 			<p class="registry-msg">{t('themes.empty')}</p>
 		{:else}
+			{#if registry.length > PAGE}
+				<input
+					bind:value={themeQuery}
+					class="theme-search"
+					type="text"
+					autocomplete="off"
+					spellcheck="false"
+					placeholder={t('themes.search')}
+					aria-label={t('themes.search')}
+				/>
+			{/if}
+
+			{#if matching.length === 0}
+				<p class="registry-msg">{t('themes.no_match')}</p>
+			{/if}
+
 			<div class="theme-rows">
-				{#each registry as entry (entry.id)}
+				{#each visible as entry (entry.id)}
 					{@const isInstalled = installedIds.has(entry.id)}
 					<div class="theme-row">
 						<div class="row-info">
@@ -236,6 +264,15 @@
 					</div>
 				{/each}
 			</div>
+
+			{#if matching.length > visible.length}
+				<button class="show-more" onclick={() => (shown += PAGE)}>
+					{t('themes.show_more', {
+						shown: visible.length,
+						total: matching.length
+					})}
+				</button>
+			{/if}
 		{/if}
 	</div>
 
@@ -398,6 +435,45 @@
 		margin: var(--space-1) 0 0;
 		font-size: var(--text-xs);
 		color: var(--color-text-tertiary);
+	}
+
+	.theme-search {
+		width: 100%;
+		padding: 7px var(--space-2);
+		margin-bottom: var(--space-2);
+		font-size: var(--text-sm);
+		font-family: inherit;
+		color: var(--color-text-primary);
+		background: var(--color-surface-sunken);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		outline: none;
+	}
+
+	.theme-search:focus {
+		border-color: var(--color-accent);
+	}
+
+	.theme-search::placeholder {
+		color: var(--color-text-tertiary);
+	}
+
+	.show-more {
+		width: 100%;
+		margin-top: var(--space-2);
+		padding: 8px;
+		font-size: var(--text-xs);
+		font-family: inherit;
+		color: var(--color-text-secondary);
+		background: none;
+		border: 1px dashed var(--color-border);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+	}
+
+	.show-more:hover {
+		background: var(--color-surface-hover);
+		color: var(--color-text-primary);
 	}
 
 	.theme-rows {
