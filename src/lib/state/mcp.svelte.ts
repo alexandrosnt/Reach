@@ -61,6 +61,12 @@ async function run<T>(fn: () => Promise<T>): Promise<T | null> {
 	}
 }
 
+/** Restore saved settings on launch, restarting the server if it was on. */
+export async function restore(): Promise<void> {
+	const s = await run(() => mcpIpc.mcpRestore());
+	if (s) status = s;
+}
+
 export async function refresh(): Promise<void> {
 	const s = await run(() => mcpIpc.mcpStatus());
 	if (s) status = s;

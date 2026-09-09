@@ -1,13 +1,16 @@
 <script lang="ts">
 	import { getStats } from '$lib/state/monitoring.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import McpSessionBar from './McpSessionBar.svelte';
 
 	interface Props {
 		connectionId?: string;
 		sshUser?: string;
+		/** The id this session is shared under, for the MCP controls. */
+		sessionId?: string;
 	}
 
-	let { connectionId, sshUser }: Props = $props();
+	let { connectionId, sshUser, sessionId }: Props = $props();
 
 	let stats = $derived(connectionId ? getStats(connectionId) : undefined);
 
@@ -111,6 +114,13 @@
 				{netUp}
 			</span>
 		</div>
+
+		<!-- Per-session MCP controls live in the gap the bar already has between
+		     the network stats and the user count. They belong on this row
+		     because it is the one piece of chrome already scoped to the session
+		     in front of you, and they render nothing when MCP is off or this
+		     session is not shared. -->
+		<McpSessionBar {sessionId} />
 
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div

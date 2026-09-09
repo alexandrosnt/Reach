@@ -68,6 +68,17 @@ export async function mcpStop(): Promise<McpStatus> {
 	return invoke<McpStatus>('mcp_stop');
 }
 
+/**
+ * Reload saved settings and, if the server was enabled before, start it again.
+ *
+ * Called once the vault is available rather than at process start: these live
+ * in the vault, which may still be locked when the app boots. Restores agent,
+ * mode and the port; never restores sharing, which is always a fresh decision.
+ */
+export async function mcpRestore(): Promise<McpStatus> {
+	return invoke<McpStatus>('mcp_restore');
+}
+
 export async function mcpStatus(): Promise<McpStatus> {
 	return invoke<McpStatus>('mcp_status');
 }
