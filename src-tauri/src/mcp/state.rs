@@ -336,6 +336,34 @@ impl McpState {
                     ));
                 }
 
+                // The write itself. This is what was missing: the gate
+                // passed, the user approved, and the tool reported "sent"
+                // without a byte reaching the terminal. Every test asserted
+                // the gate; none asserted the act, because a unit test has
+                // no terminal to assert on.
+                let sender = self.sender.lock().await.clone();
+                let Some(sender) = sender else {
+                    return Ok(protocol::tool_refusal(
+                        "Reach approved the command but has no way to type it into the \
+                         session right now. Nothing ran."
+                            .into(),
+                    ));
+                };
+
+                let send = SendRequest {
+                    session_id: session_id.to_string(),
+                    kind,
+                    command: req.command.clone(),
+                    agent_name: agent.name.clone(),
+                };
+
+                if let Err(e) = sender(send).await {
+                    return Ok(protocol::tool_refusal(format!(
+                        "The user approved this, but writing to the session failed: {e}. \
+                         Nothing ran — check the session is still connected."
+                    )));
+                }
+
                 Ok(protocol::tool_text(
                     json!({
                         "status": "sent",
