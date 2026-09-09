@@ -14,6 +14,7 @@ use tauri::{Emitter, Manager};
 use crate::mcp::agents;
 use crate::mcp::server::RunningServer;
 use crate::mcp::session::SessionKind;
+use crate::mcp::state::Mode;
 use crate::mcp::{ConfirmRequest, McpState, SendRequest};
 use crate::state::AppState;
 
@@ -42,6 +43,8 @@ pub struct McpStatus {
     pub agent_name: String,
     pub read_only: bool,
     pub shared_session_ids: Vec<String>,
+    /// "ask" | "auto_safe" | "auto" — whether writes stop to ask.
+    pub mode: Mode,
     /// Ready to paste into a client's config.
     pub url: Option<String>,
 }
@@ -71,18 +74,74 @@ struct ConfirmPayload {
     danger_reason: Option<String>,
 }
 
-/// A fresh token per start.
-///
-/// Not persisted anywhere: there is nothing at rest to leak, and a credential
-/// that outlives the session it authorised is a credential nobody remembers
-/// revoking. The cost is re-pasting it into the client config after a restart,
-/// which is the correct trade for a token that opens a shell.
+/// Where the token lives in the settings vault.
+const MCP_TOKEN_KEY: &str = "mcp_bearer_token";
+
 fn new_token() -> String {
     use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
     use rand::RngCore;
     let mut bytes = [0u8; 32];
     rand::thread_rng().fill_bytes(&mut bytes);
     URL_SAFE_NO_PAD.encode(bytes)
+}
+
+/// The token, reused across restarts.
+///
+/// This began as a fresh token on every start: nothing at rest to leak, and no
+/// credential outliving the session that authorised it. That reasoning is
+/// sound and the trade was still wrong. Every app restart — which during
+/// development is every Rust change — invalidated the client config, so the
+/// feature had to be re-added over and over. A security property that makes
+/// people avoid a feature protects nothing.
+///
+/// It is a credential, so it lives where Reach's credentials live: encrypted in
+/// the settings vault with everything else. That inherits the properties that
+/// matter — XChaCha20-Poly1305 at rest, gone when the vault is locked, included
+/// in backups — and `mcp_regenerate_token` covers deliberate revocation.
+///
+/// A locked vault falls back to an in-memory token rather than refusing to
+/// start. Failing closed here would mean "no MCP until you unlock", which
+/// punishes the wrong thing: the server still demands a bearer token either
+/// way, and the only thing lost is surviving a restart.
+async fn load_or_create_token(state: &AppState) -> String {
+    use secrecy::ExposeSecret;
+
+    let mut manager = state.vault_manager.lock().await;
+    if manager.is_locked() {
+        tracing::info!("Vault locked; using an in-memory MCP token for this run");
+        return new_token();
+    }
+
+    let vault_id = match manager.settings_vault_id() {
+        Ok(id) => id,
+        Err(_) => return new_token(),
+    };
+
+    if manager.secret_exists(&vault_id, MCP_TOKEN_KEY).await {
+        if let Ok(secret) = manager.read_secret(&vault_id, MCP_TOKEN_KEY).await {
+            if let Ok(text) = String::from_utf8(secret.expose_secret().clone()) {
+                if !text.is_empty() {
+                    return text;
+                }
+            }
+        }
+    }
+
+    let token = new_token();
+    let plaintext = secrecy::SecretBox::new(Box::new(token.clone().into_bytes()));
+    if let Err(e) = manager
+        .create_secret_with_id(
+            &vault_id,
+            MCP_TOKEN_KEY,
+            MCP_TOKEN_KEY,
+            crate::vault::types::SecretCategory::ApiToken,
+            plaintext,
+        )
+        .await
+    {
+        tracing::warn!("Could not persist the MCP token: {e}");
+    }
+    token
 }
 
 fn status_of(state: &McpState, port: Option<u16>, shared: Vec<String>) -> McpStatus {
@@ -95,6 +154,7 @@ fn status_of(state: &McpState, port: Option<u16>, shared: Vec<String>) -> McpSta
         agent_name: agent.name.clone(),
         read_only: agent.is_read_only(),
         shared_session_ids: shared,
+        mode: state.mode(),
         url: port.map(|p| format!("http://127.0.0.1:{p}/mcp")),
     }
 }
@@ -113,7 +173,7 @@ pub async fn mcp_start(
         return Ok(status_of(&mcp, p, mcp.shared_ids().await));
     }
 
-    mcp.set_token(Some(new_token()));
+    mcp.set_token(Some(load_or_create_token(&state).await));
 
     // Wire the confirm dialog. Until this exists every write fails closed, so
     // it is attached as part of starting rather than lazily on first use.
@@ -151,8 +211,9 @@ pub async fn mcp_stop(state: tauri::State<'_, AppState>) -> Result<McpStatus, St
         s.stop();
     }
     mcp.set_enabled(false);
-    // Stopping revokes: the token dies, sharing is cleared, and every client's
-    // preconditions go with it. Restarting is a clean slate, not a resumption.
+    // Stopping clears sharing and every client's preconditions, but keeps the
+    // token: it is stored in the vault and reused, so a client configured once
+    // keeps working across restarts. Use mcp_regenerate_token to revoke.
     mcp.set_token(None);
     mcp.set_confirmer(None).await;
     mcp.set_sender(None).await;
@@ -233,6 +294,64 @@ pub async fn mcp_set_agent(
     let mcp = state.mcp.clone();
     mcp.set_agent(&agent_id)?;
     let port = running().lock().unwrap().as_ref().map(|r| r.port);
+    Ok(status_of(&mcp, port, mcp.shared_ids().await))
+}
+
+
+
+/// Choose how much to be asked. Reach's UI only — there is no MCP method for
+/// this, because a model able to pick its own mode would pick the quiet one.
+#[tauri::command(rename_all = "snake_case")]
+#[tracing::instrument(skip(state))]
+pub async fn mcp_set_mode(
+    state: tauri::State<'_, AppState>,
+    mode: Mode,
+) -> Result<McpStatus, String> {
+    let mcp = state.mcp.clone();
+    mcp.set_mode(mode);
+    let port = running().lock().unwrap().as_ref().map(|r| r.port);
+    tracing::info!("MCP mode set to {mode:?}");
+    Ok(status_of(&mcp, port, mcp.shared_ids().await))
+}
+
+/// Replace the token, revoking every client configured with the old one.
+///
+/// The counterpart to persistence: a credential that survives restarts needs a
+/// deliberate way to kill it.
+#[tauri::command]
+#[tracing::instrument(skip(state))]
+pub async fn mcp_regenerate_token(state: tauri::State<'_, AppState>) -> Result<McpStatus, String> {
+    let mcp = state.mcp.clone();
+    let token = new_token();
+
+    {
+        let mut manager = state.vault_manager.lock().await;
+        if !manager.is_locked() {
+            if let Ok(vault_id) = manager.settings_vault_id() {
+                let plaintext = secrecy::SecretBox::new(Box::new(token.clone().into_bytes()));
+                let saved = if manager.secret_exists(&vault_id, MCP_TOKEN_KEY).await {
+                    manager.update_secret(&vault_id, MCP_TOKEN_KEY, plaintext).await
+                } else {
+                    manager
+                        .create_secret_with_id(
+                            &vault_id,
+                            MCP_TOKEN_KEY,
+                            MCP_TOKEN_KEY,
+                            crate::vault::types::SecretCategory::ApiToken,
+                            plaintext,
+                        )
+                        .await
+                };
+                if let Err(e) = saved {
+                    tracing::warn!("Could not persist the regenerated MCP token: {e}");
+                }
+            }
+        }
+    }
+
+    mcp.set_token(Some(token));
+    let port = running().lock().unwrap().as_ref().map(|r| r.port);
+    tracing::info!("MCP token regenerated");
     Ok(status_of(&mcp, port, mcp.shared_ids().await))
 }
 
