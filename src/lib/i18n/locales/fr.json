@@ -621,6 +621,7 @@
   "settings.mcp": "MCP",
   "mcp.enable": "Serveur MCP",
   "mcp.mode": "Mode",
+  "mcp.follow_global": "Suivre le global",
   "mcp.mode_desc": "À quelle fréquence vous voulez être consulté. Les protections s'appliquent dans tous les modes — un mode décide seulement si un humain est consulté.",
   "mcp.mode_moot": "L'agent actuel ne peut pas écrire, le mode ne change donc rien.",
   "mcp.mode_dangerous": "Dangereux",

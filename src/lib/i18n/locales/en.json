@@ -621,6 +621,7 @@
   "settings.mcp": "MCP",
   "mcp.enable": "MCP server",
   "mcp.mode": "Mode",
+  "mcp.follow_global": "Follow global",
   "mcp.mode_desc": "How much you want to be asked. Guards still apply in every mode — a mode only decides whether a human is asked.",
   "mcp.mode_moot": "The current agent cannot type, so the mode makes no difference.",
   "mcp.mode_dangerous": "Dangerous",

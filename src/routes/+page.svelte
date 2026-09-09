@@ -8,6 +8,7 @@
 	import { updateStats, removeStats } from '$lib/state/monitoring.svelte';
 	import Terminal from '$lib/components/terminal/Terminal.svelte';
 	import MonitoringBar from '$lib/components/terminal/MonitoringBar.svelte';
+	import McpSessionBar from '$lib/components/terminal/McpSessionBar.svelte';
 	import AnsiblePage from '$lib/components/ansible/AnsiblePage.svelte';
 	import TofuPage from '$lib/components/tofu/TofuPage.svelte';
 	import EditorWindow from '$lib/components/editor/EditorWindow.svelte';
@@ -184,7 +185,10 @@
 						</div>
 					{/each}
 				</div>
-				<MonitoringBar connectionId={activeTab?.connectionId} sshUser={activeTab?.title?.split('@')[0]} />
+				<div class="bottom-bar">
+					<MonitoringBar connectionId={activeTab?.connectionId} sshUser={activeTab?.title?.split('@')[0]} />
+					<McpSessionBar sessionId={activeTab?.type === 'ssh' ? activeTab?.connectionId : activeTab?.id} />
+				</div>
 			{/if}
 		</div>
 
@@ -197,6 +201,16 @@
 {/if}
 
 <style>
+	/* The gauges and the per-session MCP controls share one row: both describe
+	   the session in front of you, and splitting them would make the MCP state
+	   look like a global banner rather than a property of this tab. */
+	.bottom-bar {
+		display: flex;
+		align-items: center;
+		gap: 0;
+		min-width: 0;
+	}
+
 	.page-container {
 		display: flex;
 		flex-direction: column;

@@ -621,6 +621,7 @@
   "settings.mcp": "MCP",
   "mcp.enable": "Servidor MCP",
   "mcp.mode": "Modo",
+  "mcp.follow_global": "Seguir global",
   "mcp.mode_desc": "Cuánto quieres que te pregunten. Las protecciones se aplican en todos los modos — un modo solo decide si se pregunta a una persona.",
   "mcp.mode_moot": "El agente actual no puede escribir, así que el modo no cambia nada.",
   "mcp.mode_dangerous": "Peligroso",

@@ -252,6 +252,65 @@ impl McpState {
         self.clients.write().await.clear();
     }
 
+    /// The agent for one session: its override if set, otherwise the global
+    /// one — with tools intersected against the global agent either way.
+    ///
+    /// The intersection is the load-bearing part. `tools/list` is answered once
+    /// per connection, before any session is named, so a session override that
+    /// *added* a tool would advertise a capability and then hand it out for one
+    /// session only, which is both surprising and unenforceable at the protocol
+    /// level. Narrowing is always safe; widening is not.
+    fn agent_for(&self, override_id: Option<&str>) -> Agent {
+        let global = self.agent();
+        let Some(id) = override_id else { return global };
+        let Some(mut chosen) = agents::find(id) else { return global };
+        chosen.tools.retain(|t| global.tools.contains(t));
+        chosen
+    }
+
+    /// The mode for one session: its override if set, otherwise the global one.
+    fn mode_for(&self, override_mode: Option<Mode>) -> Mode {
+        override_mode.unwrap_or_else(|| self.mode())
+    }
+
+    /// Point one session at a different agent. `None` returns it to the global
+    /// agent. Reach's UI only.
+    pub async fn set_session_agent(&self, id: &str, agent_id: Option<&str>) -> Result<(), String> {
+        if let Some(a) = agent_id {
+            if agents::find(a).is_none() {
+                return Err(format!("Unknown agent `{a}`"));
+            }
+        }
+        let mut sessions = self.sessions.write().await;
+        let Some(session) = sessions.get_mut(id) else {
+            return Err(format!("`{id}` is not shared"));
+        };
+        session.agent_id = agent_id.map(str::to_string);
+        Ok(())
+    }
+
+    /// Point one session at a different mode. `None` returns it to the global
+    /// mode. Reach's UI only.
+    pub async fn set_session_mode(&self, id: &str, mode: Option<Mode>) -> Result<(), String> {
+        let mut sessions = self.sessions.write().await;
+        let Some(session) = sessions.get_mut(id) else {
+            return Err(format!("`{id}` is not shared"));
+        };
+        session.mode = mode;
+        Ok(())
+    }
+
+    /// What the UI needs to render per-session controls.
+    pub async fn session_settings(&self) -> Vec<(String, Option<String>, Option<Mode>)> {
+        let sessions = self.sessions.read().await;
+        let mut out: Vec<(String, Option<String>, Option<Mode>)> = sessions
+            .values()
+            .map(|s| (s.id.clone(), s.agent_id.clone(), s.mode))
+            .collect();
+        out.sort_by(|a, b| a.0.cmp(&b.0));
+        out
+    }
+
     /// Dispatch one JSON-RPC method.
     pub async fn handle(&self, req: Request) -> Result<Value, (i32, String)> {
         // One client for now: the token identifies the connection, and Reach
@@ -301,7 +360,18 @@ impl McpState {
             .and_then(|v| v.as_str())
             .ok_or((protocol::INVALID_PARAMS, "Missing tool name".to_string()))?;
         let args = params.get("arguments").cloned().unwrap_or_else(|| json!({}));
-        let agent = self.agent();
+        // The session is named in the arguments, so the per-session agent can
+        // only be resolved here rather than up front. tools/list still answers
+        // with the global agent, which is why an override may only narrow.
+        let named_session = args.get("sessionId").and_then(|v| v.as_str()).unwrap_or("");
+        let (session_agent_id, session_mode) = {
+            let sessions = self.sessions.read().await;
+            sessions
+                .get(named_session)
+                .map(|s| (s.agent_id.clone(), s.mode))
+                .unwrap_or((None, None))
+        };
+        let agent = self.agent_for(session_agent_id.as_deref());
 
         // A tool the agent was not granted is not in `tools/list`, so calling it
         // is a mistake worth an explicit refusal rather than silence.
@@ -394,7 +464,7 @@ impl McpState {
                 // this only decides whether a human is asked. The command is
                 // still echoed into the terminal, which in auto mode is the
                 // only place it becomes visible.
-                let auto = self.mode().auto_approves(approved.danger);
+                let auto = self.mode_for(session_mode).auto_approves(approved.danger);
 
                 let allowed = if auto {
                     true
@@ -507,6 +577,61 @@ mod tests {
     #[test]
     fn the_default_mode_asks() {
         assert_eq!(Mode::default(), Mode::Ask);
+    }
+
+
+    /// A per-session agent must never hand out a tool the connection was not
+    /// offered, because tools/list is answered before any session is named.
+    #[tokio::test]
+    async fn a_session_agent_can_narrow_but_not_widen() {
+        let s = McpState::default(); // global: architect, read-only
+        s.share("s1".into(), SessionKind::Ssh, "db".into(), "root".into()).await;
+        s.set_session_agent("s1", Some("linux-administrator")).await.unwrap();
+
+        // Asking for a writing agent on one session must not grant send_input
+        // when the connection-wide agent cannot write.
+        let a = s.agent_for(Some("linux-administrator"));
+        assert!(a.is_read_only(), "a session override must not widen the tool surface");
+
+        // With a writing global agent, narrowing works.
+        s.set_agent("linux-administrator").unwrap();
+        let narrowed = s.agent_for(Some("architect"));
+        assert!(narrowed.is_read_only(), "narrowing to a read-only agent must hold");
+    }
+
+    #[tokio::test]
+    async fn a_session_mode_overrides_the_global_one() {
+        let s = McpState::default();
+        s.set_mode(Mode::Ask);
+        s.share("s1".into(), SessionKind::Ssh, "db".into(), "root".into()).await;
+
+        assert_eq!(s.mode_for(None), Mode::Ask, "no override falls back to global");
+        assert_eq!(s.mode_for(Some(Mode::Auto)), Mode::Auto, "override wins");
+
+        s.set_session_mode("s1", Some(Mode::Auto)).await.unwrap();
+        let settings = s.session_settings().await;
+        assert_eq!(settings[0].2, Some(Mode::Auto));
+    }
+
+    #[tokio::test]
+    async fn overrides_are_dropped_when_a_session_is_unshared() {
+        let s = McpState::default();
+        s.set_agent("linux-administrator").unwrap();
+        s.share("s1".into(), SessionKind::Ssh, "db".into(), "root".into()).await;
+        s.set_session_mode("s1", Some(Mode::Dangerous)).await.unwrap();
+
+        s.unshare("s1").await;
+        s.share("s1".into(), SessionKind::Ssh, "db".into(), "root".into()).await;
+
+        let settings = s.session_settings().await;
+        assert_eq!(settings[0].2, None, "re-sharing must not resurrect a Dangerous override");
+    }
+
+    #[tokio::test]
+    async fn setting_an_override_on_an_unshared_session_is_an_error() {
+        let s = McpState::default();
+        assert!(s.set_session_mode("nope", Some(Mode::Auto)).await.is_err());
+        assert!(s.set_session_agent("nope", Some("architect")).await.is_err());
     }
 
     #[tokio::test]
