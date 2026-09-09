@@ -6,14 +6,15 @@
  * shared. Every mutation goes through IPC and the reply replaces this.
  */
 import * as mcpIpc from '$lib/ipc/mcp';
-import type { AgentSummary, McpStatus } from '$lib/ipc/mcp';
+import type { AgentSummary, McpMode, McpStatus } from '$lib/ipc/mcp';
 
 const EMPTY: McpStatus = {
 	enabled: false,
 	agentId: 'architect',
 	agentName: 'Architect',
 	readOnly: true,
-	sharedSessionIds: []
+	sharedSessionIds: [],
+	mode: 'ask'
 };
 
 let status = $state<McpStatus>({ ...EMPTY });
@@ -81,6 +82,16 @@ export async function stop(): Promise<void> {
 
 export async function setAgent(agentId: string): Promise<void> {
 	const s = await run(() => mcpIpc.mcpSetAgent(agentId));
+	if (s) status = s;
+}
+
+export async function setMode(mode: McpMode): Promise<void> {
+	const s = await run(() => mcpIpc.mcpSetMode(mode));
+	if (s) status = s;
+}
+
+export async function regenerateToken(): Promise<void> {
+	const s = await run(() => mcpIpc.mcpRegenerateToken());
 	if (s) status = s;
 }
 

@@ -28,6 +28,46 @@ pub type Confirmer = Arc<
         + Sync,
 >;
 
+/// How much the user wants to be asked.
+///
+/// This decides only whether the *human confirmation* is skipped. It does not
+/// and cannot touch the baseline in [`crate::mcp::guard`]: read-before-write,
+/// the echo-off lockout, the secret-in-command check, the rate limit and every
+/// deny rule still apply in every mode. Auto mode removes a prompt, never a
+/// guard — which is why echoing the command into the terminal matters more
+/// here than anywhere else. In auto mode that echo is the only place a command
+/// becomes visible.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Mode {
+    /// Confirm every write. The default.
+    Ask,
+    /// Skip the prompt for commands the classifier calls benign. Anything
+    /// Sensitive or Destructive still stops and asks.
+    AutoSafe,
+    /// Skip the prompt for everything except Destructive. Destructive always
+    /// asks: there is no mode in which Reach silently runs `rm -rf` for a model.
+    Auto,
+}
+
+impl Default for Mode {
+    fn default() -> Self {
+        Mode::Ask
+    }
+}
+
+impl Mode {
+    /// True when this danger level may run without stopping to ask.
+    pub fn auto_approves(self, danger: crate::mcp::guard::Danger) -> bool {
+        use crate::mcp::guard::Danger;
+        match self {
+            Mode::Ask => false,
+            Mode::AutoSafe => danger == Danger::Benign,
+            Mode::Auto => danger < Danger::Destructive,
+        }
+    }
+}
+
 /// Types an approved command into the session, and echoes it into the visible
 /// terminal so the user watches it happen.
 ///
@@ -74,6 +114,7 @@ pub struct McpState {
     clients: RwLock<HashMap<String, ClientState>>,
     confirmer: Mutex<Option<Confirmer>>,
     sender: Mutex<Option<Sender>>,
+    mode: std::sync::RwLock<Mode>,
 }
 
 impl Default for McpState {
@@ -88,6 +129,7 @@ impl Default for McpState {
             clients: RwLock::new(HashMap::new()),
             confirmer: Mutex::new(None),
             sender: Mutex::new(None),
+            mode: std::sync::RwLock::new(Mode::Ask),
         }
     }
 }
@@ -138,6 +180,19 @@ impl McpState {
 
     pub async fn set_sender(&self, s: Option<Sender>) {
         *self.sender.lock().await = s;
+    }
+
+    pub fn mode(&self) -> Mode {
+        self.mode.read().ok().map(|g| *g).unwrap_or_default()
+    }
+
+    /// Chosen by the user in Reach. As with the agent, there is deliberately no
+    /// MCP method that reaches this — a model able to pick its own mode would
+    /// pick the one that stops asking.
+    pub fn set_mode(&self, m: Mode) {
+        if let Ok(mut g) = self.mode.write() {
+            *g = m;
+        }
     }
 
     /// Share a session. Nothing is visible to any client until this is called.
@@ -315,20 +370,32 @@ impl McpState {
                     danger_reason: approved.danger_reason.clone(),
                 };
 
-                let confirmer = self.confirmer.lock().await.clone();
-                let Some(confirmer) = confirmer else {
-                    // Fails closed. No UI attached means nobody can approve, and
-                    // approving on the user's behalf is exactly the thing this
-                    // whole design exists to prevent.
-                    return Ok(protocol::tool_refusal(
-                        "Reach cannot ask the user to approve this right now, so it was not \
-                         run. This is a safety default, not a bug — nothing executes without \
-                         a human approving it."
-                            .into(),
-                    ));
+                // Auto mode skips the prompt for danger levels the user has
+                // pre-approved. Everything the guard enforces has already run;
+                // this only decides whether a human is asked. The command is
+                // still echoed into the terminal, which in auto mode is the
+                // only place it becomes visible.
+                let auto = self.mode().auto_approves(approved.danger);
+
+                let allowed = if auto {
+                    true
+                } else {
+                    let confirmer = self.confirmer.lock().await.clone();
+                    let Some(confirmer) = confirmer else {
+                        // Fails closed. No UI attached means nobody can approve,
+                        // and approving on the user's behalf is exactly the
+                        // thing this whole design exists to prevent.
+                        return Ok(protocol::tool_refusal(
+                            "Reach cannot ask the user to approve this right now, so it was \
+                             not run. This is a safety default, not a bug — nothing executes \
+                             without a human approving it."
+                                .into(),
+                        ));
+                    };
+                    confirmer(confirm).await
                 };
 
-                if !confirmer(confirm).await {
+                if !allowed {
                     return Ok(protocol::tool_refusal(
                         "The user rejected this command. Do not retry it or rephrase it to get \
                          a different answer — ask them what they would prefer instead."

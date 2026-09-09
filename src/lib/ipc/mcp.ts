@@ -1,17 +1,28 @@
 import { invoke } from '@tauri-apps/api/core';
 
+/**
+ * How much the user wants to be asked before a command runs.
+ *
+ * Only the human prompt is affected. Every guard — read-before-write, the
+ * echo-off lockout, the secret check, the rate limit, every deny rule — applies
+ * in all three modes. Auto removes a question, never a protection.
+ */
+export type McpMode = 'ask' | 'auto_safe' | 'auto';
+
 /** State of the MCP server. Everything defaults to off/empty. */
 export interface McpStatus {
 	enabled: boolean;
 	/** Bound port. Absent when not listening. */
 	port?: number;
-	/** Regenerated on every start and never persisted, so it changes across restarts. */
+	/** Stored encrypted in the settings vault and reused across restarts. Use
+	 *  mcpRegenerateToken to revoke every client configured with the old one. */
 	token?: string;
 	agentId: string;
 	agentName: string;
 	/** True when the active agent has no `send_input` tool at all. */
 	readOnly: boolean;
 	sharedSessionIds: string[];
+	mode: McpMode;
 	/** Ready to paste into a client config. Absent when not listening. */
 	url?: string;
 }
@@ -79,6 +90,16 @@ export async function mcpListAgents(): Promise<AgentSummary[]> {
 /** Only reachable from here — there is no MCP method that sets the agent. */
 export async function mcpSetAgent(agentId: string): Promise<McpStatus> {
 	return invoke<McpStatus>('mcp_set_agent', { agent_id: agentId });
+}
+
+/** Choose how much to be asked. Reach-only — no MCP method reaches this. */
+export async function mcpSetMode(mode: McpMode): Promise<McpStatus> {
+	return invoke<McpStatus>('mcp_set_mode', { mode });
+}
+
+/** Replace the token, revoking every client configured with the old one. */
+export async function mcpRegenerateToken(): Promise<McpStatus> {
+	return invoke<McpStatus>('mcp_regenerate_token');
 }
 
 /** Resolve a pending confirmation. Not answering is a rejection. */

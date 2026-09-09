@@ -150,6 +150,8 @@ pub fn run() {
             mcp_unshare_session,
             mcp_list_agents,
             mcp_set_agent,
+            mcp_set_mode,
+            mcp_regenerate_token,
             mcp_confirm_response,
             // SSH commands
             ssh_connect,
@@ -383,6 +385,8 @@ pub fn run() {
             mcp_unshare_session,
             mcp_list_agents,
             mcp_set_agent,
+            mcp_set_mode,
+            mcp_regenerate_token,
             mcp_confirm_response,
             // SSH commands
             ssh_connect,
