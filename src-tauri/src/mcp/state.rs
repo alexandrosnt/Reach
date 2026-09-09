@@ -448,6 +448,8 @@ mod tests {
         s.set_agent("linux-administrator").unwrap();
         s.share("s1".into(), SessionKind::Ssh, "db".into(), "root".into()).await;
         s.set_confirmer(Some(Arc::new(|_| Box::pin(async { false })))).await;
+        let (sender, _typed) = recording_sender();
+        s.set_sender(Some(sender)).await;
 
         s.handle(req("tools/call", json!({
             "name": "describe_session", "arguments": { "sessionId": "s1" }
@@ -466,12 +468,105 @@ mod tests {
         assert!(text.contains("Do not retry"), "a rejection must not invite rephrasing: {text}");
     }
 
+    /// Records what actually reached the terminal, so a test can assert the
+    /// *act* and not merely the gate. Its absence is what let send_input ship
+    /// twice reporting "sent" while writing nothing.
+    fn recording_sender() -> (Sender, std::sync::Arc<std::sync::Mutex<Vec<String>>>) {
+        let log = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+        let sink = log.clone();
+        let sender: Sender = Arc::new(move |req: SendRequest| {
+            let sink = sink.clone();
+            Box::pin(async move {
+                sink.lock().unwrap().push(req.command);
+                Ok(())
+            })
+        });
+        (sender, log)
+    }
+
+    /// The test that was missing. Everything else asserted the guard; nothing
+    /// asserted that an approved command is typed.
+    #[tokio::test]
+    async fn an_approved_command_is_actually_typed() {
+        let s = McpState::default();
+        s.set_agent("linux-administrator").unwrap();
+        s.share("s1".into(), SessionKind::Ssh, "db".into(), "root".into()).await;
+        s.set_confirmer(Some(Arc::new(|_| Box::pin(async { true })))).await;
+        let (sender, typed) = recording_sender();
+        s.set_sender(Some(sender)).await;
+
+        s.handle(req("tools/call", json!({
+            "name": "describe_session", "arguments": { "sessionId": "s1" }
+        }))).await.unwrap();
+
+        s.handle(req("tools/call", json!({
+            "name": "send_input",
+            "arguments": {
+                "sessionId": "s1", "command": "uptime",
+                "rationale": "checking how long the host has been up"
+            }
+        }))).await.unwrap();
+
+        assert_eq!(typed.lock().unwrap().as_slice(), ["uptime"], "the command must reach the terminal");
+    }
+
+    /// A rejected command must not be typed. The reply already said so; now the
+    /// terminal agrees.
+    #[tokio::test]
+    async fn a_rejected_command_is_never_typed() {
+        let s = McpState::default();
+        s.set_agent("linux-administrator").unwrap();
+        s.share("s1".into(), SessionKind::Ssh, "db".into(), "root".into()).await;
+        s.set_confirmer(Some(Arc::new(|_| Box::pin(async { false })))).await;
+        let (sender, typed) = recording_sender();
+        s.set_sender(Some(sender)).await;
+
+        s.handle(req("tools/call", json!({
+            "name": "describe_session", "arguments": { "sessionId": "s1" }
+        }))).await.unwrap();
+        s.handle(req("tools/call", json!({
+            "name": "send_input",
+            "arguments": {
+                "sessionId": "s1", "command": "rm -rf /tmp/x",
+                "rationale": "this should never be typed at all"
+            }
+        }))).await.unwrap();
+
+        assert!(typed.lock().unwrap().is_empty(), "a rejection must not reach the terminal");
+    }
+
+    /// Approved, but nothing can type it: report the failure rather than
+    /// claiming success, which is exactly the lie this whole area shipped with.
+    #[tokio::test]
+    async fn an_approved_command_with_no_sender_reports_failure() {
+        let s = McpState::default();
+        s.set_agent("linux-administrator").unwrap();
+        s.share("s1".into(), SessionKind::Ssh, "db".into(), "root".into()).await;
+        s.set_confirmer(Some(Arc::new(|_| Box::pin(async { true })))).await;
+        // No sender installed.
+
+        s.handle(req("tools/call", json!({
+            "name": "describe_session", "arguments": { "sessionId": "s1" }
+        }))).await.unwrap();
+        let v = s.handle(req("tools/call", json!({
+            "name": "send_input",
+            "arguments": {
+                "sessionId": "s1", "command": "uptime",
+                "rationale": "checking how long the host has been up"
+            }
+        }))).await.unwrap();
+
+        assert_eq!(v["isError"], json!(true), "must not report success when nothing was typed");
+    }
+
     #[tokio::test]
     async fn an_approved_command_reports_that_output_comes_later() {
         let s = McpState::default();
         s.set_agent("linux-administrator").unwrap();
         s.share("s1".into(), SessionKind::Ssh, "db".into(), "root".into()).await;
         s.set_confirmer(Some(Arc::new(|_| Box::pin(async { true })))).await;
+        let (sender, _typed) = recording_sender();
+        s.set_sender(Some(sender)).await;
 
         s.handle(req("tools/call", json!({
             "name": "describe_session", "arguments": { "sessionId": "s1" }
@@ -513,6 +608,8 @@ mod tests {
         s.unshare("s1").await;
         s.share("s1".into(), SessionKind::Ssh, "db".into(), "root".into()).await;
         s.set_confirmer(Some(Arc::new(|_| Box::pin(async { true })))).await;
+        let (sender, _typed) = recording_sender();
+        s.set_sender(Some(sender)).await;
 
         let v = s.handle(req("tools/call", json!({
             "name": "send_input",
