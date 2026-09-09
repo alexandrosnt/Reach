@@ -162,6 +162,13 @@ Thanks to those who have contributed to Reach:
       </a><br />
       <sub>Click-to-copy terminal selection</sub>
     </td>
+    <td align="center">
+      <a href="https://github.com/CarlosTohe">
+        <img src="https://github.com/CarlosTohe.png" width="60" style="border-radius: 50%;" alt="CarlosTohe" /><br />
+        <sub><b>CarlosTohe</b></sub>
+      </a><br />
+      <sub>Spanish translation</sub>
+    </td>
   </tr>
 </table>
 
