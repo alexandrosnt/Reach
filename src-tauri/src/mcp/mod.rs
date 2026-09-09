@@ -29,4 +29,4 @@ pub mod server;
 pub mod state;
 pub mod tools;
 
-pub use state::{ConfirmRequest, Confirmer, McpState};
+pub use state::{ConfirmRequest, Confirmer, McpState, SendRequest, Sender};

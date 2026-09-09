@@ -620,6 +620,8 @@
   "mcp.confirm_title": "An AI wants to run this",
   "settings.mcp": "MCP",
   "mcp.enable": "MCP server",
+  "mcp.share_tab": "Share this session with the AI",
+  "mcp.unshare_tab": "Stop sharing with the AI",
   "mcp.enable_desc": "Let an AI client read and type into sessions you share. Off by default; nothing listens until you turn it on.",
   "mcp.port": "Port",
   "mcp.port_desc": "0 lets the system pick a free port.",
