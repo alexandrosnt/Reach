@@ -9,9 +9,15 @@ import { invoke } from '@tauri-apps/api/core';
  */
 export type McpMode = 'ask' | 'auto_safe' | 'auto' | 'dangerous';
 
-/** Per-session overrides. `null` on a field means "follow the global value". */
+/**
+ * One shared session as the UI needs it: enough to name the machine, plus its
+ * overrides. `null` on an override means "follow the global value".
+ */
 export interface SessionSettings {
 	sessionId: string;
+	host: string;
+	username: string;
+	kind: 'ssh' | 'local';
 	agentId: string | null;
 	mode: McpMode | null;
 }

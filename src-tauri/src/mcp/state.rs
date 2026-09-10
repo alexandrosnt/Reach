@@ -109,6 +109,20 @@ pub struct SendRequest {
     pub agent_name: String,
 }
 
+/// One shared session, as the settings UI needs to show it.
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SessionDescriptor {
+    pub session_id: String,
+    pub host: String,
+    pub username: String,
+    pub kind: SessionKind,
+    /// `None` means "follow the global agent".
+    pub agent_id: Option<String>,
+    /// `None` means "follow the global mode".
+    pub mode: Option<Mode>,
+}
+
 /// What the user is shown before a command runs. Everything here is on the
 /// dialog: the point is that the human decides with the model's reasoning in
 /// front of them, not that they rubber-stamp an opaque string.
@@ -301,13 +315,24 @@ impl McpState {
     }
 
     /// What the UI needs to render per-session controls.
-    pub async fn session_settings(&self) -> Vec<(String, Option<String>, Option<Mode>)> {
+    ///
+    /// Carries host and user as well as the overrides, because the settings
+    /// panel was listing bare UUIDs. "4d55344c-4bcd-…" tells nobody which
+    /// machine they are about to stop sharing; `root@10.144.144.2` does.
+    pub async fn session_settings(&self) -> Vec<SessionDescriptor> {
         let sessions = self.sessions.read().await;
-        let mut out: Vec<(String, Option<String>, Option<Mode>)> = sessions
+        let mut out: Vec<SessionDescriptor> = sessions
             .values()
-            .map(|s| (s.id.clone(), s.agent_id.clone(), s.mode))
+            .map(|s| SessionDescriptor {
+                session_id: s.id.clone(),
+                host: s.host.clone(),
+                username: s.username.clone(),
+                kind: s.kind,
+                agent_id: s.agent_id.clone(),
+                mode: s.mode,
+            })
             .collect();
-        out.sort_by(|a, b| a.0.cmp(&b.0));
+        out.sort_by(|a, b| a.session_id.cmp(&b.session_id));
         out
     }
 
@@ -610,7 +635,7 @@ mod tests {
 
         s.set_session_mode("s1", Some(Mode::Auto)).await.unwrap();
         let settings = s.session_settings().await;
-        assert_eq!(settings[0].2, Some(Mode::Auto));
+        assert_eq!(settings[0].mode, Some(Mode::Auto));
     }
 
     #[tokio::test]
@@ -624,7 +649,7 @@ mod tests {
         s.share("s1".into(), SessionKind::Ssh, "db".into(), "root".into()).await;
 
         let settings = s.session_settings().await;
-        assert_eq!(settings[0].2, None, "re-sharing must not resurrect a Dangerous override");
+        assert_eq!(settings[0].mode, None, "re-sharing must not resurrect a Dangerous override");
     }
 
     #[tokio::test]

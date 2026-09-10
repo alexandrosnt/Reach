@@ -635,6 +635,7 @@
   "mcp.reveal": "Afficher",
   "mcp.hide": "Masquer",
   "mcp.regenerate": "Régénérer",
+  "mcp.regenerate_confirm": "Remplacer le jeton bloque immédiatement tous les clients configurés avec l'ancien. Vous devrez rajouter le serveur partout. Continuer ?",
   "mcp.token_regenerated": "Jeton remplacé. Tout client utilisant l'ancien est désormais bloqué.",
   "mcp.port_locked": "Arrêtez le serveur pour changer le port",
   "mcp.mode_ask": "Demander",

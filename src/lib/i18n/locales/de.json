@@ -635,6 +635,7 @@
   "mcp.reveal": "Anzeigen",
   "mcp.hide": "Verbergen",
   "mcp.regenerate": "Neu erzeugen",
+  "mcp.regenerate_confirm": "Ein neues Token sperrt sofort jeden Client aus, der das alte nutzt. Du musst den Server überall neu hinzufügen. Fortfahren?",
   "mcp.token_regenerated": "Token ersetzt. Jeder Client mit dem alten ist jetzt ausgesperrt.",
   "mcp.port_locked": "Zum Ändern des Ports den Server stoppen",
   "mcp.mode_ask": "Fragen",

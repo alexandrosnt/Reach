@@ -635,6 +635,7 @@
   "mcp.reveal": "Reveal",
   "mcp.hide": "Hide",
   "mcp.regenerate": "Regenerate",
+  "mcp.regenerate_confirm": "Replacing the token immediately locks out every client configured with the old one. You will need to re-add the server everywhere. Continue?",
   "mcp.token_regenerated": "Token replaced. Every client using the old one is now locked out.",
   "mcp.port_locked": "Stop the server to change the port",
   "mcp.mode_ask": "Ask",

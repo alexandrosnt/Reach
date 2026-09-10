@@ -629,6 +629,7 @@
   "mcp.reveal": "显示",
   "mcp.hide": "隐藏",
   "mcp.regenerate": "重新生成",
+  "mcp.regenerate_confirm": "更换令牌会立即使所有使用旧令牌的客户端失效。你需要在各处重新添加服务器。是否继续？",
   "mcp.token_regenerated": "令牌已更换。使用旧令牌的客户端均已失效。",
   "mcp.port_locked": "停止服务器以更改端口",
   "mcp.mode_ask": "询问",
