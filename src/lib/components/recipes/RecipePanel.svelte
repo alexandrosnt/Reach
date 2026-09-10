@@ -36,8 +36,8 @@
 	let view = $state<'installed' | 'registry'>('installed');
 	let search = $state('');
 	let running = $state<Recipe | null>(null);
-	let editorOpen = $state(false);
-	let editorSource = $state('');
+	/** The file being edited, or null when the editor is closed. */
+	let editorSource = $state<string | null>(null);
 	let installing = $state<string | null>(null);
 
 	onMount(loadRecipes);
@@ -94,12 +94,10 @@
 	async function newRecipe(): Promise<void> {
 		const stamp = Date.now().toString(36);
 		editorSource = await recipeTemplate(`recipe-${stamp}`, 'New recipe');
-		editorOpen = true;
 	}
 
 	function edit(recipe: Recipe): void {
 		editorSource = recipe.source;
-		editorOpen = true;
 	}
 
 	async function remove(recipe: Recipe): Promise<void> {
@@ -232,7 +230,11 @@
 	onrun={send}
 />
 
-<RecipeEditorDialog open={editorOpen} source={editorSource} onclose={() => (editorOpen = false)} />
+<!-- Mounted per edit rather than toggled, so the editor's initial document is
+     the recipe rather than an empty string it can never be told about. -->
+{#if editorSource !== null}
+	<RecipeEditorDialog source={editorSource} onclose={() => (editorSource = null)} />
+{/if}
 
 <style>
 	.panel {
