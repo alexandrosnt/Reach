@@ -42,22 +42,24 @@
 	<button class="card-main" onclick={onconnect} title={t('session.connect_to', { name: session.name })}>
 		<DistroIcon osId={session.detected_os} size={18} />
 		<div class="session-info">
-			<span class="session-name">{session.name}</span>
+			<span class="session-name-row">
+				<span class="session-name">{session.name}</span>
+				{#if vault}
+					<span class="vault-chip" class:shared={vault.vaultType === 'shared'} title={vault.name}>
+						{#if vault.vaultType === 'shared'}
+							<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+								<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+							</svg>
+						{:else}
+							<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+								<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+							</svg>
+						{/if}
+						<span class="vault-chip-name">{vault.name}</span>
+					</span>
+				{/if}
+			</span>
 			<span class="session-detail">{session.username}@{session.host}:{session.port}</span>
-			{#if vault}
-				<span class="session-vault" class:shared={vault.vaultType === 'shared'} title={vault.name}>
-					{#if vault.vaultType === 'shared'}
-						<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-							<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-						</svg>
-					{:else}
-						<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-							<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-						</svg>
-					{/if}
-					<span class="session-vault-name">{vault.name}</span>
-				</span>
-			{/if}
 		</div>
 		<span class="auth-badge" title={t('session.auth_type', { type: session.auth_method.type })}>{authLabel}</span>
 	</button>
@@ -144,29 +146,49 @@
 		gap: 2px;
 	}
 
-	/* Where the session lives, shown only when the list spans vaults. A line
-	   of its own: the name row cannot fit "Kubernetes prod" beside "k8s-cp-1"
-	   at 250px, and a vault name truncated to "Kubernet…" tells nobody anything. */
-	.session-vault {
+	/* Beside the name when the sidebar is wide enough, under it when not.
+	   Neither the name nor the vault is ever cut to make room for the other:
+	   "k8s-c…" beside "Kubernetes …" tells you nothing about either. */
+	.session-name-row {
+		display: flex;
+		flex-wrap: wrap;
+		align-items: center;
+		gap: 2px 6px;
+		min-width: 0;
+	}
+
+	/* Where the session lives, when the list spans vaults. Same box as the
+	   auth badge so the card has one vocabulary for "a fact about this
+	   session". */
+	.vault-chip {
 		display: inline-flex;
 		align-items: center;
 		gap: 4px;
+		flex: 0 0 auto;
+		max-width: 100%;
 		min-width: 0;
+		padding: 1px 6px;
 		font-size: var(--text-2xs);
-		color: var(--color-text-tertiary);
+		font-weight: 500;
+		color: var(--color-text-secondary);
+		background-color: var(--color-surface-hover);
+		border-radius: 4px;
 	}
 
-	.session-vault.shared {
+	.vault-chip.shared {
 		color: #10b981;
+		background-color: rgba(16, 185, 129, 0.12);
 	}
 
-	.session-vault-name {
+	.vault-chip-name {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
 	.session-name {
+		flex: 0 1 auto;
+		min-width: 0;
 		font-size: var(--text-sm);
 		font-weight: 500;
 		color: var(--color-text-primary);
