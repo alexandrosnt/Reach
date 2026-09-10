@@ -313,25 +313,50 @@ pub fn parse(source: &str) -> Result<Recipe, ParseError> {
     })
 }
 
-/// The starting point for a new recipe, so nobody has to remember the header
-/// shape from memory.
+/// The starting point for a new recipe.
+///
+/// Written to be read by someone who has never seen the format: every field is
+/// present and explained, so the first recipe is an edit rather than a lookup.
+///
+/// The guide sits *above* the `@reach-recipe` marker, where the parser ignores
+/// it entirely. That matters — an explanation on the same line as a key would
+/// be swallowed into that key's value, so `# danger: mutating  <- or benign`
+/// would set the danger to the words "mutating  <- or benign".
 pub fn template(id: &str, name: &str) -> String {
     format!(
         "#!/usr/bin/env bash\n\
+         #\n\
+         # A Reach recipe. Still an ordinary bash script: `bash {id}.sh` runs it,\n\
+         # and shellcheck reads it. Reach only needs the header block below.\n\
+         #\n\
+         #   id        lowercase letters, digits and hyphens. Becomes the filename.\n\
+         #   danger    benign, mutating, sensitive or destructive.\n\
+         #             Reach analyses the script as well and tells the user when\n\
+         #             a recipe claims less than it does, so state the truth.\n\
+         #   targets   which systems you wrote this for. Advisory, nothing enforces it.\n\
+         #   param     NAME | label shown in the form | default value\n\
+         #             Arrives as an environment variable. No default means the\n\
+         #             user must fill it in before the recipe can run.\n\
+         #\n\
+         # Delete the lines you do not need, including these.\n\
+         #\n\
          # @reach-recipe\n\
          # id: {id}\n\
          # name: {name}\n\
          # description: What this does, in one line.\n\
          # version: 0.1.0\n\
+         # author: \n\
          # tags: \n\
          # targets: debian, ubuntu\n\
          # danger: mutating\n\
          # param: EXAMPLE | An example parameter | default-value\n\
          # @end\n\
          \n\
-         # Runs with `bash -s`, so a failure anywhere stops the whole recipe.\n\
+         # The whole recipe is sent as one heredoc through `bash -s`, so this\n\
+         # line means a failure anywhere stops everything after it.\n\
          set -euo pipefail\n\
          \n\
+         # There is no stdin, so a recipe cannot prompt. Ask via `param` instead.\n\
          echo \"Example is: $EXAMPLE\"\n"
     )
 }
@@ -467,5 +492,44 @@ mod tests {
         let r = parse(&template("my-recipe", "My Recipe")).expect("template must parse");
         assert_eq!(r.id, "my-recipe");
         assert_eq!(r.name, "My Recipe");
+    }
+
+    #[test]
+    fn the_templates_guide_is_not_mistaken_for_metadata() {
+        // The guide above the marker explains the fields in prose. If any of
+        // that prose were parsed as a key, the new recipe would arrive with a
+        // nonsense danger level or a version made of documentation.
+        let r = parse(&template("my-recipe", "My Recipe")).unwrap();
+        assert_eq!(r.version, "0.1.0");
+        assert_eq!(r.declared_danger, Some(Danger::Mutating));
+        assert_eq!(r.targets, vec!["debian", "ubuntu"]);
+        assert_eq!(r.params.len(), 1, "exactly the one example parameter");
+        assert_eq!(r.params[0].name, "EXAMPLE");
+        assert_eq!(r.params[0].default, "default-value");
+        assert_eq!(r.description, "What this does, in one line.");
+    }
+
+    #[test]
+    fn the_template_offers_every_field_an_author_needs() {
+        // Someone meeting the format for the first time should be editing, not
+        // looking up what else they could have written.
+        let source = template("my-recipe", "My Recipe");
+        for field in [
+            "# id:",
+            "# name:",
+            "# description:",
+            "# version:",
+            "# author:",
+            "# tags:",
+            "# targets:",
+            "# danger:",
+            "# param:",
+        ] {
+            assert!(source.contains(field), "template is missing {field}");
+        }
+        assert!(
+            source.contains("set -euo pipefail"),
+            "the template must model its own house rule"
+        );
     }
 }
