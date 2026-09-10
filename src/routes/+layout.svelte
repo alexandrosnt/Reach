@@ -13,6 +13,7 @@
 	import { loadSnippets } from '$lib/state/snippets.svelte';
 	import { vaultState } from '$lib/state/vault.svelte';
 	import * as mcp from '$lib/state/mcp.svelte';
+	import * as share from '$lib/state/share.svelte';
 	import { onMount } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -67,6 +68,8 @@
 		if (!vaultState.locked && !mcpRestored) {
 			mcpRestored = true;
 			mcp.restore();
+			// Same reason: the switch and the ICE list live in the vault.
+			share.load();
 		}
 	});
 

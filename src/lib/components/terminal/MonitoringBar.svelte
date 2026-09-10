@@ -2,6 +2,7 @@
 	import { getStats } from '$lib/state/monitoring.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import McpSessionBar from './McpSessionBar.svelte';
+	import ShareBar from '$lib/components/share/ShareBar.svelte';
 
 	interface Props {
 		connectionId?: string;
@@ -121,6 +122,7 @@
 		     in front of you, and they render nothing when MCP is off or this
 		     session is not shared. -->
 		<McpSessionBar {sessionId} />
+		<ShareBar />
 
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
@@ -143,8 +145,11 @@
 		</div>
 	</div>
 {:else}
+	<!-- No stats means no SSH monitoring, not no session: a local shell has
+	     nothing to monitor and is still something you might share. -->
 	<div class="monitoring-bar disconnected">
 		<span class="disconnected-text">{t('monitoring.not_connected')}</span>
+		<ShareBar />
 	</div>
 {/if}
 
@@ -289,6 +294,7 @@
 
 	.disconnected {
 		justify-content: center;
+		gap: var(--space-3);
 	}
 
 	.disconnected-text {

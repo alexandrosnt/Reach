@@ -8,6 +8,8 @@
 	import { updateStats, removeStats } from '$lib/state/monitoring.svelte';
 	import Terminal from '$lib/components/terminal/Terminal.svelte';
 	import MonitoringBar from '$lib/components/terminal/MonitoringBar.svelte';
+	import RemoteTerminal from '$lib/components/share/RemoteTerminal.svelte';
+	import * as share from '$lib/state/share.svelte';
 	import AnsiblePage from '$lib/components/ansible/AnsiblePage.svelte';
 	import TofuPage from '$lib/components/tofu/TofuPage.svelte';
 	import EditorWindow from '$lib/components/editor/EditorWindow.svelte';
@@ -169,6 +171,9 @@
 					</button>
 				</div>
 			{:else}
+				<!-- Side by side with the other person's terminal while a share is
+				     connected and they are sharing one. Left is always mine. -->
+				<div class="terminal-split" class:sharing={share.isShowingRemote()}>
 				<div class="terminal-area">
 					{#each tabs as tab (tab.id)}
 						<div class="terminal-wrapper" class:active={tab.id === activeTab?.id}>
@@ -183,6 +188,10 @@
 							/>
 						</div>
 					{/each}
+				</div>
+				{#if share.isShowingRemote()}
+					<RemoteTerminal />
+				{/if}
 				</div>
 				<MonitoringBar
 					connectionId={activeTab?.connectionId}
@@ -303,5 +312,23 @@
 
 	.terminal-wrapper.active {
 		display: block;
+	}
+	.terminal-split {
+		flex: 1;
+		display: flex;
+		min-height: 0;
+		min-width: 0;
+	}
+
+	.terminal-split > .terminal-area {
+		flex: 1;
+		min-width: 0;
+	}
+
+	/* Half each, and a hairline between: theirs is a mirror, not a tab. */
+	.terminal-split.sharing > :global(.remote-pane) {
+		flex: 1;
+		min-width: 0;
+		border-left: 1px solid var(--color-border);
 	}
 </style>
