@@ -43,7 +43,7 @@ if (!process.env.DISCORD_BOT_TOKEN || !GUILD) {
 
 const H = {
 	Authorization: 'Bot ' + process.env.DISCORD_BOT_TOKEN,
-	'User-Agent': 'ReachVerify (https://github.com/alexandrosnt/Reach, 0.5.1)'
+	'User-Agent': 'ReachVerify (https://github.com/alexandrosnt/Reach, 0.5.2)'
 };
 const get = async (p) => {
 	const res = await fetch('https://discord.com/api/v10' + p, { headers: H });

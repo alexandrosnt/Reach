@@ -117,7 +117,7 @@ async function api(method, path, body) {
 			headers: {
 				Authorization: 'Bot ' + process.env.DISCORD_BOT_TOKEN,
 				'Content-Type': 'application/json',
-				'User-Agent': 'ReachSetup (https://github.com/alexandrosnt/Reach, 0.5.1)'
+				'User-Agent': 'ReachSetup (https://github.com/alexandrosnt/Reach, 0.5.2)'
 			},
 			body: body === undefined ? undefined : JSON.stringify(body)
 		});
