@@ -119,12 +119,32 @@ async function gh(method, path, body) {
 		body: body ? JSON.stringify(body) : undefined
 	});
 	if (res.status === 401) throw new Error('GitHub rejected GITHUB_TOKEN (401).');
+
 	if (res.status === 403 || res.status === 404) {
+		// GitHub names the exact permission it wanted in a response header, and
+		// puts the reason in the body. Guessing at "probably a scope problem"
+		// when the server already said which one is a waste of everyone's time.
+		const needs = res.headers.get('x-accepted-github-permissions');
+		const scopes = res.headers.get('x-oauth-scopes');
+		let message = '';
+		try {
+			message = JSON.parse(await res.text()).message ?? '';
+		} catch {
+			/* body was not JSON */
+		}
+
 		throw new Error(
-			`${method} ${path} -> ${res.status}. The token most likely lacks admin:repo_hook ` +
-				`(classic) or Webhooks: Read and write (fine-grained) on ${repo}.`
+			`${method} ${path} -> ${res.status}` +
+				(message ? `: ${message}` : '') +
+				(needs ? `\n\n  GitHub wants:  ${needs}` : '') +
+				(scopes !== null ? `\n  Token has:     ${scopes || '(no scopes)'}` : '') +
+				'\n\n  Fine-grained token: github.com/settings/personal-access-tokens -> your token' +
+				'\n                      -> Repository permissions -> Webhooks: Read and write' +
+				'\n  Classic token:      github.com/settings/tokens -> scope: admin:repo_hook' +
+				`\n\n  The token can already reach ${repo}; only the webhook permission is missing.`
 		);
 	}
+
 	if (!res.ok) throw new Error(`${method} ${path} -> ${res.status}: ${await res.text()}`);
 	return res.status === 204 ? null : res.json();
 }
