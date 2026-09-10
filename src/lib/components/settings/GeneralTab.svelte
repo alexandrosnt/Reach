@@ -2,6 +2,9 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
 	import { open as shellOpen } from '@tauri-apps/plugin-shell';
+	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	import { faCopy, faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
+	import { addToast } from '$lib/state/toasts.svelte';
 	import Dropdown from '$lib/components/shared/Dropdown.svelte';
 	import DiscordIcon from '$lib/components/shared/DiscordIcon.svelte';
 	import { COMMUNITY } from '$lib/data/community';
@@ -124,10 +127,24 @@
 			<span class="setting-description">{t('settings.community_desc')}</span>
 		</div>
 		<div class="setting-control">
-			<button class="discord-link" onclick={() => shellOpen(COMMUNITY.discordInvite)}>
-				<DiscordIcon size={14} />
-				<span>{COMMUNITY.discordLabel}</span>
-			</button>
+			<div class="link-group">
+				<button class="discord-link" title={COMMUNITY.discordInvite} onclick={() => shellOpen(COMMUNITY.discordInvite)}>
+					<DiscordIcon size={14} />
+					<span>{t('settings.open_discord')}</span>
+					<span class="ext"><FaIcon icon={faUpRightFromSquare} size={10} /></span>
+				</button>
+				<button
+					class="discord-link icon-only"
+					title={t('common.copy')}
+					aria-label={t('common.copy')}
+					onclick={async () => {
+						await navigator.clipboard.writeText(COMMUNITY.discordInvite);
+						addToast(t('vault.copied_toast'), 'success');
+					}}
+				>
+					<FaIcon icon={faCopy} size={13} />
+				</button>
+			</div>
 		</div>
 	</div>
 
@@ -150,6 +167,7 @@
 					/>
 				</svg>
 				<span>{t('settings.sponsor')}</span>
+				<span class="ext"><FaIcon icon={faUpRightFromSquare} size={10} /></span>
 			</button>
 		</div>
 	</div>
@@ -157,9 +175,46 @@
 
 <style>
 
+	/* The link and its copy button share the column: one edge for every control. */
+	.link-group {
+		display: flex;
+		width: 100%;
+		gap: 4px;
+	}
+
+	.link-group .discord-link {
+		flex: 1;
+		min-width: 0;
+	}
+
+	.link-group .discord-link span {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	/* The glyph that says "this leaves the app". */
+	.ext {
+		display: inline-flex;
+		margin-left: auto;
+		color: var(--color-text-tertiary);
+	}
+
+	.discord-link:hover .ext {
+		color: inherit;
+	}
+
+	.discord-link.icon-only {
+		flex: 0 0 auto;
+		width: 32px;
+		padding: 6px 0;
+	}
+
+	/* Full column width, like the fields above: one edge for every control. */
 	.discord-link {
 		display: inline-flex;
 		align-items: center;
+		width: 100%;
 		gap: 8px;
 		padding: 6px 12px;
 		font-family: inherit;

@@ -240,11 +240,24 @@ body {
   color: var(--color-text-secondary);
 }
 
+.settings-content .setting-description.mono {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.6875rem;
+  color: var(--color-text-tertiary);
+}
+
 .settings-content .setting-control {
   display: flex;
   align-items: center;
   justify-content: flex-end;
   min-width: 0;
+}
+
+/* A row whose control is placed directly (a Button, a badge) rather than
+   wrapped in .setting-control still sits against the column's right edge,
+   instead of being stretched across it by the grid. */
+.settings-content .setting-row > :not(.setting-info):not(.setting-control) {
+  justify-self: end;
 }
 
 /* Fields fill the column; buttons and toggles keep their size at its edge. */
@@ -268,4 +281,14 @@ body {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--color-text-tertiary);
+}
+
+/* A row of buttons under a section sits on the control side, where every
+   other action in the window sits. */
+.settings-content .action-row {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 4px;
 }

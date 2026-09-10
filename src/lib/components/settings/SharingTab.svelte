@@ -8,6 +8,7 @@
 	LAN-only sharing that contacts nothing outside.
 -->
 <script lang="ts">
+	import Disclosure from '$lib/components/shared/Disclosure.svelte';
 	import Toggle from '$lib/components/shared/Toggle.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
@@ -85,6 +86,13 @@
 			addToast(String(e), 'error');
 		}
 	}
+
+	let iceSummary = $derived(
+		t('sharing.ice_summary', {
+			stun: draft.filter((x) => !isTurn(x)).length,
+			turn: draft.filter((x) => isTurn(x)).length
+		})
+	);
 </script>
 
 <div class="tab-content">
@@ -99,8 +107,8 @@
 	</div>
 
 	{#if config.enabled}
-		<section class="ice">
-			<h3 class="section-title">{t('sharing.ice_title')}</h3>
+		<Disclosure title={t('sharing.ice_title')} summary={iceSummary}>
+		<div class="ice">
 			<p class="section-desc">{t('sharing.ice_desc')}</p>
 
 			{#if draft.length === 0}
@@ -157,7 +165,8 @@
 
 			<p class="note">{t('sharing.stun_note')}</p>
 			<p class="note">{t('sharing.turn_note')}</p>
-		</section>
+		</div>
+		</Disclosure>
 	{/if}
 </div>
 
@@ -167,7 +176,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
-		padding-top: 14px;
 	}
 
 	.section-desc,

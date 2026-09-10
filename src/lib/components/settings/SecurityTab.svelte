@@ -252,12 +252,6 @@
 		color: var(--color-success);
 	}
 
-	.action-row {
-		display: flex;
-		gap: 8px;
-		padding: 16px 0 8px;
-	}
-
 	.password-form {
 		display: flex;
 		flex-direction: column;

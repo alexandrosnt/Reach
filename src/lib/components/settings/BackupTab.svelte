@@ -346,12 +346,6 @@
 		padding: 4px 0;
 	}
 
-	.action-row {
-		display: flex;
-		gap: 8px;
-		padding-top: 8px;
-	}
-
 	.preview-box {
 		display: flex;
 		flex-direction: column;

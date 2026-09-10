@@ -391,12 +391,6 @@
 		padding: 4px 0;
 	}
 
-	.action-row {
-		display: flex;
-		gap: 8px;
-		padding-top: 8px;
-	}
-
 	.export-box {
 		display: flex;
 		flex-direction: column;
