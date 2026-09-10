@@ -44,7 +44,7 @@ if (!process.env.DISCORD_BOT_TOKEN || !GUILD) {
 const H = {
 	Authorization: 'Bot ' + process.env.DISCORD_BOT_TOKEN,
 	'Content-Type': 'application/json',
-	'User-Agent': 'ReachGrant (https://github.com/alexandrosnt/Reach, 0.5.1)'
+	'User-Agent': 'ReachGrant (https://github.com/alexandrosnt/Reach, 0.5.2)'
 };
 const A = 'https://discord.com/api/v10';
 

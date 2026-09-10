@@ -53,7 +53,7 @@ const A = 'https://discord.com/api/v10';
 const H = {
 	Authorization: 'Bot ' + process.env.DISCORD_BOT_TOKEN,
 	'Content-Type': 'application/json',
-	'User-Agent': 'ReachInvite (https://github.com/alexandrosnt/Reach, 0.5.1)'
+	'User-Agent': 'ReachInvite (https://github.com/alexandrosnt/Reach, 0.5.2)'
 };
 
 async function api(method, path, body) {

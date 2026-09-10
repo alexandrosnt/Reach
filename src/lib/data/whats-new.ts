@@ -30,9 +30,9 @@ export interface NewFeature {
 }
 
 export const NEW_FEATURES: NewFeature[] = [
-	{ id: 'recipes', since: '0.5.1', surface: { kind: 'sidebar', section: 'recipes' } },
-	{ id: 'mcp', since: '0.5.1', surface: { kind: 'settings', tab: 'mcp' } },
-	{ id: 'community', since: '0.5.1', surface: { kind: 'settings', tab: 'general' } },
+	{ id: 'recipes', since: '0.5.2', surface: { kind: 'sidebar', section: 'recipes' } },
+	{ id: 'mcp', since: '0.5.2', surface: { kind: 'settings', tab: 'mcp' } },
+	{ id: 'community', since: '0.5.2', surface: { kind: 'settings', tab: 'general' } },
 	{ id: 'sharing', since: '0.5.2', surface: { kind: 'settings', tab: 'sharing' } }
 ];
 
