@@ -22,6 +22,7 @@ the setup script says it did. Those two came apart once already.
 | `permissions.mjs`  | Permission bits by name. `bits()` throws on a name it doesn't know, so a typo fails loudly instead of granting nothing. |
 | `setup.mjs`        | The runner. Rarely needs editing.                              |
 | `verify.mjs`       | Read-only check of the live server against the plan.           |
+| `grant.mjs`        | Assigns roles to a member. Additive; never removes one.        |
 | `setup.test.mjs`   | Runs the whole thing against a fake Discord. No token needed.  |
 
 ```
@@ -29,6 +30,9 @@ npm run discord:setup              # dry run — prints the plan, changes nothin
 npm run discord:setup -- --apply   # for real
 npm run discord:verify             # read the live server back and check it
 npm run discord:test               # offline, mocked, no token
+
+npm run discord:grant -- Maintainer Contributor           # roles for the owner
+npm run discord:grant -- 1234567890 Translator            # roles for someone else
 ```
 
 ---
@@ -44,11 +48,10 @@ npm run discord:test               # offline, mocked, no token
 **OAuth2 → URL Generator**, scope `bot`, permissions **Manage Channels**,
 **Manage Roles**, **Manage Webhooks**.
 
-Then — and this part matters — open **Server Settings → Roles** and drag the
-bot's own role to the top. Discord refuses to let a bot create or move a role
-above itself, and every new role starts at the same position, so until the bot
-outranks them it cannot put the roles in order. Everything else works; only
-the ordering is blocked.
+Nothing to drag afterwards. Discord starts every new role at position 1, the
+bot's own included, and a bot may neither order nor assign a role at or above
+its own — but it *may* raise itself, so `setup.mjs` does exactly that when it
+finds no room, then orders the rest beneath.
 
 ## 3. Give the script the two values
 

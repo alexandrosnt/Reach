@@ -26,14 +26,18 @@ const PLANNED_CHANNELS = PLAN.reduce((n, g) => n + g.channels.length, 0);
 let idSeq = 1000;
 const nextId = () => String(++idSeq);
 
-/** A fake guild. The bot's own role sits high so role ordering has room. */
-function makeGuild({ community = false } = {}) {
+/**
+ * A fake guild. `botPosition` defaults high so ordering has room; pass 1 to
+ * reproduce a real fresh server, where Discord puts every role — the bot's
+ * included — at position 1 and nothing can be ordered until the bot moves.
+ */
+function makeGuild({ community = false, botPosition = 30 } = {}) {
 	return {
 		channels: [],
 		webhooks: new Map(),
 		roles: [
 			{ id: GUILD, name: '@everyone', position: 0, permissions: '0' },
-			{ id: BOT_ROLE, name: 'doctor', position: 30, permissions: '8', managed: true }
+			{ id: BOT_ROLE, name: 'doctor', position: botPosition, permissions: '8', managed: true }
 		],
 		features: community ? ['COMMUNITY'] : [],
 		positionPatches: 0
@@ -384,6 +388,31 @@ section('overwritesFor rejects an unknown role');
 		msg = e.message;
 	}
 	check('throws, naming the role', msg.includes('Nope'), msg || 'did not throw');
+}
+
+// ===========================================================================
+section('a fresh server, where every role starts at position 1');
+{
+	const g = makeGuild({ botPosition: 1 });
+	const { out } = await run(g, { apply: true });
+
+	const bot = g.roles.find((r) => r.id === BOT_ROLE);
+	check('the bot raises its own role', bot.position > 1, `still at ${bot.position}`);
+	check('and says so', out.includes('Raised @doctor'), out.split('\n').find((l) => l.includes('Raised')) ?? '');
+	check('then orders the rest', out.includes('Roles ordered beneath'));
+	check(
+		'every role ends up below the bot',
+		ROLES.every((r) => g.roles.find((x) => x.name === r.name).position < bot.position)
+	);
+	check(
+		'in plan order',
+		ROLES.every((r, i) => {
+			const a = g.roles.find((x) => x.name === r.name);
+			const b = g.roles.find((x) => x.name === ROLES[i + 1]?.name);
+			return !b || a.position > b.position;
+		})
+	);
+	check('which is what makes them assignable at all', bot.position > Math.max(...ROLES.map((r) => g.roles.find((x) => x.name === r.name).position)));
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASS' : failures + ' FAILURE(S)'}`);
