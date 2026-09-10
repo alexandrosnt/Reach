@@ -6,6 +6,7 @@ pub mod monitoring;
 #[cfg(desktop)]
 pub mod pty;
 pub mod recipe;
+pub mod share;
 #[cfg(desktop)]
 pub mod serial;
 pub mod session;
@@ -48,6 +49,7 @@ use ipc::vault_commands::*;
 use ipc::editor_commands::*;
 use ipc::snippet_commands::*;
 use ipc::recipe_commands::*;
+use ipc::share_commands::*;
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -381,6 +383,11 @@ pub fn run() {
             recipe_fetch_registry,
             recipe_install,
             recipe_registry_url,
+            share_get_config,
+            share_set_enabled,
+            share_set_ice_servers,
+            share_reset_ice_servers,
+            share_load,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
@@ -619,6 +626,11 @@ pub fn run() {
             recipe_fetch_registry,
             recipe_install,
             recipe_registry_url,
+            share_get_config,
+            share_set_enabled,
+            share_set_ice_servers,
+            share_reset_ice_servers,
+            share_load,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
