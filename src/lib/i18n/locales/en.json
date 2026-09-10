@@ -620,6 +620,8 @@
   "sidebar.snippets": "Snippets",
   "sidebar.plugins": "Plugins",
   "common.edit": "Edit",
+  "common.new": "New",
+  "common.new_since": "New in {{version}}",
   "common.retry": "Retry",
   "sidebar.recipes": "Recipes",
   "recipes.search": "Search recipes...",

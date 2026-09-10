@@ -620,6 +620,8 @@
   "sidebar.snippets": "Αποσπάσματα",
   "sidebar.plugins": "Πρόσθετα",
   "common.edit": "Επεξεργασία",
+  "common.new": "Νέο",
+  "common.new_since": "Νέο στην έκδοση {{version}}",
   "common.retry": "Δοκίμασε ξανά",
   "sidebar.recipes": "Συνταγές",
   "recipes.search": "Αναζήτηση συνταγών...",

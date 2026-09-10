@@ -592,6 +592,8 @@
   "sidebar.snippets": "Команды",
   "sidebar.plugins": "Plugins",
   "common.edit": "Изменить",
+  "common.new": "Новое",
+  "common.new_since": "Новое в {{version}}",
   "common.retry": "Повторить",
   "sidebar.recipes": "Рецепты",
   "recipes.search": "Поиск рецептов...",

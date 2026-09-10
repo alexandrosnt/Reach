@@ -614,6 +614,8 @@
   "sidebar.snippets": "命令片段",
   "sidebar.plugins": "插件",
   "common.edit": "编辑",
+  "common.new": "新",
+  "common.new_since": "{{version}} 新增",
   "common.retry": "重试",
   "sidebar.recipes": "配方",
   "recipes.search": "搜索配方...",
