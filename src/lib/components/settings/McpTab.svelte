@@ -65,8 +65,11 @@
 
 	/** Masked unless deliberately revealed. It opens a shell; it should not sit
 	 *  in plain text on a screen someone might be sharing. */
+	/** 24 bullets regardless of the real length: the token is 43 characters and
+	 *  a faithful mask overflowed the field, leaving a scrollbar under a row of
+	 *  dots. The count carries no information worth a scrollbar. */
 	let shownToken = $derived(
-		!status.token ? '' : revealToken ? status.token : '•'.repeat(Math.min(status.token.length, 44))
+		!status.token ? '' : revealToken ? status.token : '•'.repeat(24)
 	);
 
 	onMount(() => {
@@ -279,9 +282,19 @@
 				<ul class="shared">
 					{#each status.sessions as sess (sess.sessionId)}
 						<li class="shared-row">
-							<span class="dot exposing"></span>
-							<span class="shared-name">{label(sess)}</span>
+							<!-- Two lines rather than one: the host and the two dropdowns
+							     together do not fit the panel's width, and squeezing them
+							     onto one row truncated the hostname to `root@10.14…` —
+							     which defeats the point of showing it instead of a UUID. -->
+							<div class="shared-head">
+								<span class="dot exposing"></span>
+								<span class="shared-name" title={sess.sessionId}>{label(sess)}</span>
+								<button class="mini" onclick={() => mcp.unshare(sess.sessionId)}>
+									{t('mcp.stop_sharing')}
+								</button>
+							</div>
 
+							<div class="shared-controls">
 							<!-- Per-session overrides, matching the chips in the bottom bar.
 							     Having them only there meant configuring a session you were
 							     not currently looking at was impossible. -->
@@ -314,9 +327,7 @@
 								{/each}
 							</select>
 
-							<button class="mini" onclick={() => mcp.unshare(sess.sessionId)}>
-								{t('mcp.stop_sharing')}
-							</button>
+							</div>
 						</li>
 					{/each}
 				</ul>
@@ -672,6 +683,19 @@
 		color: var(--color-text-tertiary);
 	}
 
+	.shared-head {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+	}
+
+	.shared-controls {
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		padding-left: 16px;
+	}
+
 	.shared-name {
 		flex: 1;
 		min-width: 0;
@@ -684,8 +708,9 @@
 	}
 
 	.mini-select {
-		flex-shrink: 0;
-		max-width: 150px;
+		flex: 1;
+		min-width: 0;
+		max-width: 220px;
 		padding: 3px 6px;
 		font-family: inherit;
 		font-size: var(--text-2xs);
@@ -743,6 +768,8 @@
 
 	.shared-row {
 		display: flex;
+		flex-direction: column;
+		gap: var(--space-1);
 		align-items: center;
 		gap: var(--space-2);
 		padding: var(--space-2);

@@ -651,7 +651,7 @@
   "mcp.port_desc": "0 deja que el sistema elija un puerto libre.",
   "mcp.url": "URL",
   "mcp.token": "Token",
-  "mcp.token_hint": "El token es nuevo cada vez que se inicia el servidor y nunca se guarda. Pégalo de nuevo tras reiniciar.",
+  "mcp.token_hint": "Se guarda cifrado en tu bóveda y se reutiliza entre reinicios, así que un cliente configurado una vez sigue funcionando. Regenéralo para bloquear cualquier cosa que use el anterior.",
   "mcp.copy": "Copiar",
   "mcp.copied": "Copiado",
   "mcp.copy_failed": "No se pudo copiar",

@@ -651,7 +651,7 @@
   "mcp.port_desc": "0 lascia che il sistema scelga una porta libera.",
   "mcp.url": "URL",
   "mcp.token": "Token",
-  "mcp.token_hint": "Il token è nuovo a ogni avvio e non viene mai salvato. Incollalo di nuovo dopo un riavvio.",
+  "mcp.token_hint": "Salvato cifrato nella tua cassaforte e riutilizzato dopo i riavvii, così un client configurato una volta continua a funzionare. Rigeneralo per bloccare tutto ciò che usa il vecchio.",
   "mcp.copy": "Copia",
   "mcp.copied": "Copiato",
   "mcp.copy_failed": "Copia non riuscita",
