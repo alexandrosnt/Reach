@@ -13,11 +13,19 @@ Reach supports three authentication methods:
 - **Private Key** - Supports OpenSSH and PEM formats. Ed25519, RSA, and ECDSA keys all work. If your key has a passphrase, you'll be prompted for it.
 - **Agent** - SSH agent forwarding. This one is planned but not implemented yet.
 
+## The Top of the Sidebar
+
+Two rows. First the vault switcher (see below). Then a field and a **+**.
+
+The field searches your sessions as you type. Type something that reads as an address instead — `root@10.0.0.7`, `bastion.example.com:2200` — and a **Connect to …** suggestion appears above the list. Press Enter (when no saved session matched) or click it, and Quick Connect opens with the host, port and username already filled; type the password or pick a key and you are in. A session whose name happens to contain a dot still just filters — the suggestion is offered, never assumed.
+
+The **+** holds everything else: **New session** (`Ctrl+N`), **Quick Connect** (`Ctrl+Shift+N`, for the jump-host and proxy cases), **New folder**, and **Import SSH config**. The menu shows each shortcut so you can stop needing the menu.
+
 ## Creating a Session
 
-Click "New Session" in the sidebar. Fill in the host, port, username, and pick your auth method. Hit save. That's it.
+Choose **New session** from the **+** menu, or press `Ctrl+N`. Fill in the host, port, username, and pick your auth method. Hit save. That's it.
 
-If you just need to connect once without saving anything, use **Quick Connect** instead. Type the host, port, and username, and you're in.
+If you just need to connect once without saving anything, type the address into the search field, or choose **Quick Connect** from the **+** menu.
 
 ## Organizing Sessions
 
@@ -45,7 +53,7 @@ Quick Connect also supports a single jump host for one-off connections through a
 
 ## Importing from SSH Config
 
-If you already have hosts defined in `~/.ssh/config`, you can import them instead of re-entering everything. Click the "Import SSH Config" button in the Sessions sidebar. Reach parses your config file and shows all named hosts with their resolved settings.
+If you already have hosts defined in `~/.ssh/config`, you can import them instead of re-entering everything. Choose **Import SSH config** from the **+** menu at the top of the Sessions sidebar. Reach parses your config file and shows all named hosts with their resolved settings.
 
 Select the hosts you want, hit Import, and they'll be saved as sessions in your vault. ProxyJump chains are imported automatically — if host A jumps through host B, the full chain is preserved. IdentityFile paths are resolved too.
 

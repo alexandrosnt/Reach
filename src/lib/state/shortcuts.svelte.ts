@@ -17,6 +17,27 @@ export function registerSettingsOpener(fn: () => void): void {
 	settingsOpener = fn;
 }
 
+/** The sessions sidebar's own actions, so a key can reach them from anywhere. */
+export interface SessionActions {
+	newSession: () => void;
+	quickConnect: () => void;
+}
+
+let sessionActions: SessionActions | null = null;
+
+export function registerSessionActions(actions: SessionActions | null): void {
+	sessionActions = actions;
+}
+
+/** How a shortcut is written on a menu: ⌘N on a Mac, Ctrl+N elsewhere. */
+export function shortcutLabel(key: string, mods: { ctrl?: boolean; shift?: boolean; alt?: boolean } = {}): string {
+	const k = key.length === 1 ? key.toUpperCase() : key;
+	if (isMac()) {
+		return `${mods.alt ? '⌥' : ''}${mods.shift ? '⇧' : ''}${mods.ctrl ? '⌘' : ''}${k}`;
+	}
+	return [mods.ctrl && 'Ctrl', mods.alt && 'Alt', mods.shift && 'Shift', k].filter(Boolean).join('+');
+}
+
 function isMac(): boolean {
 	return typeof navigator !== 'undefined' && /Mac|iPod|iPhone|iPad/.test(navigator.platform);
 }
@@ -70,6 +91,8 @@ function normalizeKey(key: string): string {
 
 const shortcuts: Shortcut[] = [
 	{ key: 't', ctrl: true, action: 'New tab', handler: () => createTab('local') },
+	{ key: 'n', ctrl: true, action: 'New session', handler: () => sessionActions?.newSession() },
+	{ key: 'n', ctrl: true, shift: true, action: 'Quick connect', handler: () => sessionActions?.quickConnect() },
 	{ key: 'w', ctrl: true, shift: true, action: 'Close tab', handler: closeActiveTab },
 	{ key: 'Tab', ctrl: true, action: 'Next tab', handler: nextTab },
 	{ key: 'Tab', ctrl: true, shift: true, action: 'Previous tab', handler: previousTab },
