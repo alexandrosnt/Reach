@@ -243,6 +243,8 @@
   "vault.this_device": "本设备",
   "vault.private_this_device": "私人（本设备）",
   "vault.search_vaults": "搜索保险库…",
+  "vault.search_secrets": "搜索机密…",
+  "vault.no_secret_matches": "没有匹配的机密",
   "vault.no_vault_matches": "没有匹配的保险库",
   "vault.switch_vault": "切换保险库",
   "vault.vaults_summary": "{{count}} 个保险库 · {{shared}} 个共享",

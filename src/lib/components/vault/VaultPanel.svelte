@@ -330,11 +330,24 @@
 						<path d="M15 18l-6-6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 					</svg>
 				</button>
-				<div class="vault-info">
+				<div class="vault-info" class:shared={activeVault.vaultType === 'shared'} title={activeVault.name}>
+					{#if activeVault.vaultType === 'shared'}
+						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+							<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+							<circle cx="9" cy="7" r="4"/>
+							<path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+							<path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+						</svg>
+					{:else}
+						<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+							<rect x="3" y="11" width="18" height="11" rx="2"/>
+							<path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+						</svg>
+					{/if}
 					<span class="vault-name">{activeVault.name}</span>
-					<span class="vault-badge" class:shared={activeVault.vaultType === 'shared'}>
-						{activeVault.vaultType}
-					</span>
+					{#if activeVault.vaultType === 'shared' && activeVault.memberCount}
+						<span class="member-count">{activeVault.memberCount}</span>
+					{/if}
 				</div>
 				{#if activeVault.vaultType === 'shared'}
 					<button class="invite-btn" onclick={() => (showInviteDialog = true)} title={t('vault.manage_members')}>
@@ -694,16 +707,24 @@
 		color: var(--color-text-primary);
 	}
 
+	/* The type is said by icon and colour, the way every other vault row
+	   says it, so the name keeps the width a badge used to take. */
 	.vault-info {
+		flex: 1;
+		min-width: 0;
 		display: flex;
 		align-items: center;
-		gap: 8px;
-		flex: 1;
-		overflow: hidden;
+		gap: 6px;
+		color: var(--color-text-secondary);
+	}
+
+	.vault-info.shared {
+		color: #10b981;
 	}
 
 	.vault-name {
-		font-size: 0.8125rem;
+		min-width: 0;
+		font-size: var(--text-sm, 0.8125rem);
 		font-weight: 600;
 		color: var(--color-text-primary);
 		overflow: hidden;
@@ -711,20 +732,8 @@
 		white-space: nowrap;
 	}
 
-	.vault-badge {
-		padding: 2px 6px;
-		font-size: 0.5625rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		color: var(--color-text-secondary);
-		background-color: var(--color-surface-hover);
-		border-radius: 4px;
-	}
-
-	.vault-badge.shared {
-		color: var(--color-accent);
-		background-color: rgba(10, 132, 255, 0.12);
+	.vault-info.shared .vault-name {
+		color: #10b981;
 	}
 
 	.invite-btn {

@@ -244,6 +244,8 @@
   "vault.this_device": "Това устройство",
   "vault.private_this_device": "Личен (това устройство)",
   "vault.search_vaults": "Търсене на трезори…",
+  "vault.search_secrets": "Търсене на тайни…",
+  "vault.no_secret_matches": "Няма съвпадаща тайна",
   "vault.no_vault_matches": "Няма съвпадащ трезор",
   "vault.switch_vault": "Смяна на трезор",
   "vault.vaults_summary": "{{count}} трезора · {{shared}} споделени",

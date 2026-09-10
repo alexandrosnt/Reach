@@ -244,6 +244,8 @@
   "vault.this_device": "Cet appareil",
   "vault.private_this_device": "Privé (cet appareil)",
   "vault.search_vaults": "Rechercher un coffre…",
+  "vault.search_secrets": "Rechercher un secret…",
+  "vault.no_secret_matches": "Aucun secret ne correspond",
   "vault.no_vault_matches": "Aucun coffre ne correspond",
   "vault.switch_vault": "Changer de coffre",
   "vault.vaults_summary": "{{count}} coffres · {{shared}} partagés",

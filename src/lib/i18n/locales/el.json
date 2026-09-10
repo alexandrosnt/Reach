@@ -244,6 +244,8 @@
   "vault.this_device": "Αυτή η συσκευή",
   "vault.private_this_device": "Ιδιωτικό (αυτή η συσκευή)",
   "vault.search_vaults": "Αναζήτηση θησαυροφυλακίων…",
+  "vault.search_secrets": "Αναζήτηση μυστικών…",
+  "vault.no_secret_matches": "Κανένα μυστικό δεν ταιριάζει",
   "vault.no_vault_matches": "Κανένα θησαυροφυλάκιο δεν ταιριάζει",
   "vault.switch_vault": "Αλλαγή θησαυροφυλακίου",
   "vault.vaults_summary": "{{count}} θησαυροφυλάκια · {{shared}} κοινόχρηστα",
