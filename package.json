@@ -14,7 +14,8 @@
     "discord:test": "node scripts/discord/setup.test.mjs && node scripts/discord/github-webhook.test.mjs",
     "discord:verify": "node scripts/discord/verify.mjs",
     "discord:grant": "node scripts/discord/grant.mjs",
-    "discord:github": "node scripts/discord/github-webhook.mjs"
+    "discord:github": "node scripts/discord/github-webhook.mjs",
+    "discord:invite": "node scripts/discord/invite.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.0",
