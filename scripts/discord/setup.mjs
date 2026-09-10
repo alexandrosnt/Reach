@@ -277,32 +277,39 @@ async function orderRoles(guildId, botUserId, roleIds) {
 	// the wrong order. Nothing in here is worth failing a run that has already
 	// created every role and channel, so the whole thing degrades to a note.
 	try {
-		const all = await api('GET', '/guilds/' + guildId + '/roles');
+		let all = await api('GET', '/guilds/' + guildId + '/roles');
 
 		// `@me` only resolves on the OAuth2 route; a bot has to name its own id.
 		const me = await api('GET', '/guilds/' + guildId + '/members/' + botUserId);
-		const mine = all.filter((r) => me.roles.includes(r.id));
-		const ceiling = mine.length > 0 ? Math.max(...mine.map((r) => r.position)) : all.length;
+		let mine = all.filter((r) => me.roles.includes(r.id));
+		let ceiling = mine.length > 0 ? Math.max(...mine.map((r) => r.position)) : all.length;
 
 		const ordered = ROLES.map((r) => roleIds.get(r.name)).filter(Boolean);
 
 		// Discord starts every new role at position 1, the bot's own included,
-		// and refuses to move a role above the actor's highest. So on a fresh
-		// server there is literally nowhere to put these until a human raises
-		// the bot — which the bot cannot do for itself.
+		// so on a fresh server there is nowhere to put these and nothing the
+		// bot may assign — a role at or above your own is off limits.
+		//
+		// A bot may, however, raise its own role, which is the one move that
+		// unblocks both. Worth trying before asking a human to drag anything.
 		if (ceiling - ordered.length < 1) {
 			const botRole = mine.find((r) => r.managed) ?? mine[0];
+			if (botRole) {
+				await api('PATCH', '/guilds/' + guildId + '/roles', [
+					{ id: botRole.id, position: ordered.length + 1 }
+				]);
+				all = await api('GET', '/guilds/' + guildId + '/roles');
+				mine = all.filter((r) => me.roles.includes(r.id));
+				ceiling = Math.max(...mine.map((r) => r.position));
+				console.log('Raised @' + botRole.name + ' to position ' + ceiling + ' to make room.');
+			}
+		}
+
+		if (ceiling - ordered.length < 1) {
 			console.log(
-				'Note:  roles cannot be ordered yet. Every role sits at position ' +
-					ceiling +
-					', including\n' +
-					"       the bot's own (@" +
-					(botRole?.name ?? 'the bot') +
-					'), and Discord will not let a bot move a role\n' +
-					'       above itself. Drag @' +
-					(botRole?.name ?? 'the bot') +
-					' to the top in Server Settings -> Roles,\n' +
-					'       then re-run. The roles work regardless; only their order is wrong.\n'
+				'Note:  no room to order the roles, and the bot could not raise itself.\n' +
+					"       Drag the bot's role to the top in Server Settings -> Roles and re-run.\n" +
+					'       The roles work regardless; only their order in the list is wrong.\n'
 			);
 			return;
 		}
