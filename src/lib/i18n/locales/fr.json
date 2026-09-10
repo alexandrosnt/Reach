@@ -651,7 +651,7 @@
   "mcp.port_desc": "0 laisse le système choisir un port libre.",
   "mcp.url": "URL",
   "mcp.token": "Jeton",
-  "mcp.token_hint": "Le jeton est regénéré à chaque démarrage et jamais enregistré. Recollez-le après un redémarrage.",
+  "mcp.token_hint": "Stocké chiffré dans votre coffre et réutilisé après un redémarrage, donc un client configuré une fois continue de fonctionner. Régénérez-le pour bloquer tout ce qui utilise l'ancien.",
   "mcp.copy": "Copier",
   "mcp.copied": "Copié",
   "mcp.copy_failed": "Copie impossible",

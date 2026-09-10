@@ -651,7 +651,7 @@
   "mcp.port_desc": "0 lässt das System einen freien Port wählen.",
   "mcp.url": "URL",
   "mcp.token": "Token",
-  "mcp.token_hint": "Das Token ist bei jedem Start neu und wird nie gespeichert. Nach einem Neustart erneut einfügen.",
+  "mcp.token_hint": "Verschlüsselt im Tresor gespeichert und über Neustarts hinweg wiederverwendet, sodass ein einmal eingerichteter Client weiter funktioniert. Neu erzeugen sperrt alles aus, das das alte nutzt.",
   "mcp.copy": "Kopieren",
   "mcp.copied": "Kopiert",
   "mcp.copy_failed": "Kopieren fehlgeschlagen",

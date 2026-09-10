@@ -651,7 +651,7 @@
   "mcp.port_desc": "0 lets the system pick a free port.",
   "mcp.url": "URL",
   "mcp.token": "Token",
-  "mcp.token_hint": "The token is new every time the server starts and is never saved. Paste it again after a restart.",
+  "mcp.token_hint": "Stored encrypted in your vault and reused across restarts, so a client configured once keeps working. Regenerate to lock out anything using the old one.",
   "mcp.copy": "Copy",
   "mcp.copied": "Copied",
   "mcp.copy_failed": "Could not copy",

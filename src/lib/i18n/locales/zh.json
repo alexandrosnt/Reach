@@ -645,7 +645,7 @@
   "mcp.port_desc": "0 让系统选择空闲端口。",
   "mcp.url": "URL",
   "mcp.token": "令牌",
-  "mcp.token_hint": "令牌在每次启动时重新生成且从不保存。重启后需重新粘贴。",
+  "mcp.token_hint": "以加密形式存放在你的保险库中并在重启后复用，因此配置过一次的客户端会继续可用。重新生成可使所有使用旧令牌的客户端失效。",
   "mcp.copy": "复制",
   "mcp.copied": "已复制",
   "mcp.copy_failed": "无法复制",
