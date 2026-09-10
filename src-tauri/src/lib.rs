@@ -5,6 +5,7 @@ pub mod mcp;
 pub mod monitoring;
 #[cfg(desktop)]
 pub mod pty;
+pub mod recipe;
 #[cfg(desktop)]
 pub mod serial;
 pub mod session;
@@ -46,6 +47,7 @@ use ipc::tunnel_commands::*;
 use ipc::vault_commands::*;
 use ipc::editor_commands::*;
 use ipc::snippet_commands::*;
+use ipc::recipe_commands::*;
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -369,6 +371,16 @@ pub fn run() {
             snippet_create,
             snippet_update,
             snippet_delete,
+            recipe_list,
+            recipe_get,
+            recipe_preview,
+            recipe_save,
+            recipe_delete,
+            recipe_template,
+            recipe_prepare,
+            recipe_fetch_registry,
+            recipe_install,
+            recipe_registry_url,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
@@ -597,6 +609,16 @@ pub fn run() {
             snippet_create,
             snippet_update,
             snippet_delete,
+            recipe_list,
+            recipe_get,
+            recipe_preview,
+            recipe_save,
+            recipe_delete,
+            recipe_template,
+            recipe_prepare,
+            recipe_fetch_registry,
+            recipe_install,
+            recipe_registry_url,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,

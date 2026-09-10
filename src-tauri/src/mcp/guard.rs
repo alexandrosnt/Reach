@@ -112,7 +112,12 @@ impl Refusal {
 }
 
 /// How dangerous a proposed command looks.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+///
+/// Ordered, so `>` means "worse than" and the worst finding in a script is
+/// just a max. Serialised in lowercase because it crosses into the UI as a
+/// label and reaches recipe headers as a word an author types by hand.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Danger {
     /// No obvious side effects.
     Benign,
@@ -181,6 +186,17 @@ fn sensitive_patterns() -> &'static Vec<(Regex, &'static str)> {
             .map(|(p, r)| (Regex::new(p).expect("sensitive pattern must compile"), *r))
             .collect()
     })
+}
+
+/// Classify a single command for callers outside the write path.
+///
+/// Recipes need exactly the judgement the guard already applies to a command
+/// an AI wants to run, so they borrow it rather than growing a second opinion.
+/// Two lists of destructive patterns would drift apart, and the one that
+/// drifts is always the one that stops recognising `rm -rf /`.
+pub fn danger_of(command: &str, threshold: DangerThreshold) -> (Danger, Option<String>) {
+    let classified = classify(command, threshold);
+    (classified.danger, classified.reason)
 }
 
 fn classify(command: &str, threshold: DangerThreshold) -> Classified {

@@ -4,9 +4,10 @@
 	import TunnelManager from '$lib/components/tunnel/TunnelManager.svelte';
 	import PluginPanel from '$lib/components/plugin/PluginPanel.svelte';
 	import SnippetPanel from '$lib/components/snippets/SnippetPanel.svelte';
+	import RecipePanel from '$lib/components/recipes/RecipePanel.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
-	type Section = 'sessions' | 'explorer' | 'tunnels' | 'snippets' | 'plugins';
+	type Section = 'sessions' | 'explorer' | 'tunnels' | 'snippets' | 'recipes' | 'plugins';
 
 	const STORAGE_KEY = 'reach-sidebar-width';
 	/* `sidebarWidth` is the width of the *panel*, not of the whole sidebar. The
@@ -67,6 +68,12 @@
 			id: 'snippets',
 			label: t('sidebar.snippets'),
 			icon: 'M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2M9 2h6a1 1 0 011 1v1a1 1 0 01-1 1H9a1 1 0 01-1-1V3a1 1 0 011-1z'
+		},
+		{
+			id: 'recipes',
+			label: t('sidebar.recipes'),
+			// A book: a recipe is something written down to be followed again.
+			icon: 'M4 19.5A2.5 2.5 0 016.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2zM9 7h7M9 11h5'
 		},
 		{
 			id: 'plugins',
@@ -170,6 +177,8 @@
 				<TunnelManager {connectionId} />
 			{:else if activeSection === 'snippets'}
 				<SnippetPanel {connectionId} />
+			{:else if activeSection === 'recipes'}
+				<RecipePanel />
 			{:else if activeSection === 'plugins'}
 				<PluginPanel {connectionId} />
 			{/if}
