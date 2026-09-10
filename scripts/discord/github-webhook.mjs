@@ -96,10 +96,19 @@ try {
 
 // One secret for both hooks, generated once and reused so re-running does not
 // silently invalidate the signature on the hook it is not touching.
+//
+// A dry run must not write it. It also must not claim to have written it —
+// an earlier version printed "stored it in .discord/webhooks.json" on every
+// run, including the ones that stored nothing, which sent someone looking for
+// a key that was never there.
 if (!store._secret) {
 	store._secret = randomBytes(32).toString('hex');
-	if (APPLY) await writeFile(WEBHOOKS, JSON.stringify(store, null, 2) + '\n', 'utf-8');
-	console.log('Generated a new signing secret and stored it in .discord/webhooks.json.\n');
+	if (APPLY) {
+		await writeFile(WEBHOOKS, JSON.stringify(store, null, 2) + '\n', 'utf-8');
+		console.log('Generated a signing secret and stored it in .discord/webhooks.json.\n');
+	} else {
+		console.log('No signing secret yet; --apply would generate one and store it.\n');
+	}
 }
 
 const repo = await repoSlug();
