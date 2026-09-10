@@ -4,7 +4,8 @@
 	import '../app.css';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
 	import WelcomeScreen from '$lib/components/setup/WelcomeScreen.svelte';
-	import { loadSettings, getSettings, syncTraySettings } from '$lib/state/settings.svelte';
+	import CommunityPrompt from '$lib/components/shared/CommunityPrompt.svelte';
+	import { loadSettings, getSettings, syncTraySettings, recordLaunch } from '$lib/state/settings.svelte';
 	import { loadAISettings } from '$lib/state/ai.svelte';
 	import { initShortcuts, cleanupShortcuts } from '$lib/state/shortcuts.svelte';
 	import { startupUpdateCheck, startPeriodicChecks, stopPeriodicChecks } from '$lib/state/updater.svelte';
@@ -21,6 +22,9 @@
 
 	onMount(() => {
 		loadSettings();
+		// After loadSettings, or the count read back as zero and reset itself
+		// every launch, which would hold the community prompt off forever.
+		recordLaunch();
 		// Before the theme effect below resolves settings.themeId: until these
 		// are in, themeState.all is just the two built-ins, so an installed
 		// theme silently fell back to dark/light on every launch.
@@ -108,4 +112,10 @@
 	<AppShell>
 		{@render children()}
 	</AppShell>
+
+	<!-- Below the welcome screen's stacking order on purpose: a first-run user
+	     is setting the app up, and must never meet this on top of that. -->
+	{#if settings.setupComplete}
+		<CommunityPrompt />
+	{/if}
 {/if}
