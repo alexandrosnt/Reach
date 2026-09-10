@@ -704,6 +704,7 @@
   "recipes.risk_none": "Не е намерено нищо рисково. Това не е същото като безопасно.",
   "recipes.risk_count": "{{count}} реда за проверка",
   "recipes.understated": "Авторът я обявява за {{declared}}, но изглежда {{actual}}.",
+  "recipes.declared_above_scan": "Оценена като {{declared}} от автора си. Само сканирането не откри нищо по-лошо; то не вижда през променливи.",
   "recipes.opaque": "Ред {{lines}} сваля и изпълнява код. Нищо тук не вижда какво пристига.",
   "recipes.required": "Задължително",
   "recipes.show_command": "Покажи точната команда",

@@ -698,6 +698,7 @@
   "recipes.risk_none": "未发现风险项。这并不等于安全。",
   "recipes.risk_count": "{{count}} 行值得检查",
   "recipes.understated": "作者声明为{{declared}}，但看起来是{{actual}}。",
+  "recipes.declared_above_scan": "作者评定为{{declared}}。扫描本身未发现更严重的问题；它无法看穿变量。",
   "recipes.opaque": "第 {{lines}} 行会下载并执行代码。这里无法得知会下载到什么。",
   "recipes.required": "必填",
   "recipes.show_command": "查看完整命令",

@@ -704,6 +704,7 @@
   "recipes.risk_none": "Rien de risqué trouvé. Ce n'est pas la même chose que sûr.",
   "recipes.risk_count": "{{count}} lignes à vérifier",
   "recipes.understated": "L'auteur la déclare {{declared}}, mais elle paraît {{actual}}.",
+  "recipes.declared_above_scan": "Classée {{declared}} par son auteur. L'analyse seule n'a rien trouvé de pire ; elle ne voit pas à travers les variables.",
   "recipes.opaque": "La ligne {{lines}} télécharge et exécute du code. Rien ici ne peut voir ce qui arrive.",
   "recipes.required": "Obligatoire",
   "recipes.show_command": "Afficher la commande exacte",

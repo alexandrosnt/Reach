@@ -37,8 +37,15 @@ export interface Finding {
 }
 
 export interface Analysis {
-	/** The worst finding. `benign` means nothing matched — not that it is safe. */
+	/**
+	 * The level to show and gate on: the worse of what the author declared
+	 * and what the scan found. An author who says `sensitive` is believed
+	 * even when the scan sees nothing, because a path behind a variable is
+	 * invisible to it and not to them.
+	 */
 	danger: Danger;
+	/** What the scan alone found. `benign` means nothing matched — not that it is safe. */
+	found: Danger;
 	findings: Finding[];
 	/** What the author declared in the header, if anything. */
 	declared: Danger | null;

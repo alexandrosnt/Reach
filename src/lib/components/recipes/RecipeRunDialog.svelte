@@ -55,6 +55,15 @@
 	/** Typed confirmation for anything that changes system state or worse. */
 	let needsTypedConfirm = $derived(dangerRank(analysis?.danger ?? 'benign') >= 2);
 
+	/**
+	 * The badge says one thing and the scan another — the author rated it
+	 * higher than any line the scanner could see. Say so, or "Sensitive"
+	 * above "Nothing risky found" reads as a contradiction.
+	 */
+	let declaredAboveScan = $derived(
+		analysis !== null && dangerRank(analysis.declared) > dangerRank(analysis.found)
+	);
+
 	let missing = $derived(
 		(recipe?.params ?? []).filter((p) => !p.default && !(values[p.name] ?? '').trim())
 	);
@@ -121,7 +130,13 @@
 						<p class="risk-warn">
 							{t('recipes.understated', {
 								declared: t(`recipes.danger_${analysis.declared}`),
-								actual: t(`recipes.danger_${analysis.danger}`)
+								actual: t(`recipes.danger_${analysis.found}`)
+							})}
+						</p>
+					{:else if declaredAboveScan}
+						<p class="risk-note">
+							{t('recipes.declared_above_scan', {
+								declared: t(`recipes.danger_${analysis.declared}`)
 							})}
 						</p>
 					{/if}
@@ -268,6 +283,13 @@
 		margin: 0;
 		font-size: var(--text-xs);
 		color: var(--color-warning);
+	}
+
+	/* Explains the badge rather than warning about it, so it stays quiet. */
+	.risk-note {
+		margin: 0;
+		font-size: var(--text-xs);
+		color: var(--color-text-secondary);
 	}
 
 	.findings {
