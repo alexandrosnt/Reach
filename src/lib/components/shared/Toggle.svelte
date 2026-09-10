@@ -2,6 +2,9 @@
 	interface Props {
 		checked?: boolean;
 		label?: string;
+		/** Keep the label for assistive tech but do not draw it — for a toggle
+		 *  in a settings row, where the row's own label already says it. */
+		hideLabel?: boolean;
 		disabled?: boolean;
 		onchange?: (checked: boolean) => void;
 	}
@@ -9,6 +12,7 @@
 	let {
 		checked = $bindable(false),
 		label = '',
+		hideLabel = false,
 		disabled = false,
 		onchange
 	}: Props = $props();
@@ -41,7 +45,7 @@
 		<span class="toggle-thumb" class:active={checked}></span>
 	</button>
 
-	{#if label}
+	{#if label && !hideLabel}
 		<span class="toggle-label" role="none" onclick={toggle}>{label}</span>
 	{/if}
 </div>

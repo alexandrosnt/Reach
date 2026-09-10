@@ -84,6 +84,7 @@
 		</div>
 		<div class="setting-control">
 			<Toggle
+				hideLabel
 				checked={aiSettings.enabled}
 				label={t('ai_settings.enable')}
 				onchange={onEnabledChange}
@@ -194,45 +195,6 @@
 </div>
 
 <style>
-	.tab-content {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.setting-row {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 10px 0;
-		border-bottom: 1px solid var(--color-border);
-		gap: 24px;
-	}
-
-	.setting-row:last-child {
-		border-bottom: none;
-	}
-
-	.setting-info {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		min-width: 0;
-	}
-
-	.setting-label {
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: var(--color-text-primary);
-	}
-
-	.setting-description {
-		font-size: 0.75rem;
-		color: var(--color-text-secondary);
-	}
-
-	.setting-control {
-		flex-shrink: 0;
-	}
 
 	/* AI sections with reduced opacity when disabled */
 	.ai-section {

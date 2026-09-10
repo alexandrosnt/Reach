@@ -256,21 +256,6 @@
 		gap: 16px;
 	}
 
-	.section {
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-	}
-
-	.section-title {
-		margin: 0;
-		font-size: 0.8125rem;
-		font-weight: 600;
-		color: var(--color-text-primary);
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-	}
-
 	.section-desc {
 		margin: 0;
 		font-size: 0.75rem;

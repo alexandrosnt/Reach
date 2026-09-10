@@ -1,4 +1,5 @@
 <script lang="ts">
+	import Toggle from '$lib/components/shared/Toggle.svelte';
 	import { themeState, applyTheme, loadInstalledThemes, DARK, LIGHT } from '$lib/state/theme.svelte';
 	import { onMount } from 'svelte';
 	import { themeFetchRegistry, themeInstall, themeUninstall, type ThemeEntry } from '$lib/ipc/theme';
@@ -357,21 +358,17 @@
 			<span class="setting-description">{t('settings.shell_colors_desc')}</span>
 		</div>
 		<div class="setting-control">
-			<input
-				type="checkbox"
-				class="toggle-checkbox"
+			<Toggle
+				hideLabel
 				checked={settings.injectShellColors}
-				onchange={(e) => updateSetting('injectShellColors', e.currentTarget.checked)}
+				label={t('settings.shell_colors')}
+				onchange={(v) => updateSetting('injectShellColors', v)}
 			/>
 		</div>
 	</div>
 </div>
 
 <style>
-	.tab-content {
-		display: flex;
-		flex-direction: column;
-	}
 
 	.setting-section {
 		padding: 12px 0;
@@ -572,19 +569,7 @@
 
 	.theme-label { font-size: 0.75rem; font-weight: 500; color: var(--color-text-primary); }
 
-	.setting-row {
-		display: flex; justify-content: space-between; align-items: center;
-		padding: 12px 0; border-bottom: 1px solid var(--color-border); gap: 24px;
-	}
-	.setting-row:last-child { border-bottom: none; }
-
 	.font-row { align-items: flex-start; }
-
-	.setting-info { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-	.setting-label { font-size: 0.875rem; font-weight: 500; color: var(--color-text-primary); }
-	.setting-description { font-size: 0.75rem; color: var(--color-text-secondary); }
-	.setting-control { flex-shrink: 0; min-width: 180px; }
-
 
 	.font-size-badge {
 		font-size: 0.875rem;
@@ -679,10 +664,4 @@
 		font-family: var(--font-sans);
 	}
 
-	.toggle-checkbox {
-		width: 18px;
-		height: 18px;
-		accent-color: var(--color-accent);
-		cursor: pointer;
-	}
 </style>

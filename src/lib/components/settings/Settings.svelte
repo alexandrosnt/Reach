@@ -46,7 +46,7 @@
 	});
 </script>
 
-<Modal {open} {onclose} title={t('settings.title')} maxWidth="680px">
+<Modal {open} {onclose} title={t('settings.title')} maxWidth="720px" height="min(680px, 88vh)" padded={false}>
 	{#snippet children()}
 		<div class="settings-layout">
 			<nav class="settings-menu">
@@ -100,11 +100,13 @@
 </Modal>
 
 <style>
+	/* The frame is fixed by the Modal; the two columns fill it and the content
+	   column scrolls on its own. Switching tabs never moves an edge. */
 	.settings-layout {
 		display: flex;
 		gap: 0;
-		min-height: 340px;
-		margin: -20px;
+		flex: 1;
+		min-height: 0;
 	}
 
 	.settings-menu {
@@ -184,8 +186,11 @@
 
 	.settings-content {
 		flex: 1;
-		padding: 20px;
+		padding: 8px 24px 24px;
 		overflow-y: auto;
 		min-width: 0;
+		scrollbar-width: thin;
+		/* A tab that scrolls must not sit 10px left of one that does not. */
+		scrollbar-gutter: stable;
 	}
 </style>
