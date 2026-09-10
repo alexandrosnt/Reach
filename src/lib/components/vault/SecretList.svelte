@@ -26,6 +26,17 @@
 
 	// State
 	let secretList = $derived(getSecretList());
+
+	// Sixty secrets is a list you search, not scroll. Matches the name and the
+	// category's label, so "key" finds every SSH key whatever it was named.
+	let secretQuery = $state('');
+	let visibleSecrets = $derived.by(() => {
+		const q = secretQuery.trim().toLowerCase();
+		if (!q) return secretList;
+		return secretList.filter(
+			(x) => x.name.toLowerCase().includes(q) || getCategoryLabel(x.category).toLowerCase().includes(q)
+		);
+	});
 	let showAddModal = $state(false);
 	let showViewModal = $state(false);
 	let showEditModal = $state(false);
@@ -202,13 +213,18 @@
 </script>
 
 <div class="secret-list">
-	<div class="list-header">
-		<span class="header-title">{t('vault.secrets')}</span>
-		<button class="add-btn" onclick={() => (showAddModal = true)}>
-			<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+	<div class="list-tools">
+		<input
+			class="list-search"
+			type="text"
+			placeholder={t('vault.search_secrets')}
+			aria-label={t('vault.search_secrets')}
+			bind:value={secretQuery}
+		/>
+		<button class="add-btn" onclick={() => (showAddModal = true)} title={t('vault.add_secret')} aria-label={t('vault.add_secret')}>
+			<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 				<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
 			</svg>
-			{t('vault.add_secret')}
 		</button>
 	</div>
 
@@ -226,32 +242,32 @@
 		</div>
 	{:else}
 		<div class="secrets">
-			{#each secretList as secret (secret.id)}
-				<button class="secret-item" onclick={() => handleViewSecret(secret)}>
+			{#each visibleSecrets as secret (secret.id)}
+				<button class="secret-item" onclick={() => handleViewSecret(secret)} title={secret.name}>
 					<div class="secret-icon">
 						{#if secret.category === 'password'}
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 								<path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 							</svg>
 						{:else if secret.category === 'ssh_key'}
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 								<path d="M4 17l6 6m0-6l-6 6m14-6h2m-4 0h-2m6-4V5a2 2 0 00-2-2H6a2 2 0 00-2 2v8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 							</svg>
 						{:else if secret.category === 'api_token'}
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 								<path d="M16 18l6-6-6-6M8 6l-6 6 6 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 							</svg>
 						{:else if secret.category === 'certificate'}
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 								<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 							</svg>
 						{:else if secret.category === 'note'}
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 								<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 								<path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 							</svg>
 						{:else}
-							<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 								<path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 							</svg>
 						{/if}
@@ -262,11 +278,14 @@
 							{getCategoryLabel(secret.category)} &middot; {formatRelativeTime(secret.updatedAt)}
 						</span>
 					</div>
-					<svg class="secret-chevron" width="14" height="14" viewBox="0 0 24 24" fill="none">
+					<svg class="secret-chevron" width="12" height="12" viewBox="0 0 24 24" fill="none">
 						<path d="M9 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 					</svg>
 				</button>
 			{/each}
+			{#if visibleSecrets.length === 0}
+				<p class="no-match">{t('vault.no_secret_matches')}</p>
+			{/if}
 		</div>
 	{/if}
 </div>
@@ -437,44 +456,51 @@
 		overflow: hidden;
 	}
 
-	.list-header {
+	.list-tools {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		padding: 8px 10px;
-		border-bottom: 1px solid var(--color-border);
+		gap: 4px;
+		padding: 0 var(--space-2, 8px);
 	}
 
-	.header-title {
-		font-size: 0.6875rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
+	.list-search {
+		flex: 1;
+		min-width: 0;
+		padding: 6px 8px;
+		font-family: inherit;
+		font-size: 0.75rem;
+		color: var(--color-text-primary);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		outline: none;
+	}
+
+	.list-search:focus {
+		border-color: var(--color-accent);
+	}
+
+	.list-search::placeholder {
+		color: var(--color-text-tertiary);
 	}
 
 	.add-btn {
 		display: flex;
 		align-items: center;
-		gap: 6px;
-		padding: 5px 10px;
-		font-family: var(--font-sans);
-		font-size: 0.6875rem;
-		font-weight: 500;
-		color: var(--color-accent);
-		background: transparent;
-		border: 1px solid var(--color-accent);
+		justify-content: center;
+		width: 28px;
+		height: 28px;
+		flex-shrink: 0;
+		border: 1px solid var(--color-border);
 		border-radius: 6px;
+		background: transparent;
+		color: var(--color-accent);
 		cursor: pointer;
-		transition: all var(--duration-default) var(--ease-default);
 	}
 
 	.add-btn:hover {
-		background-color: rgba(10, 132, 255, 0.1);
-	}
-
-	.add-btn:active {
-		transform: scale(0.98);
+		background: var(--color-surface-hover);
+		border-color: color-mix(in srgb, var(--color-accent) 50%, var(--color-border));
 	}
 
 	.empty-state {
@@ -508,42 +534,46 @@
 
 	.secrets {
 		flex: 1;
+		min-height: 0;
 		overflow-y: auto;
-		padding: 8px;
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 1px;
+		padding: 0 var(--space-2, 8px);
+		scrollbar-width: thin;
 	}
 
+	/* A row, not a card: the sidebar is 250px and a secret's name is the
+	   thing you are scanning for. */
 	.secret-item {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: 8px;
 		width: 100%;
-		padding: 10px 12px;
-		text-align: left;
-		background-color: var(--color-surface-hover);
-		border: 1px solid var(--color-border);
-		border-radius: 8px;
+		padding: 5px 8px;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--color-text-secondary);
 		cursor: pointer;
-		transition: all var(--duration-default) var(--ease-default);
+		text-align: left;
+		font-family: inherit;
 	}
 
 	.secret-item:hover {
-		background-color: var(--color-surface-hover);
-		border-color: var(--color-accent);
+		background: var(--color-surface-hover);
+		color: var(--color-text-primary);
+	}
+
+	.secret-item:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: -2px;
 	}
 
 	.secret-icon {
 		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 32px;
-		height: 32px;
-		background-color: var(--color-surface-hover);
-		border-radius: 6px;
-		color: var(--color-text-secondary);
 		flex-shrink: 0;
+		color: var(--color-text-tertiary);
 	}
 
 	.secret-item:hover .secret-icon {
@@ -552,14 +582,14 @@
 
 	.secret-content {
 		flex: 1;
+		min-width: 0;
 		display: flex;
 		flex-direction: column;
-		gap: 2px;
-		overflow: hidden;
+		gap: 1px;
 	}
 
 	.secret-name {
-		font-size: 0.8125rem;
+		font-size: 0.75rem;
 		font-weight: 500;
 		color: var(--color-text-primary);
 		overflow: hidden;
@@ -568,22 +598,32 @@
 	}
 
 	.secret-meta {
-		font-size: 0.6875rem;
-		color: var(--color-text-secondary);
+		font-size: 0.625rem;
+		color: var(--color-text-tertiary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.secret-chevron {
-		color: var(--color-text-secondary);
-		opacity: 0.5;
 		flex-shrink: 0;
-		transition: opacity var(--duration-default) var(--ease-default);
+		color: var(--color-text-tertiary);
+		opacity: 0;
+		transition: opacity 0.1s;
 	}
 
 	.secret-item:hover .secret-chevron {
 		opacity: 1;
 	}
 
-	/* Form styles */
+	.no-match {
+		margin: 0;
+		padding: 12px 8px;
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
+		text-align: center;
+	}
+
 	.form {
 		display: flex;
 		flex-direction: column;

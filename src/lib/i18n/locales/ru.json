@@ -232,6 +232,8 @@
   "vault.this_device": "Это устройство",
   "vault.private_this_device": "Личное (это устройство)",
   "vault.search_vaults": "Поиск хранилищ…",
+  "vault.search_secrets": "Поиск секретов…",
+  "vault.no_secret_matches": "Нет подходящих секретов",
   "vault.no_vault_matches": "Нет подходящих хранилищ",
   "vault.switch_vault": "Сменить хранилище",
   "vault.vaults_summary": "{{count}} хранилищ · {{shared}} общих",

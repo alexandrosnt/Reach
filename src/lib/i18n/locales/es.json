@@ -244,6 +244,8 @@
   "vault.this_device": "Este dispositivo",
   "vault.private_this_device": "Privada (este dispositivo)",
   "vault.search_vaults": "Buscar vaults…",
+  "vault.search_secrets": "Buscar secretos…",
+  "vault.no_secret_matches": "Ningún secreto coincide",
   "vault.no_vault_matches": "Ningún vault coincide",
   "vault.switch_vault": "Cambiar de vault",
   "vault.vaults_summary": "{{count}} vaults · {{shared}} compartidos",

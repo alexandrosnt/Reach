@@ -244,6 +244,8 @@
   "vault.this_device": "Questo dispositivo",
   "vault.private_this_device": "Privata (questo dispositivo)",
   "vault.search_vaults": "Cerca vault…",
+  "vault.search_secrets": "Cerca segreti…",
+  "vault.no_secret_matches": "Nessun segreto corrisponde",
   "vault.no_vault_matches": "Nessun vault corrisponde",
   "vault.switch_vault": "Cambia vault",
   "vault.vaults_summary": "{{count}} vault · {{shared}} condivisi",

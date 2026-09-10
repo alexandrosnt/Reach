@@ -244,6 +244,8 @@
   "vault.this_device": "This device",
   "vault.private_this_device": "Private (this device)",
   "vault.search_vaults": "Search vaults…",
+  "vault.search_secrets": "Search secrets…",
+  "vault.no_secret_matches": "No secret matches",
   "vault.no_vault_matches": "No vault matches",
   "vault.switch_vault": "Switch vault",
   "vault.vaults_summary": "{{count}} vaults · {{shared}} shared",
