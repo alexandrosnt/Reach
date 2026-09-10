@@ -52,6 +52,43 @@ class VaultState {
 // Export singleton instance for reactivity
 export const vaultState = new VaultState();
 
+// ==================== SESSIONS FILTER ====================
+
+/**
+ * What the sessions sidebar is showing. A vault id narrows the list to that
+ * vault; `null` is the device's own default vault (sessions with no
+ * `vault_id`); `ALL_VAULTS` is everything, which is the default — a person
+ * should find a session without first recalling which vault it lives in.
+ *
+ * Vault ids are UUIDs, so the sentinel cannot collide with one.
+ */
+export const ALL_VAULTS = 'all';
+export type VaultFilter = typeof ALL_VAULTS | string | null;
+
+const FILTER_KEY = 'reach-vault-filter';
+
+/** The filter as last left, or everything on a fresh install. */
+export function loadVaultFilter(): VaultFilter {
+	try {
+		const raw = localStorage.getItem(FILTER_KEY);
+		if (raw === null) return ALL_VAULTS;
+		const v = JSON.parse(raw);
+		return v === null || typeof v === 'string' ? v : ALL_VAULTS;
+	} catch {
+		return ALL_VAULTS;
+	}
+}
+
+/** Remembered per device: forgetting the choice on restart is the complaint
+ *  Bitwarden's users file most often about its own "All vaults". */
+export function saveVaultFilter(filter: VaultFilter): void {
+	try {
+		localStorage.setItem(FILTER_KEY, JSON.stringify(filter));
+	} catch {
+		// Private mode or a full store; the choice just does not survive.
+	}
+}
+
 // Legacy getters for backward compatibility
 export function isLocked(): boolean {
 	return vaultState.locked;

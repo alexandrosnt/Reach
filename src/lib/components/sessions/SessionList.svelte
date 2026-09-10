@@ -15,7 +15,7 @@
 	import { t } from '$lib/state/i18n.svelte';
 	import { untrack } from 'svelte';
 	import { positionMenu } from '$lib/utils/positionMenu';
-	import { vaultState, checkState, initIdentity, importIdentity } from '$lib/state/vault.svelte';
+	import { vaultState, checkState, initIdentity, importIdentity, ALL_VAULTS, loadVaultFilter, type VaultFilter } from '$lib/state/vault.svelte';
 
 	let showQuickConnect = $state(false);
 	let showEditor = $state(false);
@@ -25,8 +25,14 @@
 	let loading = $state(true);
 	let deleteConfirm = $state<string | null>(null);
 
-	// Selected vault filter (null = private/default vault)
-	let selectedVaultId = $state<string | null>(null);
+	// What the list shows: everything, this device's default vault (null), or
+	// one vault by id. Restored from the last run; the selector confirms it on
+	// mount and updates it on change.
+	let selectedVaultId = $state<VaultFilter>(loadVaultFilter());
+
+	/** Where a new session or folder goes. "All vaults" is not a place, so it
+	 *  resolves to the device's default. */
+	let targetVaultId = $derived(selectedVaultId === ALL_VAULTS ? null : selectedVaultId);
 
 	// Search query
 	let searchQuery = $state('');
@@ -40,6 +46,7 @@
 	// Filter sessions by selected vault, then by search query
 	let filteredSessions = $derived.by(() => {
 		let result = sessions.filter(s => {
+			if (selectedVaultId === ALL_VAULTS) return true;
 			if (selectedVaultId === null) return !s.vault_id;
 			return s.vault_id === selectedVaultId;
 		});
@@ -75,17 +82,17 @@
 		}
 
 		for (const folder of folders) {
-			// Only show folders that belong to the current vault (or have no vault_id for legacy folders)
-			if (folder.vault_id !== undefined && folder.vault_id !== null && folder.vault_id !== (selectedVaultId ?? null)) {
-				// This folder belongs to a different vault — skip unless it has sessions here
-				const folderSessions = folderMap.get(folder.id) ?? [];
-				if (folderSessions.length > 0) {
-					groups.push({ folder, sessions: folderSessions });
-				}
-				continue;
-			}
 			const folderSessions = folderMap.get(folder.id) ?? [];
-			groups.push({ folder, sessions: folderSessions });
+			// A folder belongs to one vault (legacy folders to none). Inside that
+			// vault it is shown even when empty, so it can be filled. Anywhere
+			// else — including "All vaults", which is not a vault — it appears
+			// only when it has sessions to show.
+			const belongsHere =
+				selectedVaultId !== ALL_VAULTS &&
+				(folder.vault_id === undefined || folder.vault_id === null || folder.vault_id === selectedVaultId);
+			if (belongsHere || folderSessions.length > 0) {
+				groups.push({ folder, sessions: folderSessions });
+			}
 		}
 
 		if (ungrouped.length > 0 || groups.length === 0) {
@@ -107,7 +114,7 @@
 		const name = newFolderName.trim();
 		if (!name) return;
 		try {
-			await sessionCreateFolder(name, null, selectedVaultId);
+			await sessionCreateFolder(name, null, targetVaultId);
 			newFolderName = '';
 			creatingFolder = false;
 			folders = await sessionListFolders();
@@ -619,7 +626,7 @@
 			</button>
 		</div>
 
-		<VaultSelector onvaultselect={(id) => { selectedVaultId = id; creatingFolder = false; newFolderName = ''; }} onrefresh={() => loadSessions()} />
+		<VaultSelector onvaultselect={(filter) => { selectedVaultId = filter; creatingFolder = false; newFolderName = ''; }} onrefresh={() => loadSessions()} />
 
 		<div class="search-row">
 			<svg class="search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none">
@@ -724,7 +731,7 @@
 								</div>
 							{:else}
 								<div class="folder-session">
-									<SessionCard {session} onconnect={() => handleConnect(session)} onedit={() => handleEdit(session)} ondelete={() => handleDelete(session)} oncontextmenu={(e) => openSessionContextMenu(e, session)} ondragstart={(e) => handleDragStart(e, session)} ondragend={() => {}} />
+									<SessionCard {session} vault={selectedVaultId === ALL_VAULTS && session.vault_id ? (vaultState.vaults.get(session.vault_id) ?? null) : null} onconnect={() => handleConnect(session)} onedit={() => handleEdit(session)} ondelete={() => handleDelete(session)} oncontextmenu={(e) => openSessionContextMenu(e, session)} ondragstart={(e) => handleDragStart(e, session)} ondragend={() => {}} />
 								</div>
 							{/if}
 						{/each}
@@ -738,7 +745,7 @@
 								<button class="delete-cancel-btn" onclick={() => (deleteConfirm = null)}>{t('common.cancel')}</button>
 							</div>
 						{:else}
-							<SessionCard {session} onconnect={() => handleConnect(session)} onedit={() => handleEdit(session)} ondelete={() => handleDelete(session)} oncontextmenu={(e) => openSessionContextMenu(e, session)} ondragstart={(e) => handleDragStart(e, session)} ondragend={() => {}} />
+							<SessionCard {session} vault={selectedVaultId === ALL_VAULTS && session.vault_id ? (vaultState.vaults.get(session.vault_id) ?? null) : null} onconnect={() => handleConnect(session)} onedit={() => handleEdit(session)} ondelete={() => handleDelete(session)} oncontextmenu={(e) => openSessionContextMenu(e, session)} ondragstart={(e) => handleDragStart(e, session)} ondragend={() => {}} />
 						{/if}
 					{/each}
 				{/if}
@@ -796,7 +803,7 @@
 </div>
 
 <QuickConnect bind:open={showQuickConnect} />
-<SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={selectedVaultId} {folders} onsave={handleEditorSave} />
+<SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={targetVaultId} {folders} onsave={handleEditorSave} />
 <SshConfigImport bind:open={showImport} onsave={handleEditorSave} />
 
 {#if showConnectPrompt && connectSession}

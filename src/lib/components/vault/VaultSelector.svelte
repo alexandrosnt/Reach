@@ -1,11 +1,22 @@
 <script lang="ts">
-	import { vaultState, createVault, deleteVault, refreshVaults, type VaultInfo } from '$lib/state/vault.svelte';
+	import { onMount, tick } from 'svelte';
+	import {
+		vaultState,
+		createVault,
+		deleteVault,
+		refreshVaults,
+		ALL_VAULTS,
+		loadVaultFilter,
+		saveVaultFilter,
+		type VaultFilter,
+		type VaultInfo
+	} from '$lib/state/vault.svelte';
 	import { inviteMember, listMembers, removeMember, type MemberInfo, type InviteInfo } from '$lib/ipc/vault';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
-		onvaultselect?: (vaultId: string | null) => void;
+		onvaultselect?: (filter: VaultFilter) => void;
 		onrefresh?: () => void;
 	}
 
@@ -48,7 +59,127 @@
 
 	// User vaults (excludes internal __xxx__ vaults)
 	let userVaults = $derived(vaultState.vaultList.filter(v => !v.name.startsWith('__')));
-	let selectedVaultId = $state<string | null>(null);
+
+	// ---- The switcher -------------------------------------------------------
+	//
+	// One control instead of a list. The list scaled with the number of vaults
+	// and starved the sessions it was there to filter; this scales with what
+	// you are doing. Searchable, grouped Private / Shared, keyboard-driven.
+
+	let selected = $state<VaultFilter>(loadVaultFilter());
+	let open = $state(false);
+	let query = $state('');
+	let active = $state(0);
+	let searchEl = $state<HTMLInputElement | undefined>();
+	let rootEl = $state<HTMLDivElement | undefined>();
+
+	const byName = (a: VaultInfo, b: VaultInfo) => a.name.localeCompare(b.name);
+	let privateVaults = $derived(userVaults.filter((v) => v.vaultType !== 'shared').sort(byName));
+	let sharedVaults = $derived(userVaults.filter((v) => v.vaultType === 'shared').sort(byName));
+	let current = $derived(
+		selected === ALL_VAULTS || selected === null ? null : (vaultState.vaults.get(selected) ?? null)
+	);
+
+	interface Option {
+		key: string;
+		filter: VaultFilter;
+		label: string;
+		group?: string;
+		vault?: VaultInfo;
+	}
+
+	let options = $derived.by((): Option[] => {
+		const q = query.trim().toLowerCase();
+		const hit = (label: string) => !q || label.toLowerCase().includes(q);
+		const out: Option[] = [];
+		const all = t('vault.all_vaults');
+		const mine = t('vault.private_this_device');
+		if (hit(all)) out.push({ key: 'all', filter: ALL_VAULTS, label: all });
+		if (hit(mine)) out.push({ key: 'device', filter: null, label: mine });
+		for (const v of privateVaults) {
+			if (hit(v.name)) out.push({ key: v.id, filter: v.id, label: v.name, group: t('vault.private'), vault: v });
+		}
+		for (const v of sharedVaults) {
+			if (hit(v.name)) out.push({ key: v.id, filter: v.id, label: v.name, group: t('vault.shared'), vault: v });
+		}
+		return out;
+	});
+
+	/** What the closed control says. */
+	let triggerName = $derived(
+		selected === ALL_VAULTS ? t('vault.all_vaults') : current ? current.name : t('vault.private')
+	);
+	let triggerMeta = $derived.by(() => {
+		if (selected === ALL_VAULTS) {
+			return t('vault.vaults_summary', { count: userVaults.length, shared: sharedVaults.length });
+		}
+		if (!current) return t('vault.this_device');
+		if (current.unreachable) return t('vault.unreachable');
+		if (current.vaultType === 'shared') {
+			return `${t('vault.shared')} · ${t('vault.n_members', { count: current.memberCount ?? 0 })}`;
+		}
+		return `${t('vault.private')} · ${t('vault.n_secrets', { count: current.secretCount })}`;
+	});
+
+	function choose(filter: VaultFilter) {
+		selected = filter;
+		saveVaultFilter(filter);
+		onvaultselect?.(filter);
+		open = false;
+		query = '';
+	}
+
+	async function toggle() {
+		open = !open;
+		if (!open) return;
+		query = '';
+		active = Math.max(0, options.findIndex((o) => o.filter === selected));
+		await tick();
+		searchEl?.focus();
+	}
+
+	function onKey(e: KeyboardEvent) {
+		if (!open) {
+			if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				toggle();
+			}
+			return;
+		}
+		if (e.key === 'Escape') {
+			e.preventDefault();
+			open = false;
+		} else if (e.key === 'ArrowDown') {
+			e.preventDefault();
+			active = Math.min(options.length - 1, active + 1);
+		} else if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			active = Math.max(0, active - 1);
+		} else if (e.key === 'Enter') {
+			e.preventDefault();
+			const o = options[active];
+			if (o) choose(o.filter);
+		}
+	}
+
+	$effect(() => {
+		if (!open) return;
+		function outside(e: MouseEvent) {
+			if (rootEl && !rootEl.contains(e.target as Node)) open = false;
+		}
+		document.addEventListener('mousedown', outside, true);
+		return () => document.removeEventListener('mousedown', outside, true);
+	});
+
+	// A remembered vault that has since been deleted (or belongs to another
+	// identity) falls back to everything rather than to an empty list.
+	$effect(() => {
+		if (selected === ALL_VAULTS || selected === null) return;
+		if (vaultState.vaults.size > 0 && !vaultState.vaults.has(selected)) choose(ALL_VAULTS);
+	});
+
+	// The parent needs the restored filter before it renders a session.
+	onMount(() => onvaultselect?.(selected));
 
 	async function handleCreateVault() {
 		if (!newVaultName.trim()) {
@@ -63,8 +194,7 @@
 			// Shared vaults auto-create Turso database via Platform API
 			const vault = await createVault(newVaultName.trim(), newVaultType);
 			await refreshVaults();
-			selectedVaultId = vault.id;
-			onvaultselect?.(vault.id);
+			choose(vault.id);
 			showCreateDialog = false;
 			newVaultName = '';
 		} catch (e) {
@@ -72,11 +202,6 @@
 		} finally {
 			creating = false;
 		}
-	}
-
-	function selectVault(vaultId: string | null) {
-		selectedVaultId = vaultId;
-		onvaultselect?.(vaultId);
 	}
 
 	function confirmDelete(vault: VaultInfo, e: Event) {
@@ -156,10 +281,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 		deleting = true;
 		try {
 			await deleteVault(vaultToDelete.id);
-			if (selectedVaultId === vaultToDelete.id) {
-				selectedVaultId = null;
-				onvaultselect?.(null);
-			}
+			if (selected === vaultToDelete.id) choose(ALL_VAULTS);
 			showDeleteDialog = false;
 			vaultToDelete = null;
 		} catch (e) {
@@ -170,82 +292,135 @@ Go to Settings > Sync > Accept Vault Invite`;
 	}
 </script>
 
-<div class="vault-selector">
-	<div class="vault-header">
-		<span class="vault-title">{t('vault.vaults')}</span>
-		<div class="header-actions">
-			<button class="header-btn" onclick={handleRefresh} disabled={refreshing} title={t('vault.refresh_vaults')}>
-				<svg class:spinning={refreshing} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-					<path d="M1 4v6h6" stroke-linecap="round" stroke-linejoin="round" />
-					<path d="M3.51 15a9 9 0 105.64-9.94L1 10" stroke-linecap="round" stroke-linejoin="round" />
-				</svg>
-			</button>
-			<button class="add-vault-btn" onclick={() => (showCreateDialog = true)} title={t('vault.create_vault')}>
-				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-					<path d="M12 5v14M5 12h14"/>
-				</svg>
-			</button>
-		</div>
-	</div>
-
-	<div class="vault-list">
-		<!-- Private (default) -->
-		<button
-			class="vault-item"
-			class:selected={selectedVaultId === null}
-			onclick={() => selectVault(null)}
-		>
-			<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="vault-switcher" bind:this={rootEl} onkeydown={onKey}>
+	<button
+		class="trigger"
+		class:open
+		class:shared={current?.vaultType === 'shared'}
+		aria-haspopup="listbox"
+		aria-expanded={open}
+		title={t('vault.switch_vault')}
+		onclick={toggle}
+	>
+		{#if selected === ALL_VAULTS}
+			<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+				<rect x="3" y="4" width="18" height="6" rx="1.5"/>
+				<rect x="3" y="14" width="18" height="6" rx="1.5"/>
+			</svg>
+		{:else if current?.vaultType === 'shared'}
+			<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+				<circle cx="9" cy="7" r="4"/>
+				<path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+				<path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+			</svg>
+		{:else}
+			<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
 				<rect x="3" y="11" width="18" height="11" rx="2"/>
 				<path d="M7 11V7a5 5 0 0 1 10 0v4"/>
 			</svg>
-			<span class="vault-name">{t('vault.private')}</span>
-		</button>
+		{/if}
+		<span class="trigger-text">
+			<span class="trigger-name">{triggerName}</span>
+			<span class="trigger-meta" class:unreachable={current?.unreachable}>{triggerMeta}</span>
+		</span>
+		<svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+			<path d="M6 9l6 6 6-6"/>
+		</svg>
+	</button>
 
-		<!-- User vaults -->
-		{#each userVaults as vault}
-			<div class="vault-row">
-				<button
-					class="vault-item"
-					class:selected={selectedVaultId === vault.id}
-					class:shared={vault.vaultType === 'shared'}
-					onclick={() => selectVault(vault.id)}
-				>
-					{#if vault.vaultType === 'shared'}
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-							<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-							<circle cx="9" cy="7" r="4"/>
-							<path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-							<path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-						</svg>
-					{:else}
-						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-							<rect x="3" y="11" width="18" height="11" rx="2"/>
-							<path d="M7 11V7a5 5 0 0 1 10 0v4"/>
-						</svg>
+	{#if open}
+		<div class="pop" role="listbox" aria-label={t('vault.vaults')}>
+			<input
+				class="pop-search"
+				type="text"
+				bind:this={searchEl}
+				bind:value={query}
+				placeholder={t('vault.search_vaults')}
+				oninput={() => (active = 0)}
+				aria-label={t('vault.search_vaults')}
+			/>
+			<div class="pop-list">
+				{#each options as o, i (o.key)}
+					{#if o.group && (i === 0 || options[i - 1].group !== o.group)}
+						<div class="group-label">{o.group}</div>
 					{/if}
-					<span class="vault-name">{vault.name}</span>
-					{#if vault.vaultType === 'shared' && vault.memberCount}
-						<span class="member-count">{vault.memberCount}</span>
-					{/if}
-				</button>
-				{#if vault.vaultType === 'shared'}
-					<button class="invite-btn" onclick={(e) => openInviteDialog(vault, e)} title={t('vault.invite_members_short')}>
-						<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-							<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-							<circle cx="8.5" cy="7" r="4"/>
-							<path d="M20 8v6M23 11h-6"/>
-						</svg>
-					</button>
+					<div class="opt-row">
+						<button
+							class="opt"
+							class:active={i === active}
+							class:selected={o.filter === selected}
+							class:shared={o.vault?.vaultType === 'shared'}
+							role="option"
+							aria-selected={o.filter === selected}
+							onmouseenter={() => (active = i)}
+							onclick={() => choose(o.filter)}
+						>
+							{#if o.vault?.unreachable}
+								<span class="dot" title={[t('vault.unreachable'), o.vault.syncError].filter(Boolean).join(' — ')}></span>
+							{:else if o.key === 'all'}
+								<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+									<rect x="3" y="4" width="18" height="6" rx="1.5"/>
+									<rect x="3" y="14" width="18" height="6" rx="1.5"/>
+								</svg>
+							{:else if o.vault?.vaultType === 'shared'}
+								<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+									<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+									<circle cx="9" cy="7" r="4"/>
+									<path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+									<path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+								</svg>
+							{:else}
+								<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+									<rect x="3" y="11" width="18" height="11" rx="2"/>
+									<path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+								</svg>
+							{/if}
+							<span class="opt-name">{o.label}</span>
+							{#if o.vault?.vaultType === 'shared' && o.vault.memberCount}
+								<span class="member-count">{o.vault.memberCount}</span>
+							{/if}
+							{#if o.vault}
+								<span class="opt-n">{o.vault.secretCount}</span>
+							{/if}
+						</button>
+						{#if o.vault}
+							{#if o.vault.vaultType === 'shared'}
+								<button class="opt-action" onclick={(e) => { open = false; openInviteDialog(o.vault!, e); }} title={t('vault.invite_members_short')}>
+									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+										<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+										<circle cx="8.5" cy="7" r="4"/>
+										<path d="M20 8v6M23 11h-6"/>
+									</svg>
+								</button>
+							{/if}
+							<button class="opt-action danger" onclick={(e) => { open = false; confirmDelete(o.vault!, e); }} title={t('vault.delete_vault_short')}>
+								<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+									<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+								</svg>
+							</button>
+						{/if}
+					</div>
+				{/each}
+				{#if options.length === 0}
+					<p class="no-match">{t('vault.no_vault_matches')}</p>
 				{/if}
-				<button class="delete-btn" onclick={(e) => confirmDelete(vault, e)} title={t('vault.delete_vault_short')}>
-					<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-						<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+			</div>
+			<div class="pop-foot">
+				<button class="foot-btn" onclick={() => { open = false; showCreateDialog = true; }}>
+					<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+					{t('vault.new_vault')}
+				</button>
+				<button class="foot-btn" onclick={handleRefresh} disabled={refreshing} title={t('vault.refresh_vaults')}>
+					<svg class:spinning={refreshing} width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M1 4v6h6"/>
+						<path d="M3.51 15a9 9 0 105.64-9.94L1 10"/>
 					</svg>
 				</button>
 			</div>
-		{/each}
-	</div>
+		</div>
+	{/if}
 </div>
 
 <!-- Create Vault Dialog -->
@@ -423,55 +598,286 @@ Go to Settings > Sync > Accept Vault Invite`;
 {/if}
 
 <style>
-	.vault-selector {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-		padding: 8px 0;
+	.vault-switcher {
+		position: relative;
+		padding: 4px 0 8px;
 		border-bottom: 1px solid var(--color-border);
 		margin-bottom: 8px;
 	}
 
-	.vault-header {
+	.trigger {
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		padding: 0 8px;
+		gap: 8px;
+		width: 100%;
+		padding: 7px 10px;
+		font-family: inherit;
+		text-align: left;
+		color: var(--color-text-secondary);
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		cursor: pointer;
+		transition: border-color 0.15s, color 0.15s;
 	}
 
-	.vault-title {
-		font-size: 0.625rem;
+	.trigger:hover,
+	.trigger.open {
+		color: var(--color-text-primary);
+		border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
+	}
+
+	.trigger:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 1px;
+	}
+
+	.trigger.shared {
+		color: #10b981;
+	}
+
+	.trigger-text {
+		flex: 1;
+		min-width: 0;
+		display: flex;
+		flex-direction: column;
+		line-height: 1.2;
+	}
+
+	.trigger-name {
+		font-size: 0.8125rem;
 		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
+		color: var(--color-text-primary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.trigger.shared .trigger-name {
+		color: #10b981;
+	}
+
+	.trigger-meta {
+		font-size: 0.6875rem;
+		color: var(--color-text-tertiary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.trigger-meta.unreachable {
+		color: var(--color-warning, #f59e0b);
+	}
+
+	.chevron {
+		flex-shrink: 0;
+		color: var(--color-text-tertiary);
+		transition: transform 0.15s;
+	}
+
+	.trigger.open .chevron {
+		transform: rotate(180deg);
+	}
+
+	/* The picker. Sits over the sessions rather than pushing them down: the
+	   whole point is that the sessions keep their room. */
+	.pop {
+		position: absolute;
+		left: 0;
+		right: 0;
+		top: calc(100% - 4px);
+		z-index: 30;
+		display: flex;
+		flex-direction: column;
+		background: var(--color-bg-elevated);
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		box-shadow: var(--shadow-elevated, 0 8px 32px rgba(0, 0, 0, 0.35));
+		padding: 6px;
+	}
+
+	.pop-search {
+		width: 100%;
+		padding: 6px 8px;
+		font-family: inherit;
+		font-size: 0.75rem;
+		color: var(--color-text-primary);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		outline: none;
+	}
+
+	.pop-search:focus {
+		border-color: var(--color-accent);
+	}
+
+	.pop-search::placeholder {
 		color: var(--color-text-tertiary);
 	}
 
-	.header-actions {
+	.pop-list {
+		max-height: min(46vh, 380px);
+		overflow-y: auto;
+		margin-top: 4px;
+		scrollbar-width: thin;
+	}
+
+	.group-label {
+		padding: 8px 8px 3px;
+		font-size: 0.625rem;
+		font-weight: 600;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		color: var(--color-text-tertiary);
+	}
+
+	.opt-row {
 		display: flex;
 		align-items: center;
 		gap: 2px;
 	}
 
-	.header-btn {
+	.opt {
+		flex: 1;
+		min-width: 0;
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		width: 20px;
-		height: 20px;
+		gap: 8px;
+		padding: 5px 8px;
 		border: none;
-		border-radius: 4px;
+		border-radius: 6px;
 		background: transparent;
 		color: var(--color-text-secondary);
 		cursor: pointer;
+		text-align: left;
+		font-family: inherit;
+		font-size: 0.75rem;
 	}
 
-	.header-btn:hover:not(:disabled) {
-		background: var(--color-surface-active);
+	.opt.active {
+		background: var(--color-surface-hover);
 		color: var(--color-text-primary);
 	}
 
-	.header-btn:disabled {
+	.opt.selected {
+		color: var(--color-accent);
+	}
+
+	.opt.shared {
+		color: #10b981;
+	}
+
+	.opt.shared.active {
+		background: rgba(16, 185, 129, 0.12);
+	}
+
+	.opt-name {
+		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.opt-n {
+		font-size: 0.625rem;
+		color: var(--color-text-tertiary);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.dot {
+		width: 13px;
+		height: 13px;
+		flex-shrink: 0;
+		display: grid;
+		place-items: center;
+	}
+
+	.dot::before {
+		content: '';
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--color-warning, #f59e0b);
+	}
+
+	.member-count {
+		font-size: 0.625rem;
+		padding: 1px 6px;
+		border-radius: 8px;
+		background: rgba(16, 185, 129, 0.18);
+		color: #10b981;
+	}
+
+	/* Invite and delete: present, quiet until the row is pointed at. */
+	.opt-action {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 22px;
+		height: 22px;
+		flex-shrink: 0;
+		border: none;
+		border-radius: 4px;
+		background: transparent;
+		color: var(--color-text-tertiary);
+		cursor: pointer;
+		opacity: 0;
+		transition: opacity 0.1s, color 0.1s;
+	}
+
+	.opt-row:hover .opt-action,
+	.opt-action:focus-visible {
+		opacity: 1;
+	}
+
+	.opt-action:hover {
+		color: var(--color-text-primary);
+		background: var(--color-surface-active);
+	}
+
+	.opt-action.danger:hover {
+		color: var(--color-danger, #ef4444);
+	}
+
+	.no-match {
+		margin: 0;
+		padding: 12px 8px;
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
+		text-align: center;
+	}
+
+	.pop-foot {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		gap: 4px;
+		margin-top: 4px;
+		padding-top: 6px;
+		border-top: 1px solid var(--color-border);
+	}
+
+	.foot-btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 5px 8px;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		font-family: inherit;
+		font-size: 0.75rem;
+	}
+
+	.foot-btn:hover:not(:disabled) {
+		background: var(--color-surface-hover);
+		color: var(--color-text-primary);
+	}
+
+	.foot-btn:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
@@ -485,79 +891,6 @@ Go to Settings > Sync > Accept Vault Invite`;
 		animation: spin 0.8s linear infinite;
 	}
 
-	.add-vault-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 20px;
-		height: 20px;
-		border: none;
-		border-radius: 4px;
-		background: transparent;
-		color: var(--color-text-secondary);
-		cursor: pointer;
-	}
-
-	.add-vault-btn:hover {
-		background: var(--color-surface-active);
-		color: var(--color-text-primary);
-	}
-
-	.vault-list {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
-	.vault-item {
-		display: flex;
-		align-items: center;
-		gap: 8px;
-		padding: 6px 8px;
-		border: none;
-		border-radius: 6px;
-		background: transparent;
-		color: var(--color-text-secondary);
-		cursor: pointer;
-		text-align: left;
-		font-family: inherit;
-		font-size: 0.75rem;
-		transition: background-color 0.15s, color 0.15s;
-	}
-
-	.vault-item:hover {
-		background: var(--color-surface-hover);
-		color: var(--color-text-primary);
-	}
-
-	.vault-item.selected {
-		background: rgba(59, 130, 246, 0.15);
-		color: var(--color-accent);
-	}
-
-	.vault-item.shared {
-		color: #10b981;
-	}
-
-	.vault-item.shared.selected {
-		background: rgba(16, 185, 129, 0.15);
-	}
-
-	.vault-name {
-		flex: 1;
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-	}
-
-	.member-count {
-		font-size: 0.625rem;
-		padding: 1px 5px;
-		border-radius: 10px;
-		background: var(--color-surface-active);
-	}
-
-	/* Dialog */
 	.dialog-overlay {
 		position: fixed;
 		inset: 0;
@@ -708,63 +1041,6 @@ Go to Settings > Sync > Accept Vault Invite`;
 	.btn-danger:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	.vault-row {
-		display: flex;
-		align-items: center;
-		gap: 2px;
-	}
-
-	.vault-row .vault-item {
-		flex: 1;
-	}
-
-	.delete-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 24px;
-		height: 24px;
-		border: none;
-		border-radius: 4px;
-		background: transparent;
-		color: var(--color-text-tertiary);
-		cursor: pointer;
-		opacity: 0;
-		transition: opacity 0.15s, color 0.15s;
-	}
-
-	.vault-row:hover .delete-btn {
-		opacity: 1;
-	}
-
-	.delete-btn:hover {
-		color: var(--color-danger);
-		background: rgba(255, 69, 58, 0.1);
-	}
-
-	.invite-btn {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 24px;
-		height: 24px;
-		border: none;
-		border-radius: 4px;
-		background: transparent;
-		color: var(--color-accent);
-		cursor: pointer;
-		opacity: 0;
-		transition: opacity 0.15s, background 0.15s;
-	}
-
-	.vault-row:hover .invite-btn {
-		opacity: 1;
-	}
-
-	.invite-btn:hover {
-		background: rgba(59, 130, 246, 0.15);
 	}
 
 	.invite-dialog {
