@@ -549,6 +549,7 @@
 
 			const bufferId = termType === 'ssh' && currentConnectionId ? currentConnectionId : ptyId;
 			registerBufferReader(bufferId, {
+				size: () => ({ cols: term.cols, rows: term.rows }),
 				read: (startLine?: number, maxLines?: number) => {
 					const buf = term.buffer.active;
 					const start = startLine ?? Math.max(0, buf.length - (maxLines ?? 50));

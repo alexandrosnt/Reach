@@ -40,3 +40,6 @@ npm-debug.log*
 # Agent scratch files — do not commit
 CLAUDE.md
 .claude/
+
+# Discord webhook URLs — posting credentials, never commit
+.discord/

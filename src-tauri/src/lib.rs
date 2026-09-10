@@ -1,9 +1,12 @@
 pub mod ansible;
 pub mod plugin;
 pub mod ipc;
+pub mod mcp;
 pub mod monitoring;
 #[cfg(desktop)]
 pub mod pty;
+pub mod recipe;
+pub mod share;
 #[cfg(desktop)]
 pub mod serial;
 pub mod session;
@@ -28,6 +31,7 @@ use ipc::plugin_commands::*;
 use ipc::marketplace_commands::*;
 use ipc::credential_commands::*;
 use ipc::settings_commands::*;
+use ipc::mcp_commands::*;
 use ipc::monitoring_commands::*;
 #[cfg(desktop)]
 use ipc::pty_commands::*;
@@ -44,6 +48,8 @@ use ipc::tunnel_commands::*;
 use ipc::vault_commands::*;
 use ipc::editor_commands::*;
 use ipc::snippet_commands::*;
+use ipc::recipe_commands::*;
+use ipc::share_commands::*;
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -139,6 +145,21 @@ pub fn run() {
     #[cfg(desktop)]
     {
         builder = builder.invoke_handler(tauri::generate_handler![
+            // MCP server. Off until the user enables it; nothing here starts
+            // a listener or shares a session on its own.
+            mcp_start,
+            mcp_stop,
+            mcp_status,
+            mcp_restore,
+            mcp_share_session,
+            mcp_unshare_session,
+            mcp_list_agents,
+            mcp_set_agent,
+            mcp_set_mode,
+            mcp_set_session_agent,
+            mcp_set_session_mode,
+            mcp_regenerate_token,
+            mcp_confirm_response,
             // SSH commands
             ssh_connect,
             ssh_disconnect,
@@ -352,6 +373,21 @@ pub fn run() {
             snippet_create,
             snippet_update,
             snippet_delete,
+            recipe_list,
+            recipe_get,
+            recipe_preview,
+            recipe_save,
+            recipe_delete,
+            recipe_template,
+            recipe_prepare,
+            recipe_fetch_registry,
+            recipe_install,
+            recipe_registry_url,
+            share_get_config,
+            share_set_enabled,
+            share_set_ice_servers,
+            share_reset_ice_servers,
+            share_load,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
@@ -362,6 +398,21 @@ pub fn run() {
     #[cfg(not(desktop))]
     {
         builder = builder.invoke_handler(tauri::generate_handler![
+            // MCP server. Off until the user enables it; nothing here starts
+            // a listener or shares a session on its own.
+            mcp_start,
+            mcp_stop,
+            mcp_status,
+            mcp_restore,
+            mcp_share_session,
+            mcp_unshare_session,
+            mcp_list_agents,
+            mcp_set_agent,
+            mcp_set_mode,
+            mcp_set_session_agent,
+            mcp_set_session_mode,
+            mcp_regenerate_token,
+            mcp_confirm_response,
             // SSH commands
             ssh_connect,
             ssh_disconnect,
@@ -565,6 +616,21 @@ pub fn run() {
             snippet_create,
             snippet_update,
             snippet_delete,
+            recipe_list,
+            recipe_get,
+            recipe_preview,
+            recipe_save,
+            recipe_delete,
+            recipe_template,
+            recipe_prepare,
+            recipe_fetch_registry,
+            recipe_install,
+            recipe_registry_url,
+            share_get_config,
+            share_set_enabled,
+            share_set_ice_servers,
+            share_reset_ice_servers,
+            share_load,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,

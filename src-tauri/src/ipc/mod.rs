@@ -3,6 +3,7 @@ pub mod plugin_commands;
 pub mod marketplace_commands;
 pub mod credential_commands;
 pub mod settings_commands;
+pub mod mcp_commands;
 pub mod monitoring_commands;
 #[cfg(desktop)]
 pub mod pty_commands;
@@ -20,3 +21,5 @@ pub mod tunnel_commands;
 pub mod vault_commands;
 pub mod editor_commands;
 pub mod snippet_commands;
+pub mod recipe_commands;
+pub mod share_commands;

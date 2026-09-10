@@ -4,13 +4,16 @@
 	import '../app.css';
 	import AppShell from '$lib/components/layout/AppShell.svelte';
 	import WelcomeScreen from '$lib/components/setup/WelcomeScreen.svelte';
-	import { loadSettings, getSettings, syncTraySettings } from '$lib/state/settings.svelte';
+	import CommunityPrompt from '$lib/components/shared/CommunityPrompt.svelte';
+	import { loadSettings, getSettings, syncTraySettings, recordLaunch } from '$lib/state/settings.svelte';
 	import { loadAISettings } from '$lib/state/ai.svelte';
 	import { initShortcuts, cleanupShortcuts } from '$lib/state/shortcuts.svelte';
 	import { startupUpdateCheck, startPeriodicChecks, stopPeriodicChecks } from '$lib/state/updater.svelte';
 	import { changeLocale } from '$lib/state/i18n.svelte';
 	import { loadSnippets } from '$lib/state/snippets.svelte';
 	import { vaultState } from '$lib/state/vault.svelte';
+	import * as mcp from '$lib/state/mcp.svelte';
+	import * as share from '$lib/state/share.svelte';
 	import { onMount } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -20,6 +23,9 @@
 
 	onMount(() => {
 		loadSettings();
+		// After loadSettings, or the count read back as zero and reset itself
+		// every launch, which would hold the community prompt off forever.
+		recordLaunch();
 		// Before the theme effect below resolves settings.themeId: until these
 		// are in, themeState.all is just the two built-ins, so an installed
 		// theme silently fell back to dark/light on every launch.
@@ -48,6 +54,22 @@
 	$effect(() => {
 		if (!vaultState.locked) {
 			loadSnippets();
+		}
+	});
+
+	// MCP settings live in the vault, so they can only be restored once it is
+	// open — reading them at process start would silently find nothing. This
+	// restores the agent, mode and port, and restarts the server if it was
+	// explicitly enabled before. Sharing is never restored: bringing the
+	// server back honours a decision the user made, whereas bringing a shared
+	// session back would be making one for them.
+	let mcpRestored = false;
+	$effect(() => {
+		if (!vaultState.locked && !mcpRestored) {
+			mcpRestored = true;
+			mcp.restore();
+			// Same reason: the switch and the ICE list live in the vault.
+			share.load();
 		}
 	});
 
@@ -93,4 +115,10 @@
 	<AppShell>
 		{@render children()}
 	</AppShell>
+
+	<!-- Below the welcome screen's stacking order on purpose: a first-run user
+	     is setting the app up, and must never meet this on top of that. -->
+	{#if settings.setupComplete}
+		<CommunityPrompt />
+	{/if}
 {/if}

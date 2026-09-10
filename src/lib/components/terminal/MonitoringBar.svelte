@@ -1,13 +1,17 @@
 <script lang="ts">
 	import { getStats } from '$lib/state/monitoring.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import McpSessionBar from './McpSessionBar.svelte';
+	import ShareBar from '$lib/components/share/ShareBar.svelte';
 
 	interface Props {
 		connectionId?: string;
 		sshUser?: string;
+		/** The id this session is shared under, for the MCP controls. */
+		sessionId?: string;
 	}
 
-	let { connectionId, sshUser }: Props = $props();
+	let { connectionId, sshUser, sessionId }: Props = $props();
 
 	let stats = $derived(connectionId ? getStats(connectionId) : undefined);
 
@@ -112,6 +116,14 @@
 			</span>
 		</div>
 
+		<!-- Per-session MCP controls live in the gap the bar already has between
+		     the network stats and the user count. They belong on this row
+		     because it is the one piece of chrome already scoped to the session
+		     in front of you, and they render nothing when MCP is off or this
+		     session is not shared. -->
+		<McpSessionBar {sessionId} />
+		<ShareBar />
+
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
 		<div
 			class="users"
@@ -133,8 +145,11 @@
 		</div>
 	</div>
 {:else}
+	<!-- No stats means no SSH monitoring, not no session: a local shell has
+	     nothing to monitor and is still something you might share. -->
 	<div class="monitoring-bar disconnected">
 		<span class="disconnected-text">{t('monitoring.not_connected')}</span>
+		<ShareBar />
 	</div>
 {/if}
 
@@ -279,6 +294,7 @@
 
 	.disconnected {
 		justify-content: center;
+		gap: var(--space-3);
 	}
 
 	.disconnected-text {

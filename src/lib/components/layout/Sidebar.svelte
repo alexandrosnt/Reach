@@ -4,9 +4,12 @@
 	import TunnelManager from '$lib/components/tunnel/TunnelManager.svelte';
 	import PluginPanel from '$lib/components/plugin/PluginPanel.svelte';
 	import SnippetPanel from '$lib/components/snippets/SnippetPanel.svelte';
+	import RecipePanel from '$lib/components/recipes/RecipePanel.svelte';
+	import NewIndicator from '$lib/components/shared/NewIndicator.svelte';
+	import { sidebarHasNew, markSidebarSeen, newSince } from '$lib/state/whats-new.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
-	type Section = 'sessions' | 'explorer' | 'tunnels' | 'snippets' | 'plugins';
+	type Section = 'sessions' | 'explorer' | 'tunnels' | 'snippets' | 'recipes' | 'plugins';
 
 	const STORAGE_KEY = 'reach-sidebar-width';
 	/* `sidebarWidth` is the width of the *panel*, not of the whole sidebar. The
@@ -69,6 +72,12 @@
 			icon: 'M16 4h2a2 2 0 012 2v14a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h2M9 2h6a1 1 0 011 1v1a1 1 0 01-1 1H9a1 1 0 01-1-1V3a1 1 0 011-1z'
 		},
 		{
+			id: 'recipes',
+			label: t('sidebar.recipes'),
+			// A book: a recipe is something written down to be followed again.
+			icon: 'M4 19.5A2.5 2.5 0 016.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2zM9 7h7M9 11h5'
+		},
+		{
 			id: 'plugins',
 			label: t('sidebar.plugins'),
 			icon: 'M13 2L3 14h9l-1 8 10-12h-9l1-8z'
@@ -76,6 +85,10 @@
 	]);
 
 	function handleSectionClick(sectionId: Section): void {
+		// Reaching the section is being shown it. Collapsing it again later does
+		// not bring the badge back.
+		markSidebarSeen(sectionId);
+
 		if (collapsed) {
 			collapsed = false;
 			activeSection = sectionId;
@@ -121,6 +134,7 @@
 			<button
 				class="nav-btn"
 				class:active={activeSection === section.id}
+				class:has-new={sidebarHasNew(section.id)}
 				onclick={() => handleSectionClick(section.id)}
 				title={section.label}
 				aria-label={section.label}
@@ -134,7 +148,9 @@
 						stroke-linejoin="round"
 					/>
 				</svg>
-
+				{#if sidebarHasNew(section.id)}
+					<NewIndicator since={newSince({ kind: 'sidebar', section: section.id })} />
+				{/if}
 			</button>
 		{/each}
 
@@ -170,6 +186,8 @@
 				<TunnelManager {connectionId} />
 			{:else if activeSection === 'snippets'}
 				<SnippetPanel {connectionId} />
+			{:else if activeSection === 'recipes'}
+				<RecipePanel />
 			{:else if activeSection === 'plugins'}
 				<PluginPanel {connectionId} />
 			{/if}
@@ -264,6 +282,23 @@
 
 	.rail-toggle {
 		margin-top: auto;
+	}
+
+	/* A dot alone is easy to miss on a 48px rail, so the icon itself takes the
+	   accent colour and a tinted ground. Steady, not animated: this has to sit
+	   there until someone gets round to it, and a pulsing icon in the corner of
+	   a terminal is a reason to close the app. */
+	.nav-btn.has-new:not(.active) {
+		color: var(--color-accent);
+		background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+		/* The dot's ring has to match what is actually painted behind it, which
+		   here is the tint above rather than the bare rail colour. Same blend,
+		   made opaque. */
+		--new-dot-ring: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg-secondary));
+	}
+
+	.nav-btn.has-new:not(.active):hover {
+		background: color-mix(in srgb, var(--color-accent) 22%, transparent);
 	}
 
 	.nav-btn {
