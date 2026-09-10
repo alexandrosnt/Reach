@@ -634,6 +634,7 @@
   "common.new_since": "Ново в {{version}}",
   "common.retry": "Опитай отново",
   "sidebar.recipes": "Рецепти",
+  "sidebar.vault": "Трезор",
   "settings.sharing": "Споделяне",
   "sharing.title": "Споделяне на сесия",
   "sharing.share": "Сподели",

@@ -606,6 +606,7 @@
   "common.new_since": "Новое в {{version}}",
   "common.retry": "Повторить",
   "sidebar.recipes": "Рецепты",
+  "sidebar.vault": "Хранилище",
   "settings.sharing": "Общий доступ",
   "sharing.title": "Совместная сессия",
   "sharing.share": "Поделиться",

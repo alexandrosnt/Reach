@@ -628,6 +628,7 @@
   "common.new_since": "{{version}} 新增",
   "common.retry": "重试",
   "sidebar.recipes": "配方",
+  "sidebar.vault": "保险库",
   "settings.sharing": "共享",
   "sharing.title": "会话共享",
   "sharing.share": "共享",

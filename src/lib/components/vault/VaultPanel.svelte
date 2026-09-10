@@ -50,6 +50,23 @@
 	let locked = $derived(vaultState.locked);
 	let hasIdentity = $derived(vaultState.hasIdentity);
 	let vaultList = $derived(vaultState.vaultList);
+
+	// The list view. Same shape as the switcher in the sessions sidebar: rows,
+	// grouped Private / Shared, searchable, internal `__x__` vaults hidden.
+	// One vocabulary for "a vault", wherever one is shown.
+	let listQuery = $state('');
+	let userVaults = $derived(vaultList.filter((v) => !v.name.startsWith('__')));
+	const byName = (a: VaultInfo, b: VaultInfo) => a.name.localeCompare(b.name);
+	let listMatch = $derived.by(() => {
+		const q = listQuery.trim().toLowerCase();
+		return (v: VaultInfo) => !q || v.name.toLowerCase().includes(q);
+	});
+	let privateVaults = $derived(userVaults.filter((v) => v.vaultType !== 'shared' && listMatch(v)).sort(byName));
+	let sharedVaults = $derived(userVaults.filter((v) => v.vaultType === 'shared' && listMatch(v)).sort(byName));
+	let vaultGroups = $derived<{ label: string; vaults: VaultInfo[] }[]>([
+		{ label: t('vault.private'), vaults: privateVaults },
+		{ label: t('vault.shared'), vaults: sharedVaults }
+	]);
 	let activeVault = $derived(vaultState.activeVault);
 	let activeVaultId = $derived(vaultState.activeVaultId);
 
@@ -337,96 +354,84 @@
 	{:else}
 		<!-- Vault List -->
 		<div class="vault-list-view">
-			<div class="list-header">
-				<div class="header-row">
-					<span class="header-title">{t('vault.vaults')}</span>
-					<div class="header-actions">
-						<button class="header-btn" onclick={handleRefresh} disabled={refreshing} title={t('vault.refresh_vaults')}>
-							<svg class:spinning={refreshing} width="14" height="14" viewBox="0 0 24 24" fill="none">
-								<path d="M1 4v6h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-								<path d="M3.51 15a9 9 0 105.64-9.94L1 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-							</svg>
-						</button>
-						<button class="header-btn" onclick={handleLock} title={t('vault.lock')}>
-							<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-								<rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.5" />
-								<path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-							</svg>
-						</button>
-					</div>
-				</div>
-				<button class="create-vault-btn" onclick={() => (showCreateVault = true)}>
-					<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-						<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+			<div class="list-tools">
+				<input
+					class="list-search"
+					type="text"
+					placeholder={t('vault.search_vaults')}
+					aria-label={t('vault.search_vaults')}
+					bind:value={listQuery}
+				/>
+				<button class="header-btn" onclick={handleRefresh} disabled={refreshing} title={t('vault.refresh_vaults')}>
+					<svg class:spinning={refreshing} width="14" height="14" viewBox="0 0 24 24" fill="none">
+						<path d="M1 4v6h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+						<path d="M3.51 15a9 9 0 105.64-9.94L1 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 					</svg>
-					{t('vault.new_vault')}
+				</button>
+				<button class="header-btn" onclick={handleLock} title={t('vault.lock')}>
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+						<rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.5" />
+						<path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+					</svg>
 				</button>
 			</div>
 
-			{#if vaultList.length === 0}
+			{#if userVaults.length === 0}
 				<div class="empty-state">
 					<p class="empty-text">{t('vault.no_vaults')}</p>
 					<p class="empty-hint">{t('vault.create_prompt')}</p>
 				</div>
 			{:else}
-				<div class="vault-list">
-					{#each vaultList as vault (vault.id)}
-						<div class="vault-card-wrapper">
-							<button
-								class="vault-card"
-								class:active={activeVaultId === vault.id}
-								onclick={() => handleSelectVault(vault)}
-							>
-								<div class="vault-card-icon">
-									{#if vault.vaultType === 'shared'}
-										<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-											<path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-											<circle cx="9" cy="7" r="4" stroke="currentColor" stroke-width="1.5" />
-											<path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+				<div class="vault-rows">
+					{#each vaultGroups as group (group.label)}
+						{#if group.vaults.length > 0}
+							<div class="group-label">{group.label}</div>
+							{#each group.vaults as vault (vault.id)}
+								<button
+									class="row"
+									class:shared={vault.vaultType === 'shared'}
+									onclick={() => handleSelectVault(vault)}
+									title={vault.unreachable ? [t('vault.unreachable'), vault.syncError].filter(Boolean).join(' — ') : vault.name}
+								>
+									{#if vault.unreachable}
+										<span class="dot"></span>
+									{:else if vault.vaultType === 'shared'}
+										<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+											<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+											<circle cx="9" cy="7" r="4"/>
+											<path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+											<path d="M16 3.13a4 4 0 0 1 0 7.75"/>
 										</svg>
 									{:else}
-										<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-											<rect x="3" y="11" width="18" height="11" rx="2" stroke="currentColor" stroke-width="1.5" />
-											<path d="M7 11V7a5 5 0 0110 0v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+										<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+											<rect x="3" y="11" width="18" height="11" rx="2"/>
+											<path d="M7 11V7a5 5 0 0 1 10 0v4"/>
 										</svg>
 									{/if}
-								</div>
-								<div class="vault-card-content">
-									<span class="vault-card-name">{vault.name}</span>
-									<span class="vault-card-meta">
-										{#if vault.unreachable}
-											<span class="vault-card-unreachable" title={vault.syncError ?? ''}>
-												{t('vault.unreachable')}
-											</span>
-										{:else}
-											{t('vault.n_secrets', { count: vault.secretCount })}
-											{#if vault.vaultType === 'shared' && vault.memberCount}
-												&middot; {t('vault.n_members', { count: vault.memberCount })}
-											{/if}
-										{/if}
-									</span>
-								</div>
-								<div class="vault-card-badge" class:shared={vault.vaultType === 'shared'}>
-									{vault.vaultType === 'shared' ? t('vault.shared') : t('vault.private')}
-								</div>
-							</button>
-							{#if vault.vaultType === 'shared'}
-								<button
-									class="vault-card-invite"
-									onclick={(e) => { e.stopPropagation(); handleSelectVault(vault).then(() => { showInviteDialog = true; }); }}
-									title={t('vault.invite_members')}
-								>
-									<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
-										<path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-										<circle cx="8.5" cy="7" r="4" stroke="currentColor" stroke-width="2" />
-										<path d="M20 8v6M23 11h-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+									<span class="row-name">{vault.name}</span>
+									{#if vault.vaultType === 'shared' && vault.memberCount}
+										<span class="member-count">{vault.memberCount}</span>
+									{/if}
+									<span class="row-n">{vault.secretCount}</span>
+									<svg class="row-go" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+										<path d="M9 18l6-6-6-6"/>
 									</svg>
 								</button>
-							{/if}
-						</div>
+							{/each}
+						{/if}
 					{/each}
+					{#if privateVaults.length === 0 && sharedVaults.length === 0}
+						<p class="no-match">{t('vault.no_vault_matches')}</p>
+					{/if}
 				</div>
 			{/if}
+
+			<button class="create-vault-btn" onclick={() => (showCreateVault = true)}>
+				<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+					<path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+				</svg>
+				{t('vault.new_vault')}
+			</button>
 		</div>
 	{/if}
 </div>
@@ -751,36 +756,37 @@
 	.vault-list-view {
 		display: flex;
 		flex-direction: column;
+		gap: var(--space-2, 8px);
 		height: 100%;
-		overflow: hidden;
+		min-height: 0;
+		padding: 0 var(--space-2, 8px);
 	}
 
-	.list-header {
-		display: flex;
-		flex-direction: column;
-		gap: 8px;
-		padding: 8px 10px;
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.header-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-	}
-
-	.header-title {
-		font-size: 0.6875rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
-	}
-
-	.header-actions {
+	.list-tools {
 		display: flex;
 		align-items: center;
 		gap: 2px;
+	}
+
+	.list-search {
+		flex: 1;
+		min-width: 0;
+		padding: 6px 8px;
+		font-family: inherit;
+		font-size: 0.75rem;
+		color: var(--color-text-primary);
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		outline: none;
+	}
+
+	.list-search:focus {
+		border-color: var(--color-accent);
+	}
+
+	.list-search::placeholder {
+		color: var(--color-text-tertiary);
 	}
 
 	.header-btn {
@@ -865,131 +871,116 @@
 		opacity: 0.7;
 	}
 
-	.vault-list {
+	.vault-rows {
 		flex: 1;
+		min-height: 0;
 		overflow-y: auto;
-		padding: 8px;
 		display: flex;
 		flex-direction: column;
-		gap: 4px;
+		gap: 1px;
+		scrollbar-width: thin;
 	}
 
-	.vault-card {
+	.group-label {
+		padding: 8px 8px 3px;
+		font-size: 0.625rem;
+		font-weight: 600;
+		letter-spacing: 0.05em;
+		text-transform: uppercase;
+		color: var(--color-text-tertiary);
+	}
+
+	.row {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		gap: 8px;
 		width: 100%;
-		padding: 10px 12px;
-		text-align: left;
-		background-color: var(--color-surface-hover);
-		border: 1px solid var(--color-border);
-		border-radius: 8px;
-		cursor: pointer;
-		transition: all var(--duration-default) var(--ease-default);
-	}
-
-	.vault-card:hover {
-		background-color: var(--color-surface-hover);
-		border-color: var(--color-accent);
-	}
-
-	.vault-card.active {
-		background-color: rgba(10, 132, 255, 0.08);
-		border-color: var(--color-accent);
-	}
-
-	.vault-card-icon {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 32px;
-		height: 32px;
-		background-color: var(--color-surface-hover);
+		padding: 6px 8px;
+		border: none;
 		border-radius: 6px;
+		background: transparent;
 		color: var(--color-text-secondary);
-		flex-shrink: 0;
+		cursor: pointer;
+		text-align: left;
+		font-family: inherit;
+		font-size: 0.75rem;
 	}
 
-	.vault-card:hover .vault-card-icon {
-		color: var(--color-accent);
-	}
-
-	.vault-card-content {
-		flex: 1;
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		overflow: hidden;
-	}
-
-	.vault-card-name {
-		font-size: 0.8125rem;
-		font-weight: 500;
+	.row:hover {
+		background: var(--color-surface-hover);
 		color: var(--color-text-primary);
+	}
+
+	.row:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: -2px;
+	}
+
+	.row.shared {
+		color: #10b981;
+	}
+
+	.row.shared:hover {
+		background: rgba(16, 185, 129, 0.12);
+	}
+
+	.row-name {
+		flex: 1;
+		min-width: 0;
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
 	}
 
-	.vault-card-meta {
-		font-size: 0.6875rem;
-		color: var(--color-text-secondary);
+	.row-n {
+		font-size: 0.625rem;
+		color: var(--color-text-tertiary);
+		font-variant-numeric: tabular-nums;
 	}
 
-	/* A vault whose store did not answer. The reason is on the title attribute,
-	   because it is a server message of unbounded length and does not belong
-	   inline in a card. */
-	.vault-card-unreachable {
-		color: var(--color-warning);
-		cursor: help;
-	}
-
-	.vault-card-badge {
-		padding: 3px 8px;
-		font-size: 0.5625rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		color: var(--color-text-secondary);
-		background-color: var(--color-surface-hover);
-		border-radius: 4px;
+	.row-go {
 		flex-shrink: 0;
+		color: var(--color-text-tertiary);
+		opacity: 0;
+		transition: opacity 0.1s;
 	}
 
-	.vault-card-badge.shared {
-		color: var(--color-accent);
-		background-color: rgba(10, 132, 255, 0.12);
+	.row:hover .row-go {
+		opacity: 1;
 	}
 
-	.vault-card-wrapper {
-		display: flex;
-		gap: 4px;
-	}
-
-	.vault-card-wrapper .vault-card {
-		flex: 1;
-	}
-
-	.vault-card-invite {
-		display: flex;
-		align-items: center;
-		justify-content: center;
-		width: 36px;
-		padding: 0;
-		background-color: rgba(10, 132, 255, 0.1);
-		border: 1px solid var(--color-accent);
+	.member-count {
+		font-size: 0.625rem;
+		padding: 1px 6px;
 		border-radius: 8px;
-		color: var(--color-accent);
-		cursor: pointer;
-		transition: all var(--duration-default) var(--ease-default);
+		background: rgba(16, 185, 129, 0.18);
+		color: #10b981;
+	}
+
+	.dot {
+		width: 13px;
+		height: 13px;
 		flex-shrink: 0;
+		display: grid;
+		place-items: center;
 	}
 
-	.vault-card-invite:hover {
-		background-color: rgba(10, 132, 255, 0.2);
+	.dot::before {
+		content: '';
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--color-warning, #f59e0b);
 	}
 
-	/* Create Vault Form */
+	.no-match {
+		margin: 0;
+		padding: 12px 8px;
+		font-size: 0.75rem;
+		color: var(--color-text-tertiary);
+		text-align: center;
+	}
+
 	.create-vault-form {
 		display: flex;
 		flex-direction: column;
