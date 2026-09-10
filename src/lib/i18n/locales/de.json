@@ -634,6 +634,7 @@
   "common.new_since": "Neu in {{version}}",
   "common.retry": "Erneut versuchen",
   "sidebar.recipes": "Rezepte",
+  "sidebar.vault": "Tresor",
   "settings.sharing": "Teilen",
   "sharing.title": "Sitzung teilen",
   "sharing.share": "Teilen",

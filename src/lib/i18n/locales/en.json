@@ -634,6 +634,7 @@
   "common.new_since": "New in {{version}}",
   "common.retry": "Retry",
   "sidebar.recipes": "Recipes",
+  "sidebar.vault": "Vault",
   "settings.sharing": "Sharing",
   "sharing.title": "Session sharing",
   "sharing.share": "Share",

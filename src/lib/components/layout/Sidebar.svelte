@@ -5,11 +5,12 @@
 	import PluginPanel from '$lib/components/plugin/PluginPanel.svelte';
 	import SnippetPanel from '$lib/components/snippets/SnippetPanel.svelte';
 	import RecipePanel from '$lib/components/recipes/RecipePanel.svelte';
+	import VaultPanel from '$lib/components/vault/VaultPanel.svelte';
 	import NewIndicator from '$lib/components/shared/NewIndicator.svelte';
 	import { sidebarHasNew, markSidebarSeen, newSince } from '$lib/state/whats-new.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
-	type Section = 'sessions' | 'explorer' | 'tunnels' | 'snippets' | 'recipes' | 'plugins';
+	type Section = 'sessions' | 'vault' | 'explorer' | 'tunnels' | 'snippets' | 'recipes' | 'plugins';
 
 	const STORAGE_KEY = 'reach-sidebar-width';
 	/* `sidebarWidth` is the width of the *panel*, not of the whole sidebar. The
@@ -55,6 +56,13 @@
 			id: 'sessions',
 			label: t('sidebar.sessions'),
 			icon: 'M4 6h16M4 10h16M4 14h16M4 18h16'
+		},
+		{
+			id: 'vault',
+			label: t('sidebar.vault'),
+			// A safe with a dial: the secrets side of Reach, which until now had
+			// no door of its own.
+			icon: 'M4 5h16a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V6a1 1 0 011-1zM12 9a3 3 0 100 6 3 3 0 000-6zM12 12h.01M7 19v2M17 19v2'
 		},
 		{
 			id: 'explorer',
@@ -186,6 +194,8 @@
 				<TunnelManager {connectionId} />
 			{:else if activeSection === 'snippets'}
 				<SnippetPanel {connectionId} />
+			{:else if activeSection === 'vault'}
+				<VaultPanel />
 			{:else if activeSection === 'recipes'}
 				<RecipePanel />
 			{:else if activeSection === 'plugins'}
