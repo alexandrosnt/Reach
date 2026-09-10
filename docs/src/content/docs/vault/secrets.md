@@ -7,7 +7,13 @@ The vault stores secrets in categories: **Password**, **SSH Key**, **API Token**
 
 ## Getting Started
 
-To use the vault, go to the Vault section in the app. If this is your first time, you'll need to initialize your identity first. This creates your encryption keypair and stores the secret key in your OS keychain.
+Open the **Vault** section from the rail on the left — it sits just under Sessions. If this is your first time, you'll need to initialize your identity first. This creates your encryption keypair and stores the secret key in your OS keychain.
+
+## Finding Your Way
+
+The Vault section lists your vaults grouped **Private** and **Shared**, sorted by name, with each one's secret count and — for shared vaults — member count. An amber dot marks a vault that cannot be reached right now; hover it for the reason. There is a search box at the top and **New vault** at the bottom. Internal vaults that Reach keeps for itself (session passwords, playbooks) are not shown.
+
+Open a vault and its secrets are listed the same way: category glyph, name, category and when it was last changed. The search box matches names and categories, so "key" finds every SSH key whatever it was called. The vault's name, type and member count sit in the header, with the back arrow and, for a shared vault, the invite button.
 
 ## Creating a Secret
 
