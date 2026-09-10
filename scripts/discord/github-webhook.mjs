@@ -14,15 +14,20 @@
  * that token nor the Discord URLs are printed; the Discord URLs are read from
  * .discord/webhooks.json, which discord:setup wrote.
  *
- * A shared secret is generated on first run and kept in that same file. GitHub
- * signs every delivery with it and Discord verifies the signature, so someone
- * who guesses the webhook URL still cannot forge a release announcement.
+ * No webhook secret is set, and that is deliberate. A GitHub webhook secret
+ * only means something when the receiver has been given the same secret and
+ * programmed to check the signature. Discord is never told it — there is no
+ * field for it anywhere in Discord — so it cannot verify anything, and GitHub
+ * would just be computing an HMAC for a header nobody reads.
+ *
+ * The webhook URL is the credential here. Anyone holding it can post to that
+ * channel. That is why it lives in .discord/, which is gitignored, and why
+ * nothing here ever prints it.
  */
 
-import { readFile, writeFile } from 'fs/promises';
+import { readFile } from 'fs/promises';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { randomBytes } from 'crypto';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const WEBHOOKS = join(ROOT, '.discord', 'webhooks.json');
@@ -94,23 +99,6 @@ try {
 	process.exit(1);
 }
 
-// One secret for both hooks, generated once and reused so re-running does not
-// silently invalidate the signature on the hook it is not touching.
-//
-// A dry run must not write it. It also must not claim to have written it —
-// an earlier version printed "stored it in .discord/webhooks.json" on every
-// run, including the ones that stored nothing, which sent someone looking for
-// a key that was never there.
-if (!store._secret) {
-	store._secret = randomBytes(32).toString('hex');
-	if (APPLY) {
-		await writeFile(WEBHOOKS, JSON.stringify(store, null, 2) + '\n', 'utf-8');
-		console.log('Generated a signing secret and stored it in .discord/webhooks.json.\n');
-	} else {
-		console.log('No signing secret yet; --apply would generate one and store it.\n');
-	}
-}
-
 const repo = await repoSlug();
 const GH = 'https://api.github.com';
 const H = {
@@ -171,10 +159,12 @@ for (const [channel, events] of Object.entries(FEEDS)) {
 		continue;
 	}
 
+	// content_type must be json: Discord's receiver parses nothing else, and
+	// GitHub's own default is form-encoded, so leaving it alone produces
+	// deliveries that succeed and post nothing.
 	const config = {
 		url: entry.githubUrl,
 		content_type: 'json',
-		secret: store._secret,
 		insecure_ssl: '0'
 	};
 

@@ -12,11 +12,46 @@
 
 import { pathToFileURL, fileURLToPath } from 'url';
 import { join, dirname } from 'path';
+import { mkdtemp, mkdir, copyFile, readFile } from 'fs/promises';
+import { tmpdir } from 'os';
+import { createHash } from 'crypto';
 import { PLAN, ROLES, EVERYONE_PERMISSIONS } from './plan.mjs';
 import { P, bits, TALK } from './permissions.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const SETUP = pathToFileURL(join(HERE, 'setup.mjs')).href;
+
+/**
+ * setup.mjs writes .discord/webhooks.json relative to its OWN location, so
+ * importing it from here pointed it at the real repo — and a test run
+ * overwrote the live webhook URLs with mock ones (id 1199, token "sekrit").
+ * The Discord webhooks survived; the file that named them did not, and the
+ * GitHub feed pointed at nothing until it was regenerated.
+ *
+ * So the module under test is copied into a temp tree first. Its ROOT then
+ * resolves there, and the worst a run can do is litter a temp directory.
+ */
+let staged = null;
+async function stagedSetup() {
+	if (staged) return staged;
+	const dir = join(await mkdtemp(join(tmpdir(), 'reach-discord-')), 'scripts', 'discord');
+	await mkdir(dir, { recursive: true });
+	for (const f of ['setup.mjs', 'plan.mjs', 'permissions.mjs']) {
+		await copyFile(join(HERE, f), join(dir, f));
+	}
+	staged = pathToFileURL(join(dir, 'setup.mjs')).href;
+	return staged;
+}
+
+/** Hash of the real webhooks file, so the run can prove it never touched it. */
+const REAL_WEBHOOKS = join(HERE, '..', '..', '.discord', 'webhooks.json');
+async function realWebhooksHash() {
+	try {
+		return createHash('sha256').update(await readFile(REAL_WEBHOOKS)).digest('hex');
+	} catch {
+		return 'absent';
+	}
+}
+const webhooksBefore = await realWebhooksHash();
 const GUILD = '111111111111111111';
 const BOT_ROLE = '222222222222222222';
 
@@ -129,7 +164,7 @@ async function run(g, { apply }) {
 	process.env.DISCORD_GUILD_ID = GUILD;
 	process.argv = ['node', 'setup.mjs', ...(apply ? ['--apply'] : [])];
 
-	const mod = await import(`${SETUP}?v=${Math.random()}`);
+	const mod = await import(`${await stagedSetup()}?v=${Math.random()}`);
 	const lines = [];
 	const realLog = console.log;
 	console.log = (...a) => lines.push(a.join(' '));
@@ -413,6 +448,19 @@ section('a fresh server, where every role starts at position 1');
 		})
 	);
 	check('which is what makes them assignable at all', bot.position > Math.max(...ROLES.map((r) => g.roles.find((x) => x.name === r.name).position)));
+}
+
+// ===========================================================================
+section('the test suite itself');
+{
+	// This is the regression guard for the bug above: a green run that has
+	// quietly rewritten the real webhook file is not a green run.
+	check(
+		'the real .discord/webhooks.json was not touched',
+		(await realWebhooksHash()) === webhooksBefore,
+		'the suite wrote to real repo state'
+	);
+	check('the module under test ran from a temp tree', staged?.includes('reach-discord-'), staged ?? 'not staged');
 }
 
 console.log(`\n${failures === 0 ? 'ALL PASS' : failures + ' FAILURE(S)'}`);

@@ -55,7 +55,7 @@ const check = (name, cond, extra = '') => {
 const section = (s) => console.log(`\n${s}`);
 
 /** A throwaway repo root: .git/config, .env and .discord/webhooks.json. */
-async function makeRoot({ withSecret = false } = {}) {
+async function makeRoot() {
 	const root = await mkdtemp(join(tmpdir(), 'reach-gh-'));
 	await mkdir(join(root, '.git'));
 	await mkdir(join(root, '.discord'));
@@ -67,7 +67,6 @@ async function makeRoot({ withSecret = false } = {}) {
 		releases: { channel: '#releases', url: 'https://discord.com/api/webhooks/1/aaa', githubUrl: 'https://discord.com/api/webhooks/1/aaa/github' },
 		github: { channel: '#github', url: 'https://discord.com/api/webhooks/2/bbb', githubUrl: 'https://discord.com/api/webhooks/2/bbb/github' }
 	};
-	if (withSecret) store._secret = 'existing-secret';
 	await writeFile(join(root, '.discord', 'webhooks.json'), JSON.stringify(store, null, 2));
 	return root;
 }
@@ -175,8 +174,10 @@ section('apply');
 	check('creates two hooks', state.hooks.length === 2, `${state.hooks.length}`);
 	check('both point at the /github endpoint', state.hooks.every((h) => h.config.url.endsWith('/github')));
 	check('both send JSON', state.hooks.every((h) => h.config.content_type === 'json'));
-	check('both are signed', state.hooks.every((h) => h.config.secret?.length >= 32));
-	check('both share one secret', new Set(state.hooks.map((h) => h.config.secret)).size === 1);
+	// No secret, on purpose. Discord is never given one and has no field for
+	// it, so it cannot verify a signature; setting one would only make GitHub
+	// compute an HMAC for a header nobody reads. The URL is the credential.
+	check('no secret is sent', state.hooks.every((h) => h.config.secret === undefined));
 	check('both are active', state.hooks.every((h) => h.active));
 	check('TLS verification stays on', state.hooks.every((h) => h.config.insecure_ssl === '0'));
 
@@ -187,7 +188,6 @@ section('apply');
 	check('the activity hook carries pushes', dev.events.includes('push'));
 
 	check('the Discord URL is never printed', !out.includes('aaa') && !out.includes('bbb'), 'LEAKED');
-	check('the secret is never printed', !/[0-9a-f]{64}/.test(out), 'LEAKED');
 	check('it reports the delivery result', out.includes('204'));
 	await rm(root, { recursive: true, force: true });
 }
@@ -195,19 +195,18 @@ section('apply');
 // ===========================================================================
 section('re-apply');
 {
-	const root = await makeRoot({ withSecret: true });
+	const root = await makeRoot();
 	const first = await run(root, { apply: true });
 	const { out, state } = await run(root, { apply: true, hooks: first.state.hooks });
 	check('creates no duplicates', state.hooks.length === 2, `${state.hooks.length}`);
 	check('reports both as correct', (out.match(/already correct/g) ?? []).length === 2);
-	check('reuses the stored secret', state.hooks.every((h) => h.config.secret === 'existing-secret'));
 	await rm(root, { recursive: true, force: true });
 }
 
 // ===========================================================================
 section('someone narrowed the events in the GitHub UI');
 {
-	const root = await makeRoot({ withSecret: true });
+	const root = await makeRoot();
 	const stale = [
 		{
 			id: 1,
@@ -226,7 +225,7 @@ section('someone narrowed the events in the GitHub UI');
 // ===========================================================================
 section('a disabled hook');
 {
-	const root = await makeRoot({ withSecret: true });
+	const root = await makeRoot();
 	const off = [
 		{
 			id: 1,
