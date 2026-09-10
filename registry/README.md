@@ -52,13 +52,16 @@ Two consequences worth designing around:
 
 ## Adding a recipe
 
+See [CONTRIBUTING.md](CONTRIBUTING.md) for the full guide. The short version:
+
 1. Write `recipes/<id>.sh`. The `id` in the header must equal the filename.
 2. `node build-index.mjs --write` and commit the regenerated `recipes.json`.
-3. Open a pull request.
+3. `node validate.mjs` — CI runs this, so save yourself a round trip.
+4. Open a pull request.
 
 The merge is the trust boundary. Everything else — the SHA-256 pin, the size
 cap, the risk analysis in the client — narrows the gap between "a maintainer
-read these bytes" and "these bytes ran as root on someone's server. None of it
+read these bytes" and "these bytes ran as root on someone's server". None of it
 replaces the review.
 
 ## The danger field
@@ -98,10 +101,27 @@ Learned from the recipes already in this directory:
 - **Say what to do if it went wrong**, on the last line, while the operator is
   still looking at the terminal.
 
+## Files
+
+| File | What it is |
+| ---- | ---------- |
+| `recipes/*.sh` | The recipes. Ordinary bash scripts. |
+| `recipes.json` | The index clients fetch. **Generated** — never hand-edit it. |
+| `build-index.mjs` | Regenerates the index and its SHA-256 pins. |
+| `validate.mjs` | What CI runs. Headers, house rules, index freshness. |
+| `schema.json` | The shape of `recipes.json`. |
+| `CONTRIBUTING.md` | How to add one, and what review looks for. |
+
 ## Testing
 
-`build-index.mjs` validates every header and refuses to emit an index if one is
-malformed. Reach's own test suite additionally parses the recipes in this
-directory with the Rust parser and asserts that none of them understate their
-risk — the JS builder and the Rust parser have separate copies of the grammar,
-and this is where drift surfaces.
+`validate.mjs` checks the mechanical part: headers parse, ids match filenames,
+parameter names are valid shell identifiers, every recipe sets `-euo pipefail`,
+and every `sha256` in the index matches the file on disk. CI additionally runs
+shellcheck over every recipe, and on `main` re-downloads each published URL to
+confirm the hash matches what the world can actually fetch.
+
+Reach's own test suite parses the recipes in this directory with the Rust
+parser and asserts none of them understate their risk. The JS validator and the
+Rust parser hold separate copies of the header grammar, and that is where drift
+shows up — as a test failure, rather than as a recipe that indexes cleanly and
+then refuses to install.

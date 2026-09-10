@@ -1,0 +1,85 @@
+name: Validate registry
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Validate headers and index
+        run: node validate.mjs
+
+  # Every recipe is a bash script people will run as root. shellcheck catches
+  # the class of mistake that turns a path with a space in it into an incident.
+  shellcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install shellcheck
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq shellcheck
+      - name: Lint every recipe
+        run: |
+          set -euo pipefail
+          fail=0
+          for f in recipes/*.sh; do
+            echo "==> $f"
+            # SC1091: we do not follow sourced files that only exist on the target.
+            # SC2154: parameters arrive from the environment, so they look unset here.
+            shellcheck --severity=warning --exclude=SC1091,SC2154 "$f" || fail=1
+          done
+          exit "$fail"
+
+  # The bytes a user installs must be the bytes a maintainer reviewed. This is
+  # the same check Reach performs before it will store a recipe.
+  #
+  # Only on push. The URLs point at `main`, so on a pull request that adds a
+  # recipe the file is not published yet and this would fail every genuinely
+  # correct contribution. `validate.mjs` hashes the local files instead, which
+  # is the check that makes sense before the merge; this one confirms what the
+  # world can actually fetch afterwards.
+  verify-hashes:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify every sha256 against the published URL
+        run: |
+          set -euo pipefail
+          count=$(jq 'length' recipes.json)
+          if [ "$count" -eq 0 ]; then echo "No entries to verify."; exit 0; fi
+          fail=0
+          for i in $(seq 0 $((count - 1))); do
+            id=$(jq -r ".[$i].id" recipes.json)
+            url=$(jq -r ".[$i].url" recipes.json)
+            want=$(jq -r ".[$i].sha256" recipes.json)
+            echo "==> $id"
+            if ! curl -fsSL --max-time 60 "$url" -o /tmp/recipe.sh; then
+              echo "    download FAILED: $url"
+              fail=1
+              continue
+            fi
+            size=$(stat -c%s /tmp/recipe.sh)
+            if [ "$size" -gt $((512 * 1024)) ]; then
+              echo "    too large ($size bytes, cap 524288)"
+              fail=1
+              continue
+            fi
+            got=$(sha256sum /tmp/recipe.sh | cut -d' ' -f1)
+            if [ "$got" != "$want" ]; then
+              echo "    sha256 MISMATCH"
+              echo "      declared $want"
+              echo "      actual   $got"
+              fail=1
+            else
+              echo "    ok"
+            fi
+          done
+          exit "$fail"
