@@ -185,6 +185,9 @@ pub struct AppState {
     /// MCP server state. Constructed disabled, with no token and no shared
     /// sessions: the listener does not exist until the user asks for it.
     pub mcp: Arc<McpState>,
+    /// Peer-to-peer sharing configuration. Off by default; the webview
+    /// loads none of the sharing code until this says otherwise.
+    pub share: Arc<RwLock<crate::share::ShareConfig>>,
 }
 
 impl AppState {
@@ -216,6 +219,7 @@ impl AppState {
             close_to_tray: AtomicBool::new(false),
             pending_editor_file: Arc::new(tokio::sync::Mutex::new(None)),
             mcp: Arc::new(McpState::default()),
+            share: Arc::new(RwLock::new(crate::share::ShareConfig::default())),
         }
     }
 }
