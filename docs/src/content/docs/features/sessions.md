@@ -25,6 +25,16 @@ If you just need to connect once without saving anything, use **Quick Connect** 
 
 **Tags** are comma-separated labels you can add to any session. Use them for filtering when your session list gets long.
 
+## Sessions and Vaults
+
+Every session belongs to a vault — the device's own private vault by default, or any vault you choose when saving it. A vault is the unit of sharing: put a session in a shared vault and everyone in that vault has it.
+
+The sidebar shows sessions from **all vaults at once**. A session that lives outside the device's own vault carries a small chip naming its vault — green with a people icon for a shared vault — so you never have to remember where a host lives before you can connect to it.
+
+The control above the list is the vault switcher. Click it to narrow the sidebar to one vault: its folders appear, and new sessions and folders go into it. Type to filter, use the arrow keys and Enter, or click. Vaults are grouped Private and Shared, each with its secret and member counts; an amber dot marks one that cannot be reached right now, with the reason on hover. "New vault" is at the bottom of the picker. Your choice is remembered per device.
+
+The device's own vault is called **Private (this device)** in the picker, to keep it apart from vaults whose *type* is private.
+
 ## Jump Hosts (ProxyJump)
 
 If your servers sit behind a bastion host, you can configure a jump chain. When creating or editing a session, check "Connect via Jump Host" and add one or more hops. Each hop has its own host, port, username, and auth method.
