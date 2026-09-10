@@ -291,6 +291,10 @@
 	.nav-btn.has-new:not(.active) {
 		color: var(--color-accent);
 		background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+		/* The dot's ring has to match what is actually painted behind it, which
+		   here is the tint above rather than the bare rail colour. Same blend,
+		   made opaque. */
+		--new-dot-ring: color-mix(in srgb, var(--color-accent) 14%, var(--color-bg-secondary));
 	}
 
 	.nav-btn.has-new:not(.active):hover {
