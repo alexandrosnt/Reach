@@ -133,9 +133,8 @@ npm run discord:github -- --apply   # for real
 
 It needs `GITHUB_TOKEN` in `.env`, with `admin:repo_hook` (classic) or
 Webhooks: Read and write (fine-grained). It reads the Discord URLs from
-`.discord/webhooks.json`, generates a signing secret on first run and keeps it
-there, then reads the delivery back from GitHub so you can see the `204` rather
-than take its word for it.
+`.discord/webhooks.json`, then reads the delivery back from GitHub so you can
+see the `204` rather than take its word for it.
 
 **A webhook URL is a posting credential** — anyone holding it can post into
 that channel as that webhook. It stays in `.discord/`, which is gitignored, and
@@ -169,11 +168,35 @@ events drown an active repo.
 
 ### Doing it by hand instead
 
-Repo → **Settings → Webhooks → Add webhook**. Payload URL is the `githubUrl`
-field from `.discord/webhooks.json` — not `url`; the `/github` suffix is what
-switches Discord from its own payload format to GitHub's. Content type
-`application/json`. Set a **Secret**, so a guessed URL cannot forge a release
-announcement.
+Repo → **Settings → Webhooks → Add webhook**.
+
+| Field | Value |
+| ----- | ----- |
+| Payload URL | the `githubUrl` field from `.discord/webhooks.json` — **not** `url` |
+| Content type | `application/json` |
+| Secret | **leave empty** |
+| SSL verification | Enable |
+| Events | *Let me select individual events*, per the table above |
+
+The `/github` suffix is what switches Discord from its own payload format to
+GitHub's; without it, deliveries are rejected.
+
+`application/json` matters just as much. GitHub's form defaults to
+`x-www-form-urlencoded`, which Discord's receiver does not parse — leave the
+default and you get deliveries that look successful and post nothing.
+
+### Why no secret
+
+A GitHub webhook secret is a shared key: GitHub signs each delivery with it and
+the *receiver* verifies the signature. That only works if the receiver has been
+given the same secret. Discord never is — there is no field for it anywhere in
+Discord — so it cannot verify anything, and GitHub would just be computing an
+HMAC for a header nobody reads.
+
+The webhook URL is the credential. Anyone holding it can post to that channel,
+secret or no secret, which is why `.discord/` is gitignored and nothing here
+ever prints it. If the URL leaks, delete the Discord webhook and re-run
+`discord:setup -- --apply` to mint a new one.
 
 **Checking it worked:** GitHub → the webhook → **Recent Deliveries**. Green
 tick and `204` means Discord accepted it. `401` means the URL is wrong; `400`
