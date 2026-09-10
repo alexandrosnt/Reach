@@ -86,10 +86,23 @@
 		}
 	}
 
+	/** Regenerating locks out every client already configured with the old
+	 *  token, which is the whole point of having it — but it is also silent and
+	 *  irreversible, so it asks first. */
+	let confirmingRegen = $state(false);
+
 	async function regenerate(): Promise<void> {
+		confirmingRegen = false;
 		await mcp.regenerateToken();
 		const err = mcp.getError();
 		addToast(err ?? t('mcp.token_regenerated'), err ? 'error' : 'warning');
+	}
+
+	/** `root@10.144.144.2`, falling back to the id when a session predates the
+	 *  descriptor carrying host and user. */
+	function label(sess: { host: string; username: string; sessionId: string }): string {
+		if (!sess.host) return sess.sessionId;
+		return sess.username ? `${sess.username}@${sess.host}` : sess.host;
 	}
 
 	async function copy(text: string, label: string): Promise<void> {
@@ -126,7 +139,7 @@
 				<span class="dot" class:exposing={mcp.isExposing()}></span>
 				<span class="live-text">
 					{#if mcp.isExposing()}
-						{t('mcp.exposing', { count: status.sharedSessionIds.length })}
+						{t('mcp.exposing', { count: status.sessions.length })}
 					{:else}
 						{t('mcp.listening_nothing_shared')}
 					{/if}
@@ -151,10 +164,24 @@
 				<button class="mini" onclick={() => copy(status.token ?? '', t('mcp.copied'))}>
 					{t('mcp.copy')}
 				</button>
-				<button class="mini danger" onclick={regenerate} disabled={busy}>
+				<button class="mini danger" onclick={() => (confirmingRegen = true)} disabled={busy}>
 					{t('mcp.regenerate')}
 				</button>
 			</div>
+			{#if confirmingRegen}
+				<div class="confirm" role="alertdialog">
+					<p class="confirm-msg">{t('mcp.regenerate_confirm')}</p>
+					<div class="confirm-actions">
+						<button class="mini" onclick={() => (confirmingRegen = false)}>
+							{t('mcp.confirm_reject')}
+						</button>
+						<button class="mini danger-solid" onclick={regenerate}>
+							{t('mcp.regenerate')}
+						</button>
+					</div>
+				</div>
+			{/if}
+
 			<p class="hint">{t('mcp.token_hint')}</p>
 		{/if}
 	</section>
@@ -246,15 +273,50 @@
 				<span class="head-label">{t('mcp.shared')}</span>
 				<span class="head-hint">{t('mcp.shared_desc')}</span>
 			</div>
-			{#if status.sharedSessionIds.length === 0}
+			{#if status.sessions.length === 0}
 				<p class="empty">{t('mcp.shared_none')}</p>
 			{:else}
 				<ul class="shared">
-					{#each status.sharedSessionIds as id (id)}
+					{#each status.sessions as sess (sess.sessionId)}
 						<li class="shared-row">
 							<span class="dot exposing"></span>
-							<code class="shared-id">{id}</code>
-							<button class="mini" onclick={() => mcp.unshare(id)}>{t('mcp.stop_sharing')}</button>
+							<span class="shared-name">{label(sess)}</span>
+
+							<!-- Per-session overrides, matching the chips in the bottom bar.
+							     Having them only there meant configuring a session you were
+							     not currently looking at was impossible. -->
+							<select
+								class="mini-select"
+								class:overridden={!!sess.agentId}
+								value={sess.agentId ?? ''}
+								onchange={(e) =>
+									mcp.setSessionAgent(sess.sessionId, e.currentTarget.value || null)}
+							>
+								<option value="">{t('mcp.follow_global')}</option>
+								{#each agents as a (a.id)}
+									<option value={a.id}>{a.name}</option>
+								{/each}
+							</select>
+
+							<select
+								class="mini-select"
+								class:overridden={!!sess.mode}
+								value={sess.mode ?? ''}
+								onchange={(e) =>
+									mcp.setSessionMode(
+										sess.sessionId,
+										(e.currentTarget.value || null) as McpMode | null
+									)}
+							>
+								<option value="">{t('mcp.follow_global')}</option>
+								{#each MODES as m (m.id)}
+									<option value={m.id}>{m.label()}</option>
+								{/each}
+							</select>
+
+							<button class="mini" onclick={() => mcp.unshare(sess.sessionId)}>
+								{t('mcp.stop_sharing')}
+							</button>
 						</li>
 					{/each}
 				</ul>
@@ -610,6 +672,66 @@
 		color: var(--color-text-tertiary);
 	}
 
+	.shared-name {
+		flex: 1;
+		min-width: 0;
+		font-family: var(--font-mono);
+		font-size: var(--text-xs);
+		color: var(--color-text-primary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.mini-select {
+		flex-shrink: 0;
+		max-width: 150px;
+		padding: 3px 6px;
+		font-family: inherit;
+		font-size: var(--text-2xs);
+		color: var(--color-text-secondary);
+		background: var(--color-surface-sunken);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+	}
+
+	/* Dotted edge marks a session that differs from the global default, the
+	   same signal the bottom-bar chips use. */
+	.mini-select.overridden {
+		border-style: dotted;
+		border-color: var(--color-accent);
+		color: var(--color-text-primary);
+	}
+
+	.confirm {
+		display: flex;
+		flex-direction: column;
+		gap: var(--space-2);
+		padding: var(--space-3);
+		border: 1px solid var(--color-danger);
+		border-radius: var(--radius-card);
+		background: color-mix(in srgb, var(--color-danger) 10%, transparent);
+	}
+
+	.confirm-msg {
+		margin: 0;
+		font-size: var(--text-sm);
+		color: var(--color-text-primary);
+	}
+
+	.confirm-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: var(--space-2);
+	}
+
+	.mini.danger-solid {
+		color: #fff;
+		background: var(--color-danger);
+		border-color: var(--color-danger);
+	}
+
 	.shared {
 		display: flex;
 		flex-direction: column;
@@ -627,16 +749,6 @@
 		background: var(--color-bg-elevated);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-sm);
-	}
-
-	.shared-id {
-		flex: 1;
-		min-width: 0;
-		font-family: var(--font-mono);
-		font-size: var(--text-2xs);
-		color: var(--color-text-secondary);
-		overflow: hidden;
-		text-overflow: ellipsis;
 	}
 
 	.clients {

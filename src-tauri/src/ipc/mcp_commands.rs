@@ -14,7 +14,7 @@ use tauri::{Emitter, Manager};
 use crate::mcp::agents;
 use crate::mcp::server::RunningServer;
 use crate::mcp::session::SessionKind;
-use crate::mcp::state::Mode;
+use crate::mcp::state::{Mode, SessionDescriptor};
 use crate::mcp::{ConfirmRequest, McpState, SendRequest};
 use crate::state::AppState;
 
@@ -46,21 +46,9 @@ pub struct McpStatus {
     /// "ask" | "auto_safe" | "auto" | "dangerous" — the global default.
     pub mode: Mode,
     /// Overrides for individual shared sessions.
-    pub sessions: Vec<SessionSettings>,
+    pub sessions: Vec<SessionDescriptor>,
     /// Ready to paste into a client's config.
     pub url: Option<String>,
-}
-
-/// Per-session overrides, so the bottom bar can show what applies to the tab
-/// in front of you rather than only the global default.
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SessionSettings {
-    pub session_id: String,
-    /// `None` means "follow the global agent".
-    pub agent_id: Option<String>,
-    /// `None` means "follow the global mode".
-    pub mode: Option<Mode>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -196,12 +184,7 @@ async fn status_of(state: &McpState, port: Option<u16>, shared: Vec<String>) -> 
         read_only: agent.is_read_only(),
         shared_session_ids: shared,
         mode: state.mode(),
-        sessions: state
-            .session_settings()
-            .await
-            .into_iter()
-            .map(|(session_id, agent_id, mode)| SessionSettings { session_id, agent_id, mode })
-            .collect(),
+        sessions: state.session_settings().await,
         url: port.map(|p| format!("http://127.0.0.1:{p}/mcp")),
     }
 }

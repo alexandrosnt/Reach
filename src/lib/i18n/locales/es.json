@@ -635,6 +635,7 @@
   "mcp.reveal": "Mostrar",
   "mcp.hide": "Ocultar",
   "mcp.regenerate": "Regenerar",
+  "mcp.regenerate_confirm": "Reemplazar el token bloquea de inmediato a todos los clientes configurados con el anterior. Tendrás que volver a añadir el servidor en todas partes. ¿Continuar?",
   "mcp.token_regenerated": "Token reemplazado. Todo cliente con el anterior queda bloqueado.",
   "mcp.port_locked": "Detén el servidor para cambiar el puerto",
   "mcp.mode_ask": "Preguntar",
