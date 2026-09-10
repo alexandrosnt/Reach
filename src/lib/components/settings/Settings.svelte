@@ -8,6 +8,8 @@
 	import AITab from './AITab.svelte';
 	import McpTab from './McpTab.svelte';
 	import PluginsTab from './PluginsTab.svelte';
+	import NewIndicator from '$lib/components/shared/NewIndicator.svelte';
+	import { settingsTabHasNew, markSettingsTabSeen, newSince } from '$lib/state/whats-new.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
@@ -31,6 +33,15 @@
 	]);
 
 	let activeTabId = $state<TabId>('general');
+
+	/**
+	 * Opening a tab is what clears its badge — there is nothing to dismiss.
+	 * Also runs for whichever tab is open when Settings mounts, since that tab
+	 * has been shown just as much as one arrived at by clicking.
+	 */
+	$effect(() => {
+		if (open) markSettingsTabSeen(activeTabId);
+	});
 </script>
 
 <Modal {open} {onclose} title={t('settings.title')} maxWidth="680px">
@@ -41,6 +52,7 @@
 					<button
 						class="menu-item"
 						class:active={activeTabId === tab.id}
+						class:has-new={settingsTabHasNew(tab.id)}
 						onclick={() => (activeTabId = tab.id)}
 					>
 						<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -53,6 +65,9 @@
 							/>
 						</svg>
 						<span>{tab.label}</span>
+						{#if settingsTabHasNew(tab.id)}
+							<NewIndicator variant="badge" since={newSince({ kind: 'settings', tab: tab.id })} />
+						{/if}
 					</button>
 				{/each}
 			</nav>
@@ -128,6 +143,30 @@
 	.menu-item.active {
 		color: var(--color-text-primary);
 		background-color: var(--color-surface-active);
+	}
+
+	/* A tab with something new in it takes the accent colour and a tinted
+	   ground, so the row reads as new before you get to the badge on the end.
+	   Not while it is the open tab: at that point you are looking at it, and
+	   the effect is about to clear anyway. */
+	.menu-item.has-new:not(.active) {
+		color: var(--color-accent);
+		background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+	}
+
+	.menu-item.has-new:not(.active) svg {
+		opacity: 1;
+	}
+
+	.menu-item.has-new:not(.active):hover {
+		background-color: color-mix(in srgb, var(--color-accent) 18%, transparent);
+	}
+
+	/* The label should not shove the badge off the end of a 160px column. */
+	.menu-item span {
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.menu-item svg {

@@ -620,6 +620,8 @@
   "sidebar.snippets": "Команди",
   "sidebar.plugins": "Плъгини",
   "common.edit": "Редактирай",
+  "common.new": "Ново",
+  "common.new_since": "Ново в {{version}}",
   "common.retry": "Опитай отново",
   "sidebar.recipes": "Рецепти",
   "recipes.search": "Търсене на рецепти...",

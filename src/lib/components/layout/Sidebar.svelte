@@ -5,6 +5,8 @@
 	import PluginPanel from '$lib/components/plugin/PluginPanel.svelte';
 	import SnippetPanel from '$lib/components/snippets/SnippetPanel.svelte';
 	import RecipePanel from '$lib/components/recipes/RecipePanel.svelte';
+	import NewIndicator from '$lib/components/shared/NewIndicator.svelte';
+	import { sidebarHasNew, markSidebarSeen, newSince } from '$lib/state/whats-new.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
 	type Section = 'sessions' | 'explorer' | 'tunnels' | 'snippets' | 'recipes' | 'plugins';
@@ -83,6 +85,10 @@
 	]);
 
 	function handleSectionClick(sectionId: Section): void {
+		// Reaching the section is being shown it. Collapsing it again later does
+		// not bring the badge back.
+		markSidebarSeen(sectionId);
+
 		if (collapsed) {
 			collapsed = false;
 			activeSection = sectionId;
@@ -128,6 +134,7 @@
 			<button
 				class="nav-btn"
 				class:active={activeSection === section.id}
+				class:has-new={sidebarHasNew(section.id)}
 				onclick={() => handleSectionClick(section.id)}
 				title={section.label}
 				aria-label={section.label}
@@ -141,7 +148,9 @@
 						stroke-linejoin="round"
 					/>
 				</svg>
-
+				{#if sidebarHasNew(section.id)}
+					<NewIndicator since={newSince({ kind: 'sidebar', section: section.id })} />
+				{/if}
 			</button>
 		{/each}
 
@@ -273,6 +282,19 @@
 
 	.rail-toggle {
 		margin-top: auto;
+	}
+
+	/* A dot alone is easy to miss on a 48px rail, so the icon itself takes the
+	   accent colour and a tinted ground. Steady, not animated: this has to sit
+	   there until someone gets round to it, and a pulsing icon in the corner of
+	   a terminal is a reason to close the app. */
+	.nav-btn.has-new:not(.active) {
+		color: var(--color-accent);
+		background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+	}
+
+	.nav-btn.has-new:not(.active):hover {
+		background: color-mix(in srgb, var(--color-accent) 22%, transparent);
 	}
 
 	.nav-btn {
