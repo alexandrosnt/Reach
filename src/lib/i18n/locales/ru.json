@@ -676,6 +676,7 @@
   "recipes.risk_none": "Рисков не найдено. Это не то же самое, что безопасно.",
   "recipes.risk_count": "{{count}} строк стоит проверить",
   "recipes.understated": "Автор указал {{declared}}, но выглядит как {{actual}}.",
+  "recipes.declared_above_scan": "Автор оценил как {{declared}}. Само сканирование ничего хуже не нашло: оно не видит сквозь переменные.",
   "recipes.opaque": "Строка {{lines}} скачивает и выполняет код. Что именно — отсюда не видно.",
   "recipes.required": "Обязательно",
   "recipes.show_command": "Показать точную команду",

@@ -251,7 +251,7 @@ mod tests {
                 assert!(
                     !analysis.understated,
                     "{id} declares {:?} but analyses as {:?}",
-                    analysis.declared, analysis.danger
+                    analysis.declared, analysis.found
                 );
             }
         }
@@ -275,11 +275,12 @@ mod tests {
             let (_, source) = SHIPPED[0];
             let analysis = risk::analyse(&parse(source).expect("parses"));
             assert_eq!(
-                analysis.danger,
+                analysis.found,
                 Danger::Benign,
                 "disk-report must stay read-only: {:?}",
                 analysis.findings
             );
+            assert_eq!(analysis.danger, Danger::Benign, "and must say so in its header");
         }
 
         #[test]

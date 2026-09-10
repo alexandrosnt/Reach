@@ -79,10 +79,12 @@ Before running, Reach reads the script and classifies every line using the same 
 | Sensitive | Changes system configuration or service availability. Installing a package or restarting a service is sensitive. |
 | Destructive | Data loss, or a machine that will not boot. |
 
-The dialog shows the worst finding, quotes the lines responsible, and calls out two things separately:
+The level shown — and the one that decides whether you must type the id to confirm — is the **worse** of what the author declared and what the scan found. The scan cannot see through a variable: `sed -i … "$CONFIG"` looks harmless to it even when `CONFIG` is `/etc/ssh/sshd_config`. The author can, so an honest `danger: sensitive` in the header counts even when the scan finds nothing, and the dialog says that is where the rating came from.
+
+The dialog quotes the lines responsible for each finding, and calls out two things separately:
 
 - **Lines that download and run code** — `curl … | sh` and the like. Nothing can see what will arrive, so the pattern itself is the warning.
-- **An author who understated the risk.** If the header says `benign` and the analysis says `destructive`, you are told. Usually it is a stale header. Sometimes it is not.
+- **An author who understated the risk.** If the header says `benign` and the scan says `destructive`, you are told, and the higher level wins. Usually it is a stale header. Sometimes it is not.
 
 Be clear about what this is: pattern matching over shell text. It makes an obvious hazard impossible to miss. It cannot make a subtle one impossible to write. What actually decides whether a registry recipe is safe is the person who reviewed it.
 

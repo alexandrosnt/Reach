@@ -704,6 +704,7 @@
   "recipes.risk_none": "Nichts Riskantes gefunden. Das ist nicht dasselbe wie sicher.",
   "recipes.risk_count": "{{count}} Zeilen, die eine Prüfung wert sind",
   "recipes.understated": "Der Autor gibt {{declared}} an, es wirkt aber {{actual}}.",
+  "recipes.declared_above_scan": "Vom Autor als {{declared}} eingestuft. Der Scan allein fand nichts Schlimmeres; er kann nicht durch Variablen sehen.",
   "recipes.opaque": "Zeile {{lines}} lädt Code herunter und führt ihn aus. Was ankommt, ist hier nicht einsehbar.",
   "recipes.required": "Erforderlich",
   "recipes.show_command": "Genauen Befehl anzeigen",

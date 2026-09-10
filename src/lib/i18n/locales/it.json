@@ -704,6 +704,7 @@
   "recipes.risk_none": "Nulla di rischioso trovato. Non è la stessa cosa che sicuro.",
   "recipes.risk_count": "{{count}} righe da controllare",
   "recipes.understated": "L'autore la dichiara {{declared}}, ma sembra {{actual}}.",
+  "recipes.declared_above_scan": "Classificata {{declared}} dall'autore. L'analisi da sola non ha trovato nulla di peggio; non vede attraverso le variabili.",
   "recipes.opaque": "La riga {{lines}} scarica ed esegue codice. Nulla qui può vedere cosa arriva.",
   "recipes.required": "Obbligatorio",
   "recipes.show_command": "Mostra il comando esatto",
