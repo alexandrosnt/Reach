@@ -12,6 +12,8 @@
 	 * Reach fills in its own URL and token and hands over the finished thing.
 	 */
 	import { onMount } from 'svelte';
+	import Disclosure from '$lib/components/shared/Disclosure.svelte';
+	import Dropdown from '$lib/components/shared/Dropdown.svelte';
 	import Toggle from '$lib/components/shared/Toggle.svelte';
 	import McpClientIcon from '$lib/components/shared/McpClientIcon.svelte';
 	import { MCP_CLIENTS, fill } from '$lib/data/mcp-clients';
@@ -42,6 +44,19 @@
 	 *  to lose — but because "an AI may now wipe this disk unprompted" should
 	 *  never be one stray click away. */
 	let confirmingDangerous = $state(false);
+
+	// The dropdowns hold a local choice mirrored from the server's state, so a
+	// rejected Dangerous confirmation snaps the control back to what is true.
+	let agentChoice = $state('');
+	let modeChoice = $state('');
+	$effect(() => {
+		agentChoice = status.agentId;
+	});
+	$effect(() => {
+		modeChoice = status.mode;
+	});
+	let currentAgent = $derived(agents.find((a) => a.id === status.agentId) ?? null);
+	let currentMode = $derived(MODES.find((m) => m.id === status.mode) ?? null);
 
 	async function pickMode(id: McpMode): Promise<void> {
 		if (id === 'dangerous' && status.mode !== 'dangerous') {
@@ -121,21 +136,25 @@
 <div class="tab-content">
 	<!-- 1 · The switch. Off means no socket exists at all. -->
 	<section class="block">
-		<div class="row">
-			<div class="row-info">
-				<span class="row-label">{t('mcp.enable')}</span>
-				<span class="row-desc">{t('mcp.enable_desc')}</span>
+		<div class="setting-row">
+			<div class="setting-info">
+				<span class="setting-label">{t('mcp.enable')}</span>
+				<span class="setting-description">{t('mcp.enable_desc')}</span>
 			</div>
-			<Toggle checked={status.enabled} onchange={toggle} disabled={busy} />
+			<div class="setting-control">
+				<Toggle checked={status.enabled} onchange={toggle} disabled={busy} />
+			</div>
 		</div>
 
 		{#if !status.enabled}
-			<div class="row">
-				<div class="row-info">
-					<span class="row-label">{t('mcp.port')}</span>
-					<span class="row-desc">{t('mcp.port_desc')}</span>
+			<div class="setting-row">
+				<div class="setting-info">
+					<span class="setting-label">{t('mcp.port')}</span>
+					<span class="setting-description">{t('mcp.port_desc')}</span>
 				</div>
-				<input class="port" type="number" min="0" max="65535" bind:value={portInput} />
+				<div class="setting-control">
+					<input class="port" type="number" min="0" max="65535" bind:value={portInput} />
+				</div>
 			</div>
 		{:else}
 			<div class="live">
@@ -191,91 +210,68 @@
 
 	{#if status.enabled}
 		<!-- 2 · The agent decides the tool surface, not just the tone. -->
-		<section class="block">
-			<div class="head">
-				<span class="head-label">{t('mcp.agent')}</span>
-				<span class="head-hint">{t('mcp.agent_desc')}</span>
+		<div class="setting-row">
+			<div class="setting-info">
+				<span class="setting-label">{t('mcp.agent')}</span>
+				<span class="setting-description">{currentAgent ? currentAgent.description : t('mcp.agent_desc')}</span>
+				{#if currentAgent}
+					<span class="setting-description mono">
+						{currentAgent.tools.join(' · ')}{#if currentAgent.readOnly} · {t('mcp.read_only')}{/if}
+					</span>
+				{/if}
 			</div>
-			<div class="agents">
-				{#each agents as a (a.id)}
-					<button
-						class="agent"
-						class:selected={status.agentId === a.id}
-						onclick={() => mcp.setAgent(a.id)}
-						disabled={busy}
-						aria-pressed={status.agentId === a.id}
-					>
-						<span class="agent-head">
-							<span class="agent-name">{a.name}</span>
-							{#if a.readOnly}
-								<span class="tag ok">{t('mcp.read_only')}</span>
-							{/if}
-						</span>
-						<span class="agent-desc">{a.description}</span>
-						<span class="agent-tools">{a.tools.join(' · ')}</span>
-					</button>
-				{/each}
+			<div class="setting-control">
+				<Dropdown
+					options={agents.map((a) => ({ label: a.name, value: a.id }))}
+					bind:selected={agentChoice}
+					onchange={(id) => mcp.setAgent(id)}
+				/>
 			</div>
-		</section>
+		</div>
 
 		<!-- 3 · How much you want to be asked. Mirrors the status bar. -->
-		<section class="block">
-			<div class="head">
-				<span class="head-label">{t('mcp.mode')}</span>
-				<span class="head-hint">{t('mcp.mode_desc')}</span>
+		<div class="setting-row">
+			<div class="setting-info">
+				<span class="setting-label">{t('mcp.mode')}</span>
+				<span class="setting-description">
+					{status.readOnly ? t('mcp.mode_moot') : (currentMode ? currentMode.hint() : t('mcp.mode_desc'))}
+				</span>
 			</div>
-			<div class="modes">
-				{#each MODES as m (m.id)}
-					<button
-						class="mode"
-						class:selected={status.mode === m.id}
-						class:warn={status.mode === m.id && (m.id === 'auto_safe' || m.id === 'auto')}
-						class:danger={m.id === 'dangerous'}
-						class:danger-active={status.mode === 'dangerous' && m.id === 'dangerous'}
-						onclick={() => pickMode(m.id)}
-						disabled={busy || status.readOnly}
-						aria-pressed={status.mode === m.id}
-					>
-						<span class="mode-name">{m.label()}</span>
-						<span class="mode-hint">{m.hint()}</span>
+			<div class="setting-control">
+				<Dropdown
+					options={MODES.map((m) => ({ label: m.label(), value: m.id }))}
+					bind:selected={modeChoice}
+					onchange={(id) => pickMode(id as McpMode)}
+				/>
+			</div>
+		</div>
+
+		{#if confirmingDangerous}
+			<div class="confirm" role="alertdialog" aria-labelledby="mcp-danger-msg">
+				<p id="mcp-danger-msg" class="confirm-msg">{t('mcp.mode_dangerous_confirm')}</p>
+				<div class="confirm-actions">
+					<button class="mini" onclick={() => { confirmingDangerous = false; modeChoice = status.mode; }}>
+						{t('mcp.confirm_reject')}
 					</button>
-				{/each}
-			</div>
-
-			{#if confirmingDangerous}
-				<div class="confirm" role="alertdialog" aria-labelledby="mcp-danger-msg">
-					<p id="mcp-danger-msg" class="confirm-msg">{t('mcp.mode_dangerous_confirm')}</p>
-					<div class="confirm-actions">
-						<button class="mini" onclick={() => (confirmingDangerous = false)}>
-							{t('mcp.confirm_reject')}
-						</button>
-						<button
-							class="mini danger-solid"
-							onclick={async () => {
-								confirmingDangerous = false;
-								await mcp.setMode('dangerous');
-							}}
-						>
-							{t('mcp.mode_dangerous')}
-						</button>
-					</div>
+					<button
+						class="mini danger-solid"
+						onclick={async () => {
+							confirmingDangerous = false;
+							await mcp.setMode('dangerous');
+						}}
+					>
+						{t('mcp.mode_dangerous')}
+					</button>
 				</div>
-			{/if}
+			</div>
+		{/if}
 
-			{#if status.mode === 'dangerous'}
-				<p class="danger-banner">{t('mcp.mode_dangerous_active')}</p>
-			{/if}
-			{#if status.readOnly}
-				<p class="hint">{t('mcp.mode_moot')}</p>
-			{/if}
-		</section>
+		{#if status.mode === 'dangerous'}
+			<p class="danger-banner">{t('mcp.mode_dangerous_active')}</p>
+		{/if}
 
 		<!-- 4 · What is exposed right now, and how to stop it. -->
-		<section class="block">
-			<div class="head">
-				<span class="head-label">{t('mcp.shared')}</span>
-				<span class="head-hint">{t('mcp.shared_desc')}</span>
-			</div>
+		<Disclosure title={t('mcp.shared')} hint={t('mcp.shared_desc')} summary={status.sessions.length === 0 ? t('mcp.none_shared') : t('mcp.exposing', { count: status.sessions.length })}>
 			{#if status.sessions.length === 0}
 				<p class="empty">{t('mcp.shared_none')}</p>
 			{:else}
@@ -332,14 +328,10 @@
 					{/each}
 				</ul>
 			{/if}
-		</section>
+		</Disclosure>
 
 		<!-- 5 · The payoff. -->
-		<section class="block">
-			<div class="head">
-				<span class="head-label">{t('mcp.connect')}</span>
-				<span class="head-hint">{t('mcp.connect_desc')}</span>
-			</div>
+		<Disclosure title={t('mcp.connect')} hint={t('mcp.connect_desc')} summary={client.name}>
 
 			<div class="clients">
 				{#each MCP_CLIENTS as c (c.id)}
@@ -377,7 +369,7 @@
 			<a class="docs" href={client.docs} target="_blank" rel="noreferrer noopener">
 				{t('mcp.client_docs', { name: client.name })}
 			</a>
-		</section>
+		</Disclosure>
 	{/if}
 </div>
 
@@ -385,7 +377,7 @@
 	.tab-content {
 		display: flex;
 		flex-direction: column;
-		gap: var(--space-5);
+		gap: var(--space-3);
 	}
 
 	.block {
@@ -394,28 +386,6 @@
 		gap: var(--space-2);
 	}
 
-	.row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: var(--space-4);
-	}
-
-	.row-info {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		min-width: 0;
-	}
-
-	.row-label {
-		font-size: var(--text-sm);
-		font-weight: 600;
-		color: var(--color-text-primary);
-	}
-
-	.row-desc,
-	.head-hint,
 	.hint,
 	.empty {
 		font-size: var(--text-xs);
@@ -425,20 +395,6 @@
 
 	.hint,
 	.empty {
-		color: var(--color-text-tertiary);
-	}
-
-	.head {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-	}
-
-	.head-label {
-		font-size: var(--text-2xs);
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.04em;
 		color: var(--color-text-tertiary);
 	}
 
@@ -456,8 +412,10 @@
 
 	.live {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
-		gap: var(--space-2);
+		gap: 4px 8px;
+		padding: 8px 0 4px;
 	}
 
 	.dot {
@@ -479,8 +437,9 @@
 		color: var(--color-text-secondary);
 	}
 
+	/* Under the status line, not squeezed beside it. */
 	.port-note {
-		margin-left: auto;
+		flex-basis: 100%;
 		font-size: var(--text-2xs);
 		color: var(--color-text-tertiary);
 	}
@@ -548,20 +507,6 @@
 	/* Dangerous is drawn as a hazard, not another option in the row: dashed
 	   until chosen, solid red once active, with a standing banner underneath.
 	   The person enabling it should not be able to forget they did. */
-	.mode.danger {
-		border-style: dashed;
-		border-color: color-mix(in srgb, var(--color-danger) 55%, transparent);
-	}
-
-	.mode.danger .mode-name {
-		color: var(--color-danger);
-	}
-
-	.mode.danger-active {
-		border-style: solid;
-		border-color: var(--color-danger);
-		background: color-mix(in srgb, var(--color-danger) 12%, transparent);
-	}
 
 	.confirm {
 		display: flex;
@@ -600,93 +545,6 @@
 		border-left: 3px solid var(--color-danger);
 		background: color-mix(in srgb, var(--color-danger) 10%, transparent);
 		border-radius: var(--radius-sm);
-	}
-
-	.agents,
-	.modes {
-		display: grid;
-		grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-		gap: var(--space-2);
-	}
-
-	.agent,
-	.mode {
-		display: flex;
-		flex-direction: column;
-		gap: 3px;
-		padding: var(--space-2) var(--space-3);
-		text-align: left;
-		font-family: inherit;
-		background: var(--color-bg-elevated);
-		border: 2px solid var(--color-border);
-		border-radius: var(--radius-card);
-		cursor: pointer;
-	}
-
-	.agent:hover:not(:disabled),
-	.mode:hover:not(:disabled) {
-		background: var(--color-surface-hover);
-	}
-
-	.agent:disabled,
-	.mode:disabled {
-		opacity: 0.5;
-		cursor: default;
-	}
-
-	.agent.selected,
-	.mode.selected {
-		border-color: var(--color-accent);
-	}
-
-	/* An active auto mode is bordered amber, so the panel says the same thing
-	   the status bar does without needing to be read. */
-	.mode.warn {
-		border-color: var(--color-warning);
-	}
-
-	.agent-head {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
-	}
-
-	.agent-name,
-	.mode-name {
-		font-size: var(--text-sm);
-		font-weight: 600;
-		color: var(--color-text-primary);
-	}
-
-	.tag {
-		padding: 1px 6px;
-		font-size: 0.625rem;
-		font-weight: 700;
-		text-transform: uppercase;
-		border-radius: var(--radius-sm);
-	}
-
-	.tag.ok {
-		color: var(--color-success);
-		border: 1px solid var(--color-success);
-	}
-
-	.agent-desc,
-	.mode-hint {
-		font-size: var(--text-xs);
-		color: var(--color-text-secondary);
-	}
-
-	.agent-tools {
-		font-family: var(--font-mono);
-		font-size: 0.625rem;
-		color: var(--color-text-tertiary);
-	}
-
-	.shared-head {
-		display: flex;
-		align-items: center;
-		gap: var(--space-2);
 	}
 
 	.shared-controls {

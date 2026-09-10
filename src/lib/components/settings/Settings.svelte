@@ -186,7 +186,7 @@
 
 	.settings-content {
 		flex: 1;
-		padding: 8px 24px 24px;
+		padding: 20px 24px 24px;
 		overflow-y: auto;
 		min-width: 0;
 		scrollbar-width: thin;
