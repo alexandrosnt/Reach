@@ -1,5 +1,17 @@
 <script lang="ts">
-	import QuickConnect from './QuickConnect.svelte';
+	import QuickConnect, { type QuickConnectPrefill } from './QuickConnect.svelte';
+	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	import {
+		faPlus,
+		faBolt,
+		faServer,
+		faFolderPlus,
+		faFileImport,
+		faMagnifyingGlass,
+		faXmark
+	} from '@fortawesome/free-solid-svg-icons';
+	import { registerSessionActions, shortcutLabel } from '$lib/state/shortcuts.svelte';
+	import { onMount, tick } from 'svelte';
 	import SessionEditor from './SessionEditor.svelte';
 	import SshConfigImport from './SshConfigImport.svelte';
 	import SessionCard from './SessionCard.svelte';
@@ -36,6 +48,92 @@
 
 	// Search query
 	let searchQuery = $state('');
+
+	// ---- The field is also the quick connect --------------------------------
+	//
+	// Type a name and the list filters. Type something that reads as an
+	// address and a "Connect to …" suggestion appears; Enter takes it when no
+	// saved session matched. The detection is deliberately conservative: a
+	// session called "a.b" must filter, never connect.
+
+	const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
+
+	function parseAddress(raw: string): QuickConnectPrefill | null {
+		const text = raw.trim();
+		if (!text || /\s/.test(text)) return null;
+		let username: string | undefined;
+		let rest = text;
+		const at = text.lastIndexOf('@');
+		if (at > 0) {
+			username = text.slice(0, at);
+			rest = text.slice(at + 1);
+		}
+		let port: number | undefined;
+		const withPort = rest.match(/^(.+):(\d{1,5})$/);
+		if (withPort) {
+			rest = withPort[1];
+			port = Number(withPort[2]);
+		}
+		if (!rest || !/^[a-z0-9][a-z0-9.-]*$/i.test(rest)) return null;
+		// Needs one unmistakable sign of an address: a user, a port, an IP, or
+		// a dotted name ending in something TLD-shaped.
+		const unmistakable = username !== undefined || port !== undefined || IPV4.test(rest) || /\.[a-z]{2,}$/i.test(rest);
+		return unmistakable ? { host: rest, username, port } : null;
+	}
+
+	let addressSuggestion = $derived(parseAddress(searchQuery));
+	let quickPrefill = $state<QuickConnectPrefill | null>(null);
+
+	function connectToAddress(): void {
+		if (!addressSuggestion) return;
+		quickPrefill = addressSuggestion;
+		showQuickConnect = true;
+	}
+
+	function onSearchKeydown(e: KeyboardEvent): void {
+		if (e.key !== 'Enter' || !addressSuggestion) return;
+		// A saved session matched what was typed; Enter must not skip past it
+		// to a stranger with the same name.
+		if (filteredSessions.length > 0) return;
+		e.preventDefault();
+		connectToAddress();
+	}
+
+	// ---- The "+" menu -------------------------------------------------------
+	let showAddMenu = $state(false);
+	let addMenuEl = $state<HTMLDivElement | undefined>();
+
+	$effect(() => {
+		if (!showAddMenu) return;
+		function outside(e: MouseEvent) {
+			if (addMenuEl && !addMenuEl.contains(e.target as Node)) showAddMenu = false;
+		}
+		function escape(e: KeyboardEvent) {
+			if (e.key === 'Escape') showAddMenu = false;
+		}
+		document.addEventListener('mousedown', outside, true);
+		document.addEventListener('keydown', escape, true);
+		return () => {
+			document.removeEventListener('mousedown', outside, true);
+			document.removeEventListener('keydown', escape, true);
+		};
+	});
+
+	function fromMenu(action: () => void): void {
+		showAddMenu = false;
+		action();
+	}
+
+	onMount(() => {
+		registerSessionActions({
+			newSession: () => handleNewSession(),
+			quickConnect: () => {
+				quickPrefill = null;
+				showQuickConnect = true;
+			}
+		});
+		return () => registerSessionActions(null);
+	});
 
 	// Folders
 	let folders = $state<Folder[]>([]);
@@ -588,65 +686,74 @@
 			<p class="init-desc">{t('session.keychain_locked_desc')}</p>
 		</div>
 	{:else}
-		<div class="actions-row">
-			<button class="quick-connect-btn" onclick={() => (showQuickConnect = true)}>
-				<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-					<path
-						d="M13 10V3L4 14h7v7l9-11h-7z"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					/>
-				</svg>
-				{t('session.quick_connect')}
-			</button>
-			<button class="save-session-btn" onclick={handleNewSession}>
-				<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-					<path
-						d="M12 5v14M5 12h14"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-					/>
-				</svg>
-				{t('session.save_session')}
-			</button>
-			<button class="save-session-btn" onclick={() => (showImport = true)} title={t('session.import_ssh_config')}>
-				<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-					<path
-						d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"
-						stroke="currentColor"
-						stroke-width="2"
-						stroke-linecap="round"
-						stroke-linejoin="round"
-					/>
-				</svg>
-				{t('session.import_ssh_config')}
-			</button>
-		</div>
-
 		<VaultSelector onvaultselect={(filter) => { selectedVaultId = filter; creatingFolder = false; newFolderName = ''; }} onrefresh={() => loadSessions()} />
 
-		<div class="search-row">
-			<svg class="search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none">
-				<circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
-				<path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-			</svg>
-			<input
-				class="search-input"
-				type="text"
-				placeholder={t('session.search_placeholder')}
-				bind:value={searchQuery}
-			/>
-			{#if searchQuery}
-				<button class="search-clear" onclick={() => (searchQuery = '')} aria-label={t('common.clear')}>
-					<svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-						<path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
-					</svg>
+		<div class="tool-row">
+			<div class="search-row">
+				<span class="search-icon"><FaIcon icon={faMagnifyingGlass} size={11} /></span>
+				<input
+					class="search-input"
+					type="text"
+					placeholder={t('session.search_or_connect')}
+					bind:value={searchQuery}
+					onkeydown={onSearchKeydown}
+				/>
+				{#if searchQuery}
+					<button class="search-clear" onclick={() => (searchQuery = '')} aria-label={t('common.clear')}>
+						<FaIcon icon={faXmark} size={10} />
+					</button>
+				{/if}
+			</div>
+
+			<div class="add-wrap" bind:this={addMenuEl}>
+				<button
+					class="add-btn"
+					class:open={showAddMenu}
+					aria-haspopup="menu"
+					aria-expanded={showAddMenu}
+					title={t('session.add')}
+					aria-label={t('session.add')}
+					onclick={() => (showAddMenu = !showAddMenu)}
+				>
+					<FaIcon icon={faPlus} size={13} />
 				</button>
-			{/if}
+				{#if showAddMenu}
+					<div class="add-menu" role="menu">
+						<button class="menu-item" role="menuitem" onclick={() => fromMenu(handleNewSession)}>
+							<FaIcon icon={faServer} size={12} />
+							<span>{t('session.new_session')}</span>
+							<kbd>{shortcutLabel('n', { ctrl: true })}</kbd>
+						</button>
+						<button class="menu-item" role="menuitem" onclick={() => fromMenu(() => { quickPrefill = null; showQuickConnect = true; })}>
+							<FaIcon icon={faBolt} size={12} />
+							<span>{t('session.quick_connect')}</span>
+							<kbd>{shortcutLabel('n', { ctrl: true, shift: true })}</kbd>
+						</button>
+						<button class="menu-item" role="menuitem" onclick={() => fromMenu(() => { creatingFolder = true; newFolderName = ''; })}>
+							<FaIcon icon={faFolderPlus} size={12} />
+							<span>{t('session.new_folder')}</span>
+						</button>
+						<div class="menu-sep"></div>
+						<button class="menu-item" role="menuitem" onclick={() => fromMenu(() => (showImport = true))}>
+							<FaIcon icon={faFileImport} size={12} />
+							<span>{t('session.import_ssh_config')}</span>
+						</button>
+					</div>
+				{/if}
+			</div>
 		</div>
+
+		{#if addressSuggestion}
+			<button class="connect-suggestion" onclick={connectToAddress}>
+				<FaIcon icon={faBolt} size={12} />
+				<span class="suggestion-text">
+					{t('session.connect_to_address', {
+						address: `${addressSuggestion.username ? addressSuggestion.username + '@' : ''}${addressSuggestion.host}${addressSuggestion.port ? ':' + addressSuggestion.port : ''}`
+					})}
+				</span>
+				{#if filteredSessions.length === 0}<kbd>↵</kbd>{/if}
+			</button>
+		{/if}
 
 		{#if loading}
 			<div class="loading-state">
@@ -668,7 +775,7 @@
 						</form>
 					</div>
 				{:else}
-					<p class="empty-state">{t('session.no_sessions_vault')}</p>
+					<p class="empty-state">{searchQuery.trim() ? t('session.no_matches') : t('session.no_sessions_vault')}</p>
 				{/if}
 			</div>
 		{:else}
@@ -802,7 +909,7 @@
 	{/if}
 </div>
 
-<QuickConnect bind:open={showQuickConnect} />
+<QuickConnect bind:open={showQuickConnect} prefill={quickPrefill} />
 <SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={targetVaultId} {folders} onsave={handleEditorSave} />
 <SshConfigImport bind:open={showImport} onsave={handleEditorSave} />
 
@@ -882,74 +989,132 @@
 	   pushed all three buttons to 61px tall. Quick Connect is the primary action,
 	   so it gets its own full-width row and the two secondary actions share the
 	   next one — the sidebar has vertical room to spare. */
-	.actions-row {
+	.tool-row {
 		display: flex;
-		flex-wrap: wrap;
+		align-items: stretch;
 		gap: 4px;
 	}
 
-	.actions-row .quick-connect-btn {
-		flex: 1 1 100%;
-		justify-content: center;
-	}
-
-	/* Side by side, "Import SSH Config" still wrapped onto two lines and stood
-	   44px tall next to a 28px sibling. There is vertical room in this column;
-	   there is not horizontal room for two labels of that length. Full-width
-	   rows, so nothing wraps and the labels stay legible. */
-	.actions-row .save-session-btn {
-		flex: 1 1 100%;
+	.tool-row .search-row {
+		flex: 1;
 		min-width: 0;
-		justify-content: center;
-		white-space: nowrap;
 	}
 
-	.actions-row .quick-connect-btn {
-		white-space: nowrap;
+	.add-wrap {
+		position: relative;
+		flex-shrink: 0;
 	}
 
-
-	.quick-connect-btn,
-	.save-session-btn {
+	.add-btn {
 		display: flex;
 		align-items: center;
-		gap: 4px;
-		flex: 1;
-		padding: 5px 8px;
-		font-family: var(--font-sans);
-		font-size: var(--text-sm);
-		font-weight: 500;
+		justify-content: center;
+		width: 30px;
+		height: 100%;
+		min-height: 30px;
+		padding: 0;
+		border: 1px solid var(--color-border);
 		border-radius: 6px;
+		background: transparent;
+		color: var(--color-accent);
 		cursor: pointer;
 		transition:
 			background-color var(--duration-default) var(--ease-default),
-			color var(--duration-default) var(--ease-default);
+			border-color var(--duration-default) var(--ease-default);
 	}
 
-	.quick-connect-btn {
-		color: var(--color-accent);
-		background: transparent;
-		border: 1px solid var(--color-accent);
-	}
-
-	.quick-connect-btn:hover {
+	.add-btn:hover,
+	.add-btn.open {
 		background-color: rgba(0, 122, 255, 0.1);
+		border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
 	}
 
-	.save-session-btn {
-		color: var(--color-text-secondary);
-		background: transparent;
+	.add-btn:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 1px;
+	}
+
+	.add-menu {
+		position: absolute;
+		right: 0;
+		top: calc(100% + 4px);
+		z-index: 30;
+		min-width: 200px;
+		padding: 4px;
+		background: var(--color-bg-elevated);
 		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		box-shadow: var(--shadow-elevated, 0 8px 32px rgba(0, 0, 0, 0.35));
 	}
 
-	.save-session-btn:hover {
-		background-color: var(--color-surface-hover);
+	.menu-item {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		width: 100%;
+		padding: 7px 10px;
+		border: none;
+		border-radius: 5px;
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		text-align: left;
+		font-family: inherit;
+		font-size: var(--text-sm);
+		white-space: nowrap;
+	}
+
+	.menu-item:hover,
+	.menu-item:focus-visible {
+		background: var(--color-surface-hover);
 		color: var(--color-text-primary);
+		outline: none;
 	}
 
-	.quick-connect-btn:active,
-	.save-session-btn:active {
-		transform: scale(0.98);
+	.menu-item span {
+		flex: 1;
+	}
+
+	.menu-item kbd,
+	.connect-suggestion kbd {
+		font-family: var(--font-mono, monospace);
+		font-size: var(--text-2xs);
+		color: var(--color-text-tertiary);
+	}
+
+	.menu-sep {
+		height: 1px;
+		margin: 4px 6px;
+		background: var(--color-border);
+	}
+
+	/* "Connect to root@10.0.0.7": offered, never assumed. */
+	.connect-suggestion {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
+		padding: 7px 10px;
+		border: 1px solid color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+		border-radius: 6px;
+		background: rgba(0, 122, 255, 0.08);
+		color: var(--color-accent);
+		cursor: pointer;
+		text-align: left;
+		font-family: inherit;
+		font-size: var(--text-sm);
+	}
+
+	.connect-suggestion:hover {
+		background: rgba(0, 122, 255, 0.14);
+	}
+
+	.suggestion-text {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	.search-row {

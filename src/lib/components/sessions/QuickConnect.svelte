@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import Button from '$lib/components/shared/Button.svelte';
 	import Input from '$lib/components/shared/Input.svelte';
@@ -8,11 +9,19 @@
 	import { getSettings } from '$lib/state/settings.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 
-	interface Props {
-		open: boolean;
+	/** What the sessions search field parsed out of `user@host:port`. */
+	export interface QuickConnectPrefill {
+		host: string;
+		username?: string;
+		port?: number;
 	}
 
-	let { open = $bindable() }: Props = $props();
+	interface Props {
+		open: boolean;
+		prefill?: QuickConnectPrefill | null;
+	}
+
+	let { open = $bindable(), prefill = null }: Props = $props();
 
 	let host = $state('');
 	let portStr = $state('22');
@@ -40,6 +49,17 @@
 	let error = $state<string | undefined>();
 
 	let port = $derived(parseInt(portStr, 10) || 22);
+
+	// Opening with an address already typed elsewhere: take it, leave the rest.
+	$effect(() => {
+		if (!open || !prefill) return;
+		const p = prefill;
+		untrack(() => {
+			host = p.host;
+			if (p.username) username = p.username;
+			if (p.port) portStr = String(p.port);
+		});
+	});
 	let canConnect = $derived(host.trim().length > 0 && username.trim().length > 0 && !connecting);
 
 	async function handleConnect(): Promise<void> {
