@@ -182,7 +182,7 @@
 		}
 	});
 
-	function loadAddons(term: Terminal, fit: FitAddon): void {
+	function loadAddons(term: Terminal, fit: FitAddon, host: HTMLElement): void {
 		term.loadAddon(fit);
 		// Open links in the OS default browser (Windows/macOS/Linux) via Tauri's
 		// shell, not inside the WebView.
@@ -196,25 +196,57 @@
 		term.loadAddon(unicode11);
 		term.unicode.activeVersion = '11';
 
+		attachWebgl(term, host);
+	}
+
+	/**
+	 * The WebGL renderer, with recovery that does not keep the user waiting.
+	 *
+	 * Heavy compositing — the Settings modal's backdrop blur during a theme
+	 * repaint, on some GPUs — can take the WebGL context away. The canvas goes
+	 * blank the instant that happens. The addon's own `onContextLoss` only
+	 * fires after it has waited three seconds for the context to come back,
+	 * and if the driver does hand it back inside that window the addon takes
+	 * its restore path instead, which is the one that can stay blank for good.
+	 * Three seconds of a dead-looking terminal reads as "stuck".
+	 *
+	 * So the `webglcontextlost` DOM event is caught here directly, the moment
+	 * it fires — captured on the container, since it does not bubble — and the
+	 * addon is replaced with a fresh one: new canvas, new context, no wait.
+	 * After two losses in a row the DOM renderer stays; a GPU that keeps
+	 * dropping contexts is not one to keep asking.
+	 */
+	function attachWebgl(term: Terminal, host: HTMLElement, attempt = 0): void {
+		let webgl: WebglAddon;
 		try {
-			const webgl = new WebglAddon();
-			webgl.onContextLoss(() => {
-				// WebGL context loss (heavy compositing — e.g. the Settings modal's
-				// backdrop blur) would otherwise leave the terminal frozen/blank.
-				// Drop the WebGL addon (xterm falls back to the DOM renderer), then
-				// force a full repaint so the existing buffer is redrawn rather than
-				// left stale.
-				webgl.dispose();
-				try {
-					term.refresh(0, term.rows - 1);
-				} catch {
-					// terminal may have been disposed mid-frame
-				}
-			});
-			term.loadAddon(webgl);
+			webgl = new WebglAddon();
 		} catch {
-			console.warn('[Terminal] WebGL addon unavailable, using canvas renderer');
+			console.warn('[Terminal] WebGL addon unavailable, using the DOM renderer');
+			return;
 		}
+		let replaced = false;
+		const replace = () => {
+			if (replaced) return;
+			replaced = true;
+			host.removeEventListener('webglcontextlost', onLost, true);
+			try {
+				webgl.dispose();
+			} catch {
+				// already gone
+			}
+			if (attempt < 2) attachWebgl(term, host, attempt + 1);
+			try {
+				term.refresh(0, term.rows - 1);
+			} catch {
+				// terminal may have been disposed mid-frame
+			}
+		};
+		const onLost = (e: Event) => {
+			if (e.target instanceof HTMLCanvasElement) replace();
+		};
+		host.addEventListener('webglcontextlost', onLost, true);
+		webgl.onContextLoss(replace);
+		term.loadAddon(webgl);
 	}
 
 	function sendData(data: number[]): void {
@@ -477,7 +509,7 @@
 		const fit = new FitAddon();
 		const font = getSettings().fontFamily || 'monospace';
 
-		loadAddons(term, fit);
+		loadAddons(term, fit, containerEl);
 
 		// Wait for font to load before opening (canvas needs the font ready)
 		const fontSize = getSettings().fontSize ?? 14;
