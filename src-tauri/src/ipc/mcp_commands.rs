@@ -124,7 +124,7 @@ async fn load_setting(state: &AppState, key: &str) -> Option<String> {
 /// Write one MCP setting. Silently does nothing when the vault is locked —
 /// losing a preference is not worth failing the action the user asked for.
 async fn save_setting(state: &AppState, key: &str, value: &str) {
-    let mut manager = state.vault_manager.lock().await;
+    let manager = state.vault_manager.lock().await;
     if manager.is_locked() {
         return;
     }
@@ -457,7 +457,7 @@ pub async fn mcp_regenerate_token(state: tauri::State<'_, AppState>) -> Result<M
     let token = new_token();
 
     {
-        let mut manager = state.vault_manager.lock().await;
+        let manager = state.vault_manager.lock().await;
         if !manager.is_locked() {
             if let Ok(vault_id) = manager.settings_vault_id() {
                 let plaintext = secrecy::SecretBox::new(Box::new(token.clone().into_bytes()));
