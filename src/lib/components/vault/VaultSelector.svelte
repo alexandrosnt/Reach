@@ -388,7 +388,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 						{#if o.vault}
 							<span class="opt-actions">
 							{#if o.vault.vaultType === 'shared'}
-								<button class="opt-action" onclick={(e) => { open = false; openInviteDialog(o.vault!, e); }} title={t('vault.invite_members_short')}>
+								<button class="opt-action invite" onclick={(e) => { open = false; openInviteDialog(o.vault!, e); }} title={t('vault.invite_members_short')}>
 									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
 										<path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
 										<circle cx="8.5" cy="7" r="4"/>
@@ -738,6 +738,11 @@ Go to Settings > Sync > Accept Vault Invite`;
 		position: relative;
 		display: flex;
 		align-items: center;
+		--row-hover: var(--color-surface-hover);
+	}
+
+	.opt-row:has(.opt.shared) {
+		--row-hover: rgba(16, 185, 129, 0.12);
 	}
 
 	.opt {
@@ -758,7 +763,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 	}
 
 	.opt.active {
-		background: var(--color-surface-hover);
+		background: var(--row-hover);
 		color: var(--color-text-primary);
 	}
 
@@ -770,9 +775,6 @@ Go to Settings > Sync > Accept Vault Invite`;
 		color: #10b981;
 	}
 
-	.opt.shared.active {
-		background: rgba(16, 185, 129, 0.12);
-	}
 
 	.opt-name {
 		flex: 1;
@@ -811,23 +813,22 @@ Go to Settings > Sync > Accept Vault Invite`;
 		color: #10b981;
 	}
 
-	/* Invite and delete float over the right edge while the row is pointed
-	   at, instead of reserving 44px on every row. The name gets the width;
-	   the count under them is the one thing you are not reading mid-click. */
+	/* Invite and delete, exactly as a session card does connect/edit/delete:
+	   over the right edge, only while the row is pointed at, fading the text
+	   out behind them rather than overlapping it. */
 	.opt-actions {
 		position: absolute;
-		right: 2px;
-		top: 2px;
-		bottom: 2px;
+		right: 4px;
+		top: 50%;
+		transform: translateY(-50%);
 		display: flex;
 		align-items: center;
 		gap: 2px;
-		padding-left: 14px;
-		background: linear-gradient(90deg, transparent, var(--color-surface-hover) 14px);
-		border-radius: 0 6px 6px 0;
+		padding-left: 20px;
 		opacity: 0;
 		pointer-events: none;
-		transition: opacity 0.1s;
+		background: linear-gradient(to right, transparent 0, var(--row-hover) 20px);
+		transition: opacity var(--duration-default, 0.15s) var(--ease-default, ease);
 	}
 
 	.opt-row:hover .opt-actions,
@@ -836,22 +837,55 @@ Go to Settings > Sync > Accept Vault Invite`;
 		pointer-events: auto;
 	}
 
+	/* The counts live exactly where the buttons land. Step aside rather
+	   than show through. */
+	.opt-row:hover .opt-n,
+	.opt-row:hover .member-count,
+	.opt-row:focus-within .opt-n,
+	.opt-row:focus-within .member-count {
+		visibility: hidden;
+	}
+
+	/* No hover on touch, so the actions have to stay put and visible. */
+	@media (pointer: coarse) {
+		.opt-actions {
+			position: static;
+			transform: none;
+			padding-left: 0;
+			background: none;
+			opacity: 1;
+			pointer-events: auto;
+		}
+	}
+
 	.opt-action {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 22px;
-		height: 22px;
+		width: 24px;
+		height: 24px;
+		padding: 0;
 		border: none;
 		border-radius: 4px;
 		background: transparent;
-		color: var(--color-text-tertiary);
+		color: var(--color-text-secondary);
 		cursor: pointer;
+		transition:
+			background-color var(--duration-default, 0.15s) var(--ease-default, ease),
+			color var(--duration-default, 0.15s) var(--ease-default, ease);
 	}
 
 	.opt-action:hover {
+		background-color: var(--color-surface-active);
 		color: var(--color-text-primary);
-		background: var(--color-surface-active);
+	}
+
+	.opt-action:active {
+		transform: scale(0.92);
+	}
+
+	.opt-action.invite:hover {
+		color: var(--color-accent);
 	}
 
 	.opt-action.danger:hover {
