@@ -37,6 +37,9 @@ export default defineConfig({
 						{ label: 'OpenTofu', slug: 'features/opentofu' },
 						{ label: 'Plugins', slug: 'features/plugins' },
 						{ label: 'AI Assistant', slug: 'features/ai-assistant' },
+						{ label: 'MCP Server', slug: 'features/mcp-server' },
+						{ label: 'Recipes', slug: 'features/recipes' },
+						{ label: 'Session Sharing', slug: 'features/session-sharing' },
 					],
 				},
 				{

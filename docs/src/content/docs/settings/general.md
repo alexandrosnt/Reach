@@ -1,9 +1,9 @@
 ---
 title: General Settings
-description: Configure language, shell, appearance, security, AI, sync, backups, and plugins.
+description: Configure language, shell, appearance, security, AI, MCP, sync, backups, plugins, and sharing.
 ---
 
-Open Settings with **Ctrl+,** (or **Cmd+,** on Mac). The settings panel has a left sidebar with seven tabs and the content on the right.
+Open Settings with **Ctrl+,** (or **Cmd+,** on Mac). The settings panel has a left sidebar with nine tabs and the content on the right. A tab holding something new since you last looked is highlighted until you open it.
 
 ## General
 
@@ -11,7 +11,7 @@ Basic app preferences.
 
 ### Language
 
-Pick your language from the dropdown. Six options: English, Deutsch, Fran&ccedil;ais, Ελληνικά, Italiano, Български. Changes apply immediately.
+Pick your language from the dropdown. Nine options: English, Deutsch, Espa&ntilde;ol, Fran&ccedil;ais, Ελληνικά, Italiano, Български, Русский, 中文. Changes apply immediately.
 
 ### Default Shell
 
@@ -28,6 +28,10 @@ When enabled, clicking the close button minimizes the app to the system tray ins
 ### Start with System
 
 Launch Reach automatically when you log in. Uses the OS autostart mechanism (Startup folder on Windows, Launch Agents on macOS, autostart entries on Linux).
+
+### Community
+
+A link to the Reach Discord. It is always here, so the one-time invitation Reach shows after a few launches can be dismissed for good without losing the way in.
 
 ## Appearance
 
@@ -87,6 +91,19 @@ After validating your key, a searchable list of available models appears. Filter
 - Pricing per million tokens (prompt and completion)
 
 Click a model to select it. The selected model shows below the list with a green checkmark.
+
+## MCP
+
+Expose a terminal session to an AI client over the Model Context Protocol. Off by default; the server listens on `127.0.0.1` only.
+
+- **MCP server** — the switch, and the port (`0` lets the system pick).
+- **Agent** — which tools an AI client gets. Architect is read-only.
+- **Mode** — how much you are asked: Ask, Auto (safe), Auto, or Dangerous.
+- **Shared sessions** — every session currently visible to the AI, by name, each with its own agent and mode override.
+- **Connect your client** — the exact command or config for eleven clients.
+- **Token** — stored in the vault and reused across restarts. Regenerating locks out every configured client, so it asks first.
+
+See [MCP Server](/Reach/features/mcp-server/) for how the guard works and what the AI can see.
 
 ## Sync
 
@@ -172,3 +189,12 @@ Each plugin shows:
 - **Toggle switch** — enable or disable the plugin
 
 See the [Plugins](/Reach/features/plugins/) page for details on writing plugins.
+
+## Sharing
+
+Share a live terminal with another person, peer to peer. Off by default, and while it is off none of the sharing code is loaded.
+
+- **Session sharing** — the switch.
+- **Connection servers** — the STUN and TURN servers used to find a route to the other machine. Add, remove, or clear the list. TURN credentials are stored in the vault.
+
+See [Session Sharing](/Reach/features/session-sharing/) for how it connects, how it is encrypted, and what to do when two machines cannot reach each other.
