@@ -1,6 +1,6 @@
 [package]
 name = "reach"
-version = "0.5.1"
+version = "0.5.2"
 description = "Cross-platform SSH & Remote Management Tool"
 authors = ["Reach Contributors"]
 edition = "2021"
@@ -60,6 +60,16 @@ reqwest = { version = "0.12", default-features = false, features = ["json", "rus
 
 # SOCKS5/SOCKS4 proxy (Tor, etc.)
 tokio-socks = "0.5"
+
+# MCP server. Axum rather than the official Rust MCP SDK: MCP is JSON-RPC 2.0
+# over HTTP plus SSE — a small, stable spec — and this crate already pins deps
+# deliberately for supply-chain reasons. Owning ~300 lines of protocol beats
+# tracking a fast-moving SDK through breaking releases.
+#
+# Axum 0.6 is already in the tree transitively via Tauri; declared explicitly at
+# 0.8 so the server does not silently change behaviour when Tauri bumps its own.
+axum = { version = "0.8", default-features = false, features = ["http1", "json", "tokio"] }
+tower-http = { version = "0.6", default-features = false, features = ["cors"] }
 
 # Regex (dependency graph)
 regex = "1"

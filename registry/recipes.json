@@ -1,0 +1,65 @@
+[
+	{
+		"id": "disk-report",
+		"name": "Disk usage report",
+		"version": "1.0.0",
+		"description": "Where the space went: largest directories, inode pressure and mounts.",
+		"author": "alexandrosnt",
+		"repo": "alexandrosnt/reach-recipes-registry",
+		"tags": [
+			"diagnostics",
+			"disk"
+		],
+		"targets": [
+			"debian",
+			"ubuntu",
+			"rhel",
+			"alpine"
+		],
+		"danger": "benign",
+		"url": "https://raw.githubusercontent.com/alexandrosnt/reach-recipes-registry/main/recipes/disk-report.sh",
+		"sha256": "41d8a631ff4de11d1d871006d8b07a5c94560b760acb39073d6909a3fd166bb2"
+	},
+	{
+		"id": "fail2ban-baseline",
+		"name": "Fail2ban with an sshd jail",
+		"version": "1.0.0",
+		"description": "Installs fail2ban and configures a sensible sshd jail in jail.local.",
+		"author": "alexandrosnt",
+		"repo": "alexandrosnt/reach-recipes-registry",
+		"tags": [
+			"security",
+			"fail2ban",
+			"ssh"
+		],
+		"targets": [
+			"debian",
+			"ubuntu",
+			"rhel"
+		],
+		"danger": "sensitive",
+		"url": "https://raw.githubusercontent.com/alexandrosnt/reach-recipes-registry/main/recipes/fail2ban-baseline.sh",
+		"sha256": "78920db3efe65667069826d1aa29c01c749a20a7e7fca46743193562fd04251c"
+	},
+	{
+		"id": "harden-ssh",
+		"name": "Harden the SSH daemon",
+		"version": "1.0.0",
+		"description": "Disables root login and password auth, then reloads sshd only if the config parses.",
+		"author": "alexandrosnt",
+		"repo": "alexandrosnt/reach-recipes-registry",
+		"tags": [
+			"security",
+			"ssh",
+			"hardening"
+		],
+		"targets": [
+			"debian",
+			"ubuntu",
+			"rhel"
+		],
+		"danger": "sensitive",
+		"url": "https://raw.githubusercontent.com/alexandrosnt/reach-recipes-registry/main/recipes/harden-ssh.sh",
+		"sha256": "b712d8b220e4f8eedd98831c9c6ba334f77afe43aa1db4032e5bbe141e7625b7"
+	}
+]

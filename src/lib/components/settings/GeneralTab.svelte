@@ -1,7 +1,10 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/core';
 	import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
+	import { open as shellOpen } from '@tauri-apps/plugin-shell';
 	import Dropdown from '$lib/components/shared/Dropdown.svelte';
+	import DiscordIcon from '$lib/components/shared/DiscordIcon.svelte';
+	import { COMMUNITY } from '$lib/data/community';
 	import LanguageSelect from '$lib/components/shared/LanguageSelect.svelte';
 	import Toggle from '$lib/components/shared/Toggle.svelte';
 	import { getSettings, updateSetting, syncTraySettings } from '$lib/state/settings.svelte';
@@ -109,6 +112,21 @@
 			/>
 		</div>
 	</div>
+
+	<!-- The permanent route to the community. The launch prompt can be
+	     dismissed forever; this is what makes that safe to do. -->
+	<div class="setting-row">
+		<div class="setting-info">
+			<span class="setting-label">{t('settings.community')}</span>
+			<span class="setting-description">{t('settings.community_desc')}</span>
+		</div>
+		<div class="setting-control">
+			<button class="discord-link" onclick={() => shellOpen(COMMUNITY.discordInvite)}>
+				<DiscordIcon size={14} />
+				<span>{COMMUNITY.discordLabel}</span>
+			</button>
+		</div>
+	</div>
 </div>
 
 <style>
@@ -151,5 +169,25 @@
 	.setting-control {
 		flex-shrink: 0;
 		min-width: 180px;
+	}
+
+	.discord-link {
+		display: inline-flex;
+		align-items: center;
+		gap: 8px;
+		padding: 6px 12px;
+		font-family: inherit;
+		font-size: 0.8125rem;
+		color: var(--color-text-secondary);
+		background: var(--color-surface-sunken, transparent);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		cursor: pointer;
+		transition: color 0.15s, border-color 0.15s;
+	}
+
+	.discord-link:hover {
+		color: #5865f2;
+		border-color: color-mix(in srgb, #5865f2 50%, var(--color-border));
 	}
 </style>

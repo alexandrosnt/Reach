@@ -1,6 +1,6 @@
 {
   "name": "reach",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,7 +9,14 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "tauri": "tauri",
-    "i18n:check": "node scripts/i18n-check.js"
+    "i18n:check": "node scripts/i18n-check.js",
+    "discord:setup": "node scripts/discord/setup.mjs",
+    "discord:test": "node scripts/discord/setup.test.mjs && node scripts/discord/github-webhook.test.mjs",
+    "discord:verify": "node scripts/discord/verify.mjs",
+    "discord:grant": "node scripts/discord/grant.mjs",
+    "discord:github": "node scripts/discord/github-webhook.mjs",
+    "discord:invite": "node scripts/discord/invite.mjs",
+    "share:test": "node scripts/share-test.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.0",

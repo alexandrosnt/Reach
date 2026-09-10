@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import * as settingsIpc from '$lib/ipc/settings';
 import type { AppSettings } from '$lib/ipc/settings';
+import { NEW_FEATURE_IDS } from '$lib/data/whats-new';
 
 export interface Settings {
 	theme: 'dark' | 'light' | 'system';
@@ -17,6 +18,28 @@ export interface Settings {
 	setupComplete: boolean;
 	pendingTursoOrg: string;
 	pendingTursoApiToken: string;
+
+	/**
+	 * State for the one-time nudge towards the Discord community.
+	 *
+	 * Three fields rather than one boolean, because a single "dismissed" flag
+	 * can only express "never ask" or "ask on every single launch", and both
+	 * are wrong. `launches` holds it back until someone has actually used the
+	 * app, `communityPromptLastShown` turns "Not now" into a real deferral,
+	 * and `communityPromptDismissed` is the checkbox that ends it for good.
+	 */
+	launches: number;
+	communityPromptDismissed: boolean;
+	/** Epoch ms of the last time the prompt was shown. 0 means never. */
+	communityPromptLastShown: number;
+
+	/**
+	 * Ids from `$lib/data/whats-new` this user has already been shown.
+	 *
+	 * A fresh install starts with all of them: someone meeting Reach for the
+	 * first time should not be told which three corners of it are recent.
+	 */
+	seenFeatures: string[];
 }
 
 /** Secure settings stored encrypted in vault (API keys etc.) */
@@ -41,7 +64,11 @@ const defaults: Settings = {
 	injectShellColors: true,
 	setupComplete: false,
 	pendingTursoOrg: '',
-	pendingTursoApiToken: ''
+	pendingTursoApiToken: '',
+	launches: 0,
+	communityPromptDismissed: false,
+	communityPromptLastShown: 0,
+	seenFeatures: []
 };
 
 let settings = $state<Settings>({ ...defaults });
@@ -70,6 +97,17 @@ export function loadSettings(): void {
 
 	try {
 		const stored = localStorage.getItem(STORAGE_KEY);
+
+		// No stored settings at all means this is a first run. Everything in the
+		// what's-new list is marked seen, because all of it is new to someone
+		// who has never opened Reach, and highlighting an arbitrary three of it
+		// is noise rather than news.
+		if (!stored) {
+			settings.seenFeatures = [...NEW_FEATURE_IDS];
+			saveSettings();
+			return;
+		}
+
 		if (stored) {
 			const parsed = JSON.parse(stored) as Partial<Settings>;
 			settings.theme = parsed.theme ?? defaults.theme;
@@ -83,12 +121,81 @@ export function loadSettings(): void {
 			settings.injectShellColors = parsed.injectShellColors ?? defaults.injectShellColors;
 			settings.pendingTursoOrg = parsed.pendingTursoOrg ?? defaults.pendingTursoOrg;
 			settings.pendingTursoApiToken = parsed.pendingTursoApiToken ?? defaults.pendingTursoApiToken;
+			settings.launches = parsed.launches ?? defaults.launches;
+			settings.communityPromptDismissed =
+				parsed.communityPromptDismissed ?? defaults.communityPromptDismissed;
+			settings.communityPromptLastShown =
+				parsed.communityPromptLastShown ?? defaults.communityPromptLastShown;
+			// Absent for anyone upgrading, which is exactly who should see the
+			// badges — so it stays empty rather than being seeded.
+			settings.seenFeatures = parsed.seenFeatures ?? defaults.seenFeatures;
 			// Migration: existing users who already have localStorage data get setupComplete: true
 			settings.setupComplete = parsed.setupComplete ?? true;
 		}
 	} catch {
 		// If parsing fails, keep defaults
 	}
+}
+
+/**
+ * Record that the user has been shown one or more new features.
+ *
+ * Additive and idempotent: marking something already seen is a no-op, so a
+ * component can call this on every render of the thing without churning
+ * localStorage.
+ */
+export function markFeaturesSeen(ids: string[]): void {
+	const fresh = ids.filter((id) => !settings.seenFeatures.includes(id));
+	if (fresh.length === 0) return;
+	settings.seenFeatures = [...settings.seenFeatures, ...fresh];
+	saveSettings();
+}
+
+/** Launches before the community prompt is allowed to appear at all. */
+const PROMPT_AFTER_LAUNCHES = 3;
+
+/** How long "Not now" buys, in days. */
+const PROMPT_SNOOZE_DAYS = 21;
+
+/**
+ * Count this launch. Called once, from the root layout.
+ *
+ * Separate from the prompt check so the count keeps rising even when the
+ * prompt can never show — otherwise turning the prompt back on would start
+ * someone from zero again.
+ */
+export function recordLaunch(): void {
+	settings.launches += 1;
+	saveSettings();
+}
+
+/**
+ * Whether to show the community prompt on this launch.
+ *
+ * Deliberately not on first run. Someone who has opened Reach once has not
+ * decided whether they like it yet, and asking them to join a chat server is
+ * the fastest way to make the answer no.
+ */
+export function shouldShowCommunityPrompt(): boolean {
+	if (settings.communityPromptDismissed) return false;
+	if (!settings.setupComplete) return false;
+	if (settings.launches < PROMPT_AFTER_LAUNCHES) return false;
+
+	const snooze = PROMPT_SNOOZE_DAYS * 24 * 60 * 60 * 1000;
+	return Date.now() - settings.communityPromptLastShown > snooze;
+}
+
+/** "Not now" — defer, do not silence. */
+export function snoozeCommunityPrompt(): void {
+	settings.communityPromptLastShown = Date.now();
+	saveSettings();
+}
+
+/** The checkbox, and also what joining does: neither wants asking again. */
+export function dismissCommunityPrompt(): void {
+	settings.communityPromptDismissed = true;
+	settings.communityPromptLastShown = Date.now();
+	saveSettings();
 }
 
 export function saveSettings(): void {

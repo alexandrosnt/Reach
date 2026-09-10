@@ -6,6 +6,7 @@ use std::sync::Mutex;
 use tokio::sync::RwLock;
 use serde::{Deserialize, Serialize};
 
+use crate::mcp::McpState;
 use crate::monitoring::collector::MonitoringCollector;
 #[cfg(desktop)]
 use crate::pty::manager::PtyManager;
@@ -181,6 +182,12 @@ pub struct AppState {
     pub close_to_tray: AtomicBool,
     /// Pending file for the editor window to pick up on mount
     pub pending_editor_file: Arc<tokio::sync::Mutex<Option<serde_json::Value>>>,
+    /// MCP server state. Constructed disabled, with no token and no shared
+    /// sessions: the listener does not exist until the user asks for it.
+    pub mcp: Arc<McpState>,
+    /// Peer-to-peer sharing configuration. Off by default; the webview
+    /// loads none of the sharing code until this says otherwise.
+    pub share: Arc<RwLock<crate::share::ShareConfig>>,
 }
 
 impl AppState {
@@ -211,6 +218,8 @@ impl AppState {
             tofu_schema_cache: Arc::new(tokio::sync::Mutex::new(SchemaCache::default())),
             close_to_tray: AtomicBool::new(false),
             pending_editor_file: Arc::new(tokio::sync::Mutex::new(None)),
+            mcp: Arc::new(McpState::default()),
+            share: Arc::new(RwLock::new(crate::share::ShareConfig::default())),
         }
     }
 }

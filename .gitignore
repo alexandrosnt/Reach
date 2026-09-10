@@ -37,3 +37,6 @@ npm-debug.log*
 *.enc
 *.key
 *.pem
+
+# Discord webhook URLs — posting credentials, never commit
+.discord/

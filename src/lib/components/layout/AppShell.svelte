@@ -13,6 +13,7 @@
 	import UpdateDialog from '$lib/components/shared/UpdateDialog.svelte';
 	import ActiveSessionsDialog from '$lib/components/shared/ActiveSessionsDialog.svelte';
 	import HostKeyDialog from '$lib/components/shared/HostKeyDialog.svelte';
+	import McpConfirmDialog from '$lib/components/shared/McpConfirmDialog.svelte';
 	import { getUpdaterState, relaunchNow, postponeRelaunch } from '$lib/state/updater.svelte';
 	import { getActiveTab, getTabs } from '$lib/state/tabs.svelte';
 	import { getSettings } from '$lib/state/settings.svelte';
@@ -177,6 +178,7 @@
 		oncancel={postponeUpdate}
 	/>
 	<HostKeyDialog />
+	<McpConfirmDialog />
 </div>
 
 <style>

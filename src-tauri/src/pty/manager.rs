@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Read, Write};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize, MasterPty, Child};
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -220,6 +220,14 @@ fn pty_reader_loop(
     // as a stream rather than per chunk.
     let mut decoder = crate::text::Utf8Stream::new();
 
+    // Tap for the MCP server, matching the SSH read loop. A no-op unless the
+    // user shared this terminal; spawned onto the async runtime so a slow
+    // reader can never block this thread, which is a blocking OS thread.
+    let mcp_state = app_handle
+        .try_state::<crate::state::AppState>()
+        .map(|s| s.mcp.clone());
+    let mcp_id = id.to_string();
+
     loop {
         match reader.read(&mut buf) {
             Ok(0) => {
@@ -231,6 +239,10 @@ fn pty_reader_loop(
                 let payload = decoder.push(&buf[..n]);
                 if payload.is_empty() {
                     continue;
+                }
+                if let Some(mcp) = mcp_state.clone() {
+                    let (id, bytes) = (mcp_id.clone(), payload.as_bytes().to_vec());
+                    tauri::async_runtime::spawn(async move { mcp.push_output(&id, &bytes).await; });
                 }
                 if let Err(e) = app_handle.emit(&data_event, payload) {
                     tracing::error!("Failed to emit '{}': {}", data_event, e);
