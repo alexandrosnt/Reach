@@ -23,6 +23,7 @@ the setup script says it did. Those two came apart once already.
 | `setup.mjs`        | The runner. Rarely needs editing.                              |
 | `verify.mjs`       | Read-only check of the live server against the plan.           |
 | `grant.mjs`        | Assigns roles to a member. Additive; never removes one.        |
+| `github-webhook.mjs` | Points the GitHub repo at the two feed channels.            |
 | `setup.test.mjs`   | Runs the whole thing against a fake Discord. No token needed.  |
 
 ```
@@ -33,6 +34,8 @@ npm run discord:test               # offline, mocked, no token
 
 npm run discord:grant -- Maintainer Contributor           # roles for the owner
 npm run discord:grant -- 1234567890 Translator            # roles for someone else
+
+npm run discord:github -- --apply  # point GitHub at the two feed channels
 ```
 
 ---
@@ -121,32 +124,59 @@ voice and invites. Not `MENTION_EVERYONE`, and not a single `MANAGE_*` bit.
 
 ## 5. Wire up GitHub
 
-`--apply` writes the webhook URLs to `.discord/webhooks.json` (gitignored).
+One command:
+
+```
+npm run discord:github              # dry run
+npm run discord:github -- --apply   # for real
+```
+
+It needs `GITHUB_TOKEN` in `.env`, with `admin:repo_hook` (classic) or
+Webhooks: Read and write (fine-grained). It reads the Discord URLs from
+`.discord/webhooks.json`, generates a signing secret on first run and keeps it
+there, then reads the delivery back from GitHub so you can see the `204` rather
+than take its word for it.
+
 **A webhook URL is a posting credential** — anyone holding it can post into
-that channel. Treat it like a token; keep it out of chats, issues and
-screenshots.
+that channel as that webhook. It stays in `.discord/`, which is gitignored, and
+nothing here ever prints it.
 
-Repo → **Settings → Webhooks → Add webhook**, twice:
+| Channel     | Events                                                        |
+| ----------- | ------------------------------------------------------------- |
+| `#releases` | `release`                                                     |
+| `#github`   | `push`, `pull_request`, `pull_request_review`, `issues`, `issue_comment` |
 
-| Channel     | Payload URL                    | Content type       | Events                                              |
-| ----------- | ------------------------------ | ------------------ | --------------------------------------------------- |
-| `#releases` | the `githubUrl` for `releases` | `application/json` | Let me select individual events → **Releases** only |
-| `#github`   | the `githubUrl` for `github`   | `application/json` | Pushes, Pull requests, Issues, Issue comments        |
+Two feeds because they have different audiences: most people want to know a
+version shipped, only contributors want every push and issue comment. Anyone
+can mute `#github` and keep `#releases`.
 
-The `/github` suffix tells Discord to parse GitHub's payload shape rather than
-treating it as a plain webhook message. Use the `githubUrl` field, which
-already has it; not `url`.
+### Why those events and not others
 
-Set a **Secret** on the GitHub side too. GitHub signs each delivery with it and
-Discord verifies the signature, so nobody who guesses the URL can forge a
-release announcement.
+Discord's `/github` receiver renders a fixed subset of GitHub's events:
+`push`, `pull_request`, `pull_request_review`, `pull_request_review_comment`,
+`issues`, `issue_comment`, `commit_comment`, `create`, `delete`, `fork`,
+`gollum`, `member`, `public`, `release`, `watch`.
 
-Two feeds rather than one because they have different audiences: most people
-want to know a version shipped, only contributors want every push and issue
-comment. Anyone can mute `#github` and keep `#releases`.
+Anything else it accepts with a `204` and then does nothing with — which looks
+exactly like a working webhook until you notice the channel has been quiet for
+a week. **`workflow_run` and `check_run` are not on the list**, so CI results
+cannot come through this path; they need a GitHub Action posting an ordinary
+Discord message. `setup.test.mjs`'s sibling `github-webhook.test.mjs` asserts
+the plan contains nothing outside that set.
 
-**Checking it worked:** GitHub → the webhook → **Recent Deliveries**. A green
-tick with `204` means Discord accepted it. `401` means the URL is wrong; `400`
+`create` and `delete` are supported but left out on purpose: branch and tag
+events drown an active repo.
+
+### Doing it by hand instead
+
+Repo → **Settings → Webhooks → Add webhook**. Payload URL is the `githubUrl`
+field from `.discord/webhooks.json` — not `url`; the `/github` suffix is what
+switches Discord from its own payload format to GitHub's. Content type
+`application/json`. Set a **Secret**, so a guessed URL cannot forge a release
+announcement.
+
+**Checking it worked:** GitHub → the webhook → **Recent Deliveries**. Green
+tick and `204` means Discord accepted it. `401` means the URL is wrong; `400`
 usually means the `/github` suffix is missing.
 
 ## 6. Clean up
