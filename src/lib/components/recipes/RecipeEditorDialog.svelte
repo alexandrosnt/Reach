@@ -21,26 +21,35 @@
 	import { saveRecipe } from '$lib/state/recipes.svelte';
 
 	interface Props {
-		open: boolean;
 		/** The file to edit. A new recipe arrives here as a filled-in template. */
 		source: string;
 		onclose: () => void;
 	}
 
-	let { open, source, onclose }: Props = $props();
+	let { source, onclose }: Props = $props();
 
-	let text = $state('');
+	/**
+	 * Seeded at construction, not in an effect.
+	 *
+	 * CodeEditor builds its CodeMirror document once, when it mounts, and never
+	 * syncs it again — that is the right contract for an editor, since a live
+	 * binding would fight the cursor on every keystroke. But it means an effect
+	 * that fills `text` after mount arrives too late: the editor has already
+	 * taken the empty string, and you get a blank editor under a status bar
+	 * cheerfully reporting the recipe it parsed.
+	 *
+	 * So the parent mounts this component fresh for each edit, and the value is
+	 * correct before any child renders.
+	 *
+	 * Svelte warns that this captures only the initial value. That is the
+	 * intent: after mount this is the user's buffer, and following the prop
+	 * would overwrite their typing.
+	 */
+	// svelte-ignore state_referenced_locally
+	let text = $state(source);
 	let parsed = $state<Recipe | null>(null);
 	let parseError = $state<string | null>(null);
 	let saving = $state(false);
-
-	// Seeded when the dialog opens rather than bound to the prop, so typing
-	// does not fight whatever the parent still holds.
-	$effect(() => {
-		if (open) {
-			text = source;
-		}
-	});
 
 	// Debounced: parsing every keystroke over IPC makes typing feel sticky.
 	let timer: ReturnType<typeof setTimeout> | undefined;
@@ -74,7 +83,7 @@
 	}
 </script>
 
-<Modal {open} {onclose} title={t('recipes.edit_title')} maxWidth="860px">
+<Modal open {onclose} title={t('recipes.edit_title')} maxWidth="860px">
 	<div class="editor-wrap">
 		<div class="code">
 			<CodeEditor
@@ -96,7 +105,11 @@
 				</span>
 				<span class="meta">
 					{#if parsed.params.length > 0}
-						<span class="dim">{t('recipes.n_params', { count: parsed.params.length })}</span>
+						<span class="dim">
+							{parsed.params.length === 1
+								? t('recipes.one_param')
+								: t('recipes.n_params', { count: parsed.params.length })}
+						</span>
 					{/if}
 					<DangerBadge danger={parsed.analysis.danger} compact />
 				</span>
