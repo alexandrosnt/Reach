@@ -190,3 +190,82 @@ body {
 ::selection {
   background: rgba(10, 132, 255, 0.3);
 }
+
+/* ─── Settings rows ───
+   One definition for every settings tab. The rows used to be copied into
+   each tab with their own padding, label size and control width, which is
+   why nothing lined up from one tab to the next. A row is a two-column
+   grid: the text takes what is left, the control column is a fixed width,
+   and controls sit against its right edge so their edges align down the
+   page whatever their own width. */
+
+.settings-content {
+  --settings-control-width: 200px;
+}
+
+.settings-content .tab-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-content .setting-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--settings-control-width);
+  align-items: center;
+  column-gap: 24px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.settings-content .setting-row:last-child {
+  border-bottom: none;
+}
+
+.settings-content .setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.settings-content .setting-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+
+.settings-content .setting-description {
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--color-text-secondary);
+}
+
+.settings-content .setting-control {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+/* Fields fill the column; buttons and toggles keep their size at its edge. */
+.settings-content .setting-control > .dropdown,
+.settings-content .setting-control > .select,
+.settings-content .setting-control > select,
+.settings-content .setting-control > input {
+  width: 100%;
+}
+
+.settings-content .section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.settings-content .section-title {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}

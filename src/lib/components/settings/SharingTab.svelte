@@ -94,7 +94,7 @@
 			<span class="setting-description">{t('sharing.enable_desc')}</span>
 		</div>
 		<div class="setting-control">
-			<Toggle checked={config.enabled} label={t('sharing.enable')} onchange={toggle} />
+			<Toggle hideLabel checked={config.enabled} label={t('sharing.enable')} onchange={toggle} />
 		</div>
 	</div>
 
@@ -162,57 +162,12 @@
 </div>
 
 <style>
-	.tab-content {
-		display: flex;
-		flex-direction: column;
-	}
-
-	.setting-row {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 24px;
-		padding: 14px 0;
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.setting-info {
-		display: flex;
-		flex-direction: column;
-		gap: 2px;
-		min-width: 0;
-	}
-
-	.setting-label {
-		font-size: 0.875rem;
-		font-weight: 500;
-		color: var(--color-text-primary);
-	}
-
-	.setting-description {
-		font-size: 0.75rem;
-		line-height: 1.45;
-		color: var(--color-text-secondary);
-	}
-
-	.setting-control {
-		flex-shrink: 0;
-	}
 
 	.ice {
 		display: flex;
 		flex-direction: column;
 		gap: var(--space-2);
 		padding-top: 14px;
-	}
-
-	.section-title {
-		margin: 0;
-		font-size: var(--text-2xs);
-		font-weight: 600;
-		letter-spacing: 0.06em;
-		text-transform: uppercase;
-		color: var(--color-text-tertiary);
 	}
 
 	.section-desc,

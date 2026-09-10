@@ -7,6 +7,12 @@
 		onclose: () => void;
 		title?: string;
 		maxWidth?: string;
+		/** A fixed height, for a dialog whose size must not follow its content —
+		 *  Settings, where switching tabs would otherwise resize the window. */
+		height?: string;
+		/** False for a body that lays itself out edge to edge and scrolls its own
+		 *  regions, instead of the default 20px padding and a single scroll. */
+		padded?: boolean;
 		/** Stacking order of the backdrop. Default 100; raise for dialogs that
 		 *  must sit above other modals (e.g. host-key verification over Connect). */
 		zIndex?: number;
@@ -19,6 +25,8 @@
 		onclose,
 		title = '',
 		maxWidth,
+		height,
+		padded = true,
 		zIndex = 100,
 		children,
 		actions
@@ -55,7 +63,7 @@
 		onkeydown={() => {}}
 		onclick={onBackdropClick}
 	>
-		<div class="modal" role="dialog" aria-modal="true" aria-label={title || t('common.close_dialog')} style:max-width={maxWidth}>
+		<div class="modal" role="dialog" aria-modal="true" aria-label={title || t('common.close_dialog')} style:max-width={maxWidth} style:height={height}>
 			{#if title}
 				<header class="modal-header">
 					<h2 class="modal-title">{title}</h2>
@@ -67,7 +75,7 @@
 				</header>
 			{/if}
 
-			<div class="modal-body">
+			<div class="modal-body" class:flush={!padded}>
 				{@render children()}
 			</div>
 
@@ -144,6 +152,14 @@
 		padding: 20px;
 		overflow-y: auto;
 		flex: 1;
+		min-height: 0;
+	}
+
+	.modal-body.flush {
+		padding: 0;
+		overflow: hidden;
+		display: flex;
+		flex-direction: column;
 	}
 
 	.modal-actions {
