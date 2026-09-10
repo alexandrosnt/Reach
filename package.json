@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "tauri": "tauri",
-    "i18n:check": "node scripts/i18n-check.js"
+    "i18n:check": "node scripts/i18n-check.js",
+    "discord:setup": "node scripts/discord/setup.mjs",
+    "discord:test": "node scripts/discord/setup.test.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.0",
