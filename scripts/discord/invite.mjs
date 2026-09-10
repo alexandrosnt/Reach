@@ -129,7 +129,10 @@ export const COMMUNITY = {
 	/** Permanent invite, unlimited uses. Public by design. */
 	discordInvite: '${url}',
 	/** Shown in the UI instead of the raw URL. */
-	discordLabel: 'discord.gg/${invite.code}'
+	discordLabel: 'discord.gg/${invite.code}',
+	/** GitHub Sponsors. Free software, funded by the people who use it. */
+	sponsorUrl: 'https://github.com/sponsors/alexandrosnt',
+	sponsorLabel: 'github.com/sponsors/alexandrosnt'
 } as const;
 `;
 

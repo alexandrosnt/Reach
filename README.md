@@ -14,7 +14,7 @@
   <img src="https://img.shields.io/badge/platforms-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-333?style=flat-square" alt="Platforms" />
   <img src="https://img.shields.io/github/license/alexandrosnt/Reach?style=flat-square&cacheSeconds=60" alt="License" />
   <a href="https://discord.gg/CSbEybvDVV"><img src="https://img.shields.io/discord/1547361202340892714?style=flat-square&logo=discord&logoColor=white&label=discord&color=5865F2" alt="Discord" /></a>
-  <a href="https://github.com/sponsors/alexandrosnt"><img src="https://img.shields.io/badge/sponsor-%E2%99%A5-ea4aaa?style=flat-square" alt="Sponsor" /></a>
+  <a href="https://github.com/sponsors/alexandrosnt"><img src="https://img.shields.io/github/sponsors/alexandrosnt?style=flat-square&logo=githubsponsors&logoColor=white&label=sponsors&color=ea4aaa" alt="Sponsors" /></a>
 </p>
 
 <p align="center">
@@ -164,7 +164,7 @@ Reach has a Discord: **[discord.gg/CSbEybvDVV](https://discord.gg/CSbEybvDVV)**.
 
 Reach is free, MIT licensed, and stays that way. It is built and maintained in spare time, and the costs that come with a desktop app — code signing certificates, the Apple developer account, machines to test each platform on — are real.
 
-If Reach saves you time, you can support it through **[GitHub Sponsors](https://github.com/sponsors/alexandrosnt)**. One-off or monthly, whatever fits. Nothing is gated behind it and nothing ever will be; it just decides how much of the evenings go to Reach.
+If Reach saves you time, you can support it through **[GitHub Sponsors](https://github.com/sponsors/alexandrosnt)** — the **Sponsor** button at the top of this page, or **Settings → General → Support Reach** inside the app. One-off or monthly, whatever fits. Nothing is gated behind it and nothing ever will be; it just decides how much of the evenings go to Reach.
 
 Not in a position to give money? A bug report with a reproduction, a translation, a recipe in the registry, or telling a colleague are all worth as much.
 
