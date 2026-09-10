@@ -40,8 +40,14 @@
 		border-radius: 50%;
 		background: var(--color-accent);
 		/* A ring in the surface colour keeps the dot legible over whatever icon
-		   it sits on, without needing to know what that icon looks like. */
-		box-shadow: 0 0 0 2px var(--color-bg-elevated, var(--color-surface-sunken));
+		   it sits on, without needing to know what that icon looks like.
+
+		   It has to be the actual surface, though. This was --color-bg-elevated,
+		   which is #1c1c1e against a #141414 rail in dark — near enough to pass
+		   a screenshot — and #ffffff against #f5f5f7 in light, which is a white
+		   halo. Both call sites sit on --color-bg-secondary; anywhere else can
+		   override --new-dot-ring rather than guess. */
+		box-shadow: 0 0 0 2px var(--new-dot-ring, var(--color-bg-secondary));
 		pointer-events: none;
 	}
 
