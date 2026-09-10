@@ -162,7 +162,7 @@ Reach has a Discord: **[discord.gg/CSbEybvDVV](https://discord.gg/CSbEybvDVV)**.
 
 ## Support the project
 
-Reach is free, MIT licensed, and stays that way. It is built and maintained in spare time, and the costs that come with a desktop app — code signing certificates, the Apple developer account, machines to test each platform on — are real.
+Reach is free, MIT licensed, and stays that way. It is built on no budget at all, in spare time — which is why the installers are not code-signed yet and every platform is tested on whatever machine can be borrowed. Sponsorship is what would change that: a signing certificate so installers stop getting flagged, a server to build and test on, and time that goes into Reach instead of around it.
 
 If Reach saves you time, you can support it through **[GitHub Sponsors](https://github.com/sponsors/alexandrosnt)** — the **Sponsor** button at the top of this page, or **Settings → General → Support Reach** inside the app. One-off or monthly, whatever fits. Nothing is gated behind it and nothing ever will be; it just decides how much of the evenings go to Reach.
 

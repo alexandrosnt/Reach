@@ -424,7 +424,7 @@
   "settings.community": "社区",
   "settings.community_desc": "在 Discord 上交流、求助并接收版本公告。",
   "settings.support": "支持 Reach",
-  "settings.support_desc": "Reach 免费，并将一直免费。赞助用于支付证书、Apple 账户和测试设备。",
+  "settings.support_desc": "Reach 免费，且没有任何预算。赞助将用于购买签名证书、测试服务器，以及投入更多开发的时间。",
   "settings.sponsor": "在 GitHub 上赞助",
   "community.title": "加入 Reach 社区",
   "community.body": "Reach 有一个 Discord 社区。你可以在这里提问、了解新版本，或参与决定它的下一步。",
