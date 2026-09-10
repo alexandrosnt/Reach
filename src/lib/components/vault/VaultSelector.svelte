@@ -386,6 +386,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 							{/if}
 						</button>
 						{#if o.vault}
+							<span class="opt-actions">
 							{#if o.vault.vaultType === 'shared'}
 								<button class="opt-action" onclick={(e) => { open = false; openInviteDialog(o.vault!, e); }} title={t('vault.invite_members_short')}>
 									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -400,6 +401,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 									<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
 								</svg>
 							</button>
+							</span>
 						{/if}
 					</div>
 				{/each}
@@ -733,9 +735,9 @@ Go to Settings > Sync > Accept Vault Invite`;
 	}
 
 	.opt-row {
+		position: relative;
 		display: flex;
 		align-items: center;
-		gap: 2px;
 	}
 
 	.opt {
@@ -809,26 +811,42 @@ Go to Settings > Sync > Accept Vault Invite`;
 		color: #10b981;
 	}
 
-	/* Invite and delete: present, quiet until the row is pointed at. */
+	/* Invite and delete float over the right edge while the row is pointed
+	   at, instead of reserving 44px on every row. The name gets the width;
+	   the count under them is the one thing you are not reading mid-click. */
+	.opt-actions {
+		position: absolute;
+		right: 2px;
+		top: 2px;
+		bottom: 2px;
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		padding-left: 14px;
+		background: linear-gradient(90deg, transparent, var(--color-surface-hover) 14px);
+		border-radius: 0 6px 6px 0;
+		opacity: 0;
+		pointer-events: none;
+		transition: opacity 0.1s;
+	}
+
+	.opt-row:hover .opt-actions,
+	.opt-row:focus-within .opt-actions {
+		opacity: 1;
+		pointer-events: auto;
+	}
+
 	.opt-action {
 		display: flex;
 		align-items: center;
 		justify-content: center;
 		width: 22px;
 		height: 22px;
-		flex-shrink: 0;
 		border: none;
 		border-radius: 4px;
 		background: transparent;
 		color: var(--color-text-tertiary);
 		cursor: pointer;
-		opacity: 0;
-		transition: opacity 0.1s, color 0.1s;
-	}
-
-	.opt-row:hover .opt-action,
-	.opt-action:focus-visible {
-		opacity: 1;
 	}
 
 	.opt-action:hover {
