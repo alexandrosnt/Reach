@@ -26,6 +26,27 @@ pub struct ToolStatus {
 
 /// Check whether a tool is installed, get its version, and verify it actually works.
 pub fn check_tool(tool: &str) -> ToolStatus {
+    // OpenTofu: a binary Reach manages comes first; PATH is the fallback.
+    if tool == "tofu" {
+        if let Ok(b) = crate::tofu::binary::resolve(None) {
+            return ToolStatus {
+                installed: true,
+                version: b.version,
+                path: Some(b.path.to_string_lossy().to_string()),
+                warning: None,
+                local_unsupported: false,
+                wsl: false,
+            };
+        }
+        return ToolStatus {
+            installed: false,
+            version: None,
+            path: None,
+            warning: None,
+            local_unsupported: false,
+            wsl: false,
+        };
+    }
     // Ansible on Windows: ALWAYS check WSL first. Native ansible is broken on Windows
     // (os.get_blocking / OSError) so we never try to run it directly.
     #[cfg(windows)]

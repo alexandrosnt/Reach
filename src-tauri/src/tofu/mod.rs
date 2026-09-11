@@ -1,6 +1,7 @@
 pub mod types;
 pub mod project;
 pub mod runner;
+pub mod binary;
 pub mod catalog;
 pub mod resource_catalog;
 pub mod data_catalog;

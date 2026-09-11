@@ -13,7 +13,9 @@ fn silent_async_command(program: impl AsRef<std::ffi::OsStr>) -> tokio::process:
 use crate::ssh::client::exec_on_connection;
 use crate::state::AppState;
 use crate::tofu::runner;
+use crate::tofu::binary::{self, BinaryStatus};
 use crate::tofu::types::{
+    TofuCommand,
     BackendCatalogEntry, DataSourceCatalogEntry, DependencyGraph, GeneratedFile,
     HclGenerationResult, ProjectTemplate, ProviderCatalogEntry, ProviderFieldSchema,
     ProviderFieldType, ProviderSchema, ResourceCatalogEntry, TofuBackendConfig,
@@ -21,7 +23,7 @@ use crate::tofu::types::{
     TofuLocal, TofuModuleConfig, TofuOutput, TofuOutputValue, TofuPlanSummary, TofuProject,
     TofuProviderConfig, TofuResourceConfig, TofuVariable, TofuWorkspaceInfo,
 };
-use tauri::State;
+use tauri::{Emitter, State};
 use uuid::Uuid;
 
 /// List all saved tofu projects.
@@ -147,7 +149,36 @@ pub async fn tofu_run_command(
             .ok_or_else(|| "Project not found".to_string())?
     };
 
-    let args = runner::build_command_args(&request);
+    // Apply without Auto-approve applies the saved plan — that is what the
+    // plan was for. No saved plan and no approval is a request nothing can
+    // honour, so say so before spawning anything.
+    let saved_plan = matches!(request.command, TofuCommand::Apply)
+        && !request.auto_approve
+        && matches!(request.target, TofuExecutionTarget::Local)
+        && std::path::Path::new(&project_path).join(runner::PLAN_FILE).is_file();
+    if matches!(request.command, TofuCommand::Apply | TofuCommand::Destroy)
+        && !request.auto_approve
+        && !saved_plan
+    {
+        let msg = if matches!(request.command, TofuCommand::Apply) {
+            "Run Plan first, then Apply applies exactly what it showed — or turn on Auto-approve."
+        } else {
+            "Destroy needs Auto-approve: there is no plan to review first."
+        };
+        let _ = app_handle.emit(
+            &format!("tofu-output-{}", run_id),
+            crate::tofu::types::TofuCommandEvent {
+                run_id: run_id.clone(),
+                stream: "stderr".to_string(),
+                line: msg.to_string(),
+                done: true,
+                exit_code: Some(1),
+            },
+        );
+        return Ok(run_id);
+    }
+
+    let args = runner::build_command_args(&request, saved_plan);
     let rid = run_id.clone();
 
     match request.target {
@@ -1115,4 +1146,68 @@ async fn run_tofu_sync_full(
                 .map_err(|e| e.to_string())
         }
     }
+}
+
+/// Which OpenTofu a project runs, what is installed, and what it pins.
+#[tauri::command]
+pub async fn tofu_binary_status(
+    state: State<'_, AppState>,
+    project_id: Option<String>,
+) -> Result<BinaryStatus, String> {
+    let dir = match project_id {
+        Some(id) => {
+            let mut tofu_mgr = state.tofu_project_manager.lock().await;
+            let mut vault_mgr = state.vault_manager.lock().await;
+            tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
+            tofu_mgr.get_project(&id).map(|p| std::path::PathBuf::from(p.path.clone()))
+        }
+        None => None,
+    };
+    Ok(binary::status(dir.as_deref()))
+}
+
+/// Download and verify a version (latest when none is given). Progress goes
+/// out on `toolchain-install-tofu`, the same channel the setup screen reads.
+#[tauri::command]
+pub async fn tofu_binary_install(
+    app_handle: tauri::AppHandle,
+    version: Option<String>,
+) -> Result<String, String> {
+    let h = app_handle.clone();
+    let report = move |m: &str| crate::toolchain::install::emit_progress(&h, "tofu", m);
+    match binary::install(version, report).await {
+        Ok(v) => {
+            crate::toolchain::install::emit_done(&app_handle, "tofu", true, &v);
+            Ok(v)
+        }
+        Err(e) => {
+            crate::toolchain::install::emit_done(&app_handle, "tofu", false, &e);
+            Err(e)
+        }
+    }
+}
+
+/// Write (or clear) the project's `.opentofu-version`.
+#[tauri::command]
+pub async fn tofu_binary_pin(
+    state: State<'_, AppState>,
+    project_id: String,
+    version: Option<String>,
+) -> Result<BinaryStatus, String> {
+    let dir = {
+        let mut tofu_mgr = state.tofu_project_manager.lock().await;
+        let mut vault_mgr = state.vault_manager.lock().await;
+        tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
+        tofu_mgr
+            .get_project(&project_id)
+            .map(|p| std::path::PathBuf::from(p.path.clone()))
+            .ok_or_else(|| "Project not found".to_string())?
+    };
+    binary::write_pin(&dir, version.as_deref())?;
+    Ok(binary::status(Some(&dir)))
+}
+
+#[tauri::command]
+pub async fn tofu_binary_remove(version: String) -> Result<(), String> {
+    binary::remove(&version)
 }

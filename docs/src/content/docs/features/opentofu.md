@@ -7,11 +7,21 @@ Reach has a full OpenTofu workspace that covers the entire IaC workflow. You can
 
 ## Installing OpenTofu
 
-Open the OpenTofu tab from the sidebar. If `tofu` isn't found in your PATH, Reach shows a setup screen with an **Install** button.
+Open the OpenTofu tab from the sidebar. If no OpenTofu is available, Reach shows a setup screen with an **Install** button.
 
-Click Install and Reach downloads the official OpenTofu binary for your platform. Installation progress streams in real-time. When it finishes, click **Continue** and Reach re-checks the tool status.
+Reach manages OpenTofu itself, the same way on Windows, macOS and Linux: it downloads the release for your platform from GitHub, verifies it against the `SHA256SUMS` the OpenTofu project publishes, and keeps it under Reach's own tools directory, one folder per version. Nothing is written to your PATH and nothing needs a restart. A checksum mismatch installs nothing.
 
-If OpenTofu is already installed, you see a green checkmark with the version number and go straight to the project list.
+If a `tofu` (or `terraform`) is already on your PATH, Reach will use it until you install a managed version.
+
+## Which version runs
+
+Every project runs the version it asks for, and the Actions tab says which: **OpenTofu 1.11.4 · managed by Reach**, or **· system PATH**.
+
+- A `.opentofu-version` file in the project directory pins it exactly — the same convention `tenv` uses, so the file works outside Reach too.
+- An exact `required_version = "1.9.0"` in the HCL counts as a pin. A range such as `>= 1.6` is a constraint, not a choice, and does not.
+- Without a pin, the newest managed version runs.
+
+The select beside the version chip changes the pin: pick a managed version, **Use system PATH**, or **Install latest…**. Installing writes the pin, so the choice sticks. A project that pins a version Reach has not downloaded yet gets it downloaded, verified and used on its next run, in the open — the run output says so.
 
 ## Projects
 
@@ -330,5 +340,7 @@ Every command runs non-interactively (`-input=false`, `TF_IN_AUTOMATION=1`, `TF_
 `plan`, `apply` and `destroy` run with `-json`, OpenTofu's machine-readable UI. Reach folds the stream into a run view: the change summary as the header (`+3 ~1 −1`), the planned changes as a list, apply progress as rows that move from running to done with the resource id and elapsed time, diagnostics as cards with the file and line, and outputs as a table. Commands that only speak prose — `init`, `validate`, `fmt` — show their output as text, and **Raw log** switches any run back to the text OpenTofu wrote.
 
 `plan` runs with `-detailed-exitcode`: exit 0 means no changes, 2 means there are changes to apply, and the verdict chip says which. Only 1 is an error.
+
+`apply` without **Auto-approve** applies the plan the last `plan` saved — exactly what you reviewed, no second plan, no prompt — because the saved plan *is* the approval. With no saved plan and no Auto-approve, Reach says so instead of starting a run that would stop to ask. `destroy` always needs Auto-approve.
 
 The same arguments are used when a project runs on a remote host over SSH.
