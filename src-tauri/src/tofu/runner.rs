@@ -14,10 +14,19 @@ fn silent_async_command(program: impl AsRef<std::ffi::OsStr>) -> tokio::process:
 }
 
 use crate::ssh::client::{exec_on_connection_streaming, SshManager};
+use crate::tofu::binary;
 use crate::tofu::types::{TofuCommand, TofuCommandEvent, TofuCommandRequest};
+use std::path::Path;
+
+/// Where `plan` writes what it found, and what `apply` reads back.
+pub const PLAN_FILE: &str = ".reach-plan";
 
 /// Build CLI argument list for a tofu command.
-pub fn build_command_args(request: &TofuCommandRequest) -> Vec<String> {
+/// `saved_plan`: apply the plan file the last `plan` wrote, instead of
+/// planning again and asking. A saved plan is the approval — OpenTofu
+/// applies exactly what was shown — so it needs neither `-auto-approve`
+/// nor a var-file (the values are already in it).
+pub fn build_command_args(request: &TofuCommandRequest, saved_plan: bool) -> Vec<String> {
     let mut args = vec![request.command.as_str().to_string()];
 
     // Sub-commands
@@ -70,7 +79,7 @@ pub fn build_command_args(request: &TofuCommandRequest) -> Vec<String> {
     // Save plan output for later viewing, and let the exit code say whether
     // there is anything in it: 0 nothing, 2 changes, 1 error.
     if matches!(request.command, TofuCommand::Plan) {
-        args.push("-out=.reach-plan".to_string());
+        args.push(format!("-out={}", PLAN_FILE));
         args.push("-detailed-exitcode".to_string());
     }
 
@@ -92,9 +101,11 @@ pub fn build_command_args(request: &TofuCommandRequest) -> Vec<String> {
         _ => {}
     }
 
-    // Var file
-    if let Some(ref var_file) = request.var_file {
-        args.push(format!("-var-file={}", var_file));
+    // Var file — not with a saved plan, whose values are already fixed.
+    if !saved_plan {
+        if let Some(ref var_file) = request.var_file {
+            args.push(format!("-var-file={}", var_file));
+        }
     }
 
     // Extra args
@@ -122,6 +133,11 @@ pub fn build_command_args(request: &TofuCommandRequest) -> Vec<String> {
         _ => {}
     }
 
+    // The plan file is positional and must follow every flag, so it goes last.
+    if saved_plan && matches!(request.command, TofuCommand::Apply) {
+        args.push(PLAN_FILE.to_string());
+    }
+
     args
 }
 
@@ -134,25 +150,70 @@ pub async fn run_local(
 ) -> Result<i32, String> {
     let event_name = format!("tofu-output-{}", run_id);
 
-    // Find tofu binary (try tofu first, then terraform as fallback)
-    let binary = if which::which("tofu").is_ok() {
-        "tofu"
-    } else if which::which("terraform").is_ok() {
-        "terraform"
-    } else {
-        let _ = app_handle.emit(
+    // The binary is the project's decision (see tofu::binary). A pinned
+    // version Reach has not downloaded yet is fetched first, in the open,
+    // so the run that follows uses exactly what the project asked for.
+    let system = |handle: &tauri::AppHandle, line: String| {
+        let _ = handle.emit(
             &event_name,
             TofuCommandEvent {
                 run_id: run_id.to_string(),
-                stream: "stderr".to_string(),
-                line: "OpenTofu/Terraform CLI not found. Please install OpenTofu first."
-                    .to_string(),
-                done: true,
-                exit_code: Some(1),
+                stream: "system".to_string(),
+                line,
+                done: false,
+                exit_code: None,
             },
         );
-        return Err("OpenTofu CLI not found".to_string());
     };
+    let resolved = match binary::resolve(Some(Path::new(working_dir))) {
+        Ok(b) => b,
+        Err(binary::ResolveError::PinnedNotInstalled(v)) => {
+            system(app_handle, format!("This project pins OpenTofu {}. Installing it…", v));
+            let h = app_handle.clone();
+            let ev = event_name.clone();
+            let rid = run_id.to_string();
+            let report = move |m: &str| {
+                let _ = h.emit(
+                    &ev,
+                    TofuCommandEvent {
+                        run_id: rid.clone(),
+                        stream: "system".to_string(),
+                        line: m.to_string(),
+                        done: false,
+                        exit_code: None,
+                    },
+                );
+            };
+            if let Err(e) = binary::install(Some(v), report).await {
+                let _ = app_handle.emit(
+                    &event_name,
+                    TofuCommandEvent {
+                        run_id: run_id.to_string(),
+                        stream: "stderr".to_string(),
+                        line: e.clone(),
+                        done: true,
+                        exit_code: Some(1),
+                    },
+                );
+                return Err(e);
+            }
+            binary::resolve(Some(Path::new(working_dir))).map_err(|_| "OpenTofu was installed but could not be resolved".to_string())?
+        }
+        Err(binary::ResolveError::NotFound) => {
+            let _ = app_handle.emit(
+                &event_name,
+                TofuCommandEvent {
+                    run_id: run_id.to_string(),
+                    stream: "stderr".to_string(),
+                    line: "OpenTofu is not installed. Install it from the OpenTofu tab.".to_string(),
+                    done: true,
+                    exit_code: Some(1),
+                },
+            );
+            return Err("OpenTofu CLI not found".to_string());
+        }
+    };
+    let binary = resolved.path;
 
     let mut child = silent_async_command(binary)
         .args(args)
@@ -316,6 +377,10 @@ mod tests {
     use super::*;
     use crate::tofu::types::TofuExecutionTarget;
 
+    fn build_command_args_test(r: &TofuCommandRequest) -> Vec<String> {
+        build_command_args(r, false)
+    }
+
     fn req(command: TofuCommand) -> TofuCommandRequest {
         TofuCommandRequest {
             project_id: "p".into(),
@@ -329,7 +394,7 @@ mod tests {
 
     #[test]
     fn plan_speaks_json_and_reports_changes_in_its_exit_code() {
-        let args = build_command_args(&req(TofuCommand::Plan));
+        let args = build_command_args_test(&req(TofuCommand::Plan));
         assert!(args.contains(&"-json".to_string()));
         assert!(args.contains(&"-detailed-exitcode".to_string()));
         assert!(args.contains(&"-out=.reach-plan".to_string()));
@@ -339,7 +404,7 @@ mod tests {
     #[test]
     fn apply_and_destroy_speak_json() {
         for c in [TofuCommand::Apply, TofuCommand::Destroy] {
-            let args = build_command_args(&req(c));
+            let args = build_command_args_test(&req(c));
             assert!(args.contains(&"-json".to_string()), "{:?}", args);
         }
     }
@@ -348,19 +413,41 @@ mod tests {
     fn init_and_validate_speak_prose() {
         // Neither supports -json; passing it would be an error, not silence.
         for c in [TofuCommand::Init, TofuCommand::Validate, TofuCommand::Fmt] {
-            let args = build_command_args(&req(c));
+            let args = build_command_args_test(&req(c));
             assert!(!args.contains(&"-json".to_string()), "{:?}", args);
         }
     }
 
     #[test]
     fn exit_two_on_a_detailed_plan_is_news_not_failure() {
-        let plan = build_command_args(&req(TofuCommand::Plan));
+        let plan = build_command_args_test(&req(TofuCommand::Plan));
         assert_eq!(done_message(&plan, 2), "Plan complete: changes pending.");
         assert_eq!(done_message(&plan, 0), "Command completed successfully.");
         assert!(done_message(&plan, 1).contains("code 1"));
-        let apply = build_command_args(&req(TofuCommand::Apply));
+        let apply = build_command_args_test(&req(TofuCommand::Apply));
         assert!(done_message(&apply, 2).contains("code 2"), "apply has no special 2");
+    }
+
+    #[test]
+    fn a_saved_plan_is_applied_as_is() {
+        let mut r = req(TofuCommand::Apply);
+        r.var_file = Some("prod.tfvars".into());
+        let args = build_command_args(&r, true);
+        assert_eq!(args.last().map(String::as_str), Some(PLAN_FILE), "plan file goes last");
+        assert!(!args.iter().any(|a| a.starts_with("-var-file")), "values are in the plan");
+        assert!(!args.contains(&"-auto-approve".to_string()), "the plan is the approval");
+        assert!(args.contains(&"-json".to_string()));
+    }
+
+    #[test]
+    fn without_a_saved_plan_apply_keeps_its_var_file() {
+        let mut r = req(TofuCommand::Apply);
+        r.var_file = Some("prod.tfvars".into());
+        r.auto_approve = true;
+        let args = build_command_args(&r, false);
+        assert!(args.contains(&"-var-file=prod.tfvars".to_string()));
+        assert!(args.contains(&"-auto-approve".to_string()));
+        assert!(!args.contains(&PLAN_FILE.to_string()));
     }
 
     #[test]

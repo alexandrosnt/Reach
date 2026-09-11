@@ -25,6 +25,8 @@ import type {
 	ProviderSchema
 } from '$lib/ipc/tofu';
 import { parseTofuUiLine, applyTofuUiMessage, emptyRunView, splitLines, type TofuRunView } from '$lib/tofu/ui-json';
+import { tofuBinaryStatus, tofuBinaryInstall, tofuBinaryPin, type TofuBinaryStatus } from '$lib/ipc/tofu';
+import type { ToolInstallEvent } from '$lib/ipc/toolchain';
 import {
 	tofuListProjects,
 	tofuCreateProject,
@@ -78,6 +80,10 @@ let commandOutput = $state<Array<{ stream: string; line: string }>>([]);
 let runView = $state<TofuRunView>(emptyRunView());
 let runExitCode = $state<number | null>(null);
 let runCommandName = $state<TofuCommand | null>(null);
+// Which OpenTofu the open project runs. See tofu::binary on the Rust side.
+let binaryStatus = $state<TofuBinaryStatus | null>(null);
+let binaryInstalling = $state(false);
+let binaryInstallMessage = $state<string | null>(null);
 let currentRunId = $state<string | null>(null);
 let projectFiles = $state<string[]>([]);
 let providerCatalog = $state<ProviderCatalogEntry[]>([]);
@@ -132,6 +138,51 @@ export function getToolVersion(): string | null {
 
 export function isCommandRunning(): boolean {
 	return commandRunning;
+}
+
+export function getBinaryStatus(): TofuBinaryStatus | null {
+	return binaryStatus;
+}
+
+export function isBinaryInstalling(): boolean {
+	return binaryInstalling;
+}
+
+export function getBinaryInstallMessage(): string | null {
+	return binaryInstallMessage;
+}
+
+export async function loadBinaryStatus(): Promise<void> {
+	try {
+		binaryStatus = await tofuBinaryStatus(activeProjectId);
+	} catch {
+		binaryStatus = null;
+	}
+}
+
+/** Download and verify a version (latest when null), narrating on the chip. */
+export async function installBinary(version: string | null): Promise<void> {
+	binaryInstalling = true;
+	binaryInstallMessage = null;
+	const unlisten = await listen<ToolInstallEvent>('toolchain-install-tofu', (e) => {
+		if (e.payload.message) binaryInstallMessage = e.payload.message;
+	});
+	try {
+		const v = await tofuBinaryInstall(version);
+		// A fresh install becomes the project's pin, so the choice sticks.
+		if (activeProjectId) binaryStatus = await tofuBinaryPin(activeProjectId, v);
+		else await loadBinaryStatus();
+	} finally {
+		unlisten();
+		binaryInstalling = false;
+		binaryInstallMessage = null;
+	}
+}
+
+/** Pin the open project to a version, or clear the pin with null. */
+export async function pinBinary(version: string | null): Promise<void> {
+	if (!activeProjectId) return;
+	binaryStatus = await tofuBinaryPin(activeProjectId, version);
 }
 
 export function getRunView(): TofuRunView {

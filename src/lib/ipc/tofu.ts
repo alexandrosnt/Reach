@@ -520,3 +520,35 @@ export async function tofuGetSchemaResourceFields(
 		resourceType
 	});
 }
+
+// ==================== MANAGED BINARY ====================
+
+export interface TofuResolvedBinary {
+	path: string;
+	version: string | null;
+	source: 'managed' | 'path';
+}
+
+export interface TofuBinaryStatus {
+	resolved: TofuResolvedBinary | null;
+	installed: string[];
+	pinned: string | null;
+	pinSource: string | null;
+	pathAvailable: boolean;
+}
+
+export async function tofuBinaryStatus(projectId: string | null): Promise<TofuBinaryStatus> {
+	return invoke<TofuBinaryStatus>('tofu_binary_status', { projectId });
+}
+
+export async function tofuBinaryInstall(version: string | null): Promise<string> {
+	return invoke<string>('tofu_binary_install', { version });
+}
+
+export async function tofuBinaryPin(projectId: string, version: string | null): Promise<TofuBinaryStatus> {
+	return invoke<TofuBinaryStatus>('tofu_binary_pin', { projectId, version });
+}
+
+export async function tofuBinaryRemove(version: string): Promise<void> {
+	return invoke<void>('tofu_binary_remove', { version });
+}

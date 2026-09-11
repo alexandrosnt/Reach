@@ -34,7 +34,7 @@ pub struct ToolInstallEvent {
     pub success: bool,
 }
 
-fn emit_progress(app_handle: &tauri::AppHandle, tool: &str, message: &str) {
+pub fn emit_progress(app_handle: &tauri::AppHandle, tool: &str, message: &str) {
     let _ = app_handle.emit(
         &format!("toolchain-install-{}", tool),
         ToolInstallEvent {
@@ -46,7 +46,7 @@ fn emit_progress(app_handle: &tauri::AppHandle, tool: &str, message: &str) {
     );
 }
 
-fn emit_done(app_handle: &tauri::AppHandle, tool: &str, success: bool, message: &str) {
+pub fn emit_done(app_handle: &tauri::AppHandle, tool: &str, success: bool, message: &str) {
     let _ = app_handle.emit(
         &format!("toolchain-install-{}", tool),
         ToolInstallEvent {
@@ -58,205 +58,22 @@ fn emit_done(app_handle: &tauri::AppHandle, tool: &str, success: bool, message: 
     );
 }
 
-/// Install OpenTofu CLI.
-///
-/// - Windows: downloads the binary from GitHub releases into the tools directory.
-/// - Linux/macOS: uses the official install script from get.opentofu.org.
+/// Install OpenTofu: the latest release, downloaded and checksum-verified
+/// into Reach's own tools directory. The same path on every platform — see
+/// `tofu::binary`.
 pub async fn install_tofu(app_handle: &tauri::AppHandle) -> Result<String, String> {
     let tool = "tofu";
-    emit_progress(app_handle, tool, "Installing OpenTofu...");
-
-    #[cfg(windows)]
-    {
-        install_tofu_windows(app_handle).await
-    }
-
-    #[cfg(not(windows))]
-    {
-        install_tofu_unix(app_handle).await
-    }
-}
-
-#[cfg(windows)]
-async fn install_tofu_windows(app_handle: &tauri::AppHandle) -> Result<String, String> {
-    let tool = "tofu";
-    let tools_dir = dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("com.reach.app")
-        .join("tools");
-    let _ = std::fs::create_dir_all(&tools_dir);
-
-    emit_progress(app_handle, tool, "Downloading OpenTofu from GitHub...");
-
-    // Use PowerShell to download and extract the latest release
-    let ps_script = format!(
-        r#"
-$ErrorActionPreference = 'Stop'
-$toolsDir = '{}'
-$arch = if ([System.Environment]::Is64BitOperatingSystem) {{ 'amd64' }} else {{ '386' }}
-$apiUrl = 'https://api.github.com/repos/opentofu/opentofu/releases/latest'
-$headers = @{{ 'User-Agent' = 'Reach-App' }}
-$release = Invoke-RestMethod -Uri $apiUrl -Headers $headers
-$tag = $release.tag_name -replace '^v',''
-$zipName = "tofu_{0}_windows_$arch.zip" -f $tag
-$asset = $release.assets | Where-Object {{ $_.name -eq $zipName }} | Select-Object -First 1
-if (-not $asset) {{ throw "Could not find release asset: $zipName" }}
-$zipPath = Join-Path $env:TEMP $zipName
-Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath -Headers $headers
-Expand-Archive -Path $zipPath -DestinationPath $toolsDir -Force
-Remove-Item $zipPath -Force
-$tofuPath = Join-Path $toolsDir 'tofu.exe'
-if (Test-Path $tofuPath) {{ Write-Output "OK:$tofuPath" }} else {{ throw 'tofu.exe not found after extraction' }}
-"#,
-        tools_dir.display()
-    );
-
-    let mut child = silent_async_command("powershell")
-        .args(["-NoProfile", "-NonInteractive", "-Command", &ps_script])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Failed to spawn PowerShell: {}", e))?;
-
-    let stdout = child.stdout.take();
-    let stderr = child.stderr.take();
-
-    if let Some(stderr) = stderr {
-        let handle = app_handle.clone();
-        tokio::spawn(async move {
-            let reader = BufReader::new(stderr);
-            let mut lines = reader.lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                emit_progress(&handle, "tofu", &line);
-            }
-        });
-    }
-
-    let mut output_lines = Vec::new();
-    if let Some(stdout) = stdout {
-        let reader = BufReader::new(stdout);
-        let mut lines = reader.lines();
-        while let Ok(Some(line)) = lines.next_line().await {
-            output_lines.push(line);
+    let h = app_handle.clone();
+    let report = move |m: &str| emit_progress(&h, tool, m);
+    match crate::tofu::binary::install(None, report).await {
+        Ok(version) => {
+            emit_done(app_handle, tool, true, &version);
+            Ok(version)
         }
-    }
-
-    let status = child
-        .wait()
-        .await
-        .map_err(|e| format!("Failed to wait for installer: {}", e))?;
-
-    if !status.success() {
-        let msg = "OpenTofu installation failed".to_string();
-        emit_done(app_handle, tool, false, &msg);
-        return Err(msg);
-    }
-
-    emit_progress(app_handle, tool, "Verifying installation...");
-    let check = super::detect::check_tool("tofu");
-    if check.installed {
-        let version = check.version.unwrap_or_else(|| "unknown".to_string());
-        emit_done(app_handle, tool, true, &version);
-        Ok(version)
-    } else {
-        let msg = "OpenTofu was downloaded but could not be found. Try restarting the app.".to_string();
-        emit_done(app_handle, tool, false, &msg);
-        Err(msg)
-    }
-}
-
-#[cfg(not(windows))]
-async fn install_tofu_unix(app_handle: &tauri::AppHandle) -> Result<String, String> {
-    let tool = "tofu";
-
-    // Use the official install script, installing to the app's tools dir
-    let tools_dir = dirs::data_dir()
-        .unwrap_or_else(|| PathBuf::from("."))
-        .join("com.reach.app")
-        .join("tools");
-    let _ = std::fs::create_dir_all(&tools_dir);
-
-    emit_progress(app_handle, tool, "Downloading OpenTofu via install script...");
-
-    // Try the official cosign-verified method first, fall back to direct download
-    let install_cmd = format!(
-        "curl -fsSL https://get.opentofu.org/install-opentofu.sh | sh -s -- --install-method standalone --install-path {}",
-        tools_dir.display()
-    );
-
-    let mut child = silent_async_command("sh")
-        .args(["-c", &install_cmd])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| format!("Failed to run install script: {}", e))?;
-
-    let stdout = child.stdout.take();
-    let stderr = child.stderr.take();
-
-    let event_name = format!("toolchain-install-{}", tool);
-
-    if let Some(stdout) = stdout {
-        let event = event_name.clone();
-        let handle = app_handle.clone();
-        tokio::spawn(async move {
-            let reader = BufReader::new(stdout);
-            let mut lines = reader.lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                let _ = handle.emit(
-                    &event,
-                    ToolInstallEvent {
-                        tool: "tofu".to_string(),
-                        message: line,
-                        done: false,
-                        success: false,
-                    },
-                );
-            }
-        });
-    }
-
-    if let Some(stderr) = stderr {
-        let event = event_name.clone();
-        let handle = app_handle.clone();
-        tokio::spawn(async move {
-            let reader = BufReader::new(stderr);
-            let mut lines = reader.lines();
-            while let Ok(Some(line)) = lines.next_line().await {
-                let _ = handle.emit(
-                    &event,
-                    ToolInstallEvent {
-                        tool: "tofu".to_string(),
-                        message: line,
-                        done: false,
-                        success: false,
-                    },
-                );
-            }
-        });
-    }
-
-    let status = child
-        .wait()
-        .await
-        .map_err(|e| format!("Failed to wait for installer: {}", e))?;
-
-    if !status.success() {
-        let msg = "OpenTofu install script failed".to_string();
-        emit_done(app_handle, tool, false, &msg);
-        return Err(msg);
-    }
-
-    emit_progress(app_handle, tool, "Verifying installation...");
-    let check = super::detect::check_tool("tofu");
-    if check.installed {
-        let version = check.version.unwrap_or_else(|| "unknown".to_string());
-        emit_done(app_handle, tool, true, &version);
-        Ok(version)
-    } else {
-        let msg = "OpenTofu was installed but could not be found in PATH. Try restarting the app.".to_string();
-        emit_done(app_handle, tool, false, &msg);
-        Err(msg)
+        Err(e) => {
+            emit_done(app_handle, tool, false, &e);
+            Err(e)
+        }
     }
 }
 
