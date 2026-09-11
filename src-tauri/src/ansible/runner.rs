@@ -13,16 +13,6 @@ fn silent_async_command(program: impl AsRef<std::ffi::OsStr>) -> tokio::process:
     cmd
 }
 
-fn silent_command(program: impl AsRef<std::ffi::OsStr>) -> std::process::Command {
-    let mut cmd = std::process::Command::new(program);
-    #[cfg(windows)]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x08000000);
-    }
-    cmd
-}
-
 use crate::ssh::client::{exec_on_connection_streaming, SshManager};
 use crate::ansible::types::{AnsibleExecutionTarget, AnsibleCommand, AnsibleCommandEvent, AnsibleCommandRequest};
 use crate::toolchain::detect::windows_to_wsl_path;
