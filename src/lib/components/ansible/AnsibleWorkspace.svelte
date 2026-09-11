@@ -393,15 +393,17 @@
 		min-width: 0;
 	}
 
+	/* The strip wraps rather than scrolls: a tab that is off the edge is a
+	   tab nobody finds. */
 	.tab-bar {
 		display: flex;
 		align-items: center;
-		gap: 0;
+		flex-wrap: wrap;
+		gap: 0 2px;
 		padding: 0 16px;
 		border-bottom: 1px solid var(--color-border);
 		background: var(--color-bg-elevated);
 		flex-shrink: 0;
-		overflow-x: auto;
 	}
 
 	.tab {

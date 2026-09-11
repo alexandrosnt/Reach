@@ -68,7 +68,7 @@
 	{#if status}
 		<select class="target-select" value={choice} disabled={installing} onchange={onChange}>
 			{#each status.installed as v (v)}
-				<option value={v}>{v} · {t('tofu.version_managed')}</option>
+				<option value={v}>{v}</option>
 			{/each}
 			{#if status.pinned && !status.installed.includes(status.pinned)}
 				<option value={status.pinned}>{status.pinned} · {t('tofu.version_missing')}</option>
@@ -83,8 +83,10 @@
 	.version-control {
 		display: flex;
 		align-items: center;
-		gap: 10px;
+		flex-wrap: wrap;
+		gap: 8px 10px;
 		min-width: 0;
+		max-width: 100%;
 	}
 
 	.chip {
@@ -97,6 +99,14 @@
 		font-size: 0.75rem;
 		color: var(--color-text-secondary);
 		white-space: nowrap;
+		min-width: 0;
+		max-width: 100%;
+		overflow: hidden;
+	}
+
+	.chip > .dim {
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.chip.missing {
@@ -140,6 +150,7 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-btn);
 		font-family: inherit;
+		max-width: 220px;
 	}
 
 	.target-select:disabled {

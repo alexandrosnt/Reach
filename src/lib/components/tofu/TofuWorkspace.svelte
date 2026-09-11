@@ -376,6 +376,11 @@
 		width: 100%;
 		height: 100%;
 		background: var(--color-bg-primary);
+		/* Breakpoints below are on this box, not the window: the workspace
+		   sits beside the rail and the sessions sidebar, so a 1300px window
+		   can hand it 700px. */
+		container-type: inline-size;
+		container-name: tofu;
 	}
 
 	/* Left Panel */
@@ -581,7 +586,10 @@
 	.target-row {
 		display: flex;
 		align-items: center;
+		flex-wrap: wrap;
 		gap: 10px;
+		min-width: 0;
+		max-width: 100%;
 	}
 
 	.target-label {
@@ -674,20 +682,18 @@
 	}
 
 	/* Tab Bar */
+	/* Thirteen tabs. A strip that scrolls with its scrollbar hidden is a
+	   strip that hides tabs; this one wraps, so every tab is always on
+	   screen, whatever the width. */
 	.tab-bar {
 		display: flex;
 		align-items: center;
-		gap: 0;
+		flex-wrap: wrap;
+		gap: 0 2px;
 		padding: 0 12px;
 		border-bottom: 1px solid var(--color-border);
 		background: var(--color-bg-elevated);
-		overflow-x: auto;
 		flex-shrink: 0;
-		scrollbar-width: none;
-	}
-
-	.tab-bar::-webkit-scrollbar {
-		display: none;
 	}
 
 	.tab {
@@ -802,7 +808,7 @@
 	}
 
 	/* Responsive */
-	@media (max-width: 800px) {
+	@container tofu (max-width: 900px) {
 		.left-panel {
 			width: 200px;
 			min-width: 200px;
@@ -836,10 +842,15 @@
 		}
 	}
 
-	@media (max-width: 600px) {
+	@container tofu (max-width: 640px) {
+		/* At this width the file list and the work cannot both fit; the
+		   file list yields and comes back through its expand button. */
 		.left-panel:not(.collapsed) {
-			width: 180px;
-			min-width: 180px;
+			width: 0;
+			min-width: 0;
+			overflow: hidden;
+			opacity: 0;
+			border-right: none;
 		}
 
 		.tab {
