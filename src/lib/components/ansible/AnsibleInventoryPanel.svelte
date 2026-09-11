@@ -3,6 +3,10 @@
 	import { getActiveProject, saveInventory, generateInventory, writeInventory } from '$lib/state/ansible.svelte';
 	import type { AnsibleInventoryHost, AnsibleInventoryGroup } from '$lib/ipc/ansible';
 	import Button from '$lib/components/shared/Button.svelte';
+	import Modal from '$lib/components/shared/Modal.svelte';
+	import { sessionList, type SessionConfig } from '$lib/ipc/sessions';
+	import { vaultState } from '$lib/state/vault.svelte';
+	import { hostFromSession, alreadyInInventory, missingGroups } from '$lib/ansible/from-sessions';
 
 	let project = $derived(getActiveProject());
 
@@ -45,6 +49,59 @@
 		await saveInventory(hosts, groups);
 	}
 
+	// ---- From sessions ------------------------------------------------------
+	// Reach knows every saved session's address, user, key and bastion. Pick
+	// the ones that belong in this inventory; nothing is copied that should
+	// not be (a password never is).
+	let showFromSessions = $state(false);
+	let sessions = $state<SessionConfig[]>([]);
+	let picked = $state<Set<string>>(new Set());
+	let sessionsLoading = $state(false);
+
+	async function openFromSessions() {
+		showFromSessions = true;
+		picked = new Set();
+		sessionsLoading = true;
+		try {
+			sessions = await sessionList();
+		} catch {
+			sessions = [];
+		} finally {
+			sessionsLoading = false;
+		}
+	}
+
+	function togglePick(id: string) {
+		const next = new Set(picked);
+		if (next.has(id)) next.delete(id);
+		else next.add(id);
+		picked = next;
+	}
+
+	let pickable = $derived(sessions.filter((s) => !alreadyInInventory(s, hosts)));
+	let passwordPicked = $derived(
+		sessions.some((s) => picked.has(s.id) && s.auth_method?.type === 'Password')
+	);
+
+	async function addPicked() {
+		let next = [...hosts];
+		for (const s of sessions) {
+			if (!picked.has(s.id)) continue;
+			next = [...next, hostFromSession(s, next).host];
+		}
+		const newGroups = missingGroups(next, groups);
+		hosts = next;
+		groups = [...groups, ...newGroups];
+		showFromSessions = false;
+		editingHost = null;
+		await saveInventory(hosts, groups);
+	}
+
+	function vaultName(s: SessionConfig): string | null {
+		if (!s.vault_id) return null;
+		return vaultState.vaults.get(s.vault_id)?.name ?? null;
+	}
+
 	async function handleGenerateIni() {
 		try {
 			iniPreview = await generateInventory();
@@ -65,7 +122,10 @@
 	<div class="section">
 		<div class="section-header">
 			<h3 class="section-title">{t('ansible.hosts')}</h3>
-			<Button variant="secondary" size="sm" onclick={addHost}>{t('ansible.add_host')}</Button>
+			<div class="section-actions">
+				<Button variant="secondary" size="sm" onclick={openFromSessions}>{t('ansible.from_sessions')}</Button>
+				<Button variant="secondary" size="sm" onclick={addHost}>{t('ansible.add_host')}</Button>
+			</div>
 		</div>
 
 		{#if hosts.length === 0}
@@ -214,7 +274,140 @@
 	{/if}
 </div>
 
+<Modal open={showFromSessions} onclose={() => (showFromSessions = false)} title={t('ansible.from_sessions_title')} maxWidth="560px">
+	{#if sessionsLoading}
+		<p class="empty-text">{t('common.loading')}</p>
+	{:else if sessions.length === 0}
+		<p class="empty-text">{t('ansible.from_sessions_none')}</p>
+	{:else}
+		<div class="session-pick">
+			{#each sessions as s (s.id)}
+				{@const present = !pickable.includes(s)}
+				<label class="pick-row" class:present>
+					<input type="checkbox" checked={picked.has(s.id)} disabled={present} onchange={() => togglePick(s.id)} />
+					<span class="pick-main">
+						<span class="pick-name">{s.name}</span>
+						<span class="pick-detail">{s.username}@{s.host}{s.port !== 22 ? `:${s.port}` : ''}</span>
+					</span>
+					<span class="pick-tags">
+						{#if vaultName(s)}<span class="pick-tag vault">{vaultName(s)}</span>{/if}
+						{#if s.auth_method?.type === 'Key'}<span class="pick-tag">KEY</span>{:else if s.auth_method?.type === 'Password'}<span class="pick-tag warn">PW</span>{/if}
+						{#if s.jump_chain && s.jump_chain.length > 0}<span class="pick-tag">JUMP</span>{/if}
+						{#if present}<span class="pick-tag dim">{t('ansible.already_in_inventory')}</span>{/if}
+					</span>
+				</label>
+			{/each}
+		</div>
+		{#if passwordPicked}
+			<p class="pick-hint">{t('ansible.from_sessions_password_hint')}</p>
+		{/if}
+		<p class="pick-hint">{t('ansible.from_sessions_hint')}</p>
+	{/if}
+
+	{#snippet actions()}
+		<Button variant="ghost" onclick={() => (showFromSessions = false)}>{t('common.cancel')}</Button>
+		<Button variant="primary" disabled={picked.size === 0} onclick={addPicked}>
+			{t('ansible.add_n_hosts', { count: picked.size })}
+		</Button>
+	{/snippet}
+</Modal>
+
 <style>
+	.section-actions {
+		display: flex;
+		gap: 6px;
+	}
+
+	.session-pick {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		max-height: 360px;
+		overflow-y: auto;
+		scrollbar-width: thin;
+	}
+
+	.pick-row {
+		display: grid;
+		grid-template-columns: auto minmax(0, 1fr) auto;
+		align-items: center;
+		gap: 10px;
+		padding: 6px 8px;
+		border-radius: 6px;
+		cursor: pointer;
+	}
+
+	.pick-row:hover {
+		background: var(--color-surface-hover);
+	}
+
+	.pick-row.present {
+		opacity: 0.55;
+		cursor: default;
+	}
+
+	.pick-main {
+		display: flex;
+		flex-direction: column;
+		min-width: 0;
+	}
+
+	.pick-name {
+		font-size: 0.8125rem;
+		color: var(--color-text-primary);
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.pick-detail {
+		font-size: 0.6875rem;
+		font-family: var(--font-mono, monospace);
+		color: var(--color-text-tertiary);
+	}
+
+	.pick-tags {
+		display: flex;
+		gap: 4px;
+		flex-wrap: wrap;
+		justify-content: flex-end;
+	}
+
+	.pick-tag {
+		font-size: 0.625rem;
+		font-weight: 600;
+		letter-spacing: 0.04em;
+		padding: 1px 6px;
+		border-radius: 4px;
+		background: var(--color-surface-hover);
+		color: var(--color-text-secondary);
+	}
+
+	.pick-tag.vault {
+		font-weight: 500;
+		letter-spacing: 0;
+		color: var(--color-text-secondary);
+		border: 1px solid var(--color-border);
+		background: transparent;
+	}
+
+	.pick-tag.warn {
+		color: var(--color-warning, #f59e0b);
+	}
+
+	.pick-tag.dim {
+		font-weight: 500;
+		letter-spacing: 0;
+		color: var(--color-text-tertiary);
+		background: transparent;
+	}
+
+	.pick-hint {
+		margin: 10px 0 0;
+		font-size: 0.75rem;
+		color: var(--color-text-secondary);
+	}
+
 	.inventory-panel {
 		padding: 16px;
 		display: flex;
