@@ -940,6 +940,7 @@
   "tofu.run_succeeded": "Completed.",
   "tofu.run_failed": "Exited with code {{code}}.",
   "tofu.run_summary": "{{add}} to add, {{change}} to change, {{remove}} to destroy",
+  "tofu.run_summary_applied": "{{add}} added, {{change}} changed, {{remove}} destroyed",
   "tofu.run_diagnostics": "Diagnostics",
   "tofu.run_progress": "Progress",
   "tofu.run_planned": "Planned changes",

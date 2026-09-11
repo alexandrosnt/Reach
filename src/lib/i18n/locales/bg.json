@@ -940,6 +940,7 @@
   "tofu.run_succeeded": "Завършено.",
   "tofu.run_failed": "Приключи с код {{code}}.",
   "tofu.run_summary": "{{add}} за добавяне, {{change}} за промяна, {{remove}} за изтриване",
+  "tofu.run_summary_applied": "{{add}} добавени, {{change}} променени, {{remove}} изтрити",
   "tofu.run_diagnostics": "Диагностика",
   "tofu.run_progress": "Напредък",
   "tofu.run_planned": "Планирани промени",

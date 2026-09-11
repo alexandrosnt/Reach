@@ -940,6 +940,7 @@
   "tofu.run_succeeded": "Ολοκληρώθηκε.",
   "tofu.run_failed": "Τερματίστηκε με κωδικό {{code}}.",
   "tofu.run_summary": "{{add}} για προσθήκη, {{change}} για αλλαγή, {{remove}} για διαγραφή",
+  "tofu.run_summary_applied": "{{add}} προστέθηκαν, {{change}} άλλαξαν, {{remove}} διαγράφηκαν",
   "tofu.run_diagnostics": "Διαγνωστικά",
   "tofu.run_progress": "Πρόοδος",
   "tofu.run_planned": "Προγραμματισμένες αλλαγές",

@@ -85,7 +85,9 @@
 	let summaryText = $derived.by(() => {
 		const s = view.summary;
 		if (!s) return null;
-		return t('tofu.run_summary', { add: s.add, change: s.change, remove: s.remove });
+		// A plan says what would happen; an apply says what did.
+		const key = s.operation === 'plan' ? 'tofu.run_summary' : 'tofu.run_summary_applied';
+		return t(key, { add: s.add, change: s.change, remove: s.remove });
 	});
 
 	let outputEntries = $derived(Object.entries(view.outputs));
