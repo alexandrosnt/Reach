@@ -1404,6 +1404,8 @@
 		flex-direction: column;
 		gap: 2px;
 		overflow-y: auto;
+		/* Nothing here scrolls sideways; a 3px overflow must not grow a bar. */
+		overflow-x: hidden;
 		flex: 1;
 		min-height: 60px;
 	}
