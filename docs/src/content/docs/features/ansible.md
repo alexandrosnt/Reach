@@ -21,6 +21,12 @@ The first green engine is selected for you. The UI never asks which OS this is �
 
 A remote engine is the one path that is identical on Windows, macOS and Linux, and it needs one thing from Reach: the project has to get there. Before every remote run Reach packs the project (skipping `.git`, `.venv`, `__pycache__` and the like), streams it over the existing SSH connection as the remote command's standard input, and unpacks it into `~/.reach/ansible/<project-id>/` on the host — replacing what was there, so what runs is what is on your disk now. The output says so: *Synced 14 files (38 KB) to ~/.reach/ansible/…*. Nothing is written anywhere on the way that another user could read, and nothing of yours on the host is touched.
 
+### Reading a run
+
+A playbook run is shown as what it is — plays, tasks, hosts — instead of a wall of text. Each task is a row coloured by the worst thing that happened on it, with a chip per host: green *ok*, amber *changed*, red *failed* or *unreachable*, grey *skipped*, amber *ignored* for a failure the playbook chose to forgive. A failed host's message sits under its task. The recap is the footer, per host and in total, and the verdict chip says whether the run finished clean. Commands that produce no plays — galaxy, vault, inventory — show their output as text, and **Raw log** switches any run back to exactly what Ansible wrote.
+
+This reads the default callback's output, the same lines every CI system reads; nothing about your `ansible.cfg` has to change. Colour is turned off for the run so the lines parse.
+
 ### The vault password
 
 A project's vault password is stored in Reach's own vault and never appears on a command line. For a run it is written to a file only your user can read — under Reach's data directory locally, or in the project's remote directory with mode 600 — passed with `--vault-password-file`, and removed when the run ends.

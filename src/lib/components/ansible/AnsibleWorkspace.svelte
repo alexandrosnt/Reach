@@ -14,7 +14,7 @@
 	import type { AnsibleExecutionTarget } from '$lib/ipc/ansible';
 	import AnsibleEnginePicker from './AnsibleEnginePicker.svelte';
 	import Button from '$lib/components/shared/Button.svelte';
-	import AnsibleCommandOutput from './AnsibleCommandOutput.svelte';
+	import AnsibleRunView from './AnsibleRunView.svelte';
 	import AnsiblePlaybookPanel from './AnsiblePlaybookPanel.svelte';
 	import AnsibleInventoryPanel from './AnsibleInventoryPanel.svelte';
 	import AnsibleRolesPanel from './AnsibleRolesPanel.svelte';
@@ -184,7 +184,7 @@
 							</div>
 						</div>
 					{:else}
-						<AnsibleCommandOutput />
+						<AnsibleRunView />
 					{/if}
 				</div>
 			</div>
@@ -197,12 +197,12 @@
 		{:else if activeTab === 'adhoc'}
 			<div class="tab-content-split">
 				<div class="tab-panel"><AnsibleAdHocPanel target={buildTarget()} /></div>
-				<div class="output-area"><AnsibleCommandOutput /></div>
+				<div class="output-area"><AnsibleRunView /></div>
 			</div>
 		{:else if activeTab === 'vault'}
 			<div class="tab-content-split">
 				<div class="tab-panel"><AnsibleVaultPanel target={buildTarget()} /></div>
-				<div class="output-area"><AnsibleCommandOutput /></div>
+				<div class="output-area"><AnsibleRunView /></div>
 			</div>
 		{/if}
 	</main>
