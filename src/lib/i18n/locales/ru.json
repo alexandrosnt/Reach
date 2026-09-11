@@ -1161,6 +1161,7 @@
   "ansible.engine": "Движок",
   "ansible.engine_native": "Этот компьютер",
   "ansible.engine_wsl": "WSL",
+  "ansible.engine_container": "Контейнер",
   "ansible.engine_remote": "Удалённо",
   "ansible.engine_unofficial": "неофициально",
   "ansible.engine_unavailable": "недоступно",

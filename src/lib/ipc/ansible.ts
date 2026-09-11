@@ -50,13 +50,13 @@ export type AnsibleCommand =
 	| 'syntaxCheck';
 
 export interface AnsibleExecutionTarget {
-	type: 'local' | 'wsl' | 'ssh';
+	type: 'local' | 'wsl' | 'container' | 'ssh';
 	connectionId?: string;
 }
 
 /** One place Ansible can run, and whether it can right now. */
 export interface AnsibleEngineInfo {
-	kind: 'native' | 'wsl' | 'remote';
+	kind: 'native' | 'wsl' | 'container' | 'remote';
 	available: boolean;
 	version: string | null;
 	reason: string | null;

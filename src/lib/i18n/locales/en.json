@@ -1212,6 +1212,7 @@
   "ansible.engine": "Engine",
   "ansible.engine_native": "This machine",
   "ansible.engine_wsl": "WSL",
+  "ansible.engine_container": "Container",
   "ansible.engine_remote": "Remote",
   "ansible.engine_unofficial": "unofficial",
   "ansible.engine_unavailable": "unavailable",

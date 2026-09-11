@@ -13,6 +13,7 @@ Ansible is a Linux program: its control node needs `fork()`, so Windows cannot r
 | --- | --- | --- |
 | **This machine** | A native install on Linux or macOS | Green when `ansible` is on PATH. On Windows it is grey, with the reason. |
 | **WSL** | Your default WSL distribution, on Windows | Green when Ansible is installed inside it. Marked *unofficial*: it works, but the Ansible project does not stand behind WSL as a control node. The project stays on the Windows filesystem and is reached through `/mnt`. |
+| **Container** | An execution environment — `ghcr.io/ansible/community-ansible-dev-tools` — run by podman (preferred) or docker | Green when a runtime is installed and running. The one engine that is identical on Windows, macOS and Linux. The project is bind-mounted, your `~/.ssh` is mounted read-only so keys and `known_hosts` reach the hosts, and the first run pulls the image. |
 | **Remote · user@host** | Any open SSH connection | Checked when you pick it: green when the host has Ansible. |
 
 The first green engine is selected for you. The UI never asks which OS this is — it asks which engines are green.

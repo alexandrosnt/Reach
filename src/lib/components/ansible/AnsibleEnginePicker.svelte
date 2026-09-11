@@ -45,6 +45,7 @@
 	function toTarget(c: string): AnsibleExecutionTarget {
 		if (c === 'native') return { type: 'local' };
 		if (c === 'wsl') return { type: 'wsl' };
+		if (c === 'container') return { type: 'container' };
 		if (c.startsWith('ssh:')) return { type: 'ssh', connectionId: c.slice(4) };
 		return { type: 'local' };
 	}
@@ -63,6 +64,7 @@
 	function engineLabel(kind: string): string {
 		if (kind === 'native') return t('ansible.engine_native');
 		if (kind === 'wsl') return t('ansible.engine_wsl');
+		if (kind === 'container') return t('ansible.engine_container');
 		return t('ansible.engine_remote');
 	}
 </script>
@@ -71,7 +73,7 @@
 	<select class="target-select" value={choice} onchange={onSelect}>
 		{#each engines as e (e.kind)}
 			<option value={e.kind} disabled={!e.available}>
-				{engineLabel(e.kind)}{e.detail && e.kind === 'wsl' ? ` · ${e.detail}` : ''}{e.available ? '' : ` — ${t('ansible.engine_unavailable')}`}
+				{engineLabel(e.kind)}{e.detail && e.kind === 'wsl' ? ` · ${e.detail}` : ''}{e.detail && e.kind === 'container' ? ` · ${e.detail.split(' · ')[0]}` : ''}{e.available ? '' : ` — ${t('ansible.engine_unavailable')}`}
 			</option>
 		{/each}
 		{#each connections as c (c.id)}
@@ -85,6 +87,7 @@
 			{#if current.available}
 				<span class="mono">{current.version ?? '—'}</span>
 				{#if current.unofficial}<span class="dim">· {t('ansible.engine_unofficial')}</span>{/if}
+				{#if current.kind === 'container' && current.detail}<span class="dim">· {current.detail.split(' · ')[1] ?? ''}</span>{/if}
 			{:else}
 				<span>{current.reason ?? t('ansible.engine_unavailable')}</span>
 			{/if}
