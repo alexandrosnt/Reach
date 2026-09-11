@@ -1041,6 +1041,46 @@
   "tofu.no_providers_for_resources": "Aggiungi prima un provider per vedere le risorse disponibili.",
 
   "tofu.tab_state": "Stato",
+
+  "tofu.tab_overview": "Panoramica",
+
+  "tofu.tab_code": "Codice",
+
+  "tofu.more_actions": "Altre azioni",
+
+  "tofu.target_remote": "Remoto",
+
+  "tofu.env_default": "Ambiente predefinito",
+
+  "tofu.no_var_file": "nessun file di variabili",
+
+  "tofu.state_encrypted": "stato cifrato",
+
+  "tofu.backend_is": "backend: {{backend}}",
+
+  "tofu.plan_gate": "Questo è il piano che verrà applicato. Nient'altro.",
+
+  "tofu.plan_gate_full": "Piano completo",
+
+  "tofu.plan_gate_result": "Torna al risultato",
+
+  "tofu.plan_discard": "Scarta",
+
+  "tofu.plan_apply_this": "Applica questo piano",
+
+  "tofu.danger_zone": "Zona pericolosa",
+
+  "tofu.destroy_explain": "Destroy rimuove ogni risorsa gestita da questo progetto. Digita il nome del progetto per abilitarlo.",
+
+  "tofu.destroy_type_name": "Digita {{name}} per confermare",
+
+  "tofu.close": "Chiudi",
+
+  "tofu.loading": "Caricamento…",
+
+  "tofu.show_files": "Mostra file",
+
+  "tofu.hide_files": "Nascondi file",
   "tofu.state_title": "Gestione dello stato",
   "tofu.state_refresh": "Aggiorna",
   "tofu.state_loading": "Caricamento stato...",
@@ -1244,6 +1284,19 @@
   "ansible.tab_collections": "Collezioni",
   "ansible.tab_adhoc": "Ad Hoc",
   "ansible.tab_vault": "Vault",
+  "ansible.tab_dependencies": "Dipendenze",
+  "ansible.adhoc": "Ad hoc",
+  "ansible.adhoc_open": "Esegui un comando ad hoc…",
+  "ansible.adhoc_title": "Comando ad hoc",
+  "ansible.roles_title": "Ruoli",
+  "ansible.collections_title": "Collezioni",
+  "ansible.playbook": "Playbook",
+  "ansible.inventory": "Inventario",
+  "ansible.run": "Esegui",
+  "ansible.close": "Chiudi",
+  "ansible.loading": "Caricamento…",
+  "ansible.show_files": "Mostra file",
+  "ansible.hide_files": "Nascondi file",
   "ansible.playbook_select": "Seleziona playbook",
   "ansible.inventory_select": "Seleziona file di inventario",
   "ansible.run_playbook": "Esegui Playbook",

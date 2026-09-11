@@ -87,44 +87,28 @@ Shows all files in the project directory. Supported file types: `.yml`, `.yaml`,
 
 The panel can be collapsed with the chevron button to give more room to the main content. A **Back to Projects** button at the bottom takes you back to the project list.
 
-### Right panel — workspace tabs
+### Right panel — four tabs and a run bar
 
-Six tabs across the top:
-
-| Tab | What it does |
-|-----|-------------|
-| **Playbooks** | Select and run playbooks |
+| Tab | What it holds |
+|-----|---------------|
+| **Playbooks** | The run: pick a playbook, an inventory and extra arguments on the run bar, then **Syntax check**, **Dry run** or **Run**. The result fills the page below. |
 | **Inventory** | Visual host and group editor |
-| **Roles** | Install and remove Ansible Galaxy roles |
-| **Collections** | Install Ansible Galaxy collections |
-| **Ad-Hoc** | Run one-off Ansible commands |
+| **Dependencies** | Ansible Galaxy roles and collections, installed and removed from one place |
 | **Vault** | Encrypt, decrypt, and view vault files |
 
-### Execution target
+### The run bar
 
-Below the tabs, there's an **Execution Target** selector. This controls where commands actually run:
+The run bar is above every tab. **Engine** is where Ansible runs: this machine, WSL, a container, or any open SSH session to a Linux host. When nothing on this machine can run Ansible the picker says so and the run buttons stay off until you choose a remote host. Next to the engine, **Ad hoc** opens a small dialog for a one-off command without a playbook; its result shows on Playbooks like every other run.
 
-- **Local** — runs on your machine (through WSL on Windows)
-- **SSH** — runs on a remote server through an active SSH connection
-
-If you pick SSH, a dropdown appears listing all your active SSH connections in `user@host:port` format.
+On Playbooks the run bar also carries the playbook, the inventory and the extra arguments. With one playbook and one inventory in the project they are chosen for you.
 
 ## Playbooks
 
-The Playbooks tab has three inputs and two action buttons.
+- **Playbook** — every `.yml` and `.yaml` file in the project. Required.
+- **Inventory** — every `.ini` and `.cfg` file and any file named `hosts`. Optional.
+- **Extra arguments** — flags such as `-v`, `--tags deploy`, `--limit webservers`.
 
-**Inputs:**
-- **Select Playbook** — dropdown listing all `.yml` and `.yaml` files in the project. Required.
-- **Inventory File** — dropdown listing all `.ini`, `.cfg` files and any file named `hosts`. Optional.
-- **Extra Arguments** — free text input for additional flags like `-v`, `--tags deploy`, `--limit webservers`, etc.
-
-**Buttons:**
-- **Run Playbook** — executes `ansible-playbook <playbook> [-i inventory] [extra args]`
-- **Check Syntax** — runs `ansible-playbook --syntax-check` to validate the playbook without executing it
-
-Both buttons are disabled while a command is already running. If no playbook files exist in the project, you'll see "No playbooks found in project."
-
-Output streams in real-time on the right side of the panel.
+**Run** executes `ansible-playbook <playbook> [-i inventory] [extra args]`. **Dry run** adds `--check --diff`: what would change, with the diff, changing nothing. **Syntax check** runs `--syntax-check`. All three stay off while a command is running or no engine is chosen.
 
 ## Inventory
 
@@ -160,9 +144,11 @@ Two buttons at the bottom:
 
 When the INI preview is showing, a **Write Inventory** button appears. Click it to write the generated INI to `inventory.ini` in your project directory. The file list refreshes automatically.
 
-## Roles
+## Dependencies
 
-The Roles tab manages Ansible Galaxy roles.
+### Roles
+
+The Roles section of the Dependencies tab manages Ansible Galaxy roles.
 
 **Install row:**
 - Text input for the role name (e.g., `geerlingguy.apache` or a Git URL)
@@ -174,9 +160,9 @@ The Roles tab manages Ansible Galaxy roles.
 
 The list refreshes automatically after install or remove operations.
 
-## Collections
+### Collections
 
-The Collections tab manages Ansible Galaxy collections.
+The Collections section manages Ansible Galaxy collections.
 
 **Install row:**
 - Text input for the collection name (e.g., `community.general`)
@@ -186,9 +172,9 @@ The Collections tab manages Ansible Galaxy collections.
 - Each collection shows its `namespace.name` format and version
 - Collections are detected by scanning the `collections/ansible_collections/` directory structure
 
-## Ad-Hoc
+## Ad hoc
 
-The Ad-Hoc tab runs one-off Ansible commands without a playbook.
+**Ad hoc** on the run bar opens a dialog for one-off Ansible commands without a playbook.
 
 **Inputs:**
 - **Host Pattern** — who to target (e.g., `all`, `webservers`, `192.168.1.*`). Defaults to `all`.
@@ -197,7 +183,7 @@ The Ad-Hoc tab runs one-off Ansible commands without a playbook.
 - **Inventory File** — optional inventory file selector (same as Playbooks tab)
 
 **Button:**
-- **Run Ad-Hoc Command** — executes `ansible <pattern> -m <module> [-a "args"] [-i inventory]`
+- **Run** — executes `ansible <pattern> -m <module> [-a "args"] [-i inventory]`
 
 Example: selecting host pattern `all`, module `ping`, no args, runs `ansible all -m ping` — a quick way to check if all hosts are reachable.
 
@@ -217,7 +203,7 @@ Output from these operations streams to the command output panel on the right.
 
 ## Command output
 
-All tabs that execute commands (Playbooks, Roles, Ad-Hoc, Vault) share a streaming output panel. It shows:
+Every run — playbooks, ad hoc, roles, vault — shows in the same streaming result. It shows:
 
 - **stdout** lines in the default text color
 - **stderr** lines in red

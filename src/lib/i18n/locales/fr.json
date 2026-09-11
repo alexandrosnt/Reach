@@ -1041,6 +1041,46 @@
   "tofu.no_providers_for_resources": "Ajoutez d'abord un fournisseur pour voir les ressources disponibles.",
 
   "tofu.tab_state": "État",
+
+  "tofu.tab_overview": "Aperçu",
+
+  "tofu.tab_code": "Code",
+
+  "tofu.more_actions": "Plus d'actions",
+
+  "tofu.target_remote": "Distant",
+
+  "tofu.env_default": "Environnement par défaut",
+
+  "tofu.no_var_file": "pas de fichier de variables",
+
+  "tofu.state_encrypted": "état chiffré",
+
+  "tofu.backend_is": "backend : {{backend}}",
+
+  "tofu.plan_gate": "C'est ce plan qui sera appliqué. Rien d'autre.",
+
+  "tofu.plan_gate_full": "Plan complet",
+
+  "tofu.plan_gate_result": "Retour au résultat",
+
+  "tofu.plan_discard": "Abandonner",
+
+  "tofu.plan_apply_this": "Appliquer ce plan",
+
+  "tofu.danger_zone": "Zone de danger",
+
+  "tofu.destroy_explain": "Destroy supprime toutes les ressources gérées par ce projet. Saisissez le nom du projet pour l'activer.",
+
+  "tofu.destroy_type_name": "Saisissez {{name}} pour confirmer",
+
+  "tofu.close": "Fermer",
+
+  "tofu.loading": "Chargement…",
+
+  "tofu.show_files": "Afficher les fichiers",
+
+  "tofu.hide_files": "Masquer les fichiers",
   "tofu.state_title": "Gestion de l'état",
   "tofu.state_refresh": "Actualiser",
   "tofu.state_loading": "Chargement de l'état...",
@@ -1244,6 +1284,19 @@
   "ansible.tab_collections": "Collections",
   "ansible.tab_adhoc": "Ad Hoc",
   "ansible.tab_vault": "Vault",
+  "ansible.tab_dependencies": "Dépendances",
+  "ansible.adhoc": "Ad hoc",
+  "ansible.adhoc_open": "Exécuter une commande ad hoc…",
+  "ansible.adhoc_title": "Commande ad hoc",
+  "ansible.roles_title": "Rôles",
+  "ansible.collections_title": "Collections",
+  "ansible.playbook": "Playbook",
+  "ansible.inventory": "Inventaire",
+  "ansible.run": "Exécuter",
+  "ansible.close": "Fermer",
+  "ansible.loading": "Chargement…",
+  "ansible.show_files": "Afficher les fichiers",
+  "ansible.hide_files": "Masquer les fichiers",
   "ansible.playbook_select": "Sélectionner un playbook",
   "ansible.inventory_select": "Sélectionner un fichier d'inventaire",
   "ansible.run_playbook": "Exécuter le playbook",

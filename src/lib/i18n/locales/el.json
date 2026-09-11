@@ -1041,6 +1041,46 @@
   "tofu.no_providers_for_resources": "Προσθέστε πρώτα έναν πάροχο για να δείτε τους διαθέσιμους πόρους.",
 
   "tofu.tab_state": "Κατάσταση",
+
+  "tofu.tab_overview": "Επισκόπηση",
+
+  "tofu.tab_code": "Κώδικας",
+
+  "tofu.more_actions": "Περισσότερες ενέργειες",
+
+  "tofu.target_remote": "Απομακρυσμένο",
+
+  "tofu.env_default": "Προεπιλεγμένο περιβάλλον",
+
+  "tofu.no_var_file": "χωρίς αρχείο μεταβλητών",
+
+  "tofu.state_encrypted": "κρυπτογραφημένο state",
+
+  "tofu.backend_is": "backend: {{backend}}",
+
+  "tofu.plan_gate": "Αυτό είναι το πλάνο που θα εφαρμοστεί. Τίποτα άλλο.",
+
+  "tofu.plan_gate_full": "Πλήρες πλάνο",
+
+  "tofu.plan_gate_result": "Πίσω στο αποτέλεσμα",
+
+  "tofu.plan_discard": "Απόρριψη",
+
+  "tofu.plan_apply_this": "Εφαρμογή αυτού του πλάνου",
+
+  "tofu.danger_zone": "Ζώνη κινδύνου",
+
+  "tofu.destroy_explain": "Το Destroy αφαιρεί κάθε πόρο που διαχειρίζεται αυτό το έργο. Πληκτρολογήστε το όνομα του έργου για να ενεργοποιηθεί.",
+
+  "tofu.destroy_type_name": "Πληκτρολογήστε {{name}} για επιβεβαίωση",
+
+  "tofu.close": "Κλείσιμο",
+
+  "tofu.loading": "Φόρτωση…",
+
+  "tofu.show_files": "Εμφάνιση αρχείων",
+
+  "tofu.hide_files": "Απόκρυψη αρχείων",
   "tofu.state_title": "Διαχείριση κατάστασης",
   "tofu.state_refresh": "Ανανέωση",
   "tofu.state_loading": "Φόρτωση κατάστασης...",
@@ -1244,6 +1284,19 @@
   "ansible.tab_collections": "Συλλογές",
   "ansible.tab_adhoc": "Ad Hoc",
   "ansible.tab_vault": "Vault",
+  "ansible.tab_dependencies": "Εξαρτήσεις",
+  "ansible.adhoc": "Ad hoc",
+  "ansible.adhoc_open": "Εκτέλεση ad hoc εντολής…",
+  "ansible.adhoc_title": "Ad hoc εντολή",
+  "ansible.roles_title": "Ρόλοι",
+  "ansible.collections_title": "Συλλογές",
+  "ansible.playbook": "Playbook",
+  "ansible.inventory": "Inventory",
+  "ansible.run": "Εκτέλεση",
+  "ansible.close": "Κλείσιμο",
+  "ansible.loading": "Φόρτωση…",
+  "ansible.show_files": "Εμφάνιση αρχείων",
+  "ansible.hide_files": "Απόκρυψη αρχείων",
   "ansible.playbook_select": "Επιλογή playbook",
   "ansible.inventory_select": "Επιλογή αρχείου απογραφής",
   "ansible.run_playbook": "Εκτέλεση Playbook",

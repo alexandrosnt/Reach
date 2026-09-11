@@ -154,6 +154,11 @@
 	}
 
 	/* The hint is a sentence, not a status: let it wrap. */
+	.chip.hint {
+		max-width: none;
+		flex: 1 1 260px;
+	}
+
 	.chip.hint span:not(.dot) {
 		white-space: normal;
 		line-height: 1.4;

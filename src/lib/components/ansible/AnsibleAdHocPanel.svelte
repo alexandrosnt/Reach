@@ -6,9 +6,11 @@
 
 	interface Props {
 		target: AnsibleExecutionTarget | null;
+		/** Called once a run has been started; a dialog closes itself here. */
+		onrun?: () => void;
 	}
 
-	let { target }: Props = $props();
+	let { target, onrun }: Props = $props();
 
 	let project = $derived(getActiveProject());
 	let files = $derived(getProjectFiles());
@@ -35,6 +37,7 @@
 			inventoryFile: selectedInventory,
 			extraArgs: []
 		});
+		onrun?.();
 	}
 </script>
 

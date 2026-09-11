@@ -1041,6 +1041,46 @@
   "tofu.no_providers_for_resources": "Agrega un proveedor primero para ver los recursos disponibles.",
 
   "tofu.tab_state": "Estado",
+
+  "tofu.tab_overview": "Resumen",
+
+  "tofu.tab_code": "Código",
+
+  "tofu.more_actions": "Más acciones",
+
+  "tofu.target_remote": "Remoto",
+
+  "tofu.env_default": "Entorno predeterminado",
+
+  "tofu.no_var_file": "sin archivo de variables",
+
+  "tofu.state_encrypted": "estado cifrado",
+
+  "tofu.backend_is": "backend: {{backend}}",
+
+  "tofu.plan_gate": "Este es el plan que se aplicará. Nada más.",
+
+  "tofu.plan_gate_full": "Plan completo",
+
+  "tofu.plan_gate_result": "Volver al resultado",
+
+  "tofu.plan_discard": "Descartar",
+
+  "tofu.plan_apply_this": "Aplicar este plan",
+
+  "tofu.danger_zone": "Zona de peligro",
+
+  "tofu.destroy_explain": "Destroy elimina todos los recursos que gestiona este proyecto. Escribe el nombre del proyecto para habilitarlo.",
+
+  "tofu.destroy_type_name": "Escribe {{name}} para confirmar",
+
+  "tofu.close": "Cerrar",
+
+  "tofu.loading": "Cargando…",
+
+  "tofu.show_files": "Mostrar archivos",
+
+  "tofu.hide_files": "Ocultar archivos",
   "tofu.state_title": "Administración del estado",
   "tofu.state_refresh": "Actualizar",
   "tofu.state_loading": "Cargando estado...",
@@ -1244,6 +1284,19 @@
   "ansible.tab_collections": "Colecciones",
   "ansible.tab_adhoc": "Ad Hoc",
   "ansible.tab_vault": "Vault",
+  "ansible.tab_dependencies": "Dependencias",
+  "ansible.adhoc": "Ad hoc",
+  "ansible.adhoc_open": "Ejecutar un comando ad hoc…",
+  "ansible.adhoc_title": "Comando ad hoc",
+  "ansible.roles_title": "Roles",
+  "ansible.collections_title": "Colecciones",
+  "ansible.playbook": "Playbook",
+  "ansible.inventory": "Inventario",
+  "ansible.run": "Ejecutar",
+  "ansible.close": "Cerrar",
+  "ansible.loading": "Cargando…",
+  "ansible.show_files": "Mostrar archivos",
+  "ansible.hide_files": "Ocultar archivos",
   "ansible.playbook_select": "Seleccionar playbook",
   "ansible.inventory_select": "Seleccionar archivo de inventario",
   "ansible.run_playbook": "Ejecutar playbook",
