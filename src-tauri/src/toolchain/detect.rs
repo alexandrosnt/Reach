@@ -13,6 +13,7 @@ fn silent_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
 }
 
 #[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ToolStatus {
     pub installed: bool,
     pub version: Option<String>,

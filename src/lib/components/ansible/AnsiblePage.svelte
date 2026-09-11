@@ -1,23 +1,41 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { t } from '$lib/state/i18n.svelte';
-	import { checkTool, isToolInstalled, isToolChecking, getActiveProjectId } from '$lib/state/ansible.svelte';
+	import {
+		checkTool,
+		getToolStatus,
+		isToolInstalled,
+		loadEngines,
+		areEnginesLoaded,
+		hasLocalEngine,
+		isSetupSkipped,
+		getActiveProjectId
+	} from '$lib/state/ansible.svelte';
 	import AnsibleToolchainSetup from './AnsibleToolchainSetup.svelte';
 	import AnsibleProjectList from './AnsibleProjectList.svelte';
 	import AnsibleWorkspace from './AnsibleWorkspace.svelte';
 
+	// One check when the page opens. The setup screen never re-checks on
+	// its own — it did once, and each answer remounted the spinner, which
+	// remounted the setup screen, which checked again, without end.
 	onMount(() => {
 		checkTool();
+		loadEngines();
 	});
+
+	let firstCheck = $derived(getToolStatus() === null || !areEnginesLoaded());
+	// The workspace opens when anything here can run a playbook, or when the
+	// user chose to write projects now and run them elsewhere.
+	let ready = $derived(isToolInstalled() || hasLocalEngine() || isSetupSkipped());
 </script>
 
 <div class="ansible-page">
-	{#if isToolChecking()}
+	{#if firstCheck}
 		<div class="checking-state">
 			<div class="spinner"></div>
 			<span class="checking-text">{t('ansible.checking')}</span>
 		</div>
-	{:else if !isToolInstalled()}
+	{:else if !ready}
 		<AnsibleToolchainSetup />
 	{:else if !getActiveProjectId()}
 		<AnsibleProjectList />

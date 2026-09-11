@@ -26,7 +26,8 @@
 	let files = $derived(getProjectFiles());
 	let running = $derived(isCommandRunning());
 
-	let target = $state<AnsibleExecutionTarget>({ type: 'local' });
+	// Null until the picker settles on something that can run.
+	let target = $state<AnsibleExecutionTarget | null>(null);
 
 	let activeTab = $derived(getWorkspaceTab());
 
@@ -39,7 +40,7 @@
 		refreshFiles();
 	});
 
-	function buildTarget(): AnsibleExecutionTarget {
+	function buildTarget(): AnsibleExecutionTarget | null {
 		return target;
 	}
 

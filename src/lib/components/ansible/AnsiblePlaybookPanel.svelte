@@ -5,7 +5,7 @@
 	import Button from '$lib/components/shared/Button.svelte';
 
 	interface Props {
-		target: AnsibleExecutionTarget;
+		target: AnsibleExecutionTarget | null;
 	}
 
 	let { target }: Props = $props();
@@ -26,7 +26,7 @@
 	 * shows the diff, changing nothing. It is the button to reach for first.
 	 */
 	function handleRun(command: 'playbook' | 'syntaxCheck' | 'check') {
-		if (!project || !selectedPlaybook) return;
+		if (!project || !target || !selectedPlaybook) return;
 		const extra = extraArgs.trim() ? extraArgs.trim().split(/\s+/) : [];
 		const request: AnsibleCommandRequest = {
 			projectId: project.id,
@@ -88,7 +88,7 @@
 			<Button
 				variant="primary"
 				size="sm"
-				disabled={running || !selectedPlaybook}
+				disabled={running || !target || !selectedPlaybook}
 				onclick={() => handleRun('playbook')}
 			>
 				{t('ansible.run_playbook')}
@@ -97,7 +97,7 @@
 				<Button
 					variant="secondary"
 					size="sm"
-					disabled={running || !selectedPlaybook}
+					disabled={running || !target || !selectedPlaybook}
 					onclick={() => handleRun('check')}
 				>
 					{t('ansible.check_diff')}
@@ -106,7 +106,7 @@
 			<Button
 				variant="secondary"
 				size="sm"
-				disabled={running || !selectedPlaybook}
+				disabled={running || !target || !selectedPlaybook}
 				onclick={() => handleRun('syntaxCheck')}
 			>
 				{t('ansible.syntax_check')}
