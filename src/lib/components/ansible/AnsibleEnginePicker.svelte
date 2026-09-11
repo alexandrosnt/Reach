@@ -1,10 +1,12 @@
 <!--
 	Which engine runs Ansible, with every option's status beside it.
 
-	Native, WSL and each open SSH connection are rows in one select. A row
-	that cannot run says why in the chip next to it, so nobody has to know
-	that Windows cannot be a control node — the picker knows. Choosing a
-	remote host checks it once and remembers.
+	Native, WSL, container and each open SSH connection are rows in one
+	select. A row that cannot run says why in the chip next to it, so nobody
+	has to know that Windows cannot be a control node — the picker knows.
+	Choosing a remote host checks it once and remembers. When nothing here
+	can run, the first open SSH session is picked; when there is none, the
+	chip says what to open.
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
@@ -19,7 +21,7 @@
 	import { sshListConnections, type ConnectionInfo } from '$lib/ipc/ssh';
 
 	interface Props {
-		onchange: (target: AnsibleExecutionTarget) => void;
+		onchange: (target: AnsibleExecutionTarget | null) => void;
 	}
 	let { onchange }: Props = $props();
 
@@ -27,20 +29,30 @@
 	let connections = $state<ConnectionInfo[]>([]);
 	let choice = $state('');
 
-	onMount(async () => {
-		await loadEngines();
+	async function refreshConnections() {
 		try {
 			connections = await sshListConnections();
 		} catch {
 			connections = [];
 		}
-		// Pick the first engine that works, in the order they were offered.
+	}
+
+	onMount(async () => {
+		await loadEngines();
+		await refreshConnections();
+		// Pick the first engine that works, in the order they were offered;
+		// failing that, the first open SSH session.
 		const first = engines.find((e) => e.available);
 		if (first) {
 			choice = first.kind;
-			onchange(toTarget(choice));
+		} else if (connections.length > 0) {
+			choice = `ssh:${connections[0].id}`;
+			await checkRemoteEngine(connections[0].id);
 		}
+		onchange(choice ? toTarget(choice) : null);
 	});
+
+	let nothingRuns = $derived(!engines.some((e) => e.available) && connections.length === 0);
 
 	function toTarget(c: string): AnsibleExecutionTarget {
 		if (c === 'native') return { type: 'local' };
@@ -70,7 +82,10 @@
 </script>
 
 <div class="picker">
-	<select class="target-select" value={choice} onchange={onSelect}>
+	<select class="target-select" value={choice} onchange={onSelect} onfocus={refreshConnections}>
+		{#if !choice}
+			<option value="" disabled>{t('ansible.engine_choose')}</option>
+		{/if}
 		{#each engines as e (e.kind)}
 			<option value={e.kind} disabled={!e.available}>
 				{engineLabel(e.kind)}{e.detail && e.kind === 'wsl' ? ` · ${e.detail}` : ''}{e.detail && e.kind === 'container' ? ` · ${e.detail.split(' · ')[0]}` : ''}{e.available ? '' : ` — ${t('ansible.engine_unavailable')}`}
@@ -94,6 +109,8 @@
 		</span>
 	{:else if choice.startsWith('ssh:')}
 		<span class="chip"><span class="spinner"></span>{t('ansible.engine_checking')}</span>
+	{:else if nothingRuns}
+		<span class="chip bad hint"><span class="dot"></span><span>{t('ansible.engine_none_hint')}</span></span>
 	{/if}
 </div>
 
@@ -134,6 +151,12 @@
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
+	}
+
+	/* The hint is a sentence, not a status: let it wrap. */
+	.chip.hint span:not(.dot) {
+		white-space: normal;
+		line-height: 1.4;
 	}
 
 	.dot {

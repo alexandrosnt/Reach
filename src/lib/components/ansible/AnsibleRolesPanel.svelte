@@ -6,7 +6,7 @@
 	import Button from '$lib/components/shared/Button.svelte';
 
 	interface Props {
-		target: AnsibleExecutionTarget;
+		target: AnsibleExecutionTarget | null;
 	}
 
 	let { target }: Props = $props();
@@ -23,7 +23,7 @@
 	});
 
 	async function handleInstall() {
-		if (!project || !installName.trim()) return;
+		if (!project || !target || !installName.trim()) return;
 		await runCommand({
 			projectId: project.id,
 			command: 'galaxyRoleInstall',
@@ -36,7 +36,7 @@
 	}
 
 	async function handleRemove(roleName: string) {
-		if (!project) return;
+		if (!project || !target) return;
 		await runCommand({
 			projectId: project.id,
 			command: 'galaxyRoleRemove',
@@ -59,7 +59,7 @@
 		<Button
 			variant="primary"
 			size="sm"
-			disabled={running || !installName.trim()}
+			disabled={running || !target || !installName.trim()}
 			onclick={handleInstall}
 		>
 			{t('ansible.install_role')}
@@ -80,7 +80,7 @@
 							<span class="item-version">{role.version}</span>
 						{/if}
 					</div>
-					<Button variant="danger" size="sm" disabled={running} onclick={() => handleRemove(role.name)}>
+					<Button variant="danger" size="sm" disabled={running || !target} onclick={() => handleRemove(role.name)}>
 						{t('ansible.remove_role')}
 					</Button>
 				</div>

@@ -1,18 +1,20 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { t } from '$lib/state/i18n.svelte';
-	import { checkTool, isToolInstalled, isToolChecking, getActiveProjectId } from '$lib/state/tofu.svelte';
+	import { checkTool, getToolStatus, isToolInstalled, getActiveProjectId } from '$lib/state/tofu.svelte';
 	import TofuToolchainSetup from './TofuToolchainSetup.svelte';
 	import TofuProjectList from './TofuProjectList.svelte';
 	import TofuWorkspace from './TofuWorkspace.svelte';
 
+	// One check when the page opens; the setup screen never re-checks on
+	// mount, or the spinner and the setup screen would remount each other.
 	onMount(() => {
 		checkTool();
 	});
 </script>
 
 <div class="tofu-page">
-	{#if isToolChecking()}
+	{#if getToolStatus() === null}
 		<div class="checking-state">
 			<div class="spinner"></div>
 			<span class="checking-text">{t('tofu.checking')}</span>

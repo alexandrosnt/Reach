@@ -6,7 +6,7 @@
 	import Button from '$lib/components/shared/Button.svelte';
 
 	interface Props {
-		target: AnsibleExecutionTarget;
+		target: AnsibleExecutionTarget | null;
 	}
 
 	let { target }: Props = $props();
@@ -23,7 +23,7 @@
 	});
 
 	async function handleInstall() {
-		if (!project || !installName.trim()) return;
+		if (!project || !target || !installName.trim()) return;
 		await runCommand({
 			projectId: project.id,
 			command: 'galaxyCollectionInstall',
@@ -47,7 +47,7 @@
 		<Button
 			variant="primary"
 			size="sm"
-			disabled={running || !installName.trim()}
+			disabled={running || !target || !installName.trim()}
 			onclick={handleInstall}
 		>
 			{t('ansible.install_collection')}

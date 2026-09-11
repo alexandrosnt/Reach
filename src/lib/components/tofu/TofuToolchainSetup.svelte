@@ -1,5 +1,4 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { checkTool, isToolInstalled, isToolChecking, getToolVersion } from '$lib/state/tofu.svelte';
 	import { toolchainInstall, type ToolInstallEvent } from '$lib/ipc/toolchain';
@@ -12,10 +11,6 @@
 	let installSuccess = $state(false);
 
 	let logContainer: HTMLDivElement | undefined = $state(undefined);
-
-	onMount(() => {
-		checkTool();
-	});
 
 	// Auto-scroll log container when new logs arrive
 	$effect(() => {

@@ -5,7 +5,7 @@
 	import Button from '$lib/components/shared/Button.svelte';
 
 	interface Props {
-		target: AnsibleExecutionTarget;
+		target: AnsibleExecutionTarget | null;
 	}
 
 	let { target }: Props = $props();
@@ -24,7 +24,7 @@
 	const modules = ['ping', 'shell', 'command', 'copy', 'yum', 'apt', 'service', 'file', 'setup', 'debug'];
 
 	function handleRun() {
-		if (!project) return;
+		if (!project || !target) return;
 		runCommand({
 			projectId: project.id,
 			command: 'adHoc',
@@ -89,7 +89,7 @@
 	{/if}
 
 	<div class="actions">
-		<Button variant="primary" size="sm" disabled={running || !hostPattern.trim()} onclick={handleRun}>
+		<Button variant="primary" size="sm" disabled={running || !target || !hostPattern.trim()} onclick={handleRun}>
 			{t('ansible.run_adhoc')}
 		</Button>
 	</div>

@@ -5,7 +5,7 @@
 	import Button from '$lib/components/shared/Button.svelte';
 
 	interface Props {
-		target: AnsibleExecutionTarget;
+		target: AnsibleExecutionTarget | null;
 	}
 
 	let { target }: Props = $props();
@@ -17,7 +17,7 @@
 	let selectedFile = $state<string | null>(null);
 
 	function handleVaultAction(command: 'vaultEncrypt' | 'vaultDecrypt' | 'vaultView') {
-		if (!project || !selectedFile) return;
+		if (!project || !target || !selectedFile) return;
 		runCommand({
 			projectId: project.id,
 			command,
@@ -43,13 +43,13 @@
 
 	{#if selectedFile}
 		<div class="actions">
-			<Button variant="primary" size="sm" disabled={running} onclick={() => handleVaultAction('vaultEncrypt')}>
+			<Button variant="primary" size="sm" disabled={running || !target} onclick={() => handleVaultAction('vaultEncrypt')}>
 				{t('ansible.vault_encrypt')}
 			</Button>
-			<Button variant="secondary" size="sm" disabled={running} onclick={() => handleVaultAction('vaultDecrypt')}>
+			<Button variant="secondary" size="sm" disabled={running || !target} onclick={() => handleVaultAction('vaultDecrypt')}>
 				{t('ansible.vault_decrypt')}
 			</Button>
-			<Button variant="secondary" size="sm" disabled={running} onclick={() => handleVaultAction('vaultView')}>
+			<Button variant="secondary" size="sm" disabled={running || !target} onclick={() => handleVaultAction('vaultView')}>
 				{t('ansible.vault_view')}
 			</Button>
 		</div>

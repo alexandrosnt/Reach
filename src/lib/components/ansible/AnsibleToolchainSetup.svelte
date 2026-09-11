@@ -1,7 +1,15 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { t } from '$lib/state/i18n.svelte';
-	import { checkTool, isToolInstalled, isToolChecking, getToolVersion, isLocalUnsupported, isWsl } from '$lib/state/ansible.svelte';
+	import {
+		checkTool,
+		isToolInstalled,
+		isToolChecking,
+		getToolVersion,
+		isLocalUnsupported,
+		isWsl,
+		getEngines,
+		skipToolchainSetup
+	} from '$lib/state/ansible.svelte';
 	import { toolchainInstall, type ToolInstallEvent } from '$lib/ipc/toolchain';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import Button from '$lib/components/shared/Button.svelte';
@@ -13,9 +21,14 @@
 
 	let logContainer: HTMLDivElement | undefined = $state(undefined);
 
-	onMount(() => {
-		checkTool();
-	});
+	let engines = $derived(getEngines());
+
+	function engineLabel(kind: string): string {
+		if (kind === 'native') return t('ansible.engine_native');
+		if (kind === 'wsl') return t('ansible.engine_wsl');
+		if (kind === 'container') return t('ansible.engine_container');
+		return t('ansible.engine_remote');
+	}
 
 	// Auto-scroll log container when new logs arrive
 	$effect(() => {
@@ -117,7 +130,7 @@
 			{/if}
 		</div>
 	{:else if isLocalUnsupported()}
-		<!-- Windows without WSL: warning banner -->
+		<!-- Windows without WSL: say what can run Ansible from here, and how each stands. -->
 		<div class="warning-banner">
 			<svg class="warn-icon" width="18" height="18" viewBox="0 0 20 20" fill="none">
 				<path d="M10 2L1 18h18L10 2z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" />
@@ -125,6 +138,25 @@
 				<circle cx="10" cy="15" r="1" fill="currentColor" />
 			</svg>
 			<span class="warning-text">{t('ansible.local_unsupported')}</span>
+		</div>
+		<div class="engine-list">
+			<span class="engine-list-title">{t('ansible.setup_ways')}</span>
+			{#each engines.filter((e) => e.kind !== 'native') as e (e.kind)}
+				<div class="engine-row">
+					<span class="dot" class:ok={e.available} class:bad={!e.available}></span>
+					<div class="engine-info">
+						<span class="engine-label">{engineLabel(e.kind)}</span>
+						<span class="engine-detail">{e.available ? (e.version ?? '') : (e.reason ?? t('ansible.engine_unavailable'))}</span>
+					</div>
+				</div>
+			{/each}
+			<div class="engine-row">
+				<span class="dot"></span>
+				<div class="engine-info">
+					<span class="engine-label">{t('ansible.engine_remote')}</span>
+					<span class="engine-detail">{t('ansible.setup_remote_detail')}</span>
+				</div>
+			</div>
 		</div>
 	{:else}
 		<!-- Linux/macOS: standard ansible status -->
@@ -159,6 +191,16 @@
 				</Button>
 			</div>
 		{/if}
+	{/if}
+
+	<!-- The way through without a local Ansible: write projects now, run them elsewhere. -->
+	{#if !isToolChecking() && !isToolInstalled() && !installing && installLogs.length === 0}
+		<div class="continue-row">
+			<span class="continue-hint">{t('ansible.setup_continue_hint')}</span>
+			<Button variant="secondary" size="sm" onclick={skipToolchainSetup}>
+				{t('ansible.setup_continue')}
+			</Button>
+		</div>
 	{/if}
 
 	<!-- Install progress section (shared across all platforms) -->
@@ -281,6 +323,79 @@
 	.warning-text {
 		font-size: 0.8125rem;
 		line-height: 1.5;
+		color: var(--color-text-secondary);
+	}
+
+	/* Ways to run Ansible when this machine cannot */
+	.engine-list {
+		display: flex;
+		flex-direction: column;
+		gap: 8px;
+	}
+
+	.engine-list-title {
+		font-size: 0.75rem;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.04em;
+		color: var(--color-text-tertiary);
+	}
+
+	.engine-row {
+		display: flex;
+		align-items: flex-start;
+		gap: 10px;
+	}
+
+	.dot {
+		width: 7px;
+		height: 7px;
+		margin-top: 6px;
+		border-radius: 50%;
+		flex-shrink: 0;
+		background: var(--color-text-tertiary);
+	}
+
+	.dot.ok {
+		background: var(--color-success, #10b981);
+	}
+
+	.dot.bad {
+		background: var(--color-warning, #f59e0b);
+	}
+
+	.engine-info {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+	}
+
+	.engine-label {
+		font-size: 0.875rem;
+		font-weight: 500;
+		color: var(--color-text-primary);
+	}
+
+	.engine-detail {
+		font-size: 0.75rem;
+		line-height: 1.45;
+		color: var(--color-text-secondary);
+	}
+
+	.continue-row {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		flex-wrap: wrap;
+		gap: 8px 12px;
+		padding-top: 12px;
+		border-top: 1px solid var(--color-border);
+	}
+
+	.continue-hint {
+		flex: 1 1 240px;
+		font-size: 0.8125rem;
 		color: var(--color-text-secondary);
 	}
 

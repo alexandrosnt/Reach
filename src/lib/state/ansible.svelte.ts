@@ -319,7 +319,11 @@ export function clearOutput(): void {
 // ==================== ENGINES ====================
 
 let engines = $state<AnsibleEngineInfo[]>([]);
+let enginesLoaded = $state(false);
 let remoteEngines = $state<Record<string, AnsibleEngineInfo>>({});
+// The setup screen stepped past by choice: projects can be written now and
+// run later on a remote host or in a container. Session-only, on purpose.
+let setupSkipped = $state(false);
 
 export function getEngines(): AnsibleEngineInfo[] {
 	return engines;
@@ -329,11 +333,30 @@ export function getRemoteEngine(connectionId: string): AnsibleEngineInfo | null 
 	return remoteEngines[connectionId] ?? null;
 }
 
+export function areEnginesLoaded(): boolean {
+	return enginesLoaded;
+}
+
+/// True when something on this machine can run a playbook right now.
+export function hasLocalEngine(): boolean {
+	return engines.some((e) => e.available);
+}
+
+export function isSetupSkipped(): boolean {
+	return setupSkipped;
+}
+
+export function skipToolchainSetup(): void {
+	setupSkipped = true;
+}
+
 export async function loadEngines(): Promise<void> {
 	try {
 		engines = await ansibleEngines();
 	} catch {
 		engines = [];
+	} finally {
+		enginesLoaded = true;
 	}
 }
 
