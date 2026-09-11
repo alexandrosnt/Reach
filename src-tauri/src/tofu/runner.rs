@@ -118,6 +118,7 @@ pub fn build_command_args(request: &TofuCommandRequest, saved_plan: bool) -> Vec
         | TofuCommand::Apply
         | TofuCommand::Destroy
         | TofuCommand::Validate
+        | TofuCommand::Test
         | TofuCommand::StateShow
         | TofuCommand::StateRm
         | TofuCommand::StateMv
@@ -147,6 +148,7 @@ pub async fn run_local(
     args: &[String],
     run_id: &str,
     app_handle: &tauri::AppHandle,
+    extra_env: &[(String, String)],
 ) -> Result<i32, String> {
     let event_name = format!("tofu-output-{}", run_id);
 
@@ -219,6 +221,7 @@ pub async fn run_local(
         .args(args)
         .current_dir(working_dir)
         .envs(AUTOMATION_ENV)
+        .envs(extra_env.iter().map(|(k, v)| (k.as_str(), v.as_str())))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::null())
@@ -328,14 +331,25 @@ pub async fn run_remote(
     run_id: &str,
     app_handle: &tauri::AppHandle,
     ssh_manager: &mut SshManager,
+    extra_env: &[(String, String)],
 ) -> Result<i32, String> {
     let event_name = format!("tofu-output-{}", run_id);
 
     // Build the full command string for remote execution
+    // Extra variables ride on the command line here — a remote shell has no
+    // other channel — so they are single-quoted and, for a moment, visible
+    // in that host's process list.
+    let mut prefix = automation_prefix();
+    for (k, v) in extra_env {
+        prefix.push(' ');
+        prefix.push_str(k);
+        prefix.push('=');
+        prefix.push_str(&shell_escape(v));
+    }
     let cmd = format!(
         "cd {} && {} tofu {}",
         shell_escape(working_dir),
-        automation_prefix(),
+        prefix,
         args.join(" ")
     );
 

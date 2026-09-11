@@ -31,6 +31,28 @@ pub struct TofuProject {
     pub locals: Vec<TofuLocal>,
     #[serde(default)]
     pub modules: Vec<TofuModuleConfig>,
+    /// State and plan encryption. The passphrase lives here, in the vault,
+    /// and reaches OpenTofu as an environment variable — never in a file.
+    #[serde(default)]
+    pub encryption: Option<TofuEncryptionConfig>,
+}
+
+/// OpenTofu's state encryption (1.7+): AES-256-GCM under a key derived
+/// from a passphrase with PBKDF2. Only the passphrase is ours to keep.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TofuEncryptionConfig {
+    pub enabled: bool,
+    pub passphrase: String,
+}
+
+impl TofuEncryptionConfig {
+    /// The variable the generated HCL reads the passphrase from.
+    pub const VAR: &'static str = "reach_state_passphrase";
+
+    pub fn active(&self) -> bool {
+        self.enabled && !self.passphrase.is_empty()
+    }
 }
 
 /// A configured provider instance in a project.
@@ -170,6 +192,7 @@ pub enum TofuCommand {
     Apply,
     Destroy,
     Validate,
+    Test,
     Output,
     Show,
     ProvidersSchema,
@@ -194,6 +217,7 @@ impl TofuCommand {
             TofuCommand::Apply => "apply",
             TofuCommand::Destroy => "destroy",
             TofuCommand::Validate => "validate",
+            TofuCommand::Test => "test",
             TofuCommand::Output => "output",
             TofuCommand::Show => "show",
             TofuCommand::ProvidersSchema => "providers",

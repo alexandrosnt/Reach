@@ -21,15 +21,20 @@
 	let selectedInventory = $state<string | null>(null);
 	let extraArgs = $state('');
 
-	function handleRun(command: 'playbook' | 'syntaxCheck') {
+	/**
+	 * `check` is the dry run: `--check --diff` reports what would change and
+	 * shows the diff, changing nothing. It is the button to reach for first.
+	 */
+	function handleRun(command: 'playbook' | 'syntaxCheck' | 'check') {
 		if (!project || !selectedPlaybook) return;
+		const extra = extraArgs.trim() ? extraArgs.trim().split(/\s+/) : [];
 		const request: AnsibleCommandRequest = {
 			projectId: project.id,
-			command,
+			command: command === 'check' ? 'playbook' : command,
 			target,
 			playbook: selectedPlaybook,
 			inventoryFile: selectedInventory,
-			extraArgs: extraArgs.trim() ? extraArgs.trim().split(/\s+/) : []
+			extraArgs: command === 'check' ? ['--check', '--diff', ...extra] : extra
 		};
 		runCommand(request);
 	}
@@ -88,6 +93,16 @@
 			>
 				{t('ansible.run_playbook')}
 			</Button>
+			<span title={t('ansible.check_diff_hint')}>
+				<Button
+					variant="secondary"
+					size="sm"
+					disabled={running || !selectedPlaybook}
+					onclick={() => handleRun('check')}
+				>
+					{t('ansible.check_diff')}
+				</Button>
+			</span>
 			<Button
 				variant="secondary"
 				size="sm"

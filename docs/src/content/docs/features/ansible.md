@@ -25,6 +25,10 @@ A remote engine is the one path that is identical on Windows, macOS and Linux, a
 
 Reach already knows what an inventory entry needs — address, port, user, key, the bastion in front — for every session you have saved. In the **Inventory** tab, **From sessions…** lists them; tick the ones that belong here and they become hosts: the session's tags become groups, a key becomes `ansible_ssh_private_key_file`, the first jump hop becomes `-o ProxyJump=…` in `ansible_ssh_common_args`. Sessions already in the inventory are shown greyed. A password is never written to an inventory: a password session becomes a host with no credential, Ansible asks for it (`--ask-pass`), or you give the session a key.
 
+### Dry run first
+
+**Dry run** runs the playbook with `--check --diff`: every task reports what it *would* change, templates and files show their diff, and nothing on the hosts changes. It is the button to reach for before **Run Playbook** on anything that matters.
+
 ### Reading a run
 
 A playbook run is shown as what it is — plays, tasks, hosts — instead of a wall of text. Each task is a row coloured by the worst thing that happened on it, with a chip per host: green *ok*, amber *changed*, red *failed* or *unreachable*, grey *skipped*, amber *ignored* for a failure the playbook chose to forgive. A failed host's message sits under its task. The recap is the footer, per host and in total, and the verdict chip says whether the run finished clean. Commands that produce no plays — galaxy, vault, inventory — show their output as text, and **Raw log** switches any run back to exactly what Ansible wrote.

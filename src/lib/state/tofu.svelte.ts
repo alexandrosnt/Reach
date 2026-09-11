@@ -25,7 +25,7 @@ import type {
 	ProviderSchema
 } from '$lib/ipc/tofu';
 import { parseTofuUiLine, applyTofuUiMessage, emptyRunView, splitLines, type TofuRunView } from '$lib/tofu/ui-json';
-import { tofuBinaryStatus, tofuBinaryInstall, tofuBinaryPin, type TofuBinaryStatus } from '$lib/ipc/tofu';
+import { tofuBinaryStatus, tofuBinaryInstall, tofuBinaryPin, tofuUpdateEncryption, type TofuBinaryStatus, type TofuEncryptionConfig } from '$lib/ipc/tofu';
 import type { ToolInstallEvent } from '$lib/ipc/toolchain';
 import {
 	tofuListProjects,
@@ -774,6 +774,17 @@ export async function loadBackendCatalog(): Promise<void> {
 	} catch {
 		backendCatalog = [];
 	}
+}
+
+export function getActiveEncryption(): TofuEncryptionConfig | null {
+	return getActiveProject()?.encryption ?? null;
+}
+
+export async function saveEncryption(encryption: TofuEncryptionConfig | null): Promise<void> {
+	const project = getActiveProject();
+	if (!project) return;
+	const updated = await tofuUpdateEncryption(project.id, encryption);
+	updateLocalProject(updated);
 }
 
 export async function saveBackend(backend: TofuBackendConfig | null): Promise<void> {

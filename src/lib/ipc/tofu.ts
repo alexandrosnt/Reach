@@ -17,6 +17,7 @@ export interface TofuProject {
 	dataSources: TofuDataSource[];
 	locals: TofuLocal[];
 	modules: TofuModuleConfig[];
+	encryption?: TofuEncryptionConfig | null;
 }
 
 export interface TofuProviderConfig {
@@ -134,6 +135,12 @@ export interface TofuOutputValue {
 export interface TofuBackendConfig {
 	backendType: string;
 	fields: Record<string, unknown>;
+}
+
+/** State and plan encryption: AES-256-GCM under a PBKDF2 key from a passphrase. */
+export interface TofuEncryptionConfig {
+	enabled: boolean;
+	passphrase: string;
 }
 
 export interface TofuDataSource {
@@ -259,6 +266,7 @@ export type TofuCommand =
 	| 'apply'
 	| 'destroy'
 	| 'validate'
+	| 'test'
 	| 'output'
 	| 'show'
 	| 'providersSchema'
@@ -414,6 +422,13 @@ export async function tofuApplyTemplate(
 	templateId: string
 ): Promise<TofuProject> {
 	return invoke<TofuProject>('tofu_apply_template', { projectId, templateId });
+}
+
+export async function tofuUpdateEncryption(
+	projectId: string,
+	encryption: TofuEncryptionConfig | null
+): Promise<TofuProject> {
+	return invoke<TofuProject>('tofu_update_encryption', { projectId, encryption });
 }
 
 export async function tofuUpdateBackend(
