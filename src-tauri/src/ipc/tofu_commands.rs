@@ -16,6 +16,7 @@ use crate::tofu::runner;
 use crate::tofu::binary::{self, BinaryStatus};
 use crate::tofu::types::{
     TofuCommand,
+    TofuEncryptionConfig,
     BackendCatalogEntry, DataSourceCatalogEntry, DependencyGraph, GeneratedFile,
     HclGenerationResult, ProjectTemplate, ProviderCatalogEntry, ProviderFieldSchema,
     ProviderFieldType, ProviderSchema, ResourceCatalogEntry, TofuBackendConfig,
@@ -91,6 +92,7 @@ pub async fn tofu_create_project(
         data_sources: vec![],
         locals: vec![],
         modules: vec![],
+        encryption: None,
     };
 
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
@@ -138,15 +140,22 @@ pub async fn tofu_run_command(
 ) -> Result<String, String> {
     let run_id = Uuid::new_v4().to_string();
 
-    // Get project path
-    let project_path = {
+    // Get project path, and the encryption passphrase for the run's environment
+    let (project_path, extra_env) = {
         let mut tofu_mgr = state.tofu_project_manager.lock().await;
         let mut vault_mgr = state.vault_manager.lock().await;
         tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
-        tofu_mgr
+        let p = tofu_mgr
             .get_project(&request.project_id)
-            .map(|p| p.path.clone())
-            .ok_or_else(|| "Project not found".to_string())?
+            .ok_or_else(|| "Project not found".to_string())?;
+        let mut env: Vec<(String, String)> = Vec::new();
+        if let Some(enc) = p.encryption.as_ref().filter(|e| e.active()) {
+            env.push((
+                format!("TF_VAR_{}", crate::tofu::types::TofuEncryptionConfig::VAR),
+                enc.passphrase.clone(),
+            ));
+        }
+        (p.path.clone(), env)
     };
 
     // Apply without Auto-approve applies the saved plan — that is what the
@@ -184,13 +193,15 @@ pub async fn tofu_run_command(
     match request.target {
         TofuExecutionTarget::Local => {
             let path = project_path.clone();
+            let env = extra_env.clone();
             tokio::spawn(async move {
-                let _ = runner::run_local(&path, &args, &rid, &app_handle).await;
+                let _ = runner::run_local(&path, &args, &rid, &app_handle, &env).await;
             });
         }
         TofuExecutionTarget::Ssh { connection_id } => {
             let ssh_mgr = state.ssh_manager.clone();
             let path = project_path.clone();
+            let env = extra_env.clone();
             tokio::spawn(async move {
                 let mut manager = ssh_mgr.lock().await;
                 let _ = runner::run_remote(
@@ -200,6 +211,7 @@ pub async fn tofu_run_command(
                     &rid,
                     &app_handle,
                     &mut manager,
+                    &env,
                 )
                 .await;
             });
@@ -672,6 +684,27 @@ pub async fn tofu_update_backend(
         .ok_or_else(|| "Project not found".to_string())?;
 
     project.backend = backend;
+    tofu_mgr.update_project(project.clone(), &mut vault_mgr).await?;
+    Ok(project)
+}
+
+/// Update state encryption on a project and persist to vault.
+#[tauri::command]
+pub async fn tofu_update_encryption(
+    state: State<'_, AppState>,
+    project_id: String,
+    encryption: Option<TofuEncryptionConfig>,
+) -> Result<TofuProject, String> {
+    let mut tofu_mgr = state.tofu_project_manager.lock().await;
+    let mut vault_mgr = state.vault_manager.lock().await;
+    tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
+
+    let mut project = tofu_mgr
+        .get_project(&project_id)
+        .cloned()
+        .ok_or_else(|| "Project not found".to_string())?;
+
+    project.encryption = encryption;
     tofu_mgr.update_project(project.clone(), &mut vault_mgr).await?;
     Ok(project)
 }

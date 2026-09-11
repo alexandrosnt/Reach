@@ -1,4 +1,5 @@
 use crate::tofu::types::{
+    TofuEncryptionConfig,
     DataSourceCatalogEntry, GeneratedFile, ProviderCatalogEntry, ProviderFieldType,
     ResourceCatalogEntry, TofuBackendConfig, TofuDataSource, TofuEnvironment, TofuLocal,
     TofuModuleConfig, TofuOutput, TofuProject, TofuProviderConfig, TofuResourceConfig,
@@ -10,8 +11,10 @@ pub fn generate_providers_tf(
     providers: &[TofuProviderConfig],
     catalog: &[ProviderCatalogEntry],
     backend: Option<&TofuBackendConfig>,
+    encryption: Option<&TofuEncryptionConfig>,
 ) -> String {
-    if providers.is_empty() && backend.is_none() {
+    let encrypt = encryption.is_some_and(|e| e.active());
+    if providers.is_empty() && backend.is_none() && !encrypt {
         return String::new();
     }
 
@@ -40,7 +43,20 @@ pub fn generate_providers_tf(
         out.push_str(&generate_backend_block(backend));
     }
 
+    if encrypt {
+        out.push_str(&generate_encryption_block());
+    }
+
     out.push_str("}\n");
+
+    if encrypt {
+        // The passphrase is a variable, so the HCL can be committed and the
+        // secret never can. Reach sets it from the vault at run time.
+        out.push_str(&format!(
+            "\nvariable \"{}\" {{\n  type        = string\n  sensitive   = true\n  description = \"Passphrase for state and plan encryption. Set by Reach; never write it here.\"\n}}\n",
+            TofuEncryptionConfig::VAR
+        ));
+    }
 
     // provider blocks
     for prov in providers {
@@ -552,6 +568,16 @@ pub fn generate_outputs_tf(outputs: &[TofuOutput]) -> String {
     out
 }
 
+/// The `encryption { … }` block inside `terraform {}`: a PBKDF2 key from
+/// `var.reach_state_passphrase`, AES-256-GCM for state and saved plans, and
+/// `enforced` so an unencrypted state is refused rather than written.
+fn generate_encryption_block() -> String {
+    format!(
+        "  encryption {{\n    key_provider \"pbkdf2\" \"reach\" {{\n      passphrase = var.{v}\n    }}\n    method \"aes_gcm\" \"reach\" {{\n      keys = key_provider.pbkdf2.reach\n    }}\n    state {{\n      method   = method.aes_gcm.reach\n      enforced = true\n    }}\n    plan {{\n      method   = method.aes_gcm.reach\n      enforced = true\n    }}\n  }}\n",
+        v = TofuEncryptionConfig::VAR
+    )
+}
+
 /// Generate `backend "type" { ... }` block for inside the terraform {} block.
 fn generate_backend_block(backend: &TofuBackendConfig) -> String {
     let mut out = String::new();
@@ -672,11 +698,13 @@ pub fn generate_all(
 ) -> Vec<GeneratedFile> {
     let mut files = Vec::new();
 
-    if !project.providers.is_empty() || project.backend.is_some() {
+    let encrypt = project.encryption.as_ref().is_some_and(|e| e.active());
+    if !project.providers.is_empty() || project.backend.is_some() || encrypt {
         let providers_tf = generate_providers_tf(
             &project.providers,
             catalog,
             project.backend.as_ref(),
+            project.encryption.as_ref(),
         );
         if !providers_tf.is_empty() {
             files.push(GeneratedFile {
@@ -823,5 +851,30 @@ fn format_default_value(value: &str, var_type: &crate::tofu::types::TofuVarType)
                 format!("\"{}\"", escape_hcl_string(value))
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn encryption_block_names_the_variable_and_enforces() {
+        let enc = TofuEncryptionConfig { enabled: true, passphrase: "hunter2".into() };
+        let tf = generate_providers_tf(&[], &[], None, Some(&enc));
+        assert!(tf.contains("encryption {"));
+        assert!(tf.contains("passphrase = var.reach_state_passphrase"));
+        assert!(tf.contains("enforced = true"));
+        assert!(tf.contains("variable \"reach_state_passphrase\""));
+        assert!(tf.contains("sensitive   = true"));
+        assert!(!tf.contains("hunter2"), "the passphrase never reaches the HCL");
+    }
+
+    #[test]
+    fn disabled_encryption_generates_nothing() {
+        let enc = TofuEncryptionConfig { enabled: false, passphrase: "x".into() };
+        assert_eq!(generate_providers_tf(&[], &[], None, Some(&enc)), "");
+        let empty = TofuEncryptionConfig { enabled: true, passphrase: "".into() };
+        assert_eq!(generate_providers_tf(&[], &[], None, Some(&empty)), "");
     }
 }

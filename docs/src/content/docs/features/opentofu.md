@@ -56,13 +56,13 @@ Lists all files in the project directory. Click a file to view its contents in t
 
 | Tab | What it does |
 |-----|-------------|
-| **Actions** | Run tofu commands (init, plan, apply, destroy, validate, fmt). Plan, apply and destroy run with OpenTofu's machine-readable output and show as a structured run: change summary, planned changes, live apply progress, diagnostics with file and line, outputs. The raw log is one click away. |
+| **Actions** | Run tofu commands (init, plan, apply, destroy, validate, test, fmt). Plan, apply and destroy run with OpenTofu's machine-readable output and show as a structured run: change summary, planned changes, live apply progress, diagnostics with file and line, outputs. The raw log is one click away. |
 | **Providers** | Add and configure infrastructure providers |
 | **Variables** | Define input variables with types and defaults |
 | **Resources** | Add and configure infrastructure resources |
 | **Data Sources** | Define data sources for reading external data |
 | **Environments** | Manage variable value sets for different environments |
-| **Backend** | Configure state storage backend |
+| **Backend** | Configure state storage backend, and state encryption |
 | **Locals** | Define local computed values |
 | **Modules** | Reference external modules |
 | **State** | Inspect, move, remove, and import state resources |
@@ -344,3 +344,9 @@ Every command runs non-interactively (`-input=false`, `TF_IN_AUTOMATION=1`, `TF_
 `apply` without **Auto-approve** applies the plan the last `plan` saved — exactly what you reviewed, no second plan, no prompt — because the saved plan *is* the approval. With no saved plan and no Auto-approve, Reach says so instead of starting a run that would stop to ask. `destroy` always needs Auto-approve.
 
 The same arguments are used when a project runs on a remote host over SSH.
+
+## State encryption
+
+OpenTofu (1.7+) can encrypt the state file and saved plans; Terraform cannot read the result. Under **Backend → State encryption**, turn it on and set a passphrase (or generate one). Reach writes an `encryption` block into the generated HCL — AES-256-GCM under a PBKDF2 key, `enforced` so an unencrypted state is refused rather than written — with the passphrase as `var.reach_state_passphrase`, declared sensitive. The passphrase itself stays in Reach's vault with the project and reaches OpenTofu as `TF_VAR_reach_state_passphrase` in the run's environment, so the HCL can be committed and the secret never can. On a remote run it rides on the command line, single-quoted, and is briefly visible in that host's process list.
+
+Lose the passphrase and the state cannot be read by anyone, Reach included. Keep a copy somewhere you trust.

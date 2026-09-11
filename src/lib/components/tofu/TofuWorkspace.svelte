@@ -246,6 +246,9 @@
 					<Button variant="secondary" size="sm" disabled={running} onclick={() => handleRunCommand('validate')}>
 						{t('tofu.validate')}
 					</Button>
+					<Button variant="secondary" size="sm" disabled={running} onclick={() => handleRunCommand('test')}>
+						{t('tofu.test')}
+					</Button>
 					<Button variant="secondary" size="sm" disabled={running || fmtRunning} onclick={handleFormat}>
 						{t('tofu.format')}
 					</Button>

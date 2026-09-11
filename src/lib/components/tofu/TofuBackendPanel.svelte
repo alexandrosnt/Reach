@@ -8,7 +8,9 @@
 		saveBackend
 	} from '$lib/state/tofu.svelte';
 	import Button from '$lib/components/shared/Button.svelte';
+	import Toggle from '$lib/components/shared/Toggle.svelte';
 	import type { TofuBackendConfig, BackendCatalogEntry } from '$lib/ipc/tofu';
+	import { getActiveEncryption, saveEncryption } from '$lib/state/tofu.svelte';
 
 	let backend = $derived(getActiveBackend());
 	let catalog = $derived(getBackendCatalog());
@@ -16,6 +18,37 @@
 	let selectedType = $state('');
 	let fields = $state<Record<string, unknown>>({});
 	let saved = $state(false);
+
+	// ---- State encryption ---------------------------------------------------
+	// OpenTofu's own feature (1.7+): the state file and saved plans encrypted
+	// with AES-256-GCM under a key derived from a passphrase. The passphrase
+	// lives in Reach's vault with the project and reaches OpenTofu as an
+	// environment variable; the generated HCL only ever names the variable.
+	let encryption = $derived(getActiveEncryption());
+	let encEnabled = $state(false);
+	let encPassphrase = $state('');
+	let encShow = $state(false);
+	let encSaved = $state(false);
+	$effect(() => {
+		encEnabled = encryption?.enabled ?? false;
+		encPassphrase = encryption?.passphrase ?? '';
+	});
+	let encDirty = $derived(
+		encEnabled !== (encryption?.enabled ?? false) || encPassphrase !== (encryption?.passphrase ?? '')
+	);
+
+	function generatePassphrase() {
+		const bytes = new Uint8Array(24);
+		crypto.getRandomValues(bytes);
+		encPassphrase = btoa(String.fromCharCode(...bytes)).replace(/[+/=]/g, '').slice(0, 32);
+		encShow = true;
+	}
+
+	async function handleSaveEncryption() {
+		await saveEncryption(encEnabled || encPassphrase ? { enabled: encEnabled, passphrase: encPassphrase } : null);
+		encSaved = true;
+		setTimeout(() => (encSaved = false), 1500);
+	}
 
 	onMount(() => {
 		loadBackendCatalog();
@@ -236,9 +269,106 @@
 			<p class="saved-message">{t('tofu.backend_saved')}</p>
 		{/if}
 	{/if}
+	<section class="encryption">
+		<header class="header">
+			<h2 class="title">{t('tofu.encryption_title')}</h2>
+		</header>
+		<p class="enc-desc">{t('tofu.encryption_desc')}</p>
+		<div class="enc-row">
+			<Toggle hideLabel checked={encEnabled} label={t('tofu.encryption_enable')} onchange={(v) => (encEnabled = v)} />
+			<span class="enc-label">{t('tofu.encryption_enable')}</span>
+		</div>
+		{#if encEnabled}
+			<div class="enc-row">
+				<label class="enc-field">
+					<span class="enc-label">{t('tofu.encryption_passphrase')}</span>
+					<span class="enc-input-row">
+						<input
+							class="enc-input"
+							type={encShow ? 'text' : 'password'}
+							bind:value={encPassphrase}
+							autocomplete="off"
+							spellcheck="false"
+						/>
+						<Button variant="ghost" size="sm" onclick={() => (encShow = !encShow)}>{encShow ? t('vault.hide') : t('vault.show')}</Button>
+						<Button variant="secondary" size="sm" onclick={generatePassphrase}>{t('vault.generate')}</Button>
+					</span>
+				</label>
+			</div>
+			<p class="enc-warn">{t('tofu.encryption_warning')}</p>
+		{/if}
+		<div class="enc-actions">
+			<Button variant="primary" size="sm" disabled={!encDirty || (encEnabled && !encPassphrase)} onclick={handleSaveEncryption}>
+				{encSaved ? t('tofu.encryption_saved') : t('tofu.encryption_save')}
+			</Button>
+		</div>
+	</section>
 </div>
 
 <style>
+	.encryption {
+		display: flex;
+		flex-direction: column;
+		gap: 10px;
+		margin-top: 24px;
+		padding-top: 18px;
+		border-top: 1px solid var(--color-border);
+	}
+
+	.enc-desc,
+	.enc-warn {
+		margin: 0;
+		font-size: 0.75rem;
+		color: var(--color-text-secondary);
+		max-width: 68ch;
+	}
+
+	.enc-warn {
+		color: var(--color-warning, #f59e0b);
+	}
+
+	.enc-row {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.enc-label {
+		font-size: 0.8125rem;
+		color: var(--color-text-primary);
+	}
+
+	.enc-field {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		width: 100%;
+		max-width: 560px;
+	}
+
+	.enc-input-row {
+		display: flex;
+		gap: 6px;
+		align-items: center;
+	}
+
+	.enc-input {
+		flex: 1;
+		min-width: 0;
+		padding: 6px 8px;
+		font-family: var(--font-mono, monospace);
+		font-size: 0.8125rem;
+		color: var(--color-text-primary);
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-btn);
+	}
+
+	.enc-actions {
+		display: flex;
+		justify-content: flex-end;
+	}
+
 	.backend-panel {
 		width: 100%;
 		height: 100%;
