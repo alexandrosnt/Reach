@@ -5,32 +5,25 @@ description: Run Ansible playbooks, manage inventories, and automate infrastruct
 
 Reach has a full Ansible workspace built in. You can manage projects, run playbooks, edit inventories, install roles and collections, run ad-hoc commands, and handle vault-encrypted files — all from one place. On Windows, everything routes through WSL automatically.
 
-## Windows and WSL
+## Engines
 
-Ansible doesn't run natively on Windows. Reach detects this and handles it for you.
+Ansible is a Linux program: its control node needs `fork()`, so Windows cannot run it directly, and that is not something an installer can fix. What Reach does instead is make *where it runs* an explicit choice. The **Engine** control at the top of the workspace lists every place Ansible could run and says, next to each, whether it can right now and why not:
 
-When you open the Ansible tab on Windows, Reach checks two things in order:
+| Engine | Where | Status |
+| --- | --- | --- |
+| **This machine** | A native install on Linux or macOS | Green when `ansible` is on PATH. On Windows it is grey, with the reason. |
+| **WSL** | Your default WSL distribution, on Windows | Green when Ansible is installed inside it. Marked *unofficial*: it works, but the Ansible project does not stand behind WSL as a control node. The project stays on the Windows filesystem and is reached through `/mnt`. |
+| **Remote · user@host** | Any open SSH connection | Checked when you pick it: green when the host has Ansible. |
 
-1. **Is WSL installed?** — It runs `wsl.exe --list --quiet` to see if any Linux distribution is available.
-2. **Is Ansible installed inside WSL?** — It runs `bash -lc "which ansible"` inside WSL to find the binary.
+The first green engine is selected for you. The UI never asks which OS this is — it asks which engines are green.
 
-If both checks pass, you see two green checkmarks and you're good to go. All Ansible commands will be routed through WSL transparently — you don't need to think about it.
+### Remote runs
 
-If WSL is installed but Ansible isn't, you'll see a red X on the second check with an **Install** button. Click it and Reach installs Ansible via `pip3` inside your WSL distribution.
+A remote engine is the one path that is identical on Windows, macOS and Linux, and it needs one thing from Reach: the project has to get there. Before every remote run Reach packs the project (skipping `.git`, `.venv`, `__pycache__` and the like), streams it over the existing SSH connection as the remote command's standard input, and unpacks it into `~/.reach/ansible/<project-id>/` on the host — replacing what was there, so what runs is what is on your disk now. The output says so: *Synced 14 files (38 KB) to ~/.reach/ansible/…*. Nothing is written anywhere on the way that another user could read, and nothing of yours on the host is touched.
 
-If WSL isn't installed at all, you get a warning banner telling you to install WSL or use SSH execution instead.
+### The vault password
 
-On Linux and macOS, Reach checks for Ansible in your PATH directly. If it's not found, the same one-click install works (via pip or pipx).
-
-### How WSL routing works
-
-When you run any Ansible command on Windows, Reach converts the project path from Windows format (`C:\Users\you\project`) to WSL format (`/mnt/c/Users/you/project`), then executes the command inside WSL:
-
-```
-wsl.exe -- bash -c "cd /mnt/c/Users/you/project && ansible-playbook site.yml"
-```
-
-Color output is disabled (`ANSIBLE_FORCE_COLOR=0`) so the terminal output stays clean.
+A project's vault password is stored in Reach's own vault and never appears on a command line. For a run it is written to a file only your user can read — under Reach's data directory locally, or in the project's remote directory with mode 600 — passed with `--vault-password-file`, and removed when the run ends.
 
 ## Installing Ansible
 

@@ -308,7 +308,7 @@ fn ansible_version_from_metadata() -> Option<String> {
 }
 
 /// Try to locate ansible binaries and add their directory to process PATH.
-fn ensure_ansible_in_path() {
+pub fn ensure_ansible_in_path() {
     if which::which("ansible").is_ok() {
         return; // already found
     }

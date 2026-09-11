@@ -50,8 +50,26 @@ export type AnsibleCommand =
 	| 'syntaxCheck';
 
 export interface AnsibleExecutionTarget {
-	type: 'local' | 'ssh';
+	type: 'local' | 'wsl' | 'ssh';
 	connectionId?: string;
+}
+
+/** One place Ansible can run, and whether it can right now. */
+export interface AnsibleEngineInfo {
+	kind: 'native' | 'wsl' | 'remote';
+	available: boolean;
+	version: string | null;
+	reason: string | null;
+	unofficial: boolean;
+	detail: string | null;
+}
+
+export async function ansibleEngines(): Promise<AnsibleEngineInfo[]> {
+	return invoke<AnsibleEngineInfo[]>('ansible_engines');
+}
+
+export async function ansibleRemoteEngine(connectionId: string): Promise<AnsibleEngineInfo> {
+	return invoke<AnsibleEngineInfo>('ansible_remote_engine', { connectionId });
 }
 
 export interface AnsibleCommandRequest {

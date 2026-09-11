@@ -12,7 +12,7 @@
 	} from '$lib/state/ansible.svelte';
 	import { ansibleReadFile } from '$lib/ipc/ansible';
 	import type { AnsibleExecutionTarget } from '$lib/ipc/ansible';
-	import { sshListConnections, type ConnectionInfo } from '$lib/ipc/ssh';
+	import AnsibleEnginePicker from './AnsibleEnginePicker.svelte';
 	import Button from '$lib/components/shared/Button.svelte';
 	import AnsibleCommandOutput from './AnsibleCommandOutput.svelte';
 	import AnsiblePlaybookPanel from './AnsiblePlaybookPanel.svelte';
@@ -26,9 +26,7 @@
 	let files = $derived(getProjectFiles());
 	let running = $derived(isCommandRunning());
 
-	let connections = $state<ConnectionInfo[]>([]);
-	let targetType = $state<'local' | 'ssh'>('local');
-	let selectedConnectionId = $state<string | null>(null);
+	let target = $state<AnsibleExecutionTarget>({ type: 'local' });
 
 	let activeTab = $derived(getWorkspaceTab());
 
@@ -39,22 +37,10 @@
 
 	onMount(() => {
 		refreshFiles();
-		loadConnections();
 	});
 
-	async function loadConnections() {
-		try {
-			connections = await sshListConnections();
-		} catch {
-			connections = [];
-		}
-	}
-
 	function buildTarget(): AnsibleExecutionTarget {
-		if (targetType === 'ssh' && selectedConnectionId) {
-			return { type: 'ssh', connectionId: selectedConnectionId };
-		}
-		return { type: 'local' };
+		return target;
 	}
 
 	async function handleFileClick(filename: string) {
@@ -169,26 +155,8 @@
 		<!-- Target Selector -->
 		<div class="target-bar">
 			<div class="target-row">
-				<span class="target-label">{t('ansible.execution_target')}</span>
-				<div class="target-controls">
-					<select
-						class="target-select"
-						bind:value={targetType}
-						onchange={() => { if (targetType === 'local') selectedConnectionId = null; }}
-					>
-						<option value="local">{t('ansible.target_local')}</option>
-						<option value="ssh">{t('ansible.target_ssh')}</option>
-					</select>
-
-					{#if targetType === 'ssh'}
-						<select class="target-select" bind:value={selectedConnectionId}>
-							<option value={null}>{t('ansible.select_connection')}</option>
-							{#each connections as conn (conn.id)}
-								<option value={conn.id}>{conn.username}@{conn.host}:{conn.port}</option>
-							{/each}
-						</select>
-					{/if}
-				</div>
+				<span class="target-label">{t('ansible.engine')}</span>
+				<AnsibleEnginePicker onchange={(t2) => (target = t2)} />
 			</div>
 		</div>
 
@@ -482,27 +450,6 @@
 		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		white-space: nowrap;
-	}
-
-	.target-controls {
-		display: flex;
-		gap: 8px;
-		flex: 1;
-	}
-
-	.target-select {
-		padding: 6px 8px;
-		border-radius: var(--radius-btn);
-		border: 1px solid var(--color-border);
-		background: var(--color-bg-primary);
-		color: var(--color-text-primary);
-		font-size: 0.8125rem;
-		font-family: inherit;
-	}
-
-	.target-select:focus {
-		outline: none;
-		border-color: var(--color-accent);
 	}
 
 	.tab-content {

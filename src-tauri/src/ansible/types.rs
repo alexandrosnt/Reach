@@ -79,7 +79,11 @@ pub enum AnsibleCommand {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum AnsibleExecutionTarget {
+    /// A native install on this machine (Linux, macOS).
     Local,
+    /// Inside the default WSL distribution (Windows).
+    Wsl,
+    /// A remote Linux host over an open SSH connection.
     Ssh { connection_id: String },
 }
 
