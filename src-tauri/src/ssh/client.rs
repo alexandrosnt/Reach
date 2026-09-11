@@ -901,6 +901,53 @@ impl Default for SshManager {
     fn default() -> Self { Self::new() }
 }
 
+/// Run a command with bytes on its stdin — a tarball, a secret — and wait
+/// for it. Returns the exit code and the combined stdout.
+pub async fn exec_with_stdin(
+    handle: &SharedHandle,
+    command: &str,
+    input: Vec<u8>,
+) -> Result<(i32, String), SshError> {
+    let mut channel = {
+        let guard = handle.lock().await;
+        guard.channel_open_session().await
+            .map_err(|e| SshError::ChannelError(format!("{}", e)))?
+    };
+    channel.exec(true, command).await
+        .map_err(|e| SshError::ChannelError(format!("{}", e)))?;
+    channel.data(&input[..]).await
+        .map_err(|e| SshError::ChannelError(format!("{}", e)))?;
+    channel.eof().await
+        .map_err(|e| SshError::ChannelError(format!("{}", e)))?;
+    let mut output = String::new();
+    let mut decoder = crate::text::Utf8Stream::new();
+    let mut exit_code: i32 = -1;
+    let mut got_eof = false;
+    let mut got_exit = false;
+    loop {
+        let msg = tokio::time::timeout(
+            std::time::Duration::from_secs(120),
+            channel.wait(),
+        ).await;
+        match msg {
+            Ok(Some(ChannelMsg::Data { ref data })) => output.push_str(&decoder.push(data)),
+            Ok(Some(ChannelMsg::ExtendedData { ref data, .. })) => output.push_str(&decoder.push(data)),
+            Ok(Some(ChannelMsg::Eof)) => {
+                got_eof = true;
+                if got_exit { break; }
+            }
+            Ok(Some(ChannelMsg::ExitStatus { exit_status })) => {
+                exit_code = exit_status as i32;
+                got_exit = true;
+                if got_eof { break; }
+            }
+            Ok(None) | Err(_) => break,
+            _ => {}
+        }
+    }
+    Ok((exit_code, output))
+}
+
 pub async fn exec_on_connection(
     handle: &SharedHandle,
     command: &str,

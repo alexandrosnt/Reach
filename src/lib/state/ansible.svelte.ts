@@ -5,6 +5,8 @@ import type {
 	AnsibleInventoryHost,
 	AnsibleInventoryGroup
 } from '$lib/ipc/ansible';
+import { ansibleEngines, ansibleRemoteEngine, type AnsibleEngineInfo } from '$lib/ipc/ansible';
+import { splitLines } from '$lib/tofu/ui-json';
 import {
 	ansibleListProjects,
 	ansibleCreateProject,
@@ -229,11 +231,24 @@ export async function runCommand(request: AnsibleCommandRequest): Promise<string
 	const eventName = `ansible-output-${runId}`;
 	let unlisten: UnlistenFn | null = null;
 
-	unlisten = await listen<AnsibleCommandEvent>(eventName, (event) => {
+	// Local runs arrive a line at a time; remote runs arrive as whatever the
+	// SSH channel had, which can end mid-line. One splitter serves both.
+	let carry = '';
+	unlisten = await listen<AnsibleCommandEvent & { data?: string }>(eventName, (event) => {
 		const data = event.payload;
-		commandOutput = [...commandOutput, { stream: data.stream, line: data.line }];
+		if (typeof data.line === 'string') {
+			commandOutput = [...commandOutput, { stream: data.stream, line: data.line }];
+		} else if (typeof data.data === 'string') {
+			const split = splitLines(carry, data.data);
+			carry = split.carry;
+			for (const line of split.lines) commandOutput = [...commandOutput, { stream: data.stream, line }];
+		}
 
 		if (data.done) {
+			if (carry) {
+				commandOutput = [...commandOutput, { stream: 'stdout', line: carry }];
+				carry = '';
+			}
 			commandRunning = false;
 			if (unlisten) {
 				unlisten();
@@ -274,4 +289,37 @@ export async function loadCollections(): Promise<void> {
 
 export function clearOutput(): void {
 	commandOutput = [];
+}
+
+// ==================== ENGINES ====================
+
+let engines = $state<AnsibleEngineInfo[]>([]);
+let remoteEngines = $state<Record<string, AnsibleEngineInfo>>({});
+
+export function getEngines(): AnsibleEngineInfo[] {
+	return engines;
+}
+
+export function getRemoteEngine(connectionId: string): AnsibleEngineInfo | null {
+	return remoteEngines[connectionId] ?? null;
+}
+
+export async function loadEngines(): Promise<void> {
+	try {
+		engines = await ansibleEngines();
+	} catch {
+		engines = [];
+	}
+}
+
+export async function checkRemoteEngine(connectionId: string): Promise<void> {
+	try {
+		const info = await ansibleRemoteEngine(connectionId);
+		remoteEngines = { ...remoteEngines, [connectionId]: info };
+	} catch (e) {
+		remoteEngines = {
+			...remoteEngines,
+			[connectionId]: { kind: 'remote', available: false, version: null, reason: String(e), unofficial: false, detail: null }
+		};
+	}
 }

@@ -1,7 +1,8 @@
 use tauri::State;
 
 use crate::ansible::project::AnsibleProjectManager;
-use crate::ansible::runner;
+use crate::ansible::{engine, runner};
+use tauri::Emitter;
 use crate::ansible::types::{
     AnsibleCollection, AnsibleCommandRequest, AnsibleExecutionTarget, AnsibleInventoryGroup,
     AnsibleInventoryHost, AnsibleProject, AnsibleRole,
@@ -211,35 +212,124 @@ pub async fn ansible_run_command(
     drop(mgr);
 
     let working_dir = project.path.clone();
-    let (binary, args) = runner::build_command_args(&request);
+    let vault_password = project.vault_password.clone();
+    let project_id = project.id.clone();
     let target = request.target.clone();
     let rid = run_id.clone();
-
     let ssh_mgr = state.ssh_manager.clone();
+
+    let system = |handle: &tauri::AppHandle, rid: &str, line: String| {
+        let _ = handle.emit(
+            &format!("ansible-output-{}", rid),
+            crate::ansible::types::AnsibleCommandEvent {
+                run_id: rid.to_string(),
+                stream: "system".to_string(),
+                line,
+                done: false,
+                exit_code: None,
+            },
+        );
+    };
 
     tokio::spawn(async move {
         match target {
-            AnsibleExecutionTarget::Local => {
-                let _ =
-                    runner::run_local(&working_dir, &binary, &args, &rid, &app_handle).await;
+            AnsibleExecutionTarget::Local | AnsibleExecutionTarget::Wsl => {
+                // The password as a file only this user can read, gone when
+                // the run is. WSL reads Windows files through /mnt, so the
+                // same file serves both engines.
+                let pass_file = match vault_password.as_deref().map(engine::write_local_secret) {
+                    Some(Ok(p)) => Some(p),
+                    Some(Err(e)) => {
+                        system(&app_handle, &rid, format!("Could not stage the vault password: {}", e));
+                        None
+                    }
+                    None => None,
+                };
+                let pass_arg = pass_file.as_ref().map(|p| match target {
+                    AnsibleExecutionTarget::Wsl => crate::toolchain::detect::windows_to_wsl_path(&p.to_string_lossy()),
+                    _ => p.to_string_lossy().to_string(),
+                });
+                let (binary, args) = runner::build_command_args(&request, pass_arg.as_deref());
+                let _ = match target {
+                    AnsibleExecutionTarget::Wsl => runner::run_wsl(&working_dir, &binary, &args, &rid, &app_handle).await,
+                    _ => runner::run_local(&working_dir, &binary, &args, &rid, &app_handle).await,
+                };
+                if let Some(p) = pass_file {
+                    let _ = std::fs::remove_file(p);
+                }
             }
             AnsibleExecutionTarget::Ssh { connection_id } => {
+                let handle = {
+                    let ssh = ssh_mgr.lock().await;
+                    match ssh.get_handle(&connection_id) {
+                        Ok(h) => h,
+                        Err(e) => {
+                            runner::fail_run(&rid, &app_handle, &format!("Connection is not open: {}", e));
+                            return;
+                        }
+                    }
+                };
+                // The project goes first, every time: what runs is what is
+                // on disk here, not whatever was synced last week.
+                system(&app_handle, &rid, "Syncing project to the remote host…".to_string());
+                let remote_dir = match engine::sync_project(&handle, std::path::Path::new(&working_dir), &project_id).await {
+                    Ok((dir, files, bytes)) => {
+                        system(&app_handle, &rid, format!("Synced {} files ({} KB) to {}", files, (bytes + 1023) / 1024, dir));
+                        dir
+                    }
+                    Err(e) => {
+                        runner::fail_run(&rid, &app_handle, &e);
+                        return;
+                    }
+                };
+                let pass_path = format!("{}/.vault-pass", remote_dir);
+                let mut pass_arg = None;
+                if let Some(pw) = vault_password.as_deref() {
+                    match engine::write_remote_secret(&handle, &pass_path, pw).await {
+                        Ok(()) => pass_arg = Some(pass_path.clone()),
+                        Err(e) => system(&app_handle, &rid, format!("Could not stage the vault password: {}", e)),
+                    }
+                }
+                let (binary, args) = runner::build_command_args(&request, pass_arg.as_deref());
                 let mut ssh = ssh_mgr.lock().await;
-                let _ = runner::run_remote(
-                    &connection_id,
-                    &working_dir,
-                    &binary,
-                    &args,
-                    &rid,
-                    &app_handle,
-                    &mut ssh,
-                )
-                .await;
+                let _ = runner::run_remote(&connection_id, &remote_dir, &binary, &args, &rid, &app_handle, &mut ssh).await;
+                drop(ssh);
+                if pass_arg.is_some() {
+                    engine::remove_remote_file(&handle, &pass_path).await;
+                }
             }
         }
     });
 
     Ok(run_id)
+}
+
+/// The engines this machine can offer on its own.
+#[tauri::command]
+pub async fn ansible_engines() -> Result<Vec<engine::EngineInfo>, String> {
+    Ok(tokio::task::spawn_blocking(engine::detect_local_engines)
+        .await
+        .map_err(|e| e.to_string())?)
+}
+
+/// Whether an open connection can act as a control node.
+#[tauri::command]
+pub async fn ansible_remote_engine(
+    state: State<'_, AppState>,
+    connection_id: String,
+) -> Result<engine::EngineInfo, String> {
+    let (handle, label) = {
+        let ssh = state.ssh_manager.lock().await;
+        let h = ssh.get_handle(&connection_id).map_err(|e| e.to_string())?;
+        let label = ssh
+            .list_connections()
+            .into_iter()
+            .find(|c| c.id == connection_id)
+            .map(|c| format!("{}@{}", c.username, c.host))
+            .unwrap_or_else(|| connection_id.clone());
+        (h, label)
+    };
+    Ok(engine::remote(&handle, &label).await)
 }
 
 #[tauri::command]

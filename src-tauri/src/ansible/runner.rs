@@ -24,11 +24,17 @@ fn silent_command(program: impl AsRef<std::ffi::OsStr>) -> std::process::Command
 }
 
 use crate::ssh::client::{exec_on_connection_streaming, SshManager};
-use crate::ansible::types::{AnsibleCommand, AnsibleCommandEvent, AnsibleCommandRequest};
+use crate::ansible::types::{AnsibleExecutionTarget, AnsibleCommand, AnsibleCommandEvent, AnsibleCommandRequest};
 use crate::toolchain::detect::windows_to_wsl_path;
 
 /// Build CLI binary name and argument list for an Ansible command.
-pub fn build_command_args(request: &AnsibleCommandRequest) -> (String, Vec<String>) {
+/// `vault_pass_file`: a path — local or remote, the caller knows which —
+/// holding the vault password, handed to Ansible as a file rather than an
+/// argument so it never shows in a process list.
+pub fn build_command_args(
+    request: &AnsibleCommandRequest,
+    vault_pass_file: Option<&str>,
+) -> (String, Vec<String>) {
     let mut args = Vec::new();
 
     let binary = match request.command {
@@ -130,94 +136,39 @@ pub fn build_command_args(request: &AnsibleCommandRequest) -> (String, Vec<Strin
         }
     };
 
+    // The vault password, for the commands that read vaulted content.
+    if let Some(f) = vault_pass_file {
+        if matches!(
+            request.command,
+            AnsibleCommand::Playbook
+                | AnsibleCommand::SyntaxCheck
+                | AnsibleCommand::AdHoc
+                | AnsibleCommand::VaultEncrypt
+                | AnsibleCommand::VaultDecrypt
+                | AnsibleCommand::VaultView
+                | AnsibleCommand::Inventory
+        ) {
+            args.push("--vault-password-file".to_string());
+            args.push(f.to_string());
+        }
+    }
+
     // Extra args
     args.extend(request.extra_args.clone());
 
     (binary, args)
 }
 
-/// Execute an Ansible command locally, streaming output via Tauri events.
-/// On Windows, automatically routes through WSL if the binary isn't available natively.
-pub async fn run_local(
-    working_dir: &str,
-    binary: &str,
-    args: &[String],
+/// The engine-neutral tail of a local run: stream both pipes, wait, report.
+async fn pump(
+    mut child: tokio::process::Child,
     run_id: &str,
     app_handle: &tauri::AppHandle,
 ) -> Result<i32, String> {
     let event_name = format!("ansible-output-{}", run_id);
-
-    // Determine if we should run through WSL
-    let use_wsl = should_use_wsl(binary);
-
-    let mut child = if use_wsl {
-        // Run through WSL: wsl.exe -- <binary> <args...>
-        let wsl_dir = windows_to_wsl_path(working_dir);
-        let mut wsl_args = vec![
-            "--".to_string(),
-            "bash".to_string(),
-            "-c".to_string(),
-        ];
-        // Build single command string: cd <dir> && ANSIBLE_FORCE_COLOR=0 ANSIBLE_NOCOLOR=1 <binary> <args>
-        let escaped_args: Vec<String> = args.iter().map(|a| shell_escape(a)).collect();
-        let cmd_str = format!(
-            "cd {} && ANSIBLE_FORCE_COLOR=0 ANSIBLE_NOCOLOR=1 {} {}",
-            shell_escape(&wsl_dir),
-            binary,
-            escaped_args.join(" ")
-        );
-        wsl_args.push(cmd_str);
-
-        let _ = app_handle.emit(
-            &event_name,
-            AnsibleCommandEvent {
-                run_id: run_id.to_string(),
-                stream: "system".to_string(),
-                line: format!("Running via WSL: {} {}", binary, args.join(" ")),
-                done: false,
-                exit_code: None,
-            },
-        );
-
-        silent_async_command("wsl.exe")
-            .args(&wsl_args)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .stdin(Stdio::null())
-            .spawn()
-            .map_err(|e| format!("Failed to spawn wsl.exe: {}", e))?
-    } else {
-        // Check if the binary exists natively
-        if which::which(binary).is_err() {
-            let _ = app_handle.emit(
-                &event_name,
-                AnsibleCommandEvent {
-                    run_id: run_id.to_string(),
-                    stream: "stderr".to_string(),
-                    line: format!("{} not found. Please install Ansible first.", binary),
-                    done: true,
-                    exit_code: Some(1),
-                },
-            );
-            return Err(format!("{} not found", binary));
-        }
-
-        silent_async_command(binary)
-            .args(args)
-            .current_dir(working_dir)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .stdin(Stdio::null())
-            .env("ANSIBLE_FORCE_COLOR", "0")
-            .env("ANSIBLE_NOCOLOR", "1")
-            .spawn()
-            .map_err(|e| format!("Failed to spawn {}: {}", binary, e))?
-    };
-
     let stdout = child.stdout.take();
     let stderr = child.stderr.take();
 
-    // Stream stdout
     if let Some(stdout) = stdout {
         let event = event_name.clone();
         let handle = app_handle.clone();
@@ -228,19 +179,11 @@ pub async fn run_local(
             while let Ok(Some(line)) = lines.next_line().await {
                 let _ = handle.emit(
                     &event,
-                    AnsibleCommandEvent {
-                        run_id: rid.clone(),
-                        stream: "stdout".to_string(),
-                        line,
-                        done: false,
-                        exit_code: None,
-                    },
+                    AnsibleCommandEvent { run_id: rid.clone(), stream: "stdout".to_string(), line, done: false, exit_code: None },
                 );
             }
         });
     }
-
-    // Stream stderr
     if let Some(stderr) = stderr {
         let event = event_name.clone();
         let handle = app_handle.clone();
@@ -251,26 +194,14 @@ pub async fn run_local(
             while let Ok(Some(line)) = lines.next_line().await {
                 let _ = handle.emit(
                     &event,
-                    AnsibleCommandEvent {
-                        run_id: rid.clone(),
-                        stream: "stderr".to_string(),
-                        line,
-                        done: false,
-                        exit_code: None,
-                    },
+                    AnsibleCommandEvent { run_id: rid.clone(), stream: "stderr".to_string(), line, done: false, exit_code: None },
                 );
             }
         });
     }
 
-    let status = child
-        .wait()
-        .await
-        .map_err(|e| format!("Failed to wait for process: {}", e))?;
-
+    let status = child.wait().await.map_err(|e| format!("Failed to wait for process: {}", e))?;
     let exit_code = status.code().unwrap_or(-1);
-
-    // Emit done event
     let _ = app_handle.emit(
         &event_name,
         AnsibleCommandEvent {
@@ -285,28 +216,74 @@ pub async fn run_local(
             exit_code: Some(exit_code),
         },
     );
-
     Ok(exit_code)
 }
 
-/// Determine if we should run ansible through WSL.
-/// On Windows, always prefer WSL since native Ansible is broken on Windows
-/// (os.get_blocking / OSError). Only runs natively on non-Windows platforms.
-fn should_use_wsl(binary: &str) -> bool {
-    #[cfg(not(windows))]
-    { let _ = binary; return false; }
+pub fn fail_run(run_id: &str, app_handle: &tauri::AppHandle, msg: &str) {
+    let _ = app_handle.emit(
+        &format!("ansible-output-{}", run_id),
+        AnsibleCommandEvent {
+            run_id: run_id.to_string(),
+            stream: "stderr".to_string(),
+            line: msg.to_string(),
+            done: true,
+            exit_code: Some(1),
+        },
+    );
+}
 
-    #[cfg(windows)]
-    {
-        // On Windows, always prefer WSL for ansible commands since
-        // native ansible doesn't work (os.get_blocking error).
-        // Use login shell so ~/.local/bin is in PATH.
-        silent_command("wsl.exe")
-            .args(["--", "bash", "-lc", &format!("which {} 2>/dev/null || command -v {} 2>/dev/null", binary, binary)])
-            .output()
-            .map(|out| out.status.success() && !String::from_utf8_lossy(&out.stdout).trim().is_empty())
-            .unwrap_or(false)
+/// The native engine: Ansible installed on this machine.
+pub async fn run_local(
+    working_dir: &str,
+    binary: &str,
+    args: &[String],
+    run_id: &str,
+    app_handle: &tauri::AppHandle,
+) -> Result<i32, String> {
+    crate::toolchain::detect::ensure_ansible_in_path();
+    if which::which(binary).is_err() {
+        fail_run(run_id, app_handle, &format!("{} is not installed on this machine.", binary));
+        return Err(format!("{} not found", binary));
     }
+    let child = silent_async_command(binary)
+        .args(args)
+        .current_dir(working_dir)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .stdin(Stdio::null())
+        .env("ANSIBLE_FORCE_COLOR", "0")
+        .env("ANSIBLE_NOCOLOR", "1")
+        .spawn()
+        .map_err(|e| format!("Failed to spawn {}: {}", binary, e))?;
+    pump(child, run_id, app_handle).await
+}
+
+/// The WSL engine: the project stays on the Windows filesystem and is
+/// reached through /mnt, so nothing is copied.
+pub async fn run_wsl(
+    working_dir: &str,
+    binary: &str,
+    args: &[String],
+    run_id: &str,
+    app_handle: &tauri::AppHandle,
+) -> Result<i32, String> {
+    let wsl_dir = windows_to_wsl_path(working_dir);
+    let escaped_args: Vec<String> = args.iter().map(|a| shell_escape(a)).collect();
+    let cmd_str = format!(
+        "cd {} && ANSIBLE_FORCE_COLOR=0 ANSIBLE_NOCOLOR=1 {} {}",
+        shell_escape(&wsl_dir),
+        binary,
+        escaped_args.join(" ")
+    );
+    // A login shell, so ~/.local/bin (where pipx puts ansible) is on PATH.
+    let child = silent_async_command("wsl.exe")
+        .args(["--", "bash", "-lc", &cmd_str])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .stdin(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn wsl.exe: {}", e))?;
+    pump(child, run_id, app_handle).await
 }
 
 /// Execute an Ansible command on a remote SSH connection, streaming output via Tauri events.
@@ -321,12 +298,13 @@ pub async fn run_remote(
 ) -> Result<i32, String> {
     let event_name = format!("ansible-output-{}", run_id);
 
-    // Build the full command string for remote execution
+    // The project was synced to `working_dir` on the far side already.
+    let escaped_args: Vec<String> = args.iter().map(|a| shell_escape(a)).collect();
     let cmd = format!(
-        "cd {} && {} {}",
-        shell_escape(working_dir),
+        "cd {} && ANSIBLE_FORCE_COLOR=0 ANSIBLE_NOCOLOR=1 {} {}",
+        working_dir,
         binary,
-        args.join(" ")
+        escaped_args.join(" ")
     );
 
     let handle = ssh_manager
@@ -363,5 +341,48 @@ pub fn shell_escape(s: &str) -> String {
         format!("'{}'", s.replace('\'', "'\\''"))
     } else {
         s.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn req(command: AnsibleCommand) -> AnsibleCommandRequest {
+        AnsibleCommandRequest {
+            project_id: "p".into(),
+            command,
+            target: AnsibleExecutionTarget::Local,
+            playbook: Some("site.yml".into()),
+            inventory_file: Some("inventory.ini".into()),
+            module_name: None,
+            module_args: None,
+            host_pattern: None,
+            role_name: None,
+            collection_name: None,
+            vault_file: None,
+            extra_args: vec![],
+        }
+    }
+
+    #[test]
+    fn the_vault_password_travels_as_a_file() {
+        let (bin, args) = build_command_args(&req(AnsibleCommand::Playbook), Some("/tmp/v.pass"));
+        assert_eq!(bin, "ansible-playbook");
+        let i = args.iter().position(|a| a == "--vault-password-file").expect("flag");
+        assert_eq!(args[i + 1], "/tmp/v.pass");
+        assert!(!args.iter().any(|a| a.contains("hunter")), "never the secret itself");
+    }
+
+    #[test]
+    fn galaxy_never_sees_the_vault_password() {
+        let (_, args) = build_command_args(&req(AnsibleCommand::GalaxyCollectionList), Some("/tmp/v.pass"));
+        assert!(!args.iter().any(|a| a == "--vault-password-file"));
+    }
+
+    #[test]
+    fn without_a_password_nothing_is_added() {
+        let (_, args) = build_command_args(&req(AnsibleCommand::Playbook), None);
+        assert_eq!(args, vec!["site.yml", "-i", "inventory.ini"]);
     }
 }
