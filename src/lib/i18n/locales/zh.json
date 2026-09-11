@@ -933,6 +933,7 @@
   "tofu.run_succeeded": "已完成。",
   "tofu.run_failed": "退出代码 {{code}}。",
   "tofu.run_summary": "新增 {{add}}，更改 {{change}}，销毁 {{remove}}",
+  "tofu.run_summary_applied": "已新增 {{add}}，已更改 {{change}}，已销毁 {{remove}}",
   "tofu.run_diagnostics": "诊断",
   "tofu.run_progress": "进度",
   "tofu.run_planned": "计划的更改",

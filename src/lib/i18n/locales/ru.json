@@ -906,6 +906,7 @@
   "tofu.run_succeeded": "Завершено.",
   "tofu.run_failed": "Завершено с кодом {{code}}.",
   "tofu.run_summary": "{{add}} добавить, {{change}} изменить, {{remove}} удалить",
+  "tofu.run_summary_applied": "{{add}} добавлено, {{change}} изменено, {{remove}} удалено",
   "tofu.run_diagnostics": "Диагностика",
   "tofu.run_progress": "Ход выполнения",
   "tofu.run_planned": "Запланированные изменения",
