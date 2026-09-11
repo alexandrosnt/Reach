@@ -22,7 +22,7 @@
 	import type { TofuCommandRequest, TofuExecutionTarget } from '$lib/ipc/tofu';
 	import { sshListConnections, type ConnectionInfo } from '$lib/ipc/ssh';
 	import Button from '$lib/components/shared/Button.svelte';
-	import TofuCommandOutput from './TofuCommandOutput.svelte';
+	import TofuRunView from './TofuRunView.svelte';
 	import TofuProviderPanel from './TofuProviderPanel.svelte';
 	import TofuVariablePanel from './TofuVariablePanel.svelte';
 	import TofuResourcePanel from './TofuResourcePanel.svelte';
@@ -325,7 +325,7 @@
 				{:else if showPlanViewer}
 					<TofuPlanViewer />
 				{:else}
-					<TofuCommandOutput />
+					<TofuRunView />
 				{/if}
 			</div>
 		{:else if activeTab === 'providers'}

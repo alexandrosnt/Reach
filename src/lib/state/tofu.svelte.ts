@@ -1,4 +1,5 @@
 import type {
+	TofuCommand,
 	TofuProject,
 	TofuProviderConfig,
 	TofuVariable,
@@ -23,6 +24,7 @@ import type {
 	TofuPlanSummary,
 	ProviderSchema
 } from '$lib/ipc/tofu';
+import { parseTofuUiLine, applyTofuUiMessage, emptyRunView, splitLines, type TofuRunView } from '$lib/tofu/ui-json';
 import {
 	tofuListProjects,
 	tofuCreateProject,
@@ -72,6 +74,10 @@ let toolStatus = $state<ToolStatus | null>(null);
 let toolChecking = $state(false);
 let commandRunning = $state(false);
 let commandOutput = $state<Array<{ stream: string; line: string }>>([]);
+// The run, folded from its -json messages as they arrive. See tofu/ui-json.
+let runView = $state<TofuRunView>(emptyRunView());
+let runExitCode = $state<number | null>(null);
+let runCommandName = $state<TofuCommand | null>(null);
 let currentRunId = $state<string | null>(null);
 let projectFiles = $state<string[]>([]);
 let providerCatalog = $state<ProviderCatalogEntry[]>([]);
@@ -126,6 +132,18 @@ export function getToolVersion(): string | null {
 
 export function isCommandRunning(): boolean {
 	return commandRunning;
+}
+
+export function getRunView(): TofuRunView {
+	return runView;
+}
+
+export function getRunExitCode(): number | null {
+	return runExitCode;
+}
+
+export function getRunCommand(): TofuCommand | null {
+	return runCommandName;
 }
 
 export function getCommandOutput(): Array<{ stream: string; line: string }> {
@@ -342,6 +360,8 @@ export function closeProject(): void {
 	activeProjectId = null;
 	projectFiles = [];
 	commandOutput = [];
+	runView = emptyRunView();
+	runExitCode = null;
 	currentRunId = null;
 	commandRunning = false;
 	workspaceTab = 'actions';
@@ -457,18 +477,42 @@ export async function writeGeneratedFiles(files: GeneratedFile[]): Promise<void>
 export async function runCommand(request: TofuCommandRequest): Promise<string> {
 	commandRunning = true;
 	commandOutput = [];
+	runView = emptyRunView();
+	runExitCode = null;
+	runCommandName = request.command;
 
 	const runId = await tofuRunCommand(request);
 	currentRunId = runId;
 
 	const eventName = `tofu-output-${runId}`;
 	let unlisten: UnlistenFn | null = null;
+	// Local runs arrive a line at a time; remote runs arrive as whatever the
+	// SSH channel had, which can end mid-line. Both go through one splitter.
+	let carry = '';
 
-	unlisten = await listen<TofuCommandEvent>(eventName, (event) => {
+	const take = (stream: string, line: string) => {
+		commandOutput = [...commandOutput, { stream, line }];
+		if (stream !== 'stdout') return;
+		const m = parseTofuUiLine(line);
+		if (m) runView = applyTofuUiMessage(runView, m);
+	};
+
+	unlisten = await listen<TofuCommandEvent & { data?: string }>(eventName, (event) => {
 		const data = event.payload;
-		commandOutput = [...commandOutput, { stream: data.stream, line: data.line }];
+		if (typeof data.line === 'string') {
+			take(data.stream, data.line);
+		} else if (typeof data.data === 'string') {
+			const split = splitLines(carry, data.data);
+			carry = split.carry;
+			for (const l of split.lines) take(data.stream, l);
+		}
 
 		if (data.done) {
+			if (carry) {
+				take('stdout', carry);
+				carry = '';
+			}
+			runExitCode = data.exitCode ?? null;
 			commandRunning = false;
 			if (unlisten) {
 				unlisten();
@@ -736,4 +780,6 @@ export async function loadCachedSchema(): Promise<void> {
 
 export function clearOutput(): void {
 	commandOutput = [];
+	runView = emptyRunView();
+	runExitCode = null;
 }

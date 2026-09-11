@@ -46,7 +46,7 @@ Lists all files in the project directory. Click a file to view its contents in t
 
 | Tab | What it does |
 |-----|-------------|
-| **Actions** | Run tofu commands (init, plan, apply, destroy, validate, fmt) |
+| **Actions** | Run tofu commands (init, plan, apply, destroy, validate, fmt). Plan, apply and destroy run with OpenTofu's machine-readable output and show as a structured run: change summary, planned changes, live apply progress, diagnostics with file and line, outputs. The raw log is one click away. |
 | **Providers** | Add and configure infrastructure providers |
 | **Variables** | Define input variables with types and defaults |
 | **Resources** | Add and configure infrastructure resources |
@@ -322,3 +322,13 @@ All project metadata — providers, variables, resources, outputs, backend confi
 Sensitive values like provider credentials, backend access keys, and sensitive variable defaults are encrypted at rest in the vault. The state file itself is managed by OpenTofu and should be secured through its own mechanisms (remote backends with encryption, etc.).
 
 Projects persist across app restarts. When you reopen Reach, your project list and all configuration is loaded from the vault.
+
+## How commands run
+
+Every command runs non-interactively (`-input=false`, `TF_IN_AUTOMATION=1`, `TF_INPUT=0`) — nothing can stop and wait for a prompt you cannot see.
+
+`plan`, `apply` and `destroy` run with `-json`, OpenTofu's machine-readable UI. Reach folds the stream into a run view: the change summary as the header (`+3 ~1 −1`), the planned changes as a list, apply progress as rows that move from running to done with the resource id and elapsed time, diagnostics as cards with the file and line, and outputs as a table. Commands that only speak prose — `init`, `validate`, `fmt` — show their output as text, and **Raw log** switches any run back to the text OpenTofu wrote.
+
+`plan` runs with `-detailed-exitcode`: exit 0 means no changes, 2 means there are changes to apply, and the verdict chip says which. Only 1 is an error.
+
+The same arguments are used when a project runs on a remote host over SSH.

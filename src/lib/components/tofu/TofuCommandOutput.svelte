@@ -3,6 +3,9 @@
 	import { getCommandOutput, isCommandRunning, clearOutput } from '$lib/state/tofu.svelte';
 	import Button from '$lib/components/shared/Button.svelte';
 
+	/** Inside the run view, which draws its own header. */
+	let { headless = false }: { headless?: boolean } = $props();
+
 	let scrollContainer: HTMLDivElement | undefined = $state(undefined);
 
 	let output = $derived(getCommandOutput());
@@ -23,6 +26,7 @@
 </script>
 
 <div class="command-output">
+	{#if !headless}
 	<div class="header">
 		<div class="header-left">
 			<span class="title">{t('tofu.output')}</span>
@@ -39,6 +43,7 @@
 			</Button>
 		{/if}
 	</div>
+	{/if}
 
 	<div class="terminal" bind:this={scrollContainer}>
 		{#if output.length === 0}
