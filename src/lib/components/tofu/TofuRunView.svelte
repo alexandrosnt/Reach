@@ -167,7 +167,9 @@
 				</div>
 			{/if}
 
-			{#if view.planned.length > 0}
+			<!-- An apply from a saved plan restates the plan before acting on it;
+			     the progress rows already say the same, so the list is skipped. -->
+			{#if view.planned.length > 0 && view.apply.length === 0}
 				<div class="section">
 					<span class="section-title">{t('tofu.run_planned')}</span>
 					{#each view.planned as p (p.resource.addr)}
@@ -199,7 +201,16 @@
 					{#each outputEntries as [name, o] (name)}
 						<div class="row">
 							<span class="addr mono">{name}</span>
-							<span class="meta"><span class="mono">{o.sensitive ? t('tofu.plan_sensitive_value') : fmtValue(o.value)}</span></span>
+							<!-- A plan lists outputs with an action and no value yet. -->
+							<span class="meta">
+								{#if o.sensitive}
+									<span class="mono">{t('tofu.plan_sensitive_value')}</span>
+								{:else if o.value === undefined}
+									<span class="dim">{o.action ? actionLabel(o.action as TofuChangeAction) : '—'}</span>
+								{:else}
+									<span class="mono">{fmtValue(o.value)}</span>
+								{/if}
+							</span>
 						</div>
 					{/each}
 				</div>
