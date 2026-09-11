@@ -276,6 +276,58 @@ pub async fn run_wsl(
     pump(child, run_id, app_handle).await
 }
 
+/// The container engine: the project bind-mounted into an execution
+/// environment, the user's ~/.ssh read-only so keys and known_hosts reach
+/// the hosts, the vault password (when there is one) mounted read-only
+/// from the file Reach staged. The first run pulls the image; the pull's
+/// progress is the run's output.
+pub async fn run_container(
+    runtime: &str,
+    working_dir: &str,
+    binary: &str,
+    args: &[String],
+    run_id: &str,
+    app_handle: &tauri::AppHandle,
+    vault_pass_file: Option<&std::path::Path>,
+) -> Result<i32, String> {
+    let mut cmd_args: Vec<String> = vec![
+        "run".into(),
+        "--rm".into(),
+        "-i".into(),
+        "-v".into(),
+        format!("{}:/runner/project", working_dir),
+        "-w".into(),
+        "/runner/project".into(),
+        "-e".into(),
+        "ANSIBLE_FORCE_COLOR=0".into(),
+        "-e".into(),
+        "ANSIBLE_NOCOLOR=1".into(),
+    ];
+    if let Some(home) = dirs::home_dir() {
+        let ssh = home.join(".ssh");
+        if ssh.is_dir() {
+            cmd_args.push("-v".into());
+            cmd_args.push(format!("{}:/root/.ssh:ro", ssh.display()));
+        }
+    }
+    if let Some(p) = vault_pass_file {
+        cmd_args.push("-v".into());
+        cmd_args.push(format!("{}:/runner/.vault-pass:ro", p.display()));
+    }
+    cmd_args.push(crate::ansible::engine::EE_IMAGE.into());
+    cmd_args.push(binary.into());
+    cmd_args.extend(args.iter().cloned());
+
+    let child = silent_async_command(runtime)
+        .args(&cmd_args)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .stdin(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn {}: {}", runtime, e))?;
+    pump(child, run_id, app_handle).await
+}
+
 /// Execute an Ansible command on a remote SSH connection, streaming output via Tauri events.
 pub async fn run_remote(
     connection_id: &str,

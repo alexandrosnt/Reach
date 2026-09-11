@@ -24,6 +24,7 @@ use crate::ssh::client::{exec_on_connection, exec_with_stdin, SharedHandle};
 pub enum EngineKind {
     Native,
     Wsl,
+    Container,
     Remote,
 }
 
@@ -143,6 +144,56 @@ fn wsl() -> Option<EngineInfo> {
     None
 }
 
+/// The execution environment image: ansible-core, the community
+/// collections, and the tooling, maintained by the Ansible project. The
+/// one engine that is the same on Windows, macOS and Linux.
+pub const EE_IMAGE: &str = "ghcr.io/ansible/community-ansible-dev-tools:latest";
+
+/// `podman` first — rootless, daemonless, the runtime the Ansible tooling
+/// itself prefers — then `docker`.
+pub fn container_runtime() -> Option<String> {
+    for name in ["podman", "docker"] {
+        if which::which(name).is_ok() {
+            return Some(name.to_string());
+        }
+    }
+    None
+}
+
+fn container() -> EngineInfo {
+    let Some(runtime) = container_runtime() else {
+        return EngineInfo {
+            kind: EngineKind::Container,
+            available: false,
+            version: None,
+            reason: Some("No container runtime found. Install Podman Desktop or Docker Desktop to run Ansible in an execution environment.".into()),
+            unofficial: false,
+            detail: None,
+        };
+    };
+    // `info` talks to the daemon (or the podman machine); a runtime that is
+    // installed but not running fails here, quickly, with a message.
+    let alive = silent(&runtime)
+        .args(["info", "--format", "{{.ServerVersion}}{{.Version.Version}}"])
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false);
+    let version = silent(&runtime)
+        .arg("--version")
+        .output()
+        .ok()
+        .filter(|o| o.status.success())
+        .and_then(|o| first_line(&String::from_utf8_lossy(&o.stdout)));
+    EngineInfo {
+        kind: EngineKind::Container,
+        available: alive,
+        reason: (!alive).then(|| format!("{} is installed but not running. Start it and pick this engine again.", runtime)),
+        version,
+        unofficial: false,
+        detail: Some(format!("{} · {}", runtime, EE_IMAGE)),
+    }
+}
+
 /// The engines this machine can offer on its own. Remote engines are per
 /// connection and checked by `remote`.
 pub fn detect_local_engines() -> Vec<EngineInfo> {
@@ -150,6 +201,7 @@ pub fn detect_local_engines() -> Vec<EngineInfo> {
     if let Some(w) = wsl() {
         out.push(w);
     }
+    out.push(container());
     out
 }
 

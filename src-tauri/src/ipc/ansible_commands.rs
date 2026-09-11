@@ -258,6 +258,28 @@ pub async fn ansible_run_command(
                     let _ = std::fs::remove_file(p);
                 }
             }
+            AnsibleExecutionTarget::Container => {
+                let Some(runtime) = engine::container_runtime() else {
+                    runner::fail_run(&rid, &app_handle, "No container runtime found (podman or docker).");
+                    return;
+                };
+                let pass_file = match vault_password.as_deref().map(engine::write_local_secret) {
+                    Some(Ok(p)) => Some(p),
+                    Some(Err(e)) => {
+                        system(&app_handle, &rid, format!("Could not stage the vault password: {}", e));
+                        None
+                    }
+                    None => None,
+                };
+                // Inside the container the file sits where the mount puts it.
+                let pass_arg = pass_file.as_ref().map(|_| "/runner/.vault-pass".to_string());
+                let (binary, args) = runner::build_command_args(&request, pass_arg.as_deref());
+                system(&app_handle, &rid, format!("Running in {} · {}", runtime, engine::EE_IMAGE));
+                let _ = runner::run_container(&runtime, &working_dir, &binary, &args, &rid, &app_handle, pass_file.as_deref()).await;
+                if let Some(p) = pass_file {
+                    let _ = std::fs::remove_file(p);
+                }
+            }
             AnsibleExecutionTarget::Ssh { connection_id } => {
                 let handle = {
                     let ssh = ssh_mgr.lock().await;

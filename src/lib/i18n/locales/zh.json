@@ -1205,6 +1205,7 @@
   "ansible.engine": "引擎",
   "ansible.engine_native": "本机",
   "ansible.engine_wsl": "WSL",
+  "ansible.engine_container": "容器",
   "ansible.engine_remote": "远程",
   "ansible.engine_unofficial": "非官方",
   "ansible.engine_unavailable": "不可用",

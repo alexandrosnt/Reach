@@ -83,6 +83,8 @@ pub enum AnsibleExecutionTarget {
     Local,
     /// Inside the default WSL distribution (Windows).
     Wsl,
+    /// Inside an execution-environment container (podman or docker).
+    Container,
     /// A remote Linux host over an open SSH connection.
     Ssh { connection_id: String },
 }

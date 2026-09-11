@@ -1212,6 +1212,7 @@
   "ansible.engine": "Μηχανή",
   "ansible.engine_native": "Αυτό το μηχάνημα",
   "ansible.engine_wsl": "WSL",
+  "ansible.engine_container": "Container",
   "ansible.engine_remote": "Απομακρυσμένο",
   "ansible.engine_unofficial": "ανεπίσημο",
   "ansible.engine_unavailable": "μη διαθέσιμο",

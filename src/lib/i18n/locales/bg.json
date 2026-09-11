@@ -1212,6 +1212,7 @@
   "ansible.engine": "Двигател",
   "ansible.engine_native": "Тази машина",
   "ansible.engine_wsl": "WSL",
+  "ansible.engine_container": "Контейнер",
   "ansible.engine_remote": "Отдалечено",
   "ansible.engine_unofficial": "неофициално",
   "ansible.engine_unavailable": "недостъпно",
