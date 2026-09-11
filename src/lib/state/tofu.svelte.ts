@@ -25,7 +25,7 @@ import type {
 	ProviderSchema
 } from '$lib/ipc/tofu';
 import { parseTofuUiLine, applyTofuUiMessage, emptyRunView, splitLines, type TofuRunView } from '$lib/tofu/ui-json';
-import { tofuBinaryStatus, tofuBinaryInstall, tofuBinaryPin, tofuUpdateEncryption, type TofuBinaryStatus, type TofuEncryptionConfig } from '$lib/ipc/tofu';
+import { tofuBinaryStatus, tofuBinaryInstall, tofuBinaryPin, tofuUpdateEncryption, tofuDiscardPlan, type TofuBinaryStatus, type TofuEncryptionConfig } from '$lib/ipc/tofu';
 import type { ToolInstallEvent } from '$lib/ipc/toolchain';
 import {
 	tofuListProjects,
@@ -88,7 +88,17 @@ let currentRunId = $state<string | null>(null);
 let projectFiles = $state<string[]>([]);
 let providerCatalog = $state<ProviderCatalogEntry[]>([]);
 let resourceCatalog = $state<ResourceCatalogEntry[]>([]);
-let workspaceTab = $state<'actions' | 'providers' | 'variables' | 'resources' | 'environments' | 'state' | 'graph' | 'outputs' | 'backend' | 'data_sources' | 'locals' | 'modules' | 'workspaces'>('actions');
+// Three tabs a person thinks in. The HCL builders are sections of Code;
+// state, graph, workspaces and backend are sections of State.
+export type TofuTab = 'overview' | 'code' | 'state';
+export type TofuCodeSection = 'providers' | 'variables' | 'resources' | 'data_sources' | 'locals' | 'modules' | 'outputs' | 'environments';
+export type TofuStateSection = 'state' | 'graph' | 'workspaces' | 'backend';
+let workspaceTab = $state<TofuTab>('overview');
+let codeSection = $state<TofuCodeSection>('providers');
+let stateSection = $state<TofuStateSection>('state');
+// True from a plan that reported pending changes until it is applied or
+// discarded: the gate on the run view reads this.
+let planPending = $state(false);
 let stateResources = $state<string[]>([]);
 let stateLoading = $state(false);
 let dependencyGraph = $state<DependencyGraph | null>(null);
@@ -217,8 +227,35 @@ export function getResourceCatalog(): ResourceCatalogEntry[] {
 	return resourceCatalog;
 }
 
-export function getWorkspaceTab(): 'actions' | 'providers' | 'variables' | 'resources' | 'environments' | 'state' | 'graph' | 'outputs' | 'backend' | 'data_sources' | 'locals' | 'modules' | 'workspaces' {
+export function getWorkspaceTab(): TofuTab {
 	return workspaceTab;
+}
+
+export function getCodeSection(): TofuCodeSection {
+	return codeSection;
+}
+
+export function setCodeSection(section: TofuCodeSection): void {
+	codeSection = section;
+}
+
+export function getStateSection(): TofuStateSection {
+	return stateSection;
+}
+
+export function setStateSection(section: TofuStateSection): void {
+	stateSection = section;
+}
+
+export function isPlanPending(): boolean {
+	return planPending;
+}
+
+export async function discardPlan(): Promise<void> {
+	const project = getActiveProject();
+	if (!project) return;
+	await tofuDiscardPlan(project.id);
+	planPending = false;
 }
 
 export function getStateResources(): string[] {
@@ -341,7 +378,7 @@ export function isOutputsLoading(): boolean {
 
 // --- Actions ---
 export function setWorkspaceTab(
-	tab: 'actions' | 'providers' | 'variables' | 'resources' | 'environments' | 'state' | 'graph' | 'outputs' | 'backend' | 'data_sources' | 'locals' | 'modules' | 'workspaces'
+	tab: TofuTab
 ): void {
 	workspaceTab = tab;
 }
@@ -415,7 +452,8 @@ export function closeProject(): void {
 	runExitCode = null;
 	currentRunId = null;
 	commandRunning = false;
-	workspaceTab = 'actions';
+	workspaceTab = 'overview';
+	planPending = false;
 	dependencyGraph = null;
 	graphLoading = false;
 	outputValues = [];
@@ -565,6 +603,11 @@ export async function runCommand(request: TofuCommandRequest): Promise<string> {
 			}
 			runExitCode = data.exitCode ?? null;
 			commandRunning = false;
+			// A plan with changes leaves .reach-plan behind; apply and
+			// destroy consume it, and any other outcome means there is
+			// nothing worth a gate.
+			if (request.command === 'plan') planPending = runExitCode === 2;
+			else if (request.command === 'apply' || request.command === 'destroy') planPending = false;
 			if (unlisten) {
 				unlisten();
 				unlisten = null;
@@ -592,7 +635,7 @@ export async function loadStateResources(target: TofuExecutionTarget): Promise<v
 export async function stateShowResource(target: TofuExecutionTarget, address: string): Promise<void> {
 	const project = getActiveProject();
 	if (!project) return;
-	setWorkspaceTab('actions');
+	setWorkspaceTab('overview');
 	await runCommand({
 		projectId: project.id,
 		command: 'stateShow',
@@ -606,7 +649,7 @@ export async function stateShowResource(target: TofuExecutionTarget, address: st
 export async function stateRemoveResource(target: TofuExecutionTarget, address: string): Promise<void> {
 	const project = getActiveProject();
 	if (!project) return;
-	setWorkspaceTab('actions');
+	setWorkspaceTab('overview');
 	await runCommand({
 		projectId: project.id,
 		command: 'stateRm',
@@ -621,7 +664,7 @@ export async function stateRemoveResource(target: TofuExecutionTarget, address: 
 export async function stateMoveResource(target: TofuExecutionTarget, source: string, dest: string): Promise<void> {
 	const project = getActiveProject();
 	if (!project) return;
-	setWorkspaceTab('actions');
+	setWorkspaceTab('overview');
 	await runCommand({
 		projectId: project.id,
 		command: 'stateMv',
@@ -636,7 +679,7 @@ export async function stateMoveResource(target: TofuExecutionTarget, source: str
 export async function stateImportResource(target: TofuExecutionTarget, address: string, id: string): Promise<void> {
 	const project = getActiveProject();
 	if (!project) return;
-	setWorkspaceTab('actions');
+	setWorkspaceTab('overview');
 	await runCommand({
 		projectId: project.id,
 		command: 'import',

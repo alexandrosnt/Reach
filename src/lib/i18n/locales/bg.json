@@ -1041,6 +1041,46 @@
   "tofu.no_providers_for_resources": "Първо добавете доставчик, за да видите наличните ресурси.",
 
   "tofu.tab_state": "Състояние",
+
+  "tofu.tab_overview": "Преглед",
+
+  "tofu.tab_code": "Код",
+
+  "tofu.more_actions": "Още действия",
+
+  "tofu.target_remote": "Отдалечен",
+
+  "tofu.env_default": "Среда по подразбиране",
+
+  "tofu.no_var_file": "без файл с променливи",
+
+  "tofu.state_encrypted": "state е криптиран",
+
+  "tofu.backend_is": "backend: {{backend}}",
+
+  "tofu.plan_gate": "Това е планът, който ще бъде приложен. Нищо друго.",
+
+  "tofu.plan_gate_full": "Пълен план",
+
+  "tofu.plan_gate_result": "Обратно към резултата",
+
+  "tofu.plan_discard": "Отхвърли",
+
+  "tofu.plan_apply_this": "Приложи този план",
+
+  "tofu.danger_zone": "Опасна зона",
+
+  "tofu.destroy_explain": "Destroy премахва всеки ресурс, управляван от този проект. Въведете името на проекта, за да го активирате.",
+
+  "tofu.destroy_type_name": "Въведете {{name}} за потвърждение",
+
+  "tofu.close": "Затвори",
+
+  "tofu.loading": "Зареждане…",
+
+  "tofu.show_files": "Покажи файловете",
+
+  "tofu.hide_files": "Скрий файловете",
   "tofu.state_title": "Управление на състоянието",
   "tofu.state_refresh": "Обновяване",
   "tofu.state_loading": "Зареждане на състояние...",
@@ -1244,6 +1284,19 @@
   "ansible.tab_collections": "Колекции",
   "ansible.tab_adhoc": "Ad Hoc",
   "ansible.tab_vault": "Vault",
+  "ansible.tab_dependencies": "Зависимости",
+  "ansible.adhoc": "Ad hoc",
+  "ansible.adhoc_open": "Изпълни ad hoc команда…",
+  "ansible.adhoc_title": "Ad hoc команда",
+  "ansible.roles_title": "Роли",
+  "ansible.collections_title": "Колекции",
+  "ansible.playbook": "Playbook",
+  "ansible.inventory": "Инвентар",
+  "ansible.run": "Изпълни",
+  "ansible.close": "Затвори",
+  "ansible.loading": "Зареждане…",
+  "ansible.show_files": "Покажи файловете",
+  "ansible.hide_files": "Скрий файловете",
   "ansible.playbook_select": "Избери playbook",
   "ansible.inventory_select": "Избери файл с инвентар",
   "ansible.run_playbook": "Стартирай Playbook",

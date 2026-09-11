@@ -1041,6 +1041,46 @@
   "tofu.no_providers_for_resources": "Fügen Sie zuerst einen Anbieter hinzu, um verfügbare Ressourcen zu sehen.",
 
   "tofu.tab_state": "Status",
+
+  "tofu.tab_overview": "Übersicht",
+
+  "tofu.tab_code": "Code",
+
+  "tofu.more_actions": "Weitere Aktionen",
+
+  "tofu.target_remote": "Remote",
+
+  "tofu.env_default": "Standardumgebung",
+
+  "tofu.no_var_file": "keine Var-Datei",
+
+  "tofu.state_encrypted": "State verschlüsselt",
+
+  "tofu.backend_is": "Backend: {{backend}}",
+
+  "tofu.plan_gate": "Dieser Plan wird angewendet. Kein anderer.",
+
+  "tofu.plan_gate_full": "Vollständiger Plan",
+
+  "tofu.plan_gate_result": "Zurück zum Ergebnis",
+
+  "tofu.plan_discard": "Verwerfen",
+
+  "tofu.plan_apply_this": "Diesen Plan anwenden",
+
+  "tofu.danger_zone": "Gefahrenzone",
+
+  "tofu.destroy_explain": "Destroy entfernt jede Ressource, die dieses Projekt verwaltet. Projektnamen eingeben, um es freizuschalten.",
+
+  "tofu.destroy_type_name": "{{name}} eingeben zum Bestätigen",
+
+  "tofu.close": "Schließen",
+
+  "tofu.loading": "Lädt…",
+
+  "tofu.show_files": "Dateien anzeigen",
+
+  "tofu.hide_files": "Dateien ausblenden",
   "tofu.state_title": "Statusverwaltung",
   "tofu.state_refresh": "Aktualisieren",
   "tofu.state_loading": "Status wird geladen...",
@@ -1244,6 +1284,19 @@
   "ansible.tab_collections": "Sammlungen",
   "ansible.tab_adhoc": "Ad Hoc",
   "ansible.tab_vault": "Vault",
+  "ansible.tab_dependencies": "Abhängigkeiten",
+  "ansible.adhoc": "Ad hoc",
+  "ansible.adhoc_open": "Ad-hoc-Befehl ausführen…",
+  "ansible.adhoc_title": "Ad-hoc-Befehl",
+  "ansible.roles_title": "Rollen",
+  "ansible.collections_title": "Collections",
+  "ansible.playbook": "Playbook",
+  "ansible.inventory": "Inventar",
+  "ansible.run": "Ausführen",
+  "ansible.close": "Schließen",
+  "ansible.loading": "Lädt…",
+  "ansible.show_files": "Dateien anzeigen",
+  "ansible.hide_files": "Dateien ausblenden",
   "ansible.playbook_select": "Playbook auswählen",
   "ansible.inventory_select": "Inventardatei auswählen",
   "ansible.run_playbook": "Playbook ausführen",

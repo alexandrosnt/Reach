@@ -1041,6 +1041,46 @@
   "tofu.no_providers_for_resources": "Add a provider first to see available resources.",
 
   "tofu.tab_state": "State",
+
+  "tofu.tab_overview": "Overview",
+
+  "tofu.tab_code": "Code",
+
+  "tofu.more_actions": "More actions",
+
+  "tofu.target_remote": "Remote",
+
+  "tofu.env_default": "Default environment",
+
+  "tofu.no_var_file": "no var file",
+
+  "tofu.state_encrypted": "state encrypted",
+
+  "tofu.backend_is": "backend: {{backend}}",
+
+  "tofu.plan_gate": "This is the plan that will be applied. Nothing else.",
+
+  "tofu.plan_gate_full": "Full plan",
+
+  "tofu.plan_gate_result": "Back to result",
+
+  "tofu.plan_discard": "Discard",
+
+  "tofu.plan_apply_this": "Apply this plan",
+
+  "tofu.danger_zone": "Danger zone",
+
+  "tofu.destroy_explain": "Destroy removes every resource this project manages. Type the project name to enable it.",
+
+  "tofu.destroy_type_name": "Type {{name}} to confirm",
+
+  "tofu.close": "Close",
+
+  "tofu.loading": "Loading…",
+
+  "tofu.show_files": "Show files",
+
+  "tofu.hide_files": "Hide files",
   "tofu.state_title": "State Management",
   "tofu.state_refresh": "Refresh",
   "tofu.state_loading": "Loading state...",
@@ -1244,6 +1284,19 @@
   "ansible.tab_collections": "Collections",
   "ansible.tab_adhoc": "Ad Hoc",
   "ansible.tab_vault": "Vault",
+  "ansible.tab_dependencies": "Dependencies",
+  "ansible.adhoc": "Ad hoc",
+  "ansible.adhoc_open": "Run an ad hoc command…",
+  "ansible.adhoc_title": "Ad hoc command",
+  "ansible.roles_title": "Roles",
+  "ansible.collections_title": "Collections",
+  "ansible.playbook": "Playbook",
+  "ansible.inventory": "Inventory",
+  "ansible.run": "Run",
+  "ansible.close": "Close",
+  "ansible.loading": "Loading…",
+  "ansible.show_files": "Show files",
+  "ansible.hide_files": "Hide files",
   "ansible.playbook_select": "Select playbook",
   "ansible.inventory_select": "Select inventory file",
   "ansible.run_playbook": "Run Playbook",

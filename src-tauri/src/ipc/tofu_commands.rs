@@ -688,6 +688,31 @@ pub async fn tofu_update_backend(
     Ok(project)
 }
 
+/// Throw away the saved plan. Apply then has nothing to apply until the
+/// next Plan, which is the point: a plan someone chose not to run must not
+/// be the one a later click runs.
+#[tauri::command]
+pub async fn tofu_discard_plan(
+    state: State<'_, AppState>,
+    project_id: String,
+) -> Result<bool, String> {
+    let project_path = {
+        let mut tofu_mgr = state.tofu_project_manager.lock().await;
+        let mut vault_mgr = state.vault_manager.lock().await;
+        tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
+        tofu_mgr
+            .get_project(&project_id)
+            .map(|p| p.path.clone())
+            .ok_or_else(|| "Project not found".to_string())?
+    };
+    let plan = std::path::Path::new(&project_path).join(runner::PLAN_FILE);
+    if !plan.is_file() {
+        return Ok(false);
+    }
+    std::fs::remove_file(&plan).map_err(|e| format!("Could not remove the saved plan: {}", e))?;
+    Ok(true)
+}
+
 /// Update state encryption on a project and persist to vault.
 #[tauri::command]
 pub async fn tofu_update_encryption(

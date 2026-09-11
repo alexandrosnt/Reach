@@ -43,9 +43,9 @@ let roles = $state<AnsibleRole[]>([]);
 let collections = $state<AnsibleCollection[]>([]);
 let rolesLoading = $state(false);
 let collectionsLoading = $state(false);
-let workspaceTab = $state<
-	'playbooks' | 'inventory' | 'roles' | 'collections' | 'adhoc' | 'vault'
->('playbooks');
+// Four tabs. Roles and collections are dependencies; ad hoc is an action.
+export type AnsibleTab = 'playbooks' | 'inventory' | 'dependencies' | 'vault';
+let workspaceTab = $state<AnsibleTab>('playbooks');
 
 // --- Getters ---
 export function getProjects(): AnsibleProject[] {
@@ -124,20 +124,12 @@ export function isCollectionsLoading(): boolean {
 	return collectionsLoading;
 }
 
-export function getWorkspaceTab():
-	| 'playbooks'
-	| 'inventory'
-	| 'roles'
-	| 'collections'
-	| 'adhoc'
-	| 'vault' {
+export function getWorkspaceTab(): AnsibleTab {
 	return workspaceTab;
 }
 
 // --- Actions ---
-export function setWorkspaceTab(
-	tab: 'playbooks' | 'inventory' | 'roles' | 'collections' | 'adhoc' | 'vault'
-): void {
+export function setWorkspaceTab(tab: AnsibleTab): void {
 	workspaceTab = tab;
 }
 

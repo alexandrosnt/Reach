@@ -431,6 +431,11 @@ export async function tofuUpdateEncryption(
 	return invoke<TofuProject>('tofu_update_encryption', { projectId, encryption });
 }
 
+/** Remove the saved plan file. Resolves true when there was one. */
+export async function tofuDiscardPlan(projectId: string): Promise<boolean> {
+	return invoke<boolean>('tofu_discard_plan', { projectId });
+}
+
 export async function tofuUpdateBackend(
 	projectId: string,
 	backend: TofuBackendConfig | null

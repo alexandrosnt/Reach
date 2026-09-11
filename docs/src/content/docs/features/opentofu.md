@@ -52,64 +52,25 @@ Opening a project gives you a two-panel layout.
 
 Lists all files in the project directory. Click a file to view its contents in the right panel with syntax highlighting. The panel collapses with the chevron button. **Back to Projects** at the bottom returns to the project list.
 
-### Right panel — 13 workspace tabs
+### Right panel — three tabs
 
-| Tab | What it does |
-|-----|-------------|
-| **Actions** | Run tofu commands (init, plan, apply, destroy, validate, test, fmt). Plan, apply and destroy run with OpenTofu's machine-readable output and show as a structured run: change summary, planned changes, live apply progress, diagnostics with file and line, outputs. The raw log is one click away. |
-| **Providers** | Add and configure infrastructure providers |
-| **Variables** | Define input variables with types and defaults |
-| **Resources** | Add and configure infrastructure resources |
-| **Data Sources** | Define data sources for reading external data |
-| **Environments** | Manage variable value sets for different environments |
-| **Backend** | Configure state storage backend, and state encryption |
-| **Locals** | Define local computed values |
-| **Modules** | Reference external modules |
-| **State** | Inspect, move, remove, and import state resources |
-| **Graph** | Visualize resource dependency graph |
-| **Outputs** | Define outputs and view live values |
-| **Workspaces** | Manage OpenTofu workspaces |
+| Tab | What it holds |
+|-----|---------------|
+| **Overview** | The run. A run bar says which environment and var file, whether state is encrypted, which backend, and on which machine; **Validate** and **Plan** sit beside it, and **…** holds Init, Test, Format, Apply and the Auto-approve toggle. The result fills the rest: change summary, planned changes, live apply progress, diagnostics with file and line, outputs, raw log one click away. |
+| **Code** | The HCL builders as sections: Providers, Variables, Resources, Data Sources, Locals, Modules, Outputs, Environments. **Generate HCL** previews every `.tf` file Reach would write. |
+| **State** | State (inspect, move, remove, import), Graph, Workspaces, Backend and encryption. At the foot of State is the **danger zone**: Destroy, enabled only after you type the project's name. |
 
-There's also a **Generate HCL** button on the right side of the tab bar that opens a preview of all the `.tf` files Reach would generate from your current configuration.
+The version chip on the right of the tab bar says which OpenTofu runs the project and lets you change it.
 
-## Actions
+## The run
 
-The Actions tab is the command center.
+Plan is the action. When a plan reports changes, a gate appears above the result: *This is the plan that will be applied. Nothing else.* **Apply this plan** applies the saved plan file — exactly what you reviewed, no second plan — and **Discard** deletes it. **Full plan** opens the attribute-level view. Apply from the **…** menu without a saved plan tells you to plan first unless Auto-approve is on.
 
-### Command buttons
+Every run shows in Overview, whichever tab started it: state operations and imports from the State tab included.
 
-Six buttons across the top:
+### Where it runs
 
-| Button | Command | What it does |
-|--------|---------|-------------|
-| **Init** | `tofu init` | Download providers and initialize the project |
-| **Plan** | `tofu plan` | Preview what changes will be made |
-| **Apply** | `tofu apply` | Apply changes to infrastructure |
-| **Destroy** | `tofu destroy` | Tear down all managed resources |
-| **Validate** | `tofu validate` | Check configuration syntax |
-| **Format** | `tofu fmt` | Auto-format `.tf` files |
-
-All buttons are disabled while a command is running.
-
-### Execution target
-
-Same as Ansible — pick **Local** or **SSH** to control where commands run. SSH shows a dropdown of active connections.
-
-### Auto Approve
-
-A toggle below the target selector. When enabled, `--auto-approve` is passed to apply and destroy commands so they don't prompt for confirmation. Use with caution.
-
-### Plan viewer
-
-After running a plan, a **View Plan** button appears. Click it to see a structured summary:
-
-- **Summary bar** with color-coded badges: X to create (green), X to update (yellow), X to destroy (red), X to replace (blue)
-- **Resource change cards** — each card shows the resource address, action badge, and provider name. Click to expand and see attribute-level changes in a table with old value → new value. Removed attributes show in red, added in green, sensitive values are masked.
-- **Output changes** — if any outputs changed, they're listed separately
-
-### Command output
-
-Same streaming output as Ansible: stdout in white, stderr in red, system messages in accent color. Auto-scrolls. Clear button to reset.
+The select on the run bar lists **Local** and every open SSH session. Pick a session to run OpenTofu on that host; the list refreshes when you open it.
 
 ## Providers
 

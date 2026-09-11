@@ -1034,6 +1034,46 @@
   "tofu.no_providers_for_resources": "先添加提供商以查看可用资源。",
 
   "tofu.tab_state": "状态",
+
+  "tofu.tab_overview": "概览",
+
+  "tofu.tab_code": "代码",
+
+  "tofu.more_actions": "更多操作",
+
+  "tofu.target_remote": "远程",
+
+  "tofu.env_default": "默认环境",
+
+  "tofu.no_var_file": "无变量文件",
+
+  "tofu.state_encrypted": "状态已加密",
+
+  "tofu.backend_is": "后端：{{backend}}",
+
+  "tofu.plan_gate": "将要应用的就是这个计划，仅此而已。",
+
+  "tofu.plan_gate_full": "完整计划",
+
+  "tofu.plan_gate_result": "返回结果",
+
+  "tofu.plan_discard": "放弃",
+
+  "tofu.plan_apply_this": "应用此计划",
+
+  "tofu.danger_zone": "危险区域",
+
+  "tofu.destroy_explain": "Destroy 会删除此项目管理的所有资源。输入项目名称以启用。",
+
+  "tofu.destroy_type_name": "输入 {{name}} 以确认",
+
+  "tofu.close": "关闭",
+
+  "tofu.loading": "加载中…",
+
+  "tofu.show_files": "显示文件",
+
+  "tofu.hide_files": "隐藏文件",
   "tofu.state_title": "状态管理",
   "tofu.state_refresh": "刷新",
   "tofu.state_loading": "加载状态中...",
@@ -1237,6 +1277,19 @@
   "ansible.tab_collections": "集合",
   "ansible.tab_adhoc": "临时命令",
   "ansible.tab_vault": "Vault",
+  "ansible.tab_dependencies": "依赖",
+  "ansible.adhoc": "临时命令",
+  "ansible.adhoc_open": "运行临时命令…",
+  "ansible.adhoc_title": "临时命令",
+  "ansible.roles_title": "角色",
+  "ansible.collections_title": "集合",
+  "ansible.playbook": "Playbook",
+  "ansible.inventory": "清单",
+  "ansible.run": "运行",
+  "ansible.close": "关闭",
+  "ansible.loading": "加载中…",
+  "ansible.show_files": "显示文件",
+  "ansible.hide_files": "隐藏文件",
   "ansible.playbook_select": "选择 Playbook",
   "ansible.inventory_select": "选择清单文件",
   "ansible.run_playbook": "运行 Playbook",
