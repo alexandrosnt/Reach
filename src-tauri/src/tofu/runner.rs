@@ -67,9 +67,21 @@ pub fn build_command_args(request: &TofuCommandRequest) -> Vec<String> {
         }
     }
 
-    // Save plan output for later viewing
+    // Save plan output for later viewing, and let the exit code say whether
+    // there is anything in it: 0 nothing, 2 changes, 1 error.
     if matches!(request.command, TofuCommand::Plan) {
         args.push("-out=.reach-plan".to_string());
+        args.push("-detailed-exitcode".to_string());
+    }
+
+    // The machine-readable UI: one JSON object per line instead of prose,
+    // which the run view turns into a plan tree, apply progress and
+    // diagnostics. Only the long-running commands speak it.
+    if matches!(
+        request.command,
+        TofuCommand::Plan | TofuCommand::Apply | TofuCommand::Destroy
+    ) {
+        args.push("-json".to_string());
     }
 
     // Input=false to prevent interactive prompts
@@ -145,6 +157,7 @@ pub async fn run_local(
     let mut child = silent_async_command(binary)
         .args(args)
         .current_dir(working_dir)
+        .envs(AUTOMATION_ENV)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .stdin(Stdio::null())
@@ -213,17 +226,37 @@ pub async fn run_local(
         TofuCommandEvent {
             run_id: run_id.to_string(),
             stream: "system".to_string(),
-            line: if exit_code == 0 {
-                "Command completed successfully.".to_string()
-            } else {
-                format!("Command exited with code {}.", exit_code)
-            },
+            line: done_message(args, exit_code),
             done: true,
             exit_code: Some(exit_code),
         },
     );
 
     Ok(exit_code)
+}
+
+/// Told to a process that must never wait for a human: no prompts, and no
+/// "run `tofu apply` next" hints written for someone at a shell.
+const AUTOMATION_ENV: [(&str, &str); 2] = [("TF_IN_AUTOMATION", "1"), ("TF_INPUT", "0")];
+
+/// The same two, as a prefix for a remote shell.
+fn automation_prefix() -> String {
+    AUTOMATION_ENV
+        .iter()
+        .map(|(k, v)| format!("{}={}", k, v))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// What the exit code means. `plan -detailed-exitcode` returns 2 for
+/// "there are changes", which is the answer, not an error.
+fn done_message(args: &[String], exit_code: i32) -> String {
+    let detailed = args.iter().any(|a| a == "-detailed-exitcode");
+    match (detailed, exit_code) {
+        (_, 0) => "Command completed successfully.".to_string(),
+        (true, 2) => "Plan complete: changes pending.".to_string(),
+        _ => format!("Command exited with code {}.", exit_code),
+    }
 }
 
 /// Execute a tofu command on a remote SSH connection, streaming output via Tauri events.
@@ -238,7 +271,12 @@ pub async fn run_remote(
     let event_name = format!("tofu-output-{}", run_id);
 
     // Build the full command string for remote execution
-    let cmd = format!("cd {} && tofu {}", shell_escape(working_dir), args.join(" "));
+    let cmd = format!(
+        "cd {} && {} tofu {}",
+        shell_escape(working_dir),
+        automation_prefix(),
+        args.join(" ")
+    );
 
     let handle = ssh_manager
         .get_handle(connection_id)
@@ -255,11 +293,7 @@ pub async fn run_remote(
         TofuCommandEvent {
             run_id: run_id.to_string(),
             stream: "system".to_string(),
-            line: if exit_code == 0 {
-                "Command completed successfully.".to_string()
-            } else {
-                format!("Command exited with code {}.", exit_code)
-            },
+            line: done_message(args, exit_code),
             done: true,
             exit_code: Some(exit_code),
         },
@@ -274,5 +308,63 @@ pub fn shell_escape(s: &str) -> String {
         format!("'{}'", s.replace('\'', "'\\''"))
     } else {
         s.to_string()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::tofu::types::TofuExecutionTarget;
+
+    fn req(command: TofuCommand) -> TofuCommandRequest {
+        TofuCommandRequest {
+            project_id: "p".into(),
+            command,
+            target: TofuExecutionTarget::Local,
+            auto_approve: false,
+            var_file: None,
+            extra_args: vec![],
+        }
+    }
+
+    #[test]
+    fn plan_speaks_json_and_reports_changes_in_its_exit_code() {
+        let args = build_command_args(&req(TofuCommand::Plan));
+        assert!(args.contains(&"-json".to_string()));
+        assert!(args.contains(&"-detailed-exitcode".to_string()));
+        assert!(args.contains(&"-out=.reach-plan".to_string()));
+        assert!(args.contains(&"-input=false".to_string()));
+    }
+
+    #[test]
+    fn apply_and_destroy_speak_json() {
+        for c in [TofuCommand::Apply, TofuCommand::Destroy] {
+            let args = build_command_args(&req(c));
+            assert!(args.contains(&"-json".to_string()), "{:?}", args);
+        }
+    }
+
+    #[test]
+    fn init_and_validate_speak_prose() {
+        // Neither supports -json; passing it would be an error, not silence.
+        for c in [TofuCommand::Init, TofuCommand::Validate, TofuCommand::Fmt] {
+            let args = build_command_args(&req(c));
+            assert!(!args.contains(&"-json".to_string()), "{:?}", args);
+        }
+    }
+
+    #[test]
+    fn exit_two_on_a_detailed_plan_is_news_not_failure() {
+        let plan = build_command_args(&req(TofuCommand::Plan));
+        assert_eq!(done_message(&plan, 2), "Plan complete: changes pending.");
+        assert_eq!(done_message(&plan, 0), "Command completed successfully.");
+        assert!(done_message(&plan, 1).contains("code 1"));
+        let apply = build_command_args(&req(TofuCommand::Apply));
+        assert!(done_message(&apply, 2).contains("code 2"), "apply has no special 2");
+    }
+
+    #[test]
+    fn remote_prefix_carries_the_automation_env() {
+        assert_eq!(automation_prefix(), "TF_IN_AUTOMATION=1 TF_INPUT=0");
     }
 }
