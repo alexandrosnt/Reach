@@ -7,6 +7,7 @@ import type {
 } from '$lib/ipc/ansible';
 import { ansibleEngines, ansibleRemoteEngine, type AnsibleEngineInfo } from '$lib/ipc/ansible';
 import { splitLines } from '$lib/tofu/ui-json';
+import { parseAnsibleLine, applyAnsibleEvent, emptyAnsibleRun, type AnsibleRunView } from '$lib/ansible/recap';
 import {
 	ansibleListProjects,
 	ansibleCreateProject,
@@ -34,6 +35,9 @@ let toolChecking = $state(false);
 let commandRunning = $state(false);
 let commandOutput = $state<Array<{ stream: string; line: string }>>([]);
 let currentRunId = $state<string | null>(null);
+// The run, folded from its output lines as they arrive. See ansible/recap.
+let runView = $state<AnsibleRunView>(emptyAnsibleRun());
+let runExitCode = $state<number | null>(null);
 let projectFiles = $state<string[]>([]);
 let roles = $state<AnsibleRole[]>([]);
 let collections = $state<AnsibleCollection[]>([]);
@@ -86,6 +90,14 @@ export function isCommandRunning(): boolean {
 
 export function getCommandOutput(): Array<{ stream: string; line: string }> {
 	return commandOutput;
+}
+
+export function getRunView(): AnsibleRunView {
+	return runView;
+}
+
+export function getRunExitCode(): number | null {
+	return runExitCode;
 }
 
 export function getCurrentRunId(): string | null {
@@ -176,6 +188,8 @@ export function closeProject(): void {
 	activeProjectId = null;
 	projectFiles = [];
 	commandOutput = [];
+	runView = emptyAnsibleRun();
+	runExitCode = null;
 	currentRunId = null;
 	commandRunning = false;
 	workspaceTab = 'playbooks';
@@ -224,6 +238,8 @@ export async function writeInventory(content: string, filename?: string): Promis
 export async function runCommand(request: AnsibleCommandRequest): Promise<string> {
 	commandRunning = true;
 	commandOutput = [];
+	runView = emptyAnsibleRun();
+	runExitCode = null;
 
 	const runId = await ansibleRunCommand(request);
 	currentRunId = runId;
@@ -236,19 +252,26 @@ export async function runCommand(request: AnsibleCommandRequest): Promise<string
 	let carry = '';
 	unlisten = await listen<AnsibleCommandEvent & { data?: string }>(eventName, (event) => {
 		const data = event.payload;
+		const take = (stream: string, line: string) => {
+			commandOutput = [...commandOutput, { stream, line }];
+			if (stream !== 'stdout') return;
+			const e = parseAnsibleLine(line);
+			if (e) runView = applyAnsibleEvent(runView, e);
+		};
 		if (typeof data.line === 'string') {
-			commandOutput = [...commandOutput, { stream: data.stream, line: data.line }];
+			take(data.stream, data.line);
 		} else if (typeof data.data === 'string') {
 			const split = splitLines(carry, data.data);
 			carry = split.carry;
-			for (const line of split.lines) commandOutput = [...commandOutput, { stream: data.stream, line }];
+			for (const line of split.lines) take(data.stream, line);
 		}
 
 		if (data.done) {
 			if (carry) {
-				commandOutput = [...commandOutput, { stream: 'stdout', line: carry }];
+				take('stdout', carry);
 				carry = '';
 			}
+			runExitCode = data.exitCode ?? null;
 			commandRunning = false;
 			if (unlisten) {
 				unlisten();
@@ -289,6 +312,8 @@ export async function loadCollections(): Promise<void> {
 
 export function clearOutput(): void {
 	commandOutput = [];
+	runView = emptyAnsibleRun();
+	runExitCode = null;
 }
 
 // ==================== ENGINES ====================

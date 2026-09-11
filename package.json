@@ -17,7 +17,8 @@
     "discord:github": "node scripts/discord/github-webhook.mjs",
     "discord:invite": "node scripts/discord/invite.mjs",
     "share:test": "node scripts/share-test.mjs",
-    "tofu:test": "node scripts/tofu-json-test.mjs"
+    "tofu:test": "node scripts/tofu-json-test.mjs",
+    "ansible:test": "node scripts/ansible-recap-test.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.0",
