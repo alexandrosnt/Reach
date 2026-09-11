@@ -14,7 +14,7 @@ fn silent_async_command(program: impl AsRef<std::ffi::OsStr>) -> tokio::process:
 }
 
 use crate::ssh::client::{exec_on_connection_streaming, SshManager};
-use crate::ansible::types::{AnsibleExecutionTarget, AnsibleCommand, AnsibleCommandEvent, AnsibleCommandRequest};
+use crate::ansible::types::{AnsibleCommand, AnsibleCommandEvent, AnsibleCommandRequest};
 use crate::toolchain::detect::windows_to_wsl_path;
 
 /// Build CLI binary name and argument list for an Ansible command.
@@ -337,6 +337,7 @@ pub fn shell_escape(s: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ansible::types::AnsibleExecutionTarget;
 
     fn req(command: AnsibleCommand) -> AnsibleCommandRequest {
         AnsibleCommandRequest {
