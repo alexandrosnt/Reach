@@ -25,7 +25,9 @@ The passphrase belongs to the key, not to the session. Save it once with the key
 
 Each key shows its algorithm and SHA-256 fingerprint, so two keys with similar names stay distinguishable. **Forget key** removes one from the vault.
 
-Imported keys are part of your backups. `vault_export_backup` writes every vault it holds open, keys included, sealed with your export password; restoring a backup on a new machine brings the keys back with the sessions that use them.
+Imported keys are part of your backups, as key material rather than as a reference: the backup carries the encrypted key itself, so restoring on a new machine brings back keys that actually work, together with the sessions that use them. The export copies each secret's ciphertext without ever decrypting it, and seals the whole bundle with your export password (Argon2id, then XChaCha20-Poly1305).
+
+That cuts both ways, so it is worth saying plainly: **a backup file plus its export password is enough to recover your private keys.** The bundle also carries your vault identity key, because the new machine's OS keychain will not have it. Treat a backup like the keys inside it — a strong, unique export password, and somewhere safe to keep the file.
 
 A session shared with a teammate carries the *reference* to a key, not the key itself — your private key is never handed to anyone. If they don't have that key, Reach says so plainly and they can import their own or point the session at a key file.
 
