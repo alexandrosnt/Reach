@@ -76,6 +76,8 @@
   "session.auth_type": "Authentification {{type}}",
   "session.password_optional": "Mot de passe (facultatif)",
   "session.key_path": "Chemin de la cle",
+  "session.key_missing_option": "Clé absente de cette machine",
+  "session.key_missing": "Cette session utilise une clé importée qui n'est pas dans ce coffre. Importez-la ici ou passez à un fichier de clé.",
   "session.key_forget": "Oublier la clé",
   "session.key_forget_confirm": "Retirer cette clé du coffre ?",
   "session.key_source": "Source de la clé",

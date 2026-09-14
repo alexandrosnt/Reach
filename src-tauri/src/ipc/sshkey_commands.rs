@@ -273,6 +273,10 @@ pub async fn ssh_key_public(
 
 /// Key material for a handshake. Called by `ssh_connect`, never exposed as a
 /// command — the frontend has no way to ask for a private key back.
+///
+/// A session can name a key this machine does not hold: it was shared by a
+/// teammate whose vault you cannot read, or sync has not caught up yet. Say
+/// which of those it is, because the fix differs.
 pub(crate) async fn resolve(
     state: &AppState,
     id: &str,
@@ -283,7 +287,14 @@ pub(crate) async fn resolve(
     }
     let vault_id = manager
         .get_vault_id_by_name(SSH_KEYS_VAULT)
-        .ok_or_else(|| "No keys have been imported on this machine yet.".to_string())?;
-    let material = read_material(&manager, &vault_id, id).await?;
+        .ok_or_else(|| MISSING_KEY.to_string())?;
+    let material = read_material(&manager, &vault_id, id)
+        .await
+        .map_err(|_| MISSING_KEY.to_string())?;
     Ok((&material).into())
 }
+
+/// What a session says when the key it names is not on this machine. The
+/// connect dialog matches on it, so keep the two in step.
+pub const MISSING_KEY: &str =
+    "This session uses an imported key that is not on this machine. Import the key here, or edit the session to use a key file.";

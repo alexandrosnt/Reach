@@ -25,6 +25,10 @@ The passphrase belongs to the key, not to the session. Save it once with the key
 
 Each key shows its algorithm and SHA-256 fingerprint, so two keys with similar names stay distinguishable. **Forget key** removes one from the vault.
 
+Imported keys are part of your backups. `vault_export_backup` writes every vault it holds open, keys included, sealed with your export password; restoring a backup on a new machine brings the keys back with the sessions that use them.
+
+A session shared with a teammate carries the *reference* to a key, not the key itself — your private key is never handed to anyone. If they don't have that key, Reach says so plainly and they can import their own or point the session at a key file.
+
 ## The Top of the Sidebar
 
 Two rows. First the vault switcher (see below). Then a field and a **+**.

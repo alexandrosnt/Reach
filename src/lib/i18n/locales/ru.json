@@ -71,6 +71,8 @@
   "session.auth_type": "{{type}} authentication",
   "session.password_optional": "Password (optional)",
   "session.key_path": "Key Path",
+  "session.key_missing_option": "Ключа нет на этой машине",
+  "session.key_missing": "Эта сессия использует импортированный ключ, которого нет в этом хранилище. Импортируйте его здесь или переключитесь на файл ключа.",
   "session.key_forget": "Забыть ключ",
   "session.key_forget_confirm": "Удалить этот ключ из хранилища?",
   "session.key_source": "Источник ключа",

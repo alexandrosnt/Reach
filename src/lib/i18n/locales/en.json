@@ -76,6 +76,8 @@
   "session.auth_type": "{{type}} authentication",
   "session.password_optional": "Password (optional)",
   "session.key_path": "Key Path",
+  "session.key_missing_option": "Key not on this machine",
+  "session.key_missing": "This session uses an imported key that is not in this vault. Import it here, or switch to a key file.",
   "session.key_forget": "Forget key",
   "session.key_forget_confirm": "Remove this key from the vault?",
   "session.key_source": "Key source",

@@ -76,6 +76,8 @@
   "session.auth_type": "Autenticación {{type}}",
   "session.password_optional": "Contraseña (opcional)",
   "session.key_path": "Ruta de la clave",
+  "session.key_missing_option": "La clave no está en este equipo",
+  "session.key_missing": "Esta sesión usa una clave importada que no está en esta bóveda. Impórtala aquí o cambia a un archivo de clave.",
   "session.key_forget": "Olvidar clave",
   "session.key_forget_confirm": "¿Quitar esta clave de la bóveda?",
   "session.key_source": "Origen de la clave",

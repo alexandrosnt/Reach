@@ -76,6 +76,8 @@
   "session.auth_type": "{{type}}-Authentifizierung",
   "session.password_optional": "Passwort (optional)",
   "session.key_path": "Schlüsselpfad",
+  "session.key_missing_option": "Schlüssel nicht auf diesem Gerät",
+  "session.key_missing": "Diese Sitzung nutzt einen importierten Schlüssel, der nicht in diesem Vault ist. Importieren Sie ihn hier oder wechseln Sie zu einer Schlüsseldatei.",
   "session.key_forget": "Schlüssel entfernen",
   "session.key_forget_confirm": "Diesen Schlüssel aus dem Vault entfernen?",
   "session.key_source": "Schlüsselquelle",

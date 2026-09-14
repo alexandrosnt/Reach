@@ -76,6 +76,8 @@
   "session.auth_type": "{{type}} 认证",
   "session.password_optional": "密码（可选）",
   "session.key_path": "密钥路径",
+  "session.key_missing_option": "本机没有该密钥",
+  "session.key_missing": "该会话使用的导入密钥不在此保险库中。请在此导入，或改用密钥文件。",
   "session.key_forget": "移除密钥",
   "session.key_forget_confirm": "要从保险库中移除此密钥吗？",
   "session.key_source": "密钥来源",

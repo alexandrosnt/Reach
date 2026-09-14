@@ -76,6 +76,8 @@
   "session.auth_type": "Удостоверяване чрез {{type}}",
   "session.password_optional": "Парола (незадължително)",
   "session.key_path": "Път до ключа",
+  "session.key_missing_option": "Ключът не е на тази машина",
+  "session.key_missing": "Тази сесия използва импортиран ключ, който не е в този трезор. Импортирайте го тук или превключете към файл с ключ.",
   "session.key_forget": "Забрави ключа",
   "session.key_forget_confirm": "Да се премахне ли този ключ от трезора?",
   "session.key_source": "Източник на ключа",

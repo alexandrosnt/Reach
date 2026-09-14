@@ -85,6 +85,13 @@
 	let selected = $derived(keys.find((k) => k.id === keyId));
 	/** An encrypted key with no saved passphrase asks at connect time. */
 	let willAsk = $derived(!!selected && selected.encrypted && !selected.hasPassphrase);
+	/**
+	 * The session names a key this machine does not hold — shared by someone
+	 * whose vault we cannot read, or sync has not caught up. Saying so beats
+	 * showing an empty picker, which would look like nothing was ever chosen
+	 * and would drop the reference on the next save.
+	 */
+	let missing = $derived(loaded && !!keyId && !selected);
 </script>
 
 <div class="key-picker">
@@ -110,15 +117,21 @@
 	</div>
 
 	{#if mode === 'imported'}
-		{#if loaded && keys.length === 0}
+		{#if loaded && keys.length === 0 && !keyId}
 			<p class="empty">{t('session.key_none_imported')}</p>
 		{:else}
 			<select class="key-select" bind:value={keyId} {disabled}>
 				<option value="">{t('session.key_select')}</option>
+				{#if missing}
+					<option value={keyId}>{t('session.key_missing_option')}</option>
+				{/if}
 				{#each keys as k (k.id)}
 					<option value={k.id}>{k.name}{k.algo ? ` · ${k.algo}` : ''}</option>
 				{/each}
 			</select>
+			{#if missing}
+				<p class="warn">{t('session.key_missing')}</p>
+			{/if}
 			{#if selected}
 				<div class="detail">
 					{#if selected.fingerprint}
@@ -247,6 +260,13 @@
 
 	.note.ok {
 		color: var(--color-success, #30d158);
+	}
+
+	.warn {
+		margin: 0;
+		font-size: 0.6875rem;
+		line-height: 1.45;
+		color: var(--color-warning, #ffd60a);
 	}
 
 	.empty {

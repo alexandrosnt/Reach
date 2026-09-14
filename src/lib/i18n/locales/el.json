@@ -76,6 +76,8 @@
   "session.auth_type": "Πιστοποίηση {{type}}",
   "session.password_optional": "Κωδικός Πρόσβασης (προαιρετικό)",
   "session.key_path": "Διαδρομή Κλειδιού",
+  "session.key_missing_option": "Το κλειδί δεν υπάρχει σε αυτό το μηχάνημα",
+  "session.key_missing": "Αυτή η συνεδρία χρησιμοποιεί εισαγμένο κλειδί που δεν υπάρχει σε αυτό το vault. Εισαγάγετέ το εδώ ή επιλέξτε αρχείο κλειδιού.",
   "session.key_forget": "Διαγραφή κλειδιού",
   "session.key_forget_confirm": "Να αφαιρεθεί αυτό το κλειδί από το vault;",
   "session.key_source": "Πηγή κλειδιού",

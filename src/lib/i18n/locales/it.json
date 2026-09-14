@@ -76,6 +76,8 @@
   "session.auth_type": "Autenticazione {{type}}",
   "session.password_optional": "Password (facoltativa)",
   "session.key_path": "Percorso Chiave",
+  "session.key_missing_option": "Chiave non presente su questa macchina",
+  "session.key_missing": "Questa sessione usa una chiave importata che non è in questo vault. Importala qui o passa a un file di chiave.",
   "session.key_forget": "Dimentica chiave",
   "session.key_forget_confirm": "Rimuovere questa chiave dal vault?",
   "session.key_source": "Origine della chiave",
