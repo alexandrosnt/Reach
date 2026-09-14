@@ -55,10 +55,39 @@ pub const INTERNAL_VAULTS: [&str; 9] = [
 /// server's patience, not short in absolute terms.
 const STREAM_IDLE_GRACE: std::time::Duration = std::time::Duration::from_secs(5);
 
-/// The connection a vault is currently using, and when it was last used.
+/// How long a remote connection may be used at all, however busy it is.
+///
+/// Idleness is not the only way a connection dies: a network blip, a token
+/// refresh or a server restart can kill one mid-use. Retiring on idleness
+/// alone would never replace it, because steady use keeps refreshing the
+/// idle clock — so someone hitting retry every second would pin the dead
+/// connection for as long as they kept trying, which is the behaviour this
+/// whole change exists to remove. An upper bound on age means a connection
+/// that has gone bad for any reason is replaced within a minute.
+const STREAM_MAX_AGE: std::time::Duration = std::time::Duration::from_secs(60);
+
+/// Whether a cached connection should be thrown away before the next
+/// operation.
+///
+/// Local databases keep their connection for good — there is no stream to
+/// lose. A remote one is replaced when it has been idle long enough that its
+/// stream may have expired, and also once it is simply old, because idleness
+/// alone would never replace a connection that keeps being used and keeps
+/// failing.
+fn should_reconnect(
+    is_remote: bool,
+    idle_for: std::time::Duration,
+    age: std::time::Duration,
+) -> bool {
+    is_remote && (idle_for > STREAM_IDLE_GRACE || age > STREAM_MAX_AGE)
+}
+
+/// The connection a vault is currently using, when it was last used, and
+/// when it was opened.
 struct CachedConnection {
     conn: Connection,
     last_used: std::time::Instant,
+    opened: std::time::Instant,
 }
 
 /// Vault connection state.
@@ -83,9 +112,10 @@ impl VaultConnection {
     /// until it was closed and reopened.
     ///
     /// So a remote connection is retired once it has been idle long enough to
-    /// be in doubt, and a new one — with a new stream — takes its place.
-    /// Back-to-back work reuses one connection and pays nothing; only the
-    /// first operation after a pause reconnects. A local database has no
+    /// be in doubt, or once it is simply old — see [`STREAM_MAX_AGE`] for why
+    /// idleness alone is not enough. A new one, with a new stream, takes its
+    /// place. Back-to-back work reuses one connection and pays nothing; only
+    /// the first operation after a pause reconnects. A local database has no
     /// stream to lose and keeps its connection for good.
     pub fn conn(&self) -> Result<Connection, VaultError> {
         let mut cached = self
@@ -93,13 +123,20 @@ impl VaultConnection {
             .lock()
             .unwrap_or_else(|poisoned| poisoned.into_inner());
 
-        if self.sync_url.is_some() && cached.last_used.elapsed() > STREAM_IDLE_GRACE {
+        let now = std::time::Instant::now();
+        let stale = should_reconnect(
+            self.sync_url.is_some(),
+            cached.last_used.elapsed(),
+            cached.opened.elapsed(),
+        );
+        if stale {
             cached.conn = self
                 .db
                 .connect()
                 .map_err(|e| VaultError::DatabaseError(e.to_string()))?;
+            cached.opened = now;
         }
-        cached.last_used = std::time::Instant::now();
+        cached.last_used = now;
         Ok(cached.conn.clone())
     }
 }
@@ -1092,6 +1129,7 @@ impl VaultManager {
                 conn: std::sync::Mutex::new(CachedConnection {
                     conn,
                     last_used: std::time::Instant::now(),
+                    opened: std::time::Instant::now(),
                 }),
                 header,
                 master_dek: Some(master_dek),
@@ -1258,6 +1296,7 @@ impl VaultManager {
                 conn: std::sync::Mutex::new(CachedConnection {
                     conn,
                     last_used: std::time::Instant::now(),
+                    opened: std::time::Instant::now(),
                 }),
                 header,
                 master_dek: None,
@@ -2703,6 +2742,66 @@ fn get_key_from_keychain(user_uuid: &str) -> Result<Vec<u8>, VaultError> {
     BASE64
         .decode(&password)
         .map_err(|e| VaultError::SerializationError(e.to_string()))
+}
+
+#[cfg(test)]
+mod connection_tests {
+    use super::*;
+    use std::time::Duration;
+
+    // Leaving Reach open long enough used to stop it reading anything, from
+    // the server or the cache, until it was closed and reopened: a remote
+    // vault kept one connection forever, and libsql cannot recover a stream
+    // whose baton the server expired. These cover when that connection is
+    // given up.
+
+    #[test]
+    fn a_local_vault_keeps_its_connection() {
+        // No stream, nothing to expire — and reconnecting would only cost
+        // time.
+        assert!(!should_reconnect(false, Duration::from_secs(0), Duration::from_secs(0)));
+        assert!(!should_reconnect(false, Duration::from_secs(3600), Duration::from_secs(86400)));
+    }
+
+    #[test]
+    fn back_to_back_work_reuses_one_connection() {
+        // Reading twelve sessions is twelve operations a few milliseconds
+        // apart. Reconnecting for each one measurably slowed the session
+        // list down, which is why this matters.
+        assert!(!should_reconnect(true, Duration::from_millis(5), Duration::from_secs(1)));
+        assert!(!should_reconnect(true, STREAM_IDLE_GRACE, Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn an_idle_connection_is_given_up() {
+        assert!(should_reconnect(
+            true,
+            STREAM_IDLE_GRACE + Duration::from_millis(1),
+            Duration::from_secs(1)
+        ));
+    }
+
+    #[test]
+    fn a_busy_connection_is_still_given_up_eventually() {
+        // The one that nearly got away. A connection can die from something
+        // other than idleness — a network blip, a token refresh, a server
+        // restart — and steady use keeps refreshing the idle clock, so
+        // idleness alone would pin a dead connection for as long as someone
+        // kept hitting retry. Age is what breaks that.
+        assert!(!should_reconnect(true, Duration::from_millis(1), STREAM_MAX_AGE));
+        assert!(should_reconnect(
+            true,
+            Duration::from_millis(1),
+            STREAM_MAX_AGE + Duration::from_millis(1)
+        ));
+    }
+
+    #[test]
+    fn the_grace_is_shorter_than_the_lifetime() {
+        // Otherwise the age bound would be the only rule in force and idle
+        // streams would go unnoticed.
+        assert!(STREAM_IDLE_GRACE < STREAM_MAX_AGE);
+    }
 }
 
 #[cfg(test)]
