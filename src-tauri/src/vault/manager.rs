@@ -49,13 +49,22 @@ pub const INTERNAL_VAULTS: [&str; 9] = [
     SSH_KEYS_VAULT,
 ];
 
+/// How long a remote connection may sit unused before Reach stops trusting
+/// its stream. Turso expires a hrana stream that has been idle; a connection
+/// in constant use is never at risk, so this only has to be shorter than the
+/// server's patience, not short in absolute terms.
+const STREAM_IDLE_GRACE: std::time::Duration = std::time::Duration::from_secs(5);
+
+/// The connection a vault is currently using, and when it was last used.
+struct CachedConnection {
+    conn: Connection,
+    last_used: std::time::Instant,
+}
+
 /// Vault connection state.
 pub struct VaultConnection {
     pub db: Database,
-    /// The connection opened when the vault was opened. Good forever for a
-    /// local database; see [`VaultConnection::conn`] for why a remote one
-    /// cannot use it.
-    pub opened_conn: Connection,
+    conn: std::sync::Mutex<CachedConnection>,
     pub header: VaultHeader,
     pub master_dek: Option<Dek>,
     pub sync_url: Option<String>,
@@ -65,26 +74,36 @@ pub struct VaultConnection {
 impl VaultConnection {
     /// A connection that will actually answer right now.
     ///
-    /// A remote vault talks to Turso over a hrana stream identified by a
-    /// baton the connection holds. The server drops a stream that has been
-    /// idle for long enough, and from then on every request made on that
-    /// connection fails the same way — which is why Reach would stop loading
-    /// anything, from the server *or* the cache, until it was closed and
-    /// reopened. Handing out a fresh connection per operation gives each one
-    /// its own stream; for a remote database this is a local call with no
-    /// round trip, because libsql only opens the HTTP connection lazily.
+    /// A remote vault talks to Turso over a hrana stream identified by a baton
+    /// the connection carries. The server drops a stream that has been idle,
+    /// and the reply to the next request is an HTTP error — which libsql
+    /// returns before it reaches the code that would clear the baton, so the
+    /// dead baton is kept and every later request fails the same way. That is
+    /// why Reach would stop loading anything, from the server *or* the cache,
+    /// until it was closed and reopened.
     ///
-    /// A local database has no stream to lose, so it keeps the one connection
-    /// it opened.
+    /// So a remote connection is retired once it has been idle long enough to
+    /// be in doubt, and a new one — with a new stream — takes its place.
+    /// Back-to-back work reuses one connection and pays nothing; only the
+    /// first operation after a pause reconnects. A local database has no
+    /// stream to lose and keeps its connection for good.
     pub fn conn(&self) -> Result<Connection, VaultError> {
-        if self.sync_url.is_none() {
-            return Ok(self.opened_conn.clone());
+        let mut cached = self
+            .conn
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
+
+        if self.sync_url.is_some() && cached.last_used.elapsed() > STREAM_IDLE_GRACE {
+            cached.conn = self
+                .db
+                .connect()
+                .map_err(|e| VaultError::DatabaseError(e.to_string()))?;
         }
-        self.db
-            .connect()
-            .map_err(|e| VaultError::DatabaseError(e.to_string()))
+        cached.last_used = std::time::Instant::now();
+        Ok(cached.conn.clone())
     }
 }
+
 
 /// Stored vault reference (for reopening after restart).
 #[derive(Clone, Serialize, Deserialize)]
@@ -1070,7 +1089,10 @@ impl VaultManager {
             vault_id.clone(),
             VaultConnection {
                 db,
-                opened_conn: conn,
+                conn: std::sync::Mutex::new(CachedConnection {
+                    conn,
+                    last_used: std::time::Instant::now(),
+                }),
                 header,
                 master_dek: Some(master_dek),
                 sync_url: sync_url.map(|s| s.to_string()),
@@ -1233,7 +1255,10 @@ impl VaultManager {
             vault_id.to_string(),
             VaultConnection {
                 db,
-                opened_conn: conn,
+                conn: std::sync::Mutex::new(CachedConnection {
+                    conn,
+                    last_used: std::time::Instant::now(),
+                }),
                 header,
                 master_dek: None,
                 sync_url: sync_url.map(|s| s.to_string()),

@@ -126,7 +126,13 @@ pub fn verify_passphrase(private_key: &str, passphrase: Option<&str>) -> Result<
     let pass = passphrase.filter(|p| !p.is_empty());
     match crate::ssh::client::decode_key(private_key, pass) {
         Ok(_) => Ok(()),
-        Err(e) => Err(format!("The key could not be opened: {}", e)),
+        // For an encrypted key there is only ever one thing wrong, and the
+        // crypto error underneath says nothing a person can act on.
+        Err(_) if pass.is_some() => Err("That passphrase does not open this key.".into()),
+        Err(_) => Err(
+            "This key is passphrase-protected. Enter its passphrase to import it."
+                .into(),
+        ),
     }
 }
 
