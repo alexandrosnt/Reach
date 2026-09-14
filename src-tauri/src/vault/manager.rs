@@ -52,11 +52,38 @@ pub const INTERNAL_VAULTS: [&str; 9] = [
 /// Vault connection state.
 pub struct VaultConnection {
     pub db: Database,
-    pub conn: Connection,
+    /// The connection opened when the vault was opened. Good forever for a
+    /// local database; see [`VaultConnection::conn`] for why a remote one
+    /// cannot use it.
+    pub opened_conn: Connection,
     pub header: VaultHeader,
     pub master_dek: Option<Dek>,
     pub sync_url: Option<String>,
     pub auth_token: Option<String>,
+}
+
+impl VaultConnection {
+    /// A connection that will actually answer right now.
+    ///
+    /// A remote vault talks to Turso over a hrana stream identified by a
+    /// baton the connection holds. The server drops a stream that has been
+    /// idle for long enough, and from then on every request made on that
+    /// connection fails the same way — which is why Reach would stop loading
+    /// anything, from the server *or* the cache, until it was closed and
+    /// reopened. Handing out a fresh connection per operation gives each one
+    /// its own stream; for a remote database this is a local call with no
+    /// round trip, because libsql only opens the HTTP connection lazily.
+    ///
+    /// A local database has no stream to lose, so it keeps the one connection
+    /// it opened.
+    pub fn conn(&self) -> Result<Connection, VaultError> {
+        if self.sync_url.is_none() {
+            return Ok(self.opened_conn.clone());
+        }
+        self.db
+            .connect()
+            .map_err(|e| VaultError::DatabaseError(e.to_string()))
+    }
 }
 
 /// Stored vault reference (for reopening after restart).
@@ -540,7 +567,7 @@ impl VaultManager {
                         if let Some(ref master_dek) = vault.master_dek {
                             // Read all secrets from this vault
                             let mut rows = vault
-                                .conn
+                                .conn()?
                                 .query(
                                     "SELECT id, name, category, nonce, ciphertext, wrapped_dek FROM secrets",
                                     (),
@@ -1043,7 +1070,7 @@ impl VaultManager {
             vault_id.clone(),
             VaultConnection {
                 db,
-                conn,
+                opened_conn: conn,
                 header,
                 master_dek: Some(master_dek),
                 sync_url: sync_url.map(|s| s.to_string()),
@@ -1206,7 +1233,7 @@ impl VaultManager {
             vault_id.to_string(),
             VaultConnection {
                 db,
-                conn,
+                opened_conn: conn,
                 header,
                 master_dek: None,
                 sync_url: sync_url.map(|s| s.to_string()),
@@ -1248,7 +1275,7 @@ impl VaultManager {
 
         // Check if we're the vault owner
         let mut header_rows = vault
-            .conn
+            .conn()?
             .query("SELECT user_uuid, wrapped_master_dek FROM vault_header LIMIT 1", ())
             .await?;
         let header_row = header_rows
@@ -1270,7 +1297,7 @@ impl VaultManager {
         // We're not the owner - check vault_members table
         tracing::info!("Unlocking vault {} as member (uuid: {})", vault_id, my_uuid);
         let mut member_rows = vault
-            .conn
+            .conn()?
             .query(
                 "SELECT wrapped_master_dek, inviter_public_key FROM vault_members WHERE user_uuid = ?",
                 [my_uuid.as_str()],
@@ -1389,7 +1416,7 @@ impl VaultManager {
             // vault panel, including local vaults that are perfectly healthy —
             // so a vault that cannot answer is reported as unreachable instead.
             let (secret_count, sync_error) =
-                match Self::count_secrets(&vault.conn).await {
+                match Self::count_secrets(&vault.conn()?).await {
                     Ok(n) => (n, None),
                     Err(e) => {
                         let reason = describe_db_error(&e.to_string());
@@ -1497,7 +1524,7 @@ impl VaultManager {
         let now = now_timestamp();
         let wrapped_dek_json = serde_json::to_string(&payload.wrapped_dek)?;
 
-        vault.conn.execute(
+        vault.conn()?.execute(
             "INSERT OR REPLACE INTO secrets (id, name, category, nonce, ciphertext, wrapped_dek, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 secret_id,
@@ -1537,7 +1564,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotUnlocked(vault_id.to_string()))?;
 
         let mut rows = vault
-            .conn
+            .conn()?
             .query(
                 "SELECT nonce, ciphertext, wrapped_dek FROM secrets WHERE id = ?",
                 [secret_id],
@@ -1594,7 +1621,7 @@ impl VaultManager {
         let wrapped_dek_json = serde_json::to_string(&payload.wrapped_dek)?;
 
         vault
-            .conn
+            .conn()?
             .execute(
                 "UPDATE secrets SET nonce = ?, ciphertext = ?, wrapped_dek = ?, updated_at = ? WHERE id = ?",
                 (
@@ -1631,7 +1658,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         vault
-            .conn
+            .conn()?
             .execute(
                 "UPDATE secrets SET name = ?, updated_at = ? WHERE id = ?",
                 (name, now_timestamp(), secret_id),
@@ -1655,7 +1682,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         vault
-            .conn
+            .conn()?
             .execute("DELETE FROM secrets WHERE id = ?", [secret_id])
             .await?;
 
@@ -1675,8 +1702,11 @@ impl VaultManager {
             return false;
         };
 
-        match vault
-            .conn
+        let Ok(conn) = vault.conn() else {
+            return false;
+        };
+
+        match conn
             .query("SELECT 1 FROM secrets WHERE id = ?", [secret_id])
             .await
         {
@@ -1698,7 +1728,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         let mut rows = vault
-            .conn
+            .conn()?
             .query(
                 "SELECT id, name, category, created_at, updated_at FROM secrets",
                 (),
@@ -1764,7 +1794,7 @@ impl VaultManager {
         );
 
         vault
-            .conn
+            .conn()?
             .execute(
                 "INSERT OR REPLACE INTO vault_members (user_uuid, public_key, wrapped_master_dek, role, added_at, inviter_public_key) VALUES (?, ?, ?, ?, ?, ?)",
                 (
@@ -1836,7 +1866,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         vault
-            .conn
+            .conn()?
             .execute(
                 "DELETE FROM vault_members WHERE user_uuid = ?",
                 [user_uuid],
@@ -1854,7 +1884,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         let mut rows = vault
-            .conn
+            .conn()?
             .query(
                 "SELECT user_uuid, public_key, role, added_at FROM vault_members",
                 (),
@@ -1897,7 +1927,7 @@ impl VaultManager {
 
         // TODO: Re-wrap DEK with recipient's public key
 
-        vault.conn.execute(
+        vault.conn()?.execute(
             "INSERT INTO shared_items (id, secret_id, recipient_uuid, recipient_public_key, wrapped_dek, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 share_id.as_str(),
@@ -1927,7 +1957,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         let mut rows = vault
-            .conn
+            .conn()?
             .query(
                 "SELECT id, secret_id, recipient_uuid, expires_at, created_at FROM shared_items",
                 (),
@@ -1956,7 +1986,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         vault
-            .conn
+            .conn()?
             .execute("DELETE FROM shared_items WHERE id = ?", [share_id])
             .await?;
 
@@ -2067,7 +2097,7 @@ impl VaultManager {
         }
 
         let mut rows = vault
-            .conn
+            .conn()?
             .query("SELECT id FROM secrets WHERE name = ?", [settings_key])
             .await?;
 
@@ -2112,7 +2142,7 @@ impl VaultManager {
 
         // Check if exists
         let mut rows = vault
-            .conn
+            .conn()?
             .query("SELECT id FROM secrets WHERE name = ?", [settings_key])
             .await?;
 
@@ -2192,7 +2222,7 @@ impl VaultManager {
 
             // Read wrapped_master_dek from header
             let mut header_rows = vault
-                .conn
+                .conn()?
                 .query("SELECT wrapped_master_dek FROM vault_header LIMIT 1", ())
                 .await?;
             let wrapped_master_dek = if let Some(row) = header_rows.next().await? {
@@ -2215,7 +2245,7 @@ impl VaultManager {
             // Export secrets (ciphertext only — never decrypted)
             let mut secrets = Vec::new();
             let mut secret_rows = vault
-                .conn
+                .conn()?
                 .query(
                     "SELECT id, name, category, nonce, ciphertext, wrapped_dek, created_at, updated_at FROM secrets",
                     (),
@@ -2240,7 +2270,7 @@ impl VaultManager {
             // Export members
             let mut members = Vec::new();
             let mut member_rows = vault
-                .conn
+                .conn()?
                 .query(
                     "SELECT user_uuid, public_key, wrapped_master_dek, role, added_at, inviter_public_key FROM vault_members",
                     (),
