@@ -85,12 +85,15 @@ fn should_reconnect(
     (is_remote && idle_for > STREAM_IDLE_GRACE) || age > STREAM_MAX_AGE
 }
 
-/// The connection a vault is currently using, when it was last used, and
-/// when it was opened.
+/// The connection a vault is currently using, when it was last used, when it
+/// was opened, and whether an operation has already found it broken.
 struct CachedConnection {
     conn: Connection,
     last_used: std::time::Instant,
     opened: std::time::Instant,
+    /// Set when an operation failed on this connection. The next caller
+    /// replaces it rather than inheriting the fault.
+    retired: bool,
 }
 
 /// Vault connection state.
@@ -129,20 +132,88 @@ impl VaultConnection {
             .unwrap_or_else(|poisoned| poisoned.into_inner());
 
         let now = std::time::Instant::now();
-        let stale = should_reconnect(
-            self.sync_url.is_some(),
-            cached.last_used.elapsed(),
-            cached.opened.elapsed(),
-        );
+        let stale = cached.retired
+            || should_reconnect(
+                self.sync_url.is_some(),
+                cached.last_used.elapsed(),
+                cached.opened.elapsed(),
+            );
         if stale {
             cached.conn = self
                 .db
                 .connect()
                 .map_err(|e| VaultError::DatabaseError(e.to_string()))?;
             cached.opened = now;
+            cached.retired = false;
         }
         cached.last_used = now;
         Ok(cached.conn.clone())
+    }
+
+    /// Mark the current connection as not to be used again.
+    fn retire(&self) {
+        self.conn
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner())
+            .retired = true;
+    }
+
+    /// Run a query, and if it fails, run it once more on a new connection.
+    ///
+    /// This is the part that makes a broken connection invisible rather than
+    /// merely short-lived. The age and idle rules above are prevention — they
+    /// bound how long a fault can last. This is the cure: the first operation
+    /// to meet a dead connection throws it away and retries, so the caller
+    /// gets its answer instead of an error.
+    ///
+    /// It is the same bargain every mature pool strikes. sqlx pings a
+    /// connection before handing it out (`test_before_acquire`, on by
+    /// default); deadpool calls it recycling; bb8 calls it
+    /// `test_on_check_out`. A probe costs a round trip on every single
+    /// operation, which for a list of secrets read one at a time would double
+    /// the work. Retrying costs nothing until something actually breaks.
+    ///
+    /// **Every statement routed through here must be safe to run twice.**
+    /// That holds today because they are all reads, keyed upserts, keyed
+    /// updates or keyed deletes — none of them accumulate. A statement that
+    /// is not idempotent (`SET n = n + 1`, an unkeyed INSERT) must not use
+    /// this path.
+    pub async fn query<P>(&self, sql: &str, params: P) -> Result<libsql::Rows, VaultError>
+    where
+        P: libsql::params::IntoParams + Clone,
+    {
+        match self.conn()?.query(sql, params.clone()).await {
+            Ok(rows) => Ok(rows),
+            Err(first) => {
+                tracing::warn!("Query failed ({}); retrying on a new connection", first);
+                self.retire();
+                self.conn()?.query(sql, params).await.map_err(|again| {
+                    // The first error is the one that describes the fault; the
+                    // second is what a healthy connection had to say about it.
+                    tracing::error!("Retry also failed: {}", again);
+                    VaultError::from(again)
+                })
+            }
+        }
+    }
+
+    /// Run a statement, with the same retry and the same rule about being
+    /// safe to run twice. See [`VaultConnection::query`].
+    pub async fn execute<P>(&self, sql: &str, params: P) -> Result<u64, VaultError>
+    where
+        P: libsql::params::IntoParams + Clone,
+    {
+        match self.conn()?.execute(sql, params.clone()).await {
+            Ok(n) => Ok(n),
+            Err(first) => {
+                tracing::warn!("Statement failed ({}); retrying on a new connection", first);
+                self.retire();
+                self.conn()?.execute(sql, params).await.map_err(|again| {
+                    tracing::error!("Retry also failed: {}", again);
+                    VaultError::from(again)
+                })
+            }
+        }
     }
 }
 
@@ -628,7 +699,7 @@ impl VaultManager {
                         if let Some(ref master_dek) = vault.master_dek {
                             // Read all secrets from this vault
                             let mut rows = vault
-                                .conn()?
+                                
                                 .query(
                                     "SELECT id, name, category, nonce, ciphertext, wrapped_dek FROM secrets",
                                     (),
@@ -1135,6 +1206,7 @@ impl VaultManager {
                     conn,
                     last_used: std::time::Instant::now(),
                     opened: std::time::Instant::now(),
+                    retired: false,
                 }),
                 header,
                 master_dek: Some(master_dek),
@@ -1283,7 +1355,7 @@ impl VaultManager {
         // same way `list_vaults` does: the vault is open and usable, we just
         // could not reach it to count. Failing here would leave a vault the
         // user has a valid key for permanently unopenable.
-        let (secret_count, sync_error) = match Self::count_secrets(&conn).await {
+        let (secret_count, sync_error) = match Self::count_secrets_on(&conn).await {
             Ok(n) => (n, None),
             Err(e) => {
                 let reason = describe_db_error(&e.to_string());
@@ -1302,6 +1374,7 @@ impl VaultManager {
                     conn,
                     last_used: std::time::Instant::now(),
                     opened: std::time::Instant::now(),
+                    retired: false,
                 }),
                 header,
                 master_dek: None,
@@ -1344,7 +1417,7 @@ impl VaultManager {
 
         // Check if we're the vault owner
         let mut header_rows = vault
-            .conn()?
+            
             .query("SELECT user_uuid, wrapped_master_dek FROM vault_header LIMIT 1", ())
             .await?;
         let header_row = header_rows
@@ -1366,7 +1439,7 @@ impl VaultManager {
         // We're not the owner - check vault_members table
         tracing::info!("Unlocking vault {} as member (uuid: {})", vault_id, my_uuid);
         let mut member_rows = vault
-            .conn()?
+            
             .query(
                 "SELECT wrapped_master_dek, inviter_public_key FROM vault_members WHERE user_uuid = ?",
                 [my_uuid.as_str()],
@@ -1456,8 +1529,21 @@ impl VaultManager {
     /// Count the secrets in a vault. Split out because both `open_vault` and
     /// `list_vaults` need it and, on a shared vault, it is a remote call that
     /// can fail on its own.
-    async fn count_secrets(conn: &Connection) -> Result<usize, VaultError> {
-        let mut rows = conn.query("SELECT COUNT(*) FROM secrets", ()).await?;
+    /// Takes the vault rather than a bare connection so that counting, which
+    /// decides whether a vault is reported as reachable, gets the same retry
+    /// as every other read. A vault called unreachable because of one dead
+    /// connection is the wrong answer.
+    async fn count_secrets(vault: &VaultConnection) -> Result<usize, VaultError> {
+        Self::read_count(vault.query("SELECT COUNT(*) FROM secrets", ()).await?).await
+    }
+
+    /// The same count on a connection that has only just been opened, where
+    /// there is no cached connection to retry against yet.
+    async fn count_secrets_on(conn: &Connection) -> Result<usize, VaultError> {
+        Self::read_count(conn.query("SELECT COUNT(*) FROM secrets", ()).await?).await
+    }
+
+    async fn read_count(mut rows: libsql::Rows) -> Result<usize, VaultError> {
         let count: i64 = match rows.next().await? {
             Some(row) => row.get(0)?,
             None => 0,
@@ -1485,7 +1571,7 @@ impl VaultManager {
             // vault panel, including local vaults that are perfectly healthy —
             // so a vault that cannot answer is reported as unreachable instead.
             let (secret_count, sync_error) =
-                match Self::count_secrets(&vault.conn()?).await {
+                match Self::count_secrets(vault).await {
                     Ok(n) => (n, None),
                     Err(e) => {
                         let reason = describe_db_error(&e.to_string());
@@ -1593,7 +1679,7 @@ impl VaultManager {
         let now = now_timestamp();
         let wrapped_dek_json = serde_json::to_string(&payload.wrapped_dek)?;
 
-        vault.conn()?.execute(
+        vault.execute(
             "INSERT OR REPLACE INTO secrets (id, name, category, nonce, ciphertext, wrapped_dek, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 secret_id,
@@ -1633,7 +1719,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotUnlocked(vault_id.to_string()))?;
 
         let mut rows = vault
-            .conn()?
+            
             .query(
                 "SELECT nonce, ciphertext, wrapped_dek FROM secrets WHERE id = ?",
                 [secret_id],
@@ -1690,7 +1776,7 @@ impl VaultManager {
         let wrapped_dek_json = serde_json::to_string(&payload.wrapped_dek)?;
 
         vault
-            .conn()?
+            
             .execute(
                 "UPDATE secrets SET nonce = ?, ciphertext = ?, wrapped_dek = ?, updated_at = ? WHERE id = ?",
                 (
@@ -1727,7 +1813,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         vault
-            .conn()?
+            
             .execute(
                 "UPDATE secrets SET name = ?, updated_at = ? WHERE id = ?",
                 (name, now_timestamp(), secret_id),
@@ -1751,7 +1837,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         vault
-            .conn()?
+            
             .execute("DELETE FROM secrets WHERE id = ?", [secret_id])
             .await?;
 
@@ -1797,7 +1883,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         let mut rows = vault
-            .conn()?
+            
             .query(
                 "SELECT id, name, category, created_at, updated_at FROM secrets",
                 (),
@@ -1863,7 +1949,7 @@ impl VaultManager {
         );
 
         vault
-            .conn()?
+            
             .execute(
                 "INSERT OR REPLACE INTO vault_members (user_uuid, public_key, wrapped_master_dek, role, added_at, inviter_public_key) VALUES (?, ?, ?, ?, ?, ?)",
                 (
@@ -1935,7 +2021,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         vault
-            .conn()?
+            
             .execute(
                 "DELETE FROM vault_members WHERE user_uuid = ?",
                 [user_uuid],
@@ -1953,7 +2039,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         let mut rows = vault
-            .conn()?
+            
             .query(
                 "SELECT user_uuid, public_key, role, added_at FROM vault_members",
                 (),
@@ -1996,7 +2082,7 @@ impl VaultManager {
 
         // TODO: Re-wrap DEK with recipient's public key
 
-        vault.conn()?.execute(
+        vault.execute(
             "INSERT INTO shared_items (id, secret_id, recipient_uuid, recipient_public_key, wrapped_dek, expires_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
             (
                 share_id.as_str(),
@@ -2026,7 +2112,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         let mut rows = vault
-            .conn()?
+            
             .query(
                 "SELECT id, secret_id, recipient_uuid, expires_at, created_at FROM shared_items",
                 (),
@@ -2055,7 +2141,7 @@ impl VaultManager {
             .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
 
         vault
-            .conn()?
+            
             .execute("DELETE FROM shared_items WHERE id = ?", [share_id])
             .await?;
 
@@ -2166,7 +2252,7 @@ impl VaultManager {
         }
 
         let mut rows = vault
-            .conn()?
+            
             .query("SELECT id FROM secrets WHERE name = ?", [settings_key])
             .await?;
 
@@ -2211,7 +2297,7 @@ impl VaultManager {
 
         // Check if exists
         let mut rows = vault
-            .conn()?
+            
             .query("SELECT id FROM secrets WHERE name = ?", [settings_key])
             .await?;
 
@@ -2291,7 +2377,7 @@ impl VaultManager {
 
             // Read wrapped_master_dek from header
             let mut header_rows = vault
-                .conn()?
+                
                 .query("SELECT wrapped_master_dek FROM vault_header LIMIT 1", ())
                 .await?;
             let wrapped_master_dek = if let Some(row) = header_rows.next().await? {
@@ -2314,7 +2400,7 @@ impl VaultManager {
             // Export secrets (ciphertext only — never decrypted)
             let mut secrets = Vec::new();
             let mut secret_rows = vault
-                .conn()?
+                
                 .query(
                     "SELECT id, name, category, nonce, ciphertext, wrapped_dek, created_at, updated_at FROM secrets",
                     (),
@@ -2339,7 +2425,7 @@ impl VaultManager {
             // Export members
             let mut members = Vec::new();
             let mut member_rows = vault
-                .conn()?
+                
                 .query(
                     "SELECT user_uuid, public_key, wrapped_master_dek, role, added_at, inviter_public_key FROM vault_members",
                     (),
@@ -2753,6 +2839,7 @@ fn get_key_from_keychain(user_uuid: &str) -> Result<Vec<u8>, VaultError> {
 mod connection_tests {
     use super::*;
     use std::time::Duration;
+    use crate::vault::types::{VaultHeader, VaultType};
 
     // Leaving Reach open long enough used to stop it reading anything, from
     // the server or the cache, until it was closed and reopened: a remote
@@ -2835,6 +2922,87 @@ mod connection_tests {
                 );
             }
         }
+    }
+
+    /// Build a vault backed by a real local database, so the retry path can
+    /// be exercised rather than reasoned about.
+    async fn local_vault(name: &str) -> (VaultConnection, PathBuf) {
+        let path = std::env::temp_dir().join(format!(
+            "reach-conn-test-{}-{}-{:?}.db",
+            name,
+            std::process::id(),
+            std::thread::current().id()
+        ));
+        let _ = std::fs::remove_file(&path);
+        let db = crate::vault::sync::create_replica(&path, None).await.unwrap();
+        let conn = db.connect().unwrap();
+        let vault = VaultConnection {
+            db,
+            conn: std::sync::Mutex::new(CachedConnection {
+                conn,
+                last_used: std::time::Instant::now(),
+                opened: std::time::Instant::now(),
+                retired: false,
+            }),
+            header: VaultHeader {
+                id: "test".into(),
+                name: name.into(),
+                salt: [0u8; 32],
+                user_uuid: "test-user".into(),
+                created_at: 0,
+                vault_type: VaultType::Private,
+            },
+            master_dek: None,
+            sync_url: None,
+            auth_token: None,
+        };
+        (vault, path)
+    }
+
+    #[tokio::test]
+    async fn a_retired_connection_is_replaced_and_the_data_is_still_there() {
+        // The cure, against a real database: throwing the connection away
+        // mid-life must not lose the vault, and the replacement must see
+        // everything the old one wrote.
+        let (vault, path) = local_vault("retire").await;
+        vault
+            .execute("CREATE TABLE t (id TEXT PRIMARY KEY, v TEXT)", ())
+            .await
+            .unwrap();
+        vault
+            .execute("INSERT OR REPLACE INTO t (id, v) VALUES (?, ?)", ("a", "first"))
+            .await
+            .unwrap();
+
+        vault.retire();
+
+        let mut rows = vault.query("SELECT v FROM t WHERE id = ?", ["a"]).await.unwrap();
+        let v: String = rows.next().await.unwrap().unwrap().get(0).unwrap();
+        assert_eq!(v, "first", "the replacement connection must see the old writes");
+
+        // And the vault keeps working afterwards, rather than being retired
+        // once and left broken.
+        vault
+            .execute("INSERT OR REPLACE INTO t (id, v) VALUES (?, ?)", ("b", "second"))
+            .await
+            .unwrap();
+        let mut rows = vault.query("SELECT COUNT(*) FROM t", ()).await.unwrap();
+        let n: i64 = rows.next().await.unwrap().unwrap().get(0).unwrap();
+        assert_eq!(n, 2);
+
+        let _ = std::fs::remove_file(&path);
+    }
+
+    #[tokio::test]
+    async fn a_statement_that_is_simply_wrong_still_fails() {
+        // Retrying must not turn a broken query into a hang or a false
+        // success — a bad statement fails on both attempts and reports it.
+        let (vault, path) = local_vault("bad-sql").await;
+        assert!(vault.query("SELECT * FROM nope", ()).await.is_err());
+        // And the vault is still usable after that failure, even though the
+        // retry retired the connection on the way through.
+        vault.execute("CREATE TABLE t (id TEXT)", ()).await.unwrap();
+        let _ = std::fs::remove_file(&path);
     }
 
     #[test]
