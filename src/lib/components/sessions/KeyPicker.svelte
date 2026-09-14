@@ -13,10 +13,12 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { open as openDialog } from '@tauri-apps/plugin-dialog';
 	import { t } from '$lib/state/i18n.svelte';
 	import { sshKeyList, sshKeyDelete, type StoredKeyInfo } from '$lib/ipc/sshkeys';
 	import KeyPathInput from './KeyPathInput.svelte';
 	import SshKeyImport from './SshKeyImport.svelte';
+	import Button from '$lib/components/shared/Button.svelte';
 
 	interface Props {
 		/** A key file on this machine. */
@@ -34,7 +36,18 @@
 	/** Set while a removal is one click from happening. */
 	let confirmRemove = $state(false);
 
-	let mode = $state<'imported' | 'file'>(keyId ? 'imported' : 'file');
+	/**
+	 * Set once the user picks a source. Until then the session's own data
+	 * decides, and it has to be *derived*: the editor fills `keyId` from an
+	 * effect that runs after this component mounts, so a mode captured at
+	 * init would read an empty id and show the file field for a session that
+	 * plainly uses an imported key.
+	 */
+	let chosen = $state<'imported' | 'file' | null>(null);
+
+	let mode = $derived(
+		chosen ?? (keyId ? 'imported' : path.trim() ? 'file' : keys.length > 0 ? 'imported' : 'file')
+	);
 
 	onMount(load);
 
@@ -46,16 +59,13 @@
 			keys = [];
 		}
 		loaded = true;
-		// Nothing chosen yet and keys are available: start where the user most
-		// likely wants to be. An existing path is left alone.
-		if (!keyId && !path.trim() && keys.length > 0) mode = 'imported';
 	}
 
-	function choose(mode_: 'imported' | 'file'): void {
-		mode = mode_;
+	function choose(next: 'imported' | 'file'): void {
+		chosen = next;
 		// Only one of the two can be in force, or the backend would have to
 		// guess which the user meant.
-		if (mode_ === 'imported') path = '';
+		if (next === 'imported') path = '';
 		else keyId = '';
 	}
 
@@ -75,11 +85,29 @@
 		}
 	}
 
+	/** Browsing to the file beats typing a path, and always did — issue #17. */
+	async function browse(): Promise<void> {
+		try {
+			const selected = await openDialog({
+				multiple: false,
+				directory: false,
+				title: t('session.select_key_file'),
+				filters: [
+					{ name: t('session.ssh_private_key_filter'), extensions: ['pem', 'key', 'ppk', 'rsa', 'ed25519', 'ecdsa', 'dsa'] },
+					{ name: 'All Files', extensions: ['*'] }
+				]
+			});
+			if (typeof selected === 'string') path = selected;
+		} catch {
+			// The dialog was cancelled.
+		}
+	}
+
 	function onImported(key: StoredKeyInfo): void {
 		keys = [...keys, key].sort((a, b) => a.name.localeCompare(b.name));
 		keyId = key.id;
 		path = '';
-		mode = 'imported';
+		chosen = 'imported';
 	}
 
 	let selected = $derived(keys.find((k) => k.id === keyId));
@@ -158,7 +186,14 @@
 			{t('session.key_import_action')}
 		</button>
 	{:else}
-		<KeyPathInput bind:value={path} {disabled} />
+		<div class="file-row">
+			<div class="file-input">
+				<KeyPathInput label={t('session.key_path')} bind:value={path} {disabled} />
+			</div>
+			<Button variant="secondary" size="sm" onclick={browse} {disabled}>
+				{t('session.browse_key')}
+			</Button>
+		</div>
 	{/if}
 </div>
 
@@ -172,6 +207,20 @@
 		flex-direction: column;
 		align-items: flex-start;
 		gap: 8px;
+	}
+
+	/* The path field takes the room; Browse keeps its size beside it. */
+	.file-row {
+		display: flex;
+		align-items: flex-end;
+		gap: 8px;
+		width: 100%;
+		min-width: 0;
+	}
+
+	.file-input {
+		flex: 1;
+		min-width: 0;
 	}
 
 	.modes {
