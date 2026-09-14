@@ -30,6 +30,10 @@ uuid = { version = "1", features = ["v4"] }
 # SSH
 russh = { version = "0.46", default-features = false }
 russh-keys = { version = "0.46", default-features = false }
+# Same version russh-keys already pulls in: used to read what a key says
+# about itself (algorithm, fingerprint, whether it is encrypted) without
+# needing the passphrase.
+ssh-key = { version = "0.6", features = ["ed25519", "rsa", "encryption"] }
 async-trait = "0.1"
 ssh2-config = "0.7"
 

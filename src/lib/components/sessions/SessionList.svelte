@@ -378,12 +378,22 @@
 		const storedPassword = session.auth_method.type === 'Password' ? session.auth_method.password : undefined;
 		const storedPassphrase = session.auth_method.type === 'Key' ? session.auth_method.passphrase : undefined;
 
+		// A key session has everything it needs the moment it names a key:
+		// most keys have no passphrase at all, and an imported one carries its
+		// own. Asking first made every passphrase-less key look broken — the
+		// user typed a password into a passphrase box, and the key then failed
+		// to load (issue #46). If the key really is locked, the backend says
+		// so and the prompt appears then, which is the only time it helps.
+		const keyReady =
+			session.auth_method.type === 'Key' &&
+			(!!session.auth_method.key_id || !!session.auth_method.path?.trim());
+
 		// Auto-connect if we have stored credentials OR Agent auth
-		if (storedPassword || storedPassphrase || session.auth_method.type === 'Agent') {
+		if (storedPassword || storedPassphrase || keyReady || session.auth_method.type === 'Agent') {
 			connectSession = session;
 			connectError = undefined;
 			rememberPassword = true;
-			hasSavedPassword = true;
+			hasSavedPassword = !!storedPassword || !!storedPassphrase;
 
 			if (session.auth_method.type === 'Password') {
 				connectPassword = storedPassword ?? '';
@@ -435,12 +445,14 @@
 				authMethod: j.auth_method.type === 'Key' ? 'key' : j.auth_method.type.toLowerCase(),
 				password: j.auth_method.type === 'Password' ? j.auth_method.password : undefined,
 				keyPath: j.auth_method.type === 'Key' ? j.auth_method.path : undefined,
+				keyId: j.auth_method.type === 'Key' ? j.auth_method.key_id : undefined,
 				keyPassphrase: j.auth_method.type === 'Key' ? j.auth_method.passphrase : undefined,
 			}))
 			: undefined;
 
 		try {
 			const sessionKeyPath = session.auth_method.type === 'Key' ? session.auth_method.path : undefined;
+			const sessionKeyId = session.auth_method.type === 'Key' ? session.auth_method.key_id : undefined;
 			const passwordToUse = authType === 'Password'
 				? (passwordFallback ? fallbackPassword : connectPassword)
 				: undefined;
@@ -452,6 +464,7 @@
 				authMethod: authType === 'Key' ? 'key' : authType.toLowerCase(),
 				password: passwordToUse,
 				keyPath: authType === 'Key' && sessionKeyPath ? sessionKeyPath.trim() : undefined,
+				keyId: authType === 'Key' && sessionKeyId ? sessionKeyId : undefined,
 				keyPassphrase: authType === 'Key' && connectKeyPassphrase ? connectKeyPassphrase : undefined,
 				cols: 80,
 				rows: 24,
@@ -498,7 +511,12 @@
 			const isAuthRejection = /auth/i.test(errStr) && (
 				/reject/i.test(errStr) || /fail/i.test(errStr) || /denied/i.test(errStr)
 			);
-			if (isAuthRejection && !passwordFallback && session.auth_method.type !== 'Password') {
+			// A locked key is not a rejected credential: the server never saw
+			// one. The prompt is already open on the passphrase field, which is
+			// what this needs — offering a password instead would be answering
+			// a question nobody asked.
+			const needsPassphrase = /passphrase/i.test(errStr);
+			if (isAuthRejection && !needsPassphrase && !passwordFallback && session.auth_method.type !== 'Password') {
 				passwordFallback = true;
 				fallbackPassword = '';
 			}

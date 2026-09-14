@@ -41,6 +41,7 @@ use ipc::session_commands::*;
 use ipc::sftp_commands::*;
 use ipc::ssh_commands::*;
 use ipc::sshconfig_commands::*;
+use ipc::sshkey_commands::*;
 use ipc::tofu_commands::*;
 use ipc::theme_commands::*;
 use ipc::toolchain_commands::*;
@@ -174,6 +175,11 @@ pub fn run() {
             sshconfig_list_hosts,
             sshconfig_resolve_host,
             sshconfig_exists,
+            ssh_key_import,
+            ssh_key_list,
+            ssh_key_update,
+            ssh_key_delete,
+            ssh_key_public,
             // SFTP commands
             sftp_list_dir,
             sftp_upload,
@@ -435,6 +441,11 @@ pub fn run() {
             sshconfig_list_hosts,
             sshconfig_resolve_host,
             sshconfig_exists,
+            ssh_key_import,
+            ssh_key_list,
+            ssh_key_update,
+            ssh_key_delete,
+            ssh_key_public,
             // SFTP commands
             sftp_list_dir,
             sftp_upload,

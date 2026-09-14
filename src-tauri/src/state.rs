@@ -84,12 +84,18 @@ pub enum AuthMethod {
         password: Option<String>,
     },
     Key {
+        /// A key file on this machine. Set when the user browsed to one.
         #[serde(default, skip_serializing_if = "Option::is_none")]
         path: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         passphrase: Option<String>,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         key_content: Option<String>, // Embedded key for sharing
+        /// A key imported into the vault, referenced by id. Set instead of
+        /// `path` when the user picked an imported key, so the session works
+        /// on a machine that has no copy of the key file (issue #46).
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        key_id: Option<String>,
     },
     Agent,
 }

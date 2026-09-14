@@ -1,5 +1,5 @@
 use crate::state::AppState;
-use crate::ssh::client::{AuthParams, ConnectionInfo, JumpHostParams, SshManager, exec_on_connection};
+use crate::ssh::client::{AuthParams, ConnectionInfo, JumpHostParams, KeySource, SshManager, exec_on_connection};
 use crate::plugin::hooks;
 
 /// Parameters for a jump host received from the frontend.
@@ -13,12 +13,14 @@ pub struct JumpHostConnectParams {
     pub password: Option<String>,
     pub key_path: Option<String>,
     pub key_passphrase: Option<String>,
+    /// An imported key, instead of a path. See `ssh_key_import`.
+    pub key_id: Option<String>,
 }
 
 fn build_auth(
     auth_method: &str,
     password: Option<String>,
-    key_path: Option<String>,
+    key_source: Option<KeySource>,
     key_passphrase: Option<String>,
 ) -> Result<AuthParams, String> {
     // The frontend currently picks one primary method, but the backend
@@ -32,7 +34,8 @@ fn build_auth(
         }
         "key" => {
             auth.key = Some(crate::ssh::client::KeyAuth {
-                path: key_path.ok_or("Key path required for key auth")?,
+                source: key_source
+                    .ok_or("Key auth needs either a key file or an imported key")?,
                 passphrase: key_passphrase,
             });
             // Allow callers to also pass a password as a fallback.
@@ -44,6 +47,30 @@ fn build_auth(
         _ => return Err(format!("Unknown auth method: {}", auth_method)),
     }
     Ok(auth)
+}
+
+/// Work out where a key comes from. An imported key wins over a path: it is
+/// the one the user picked most recently, and it is the one that works on a
+/// machine with no key files.
+async fn resolve_key_source(
+    state: &AppState,
+    key_id: Option<String>,
+    key_path: Option<String>,
+) -> Result<(Option<KeySource>, Option<String>), String> {
+    if let Some(id) = key_id.filter(|i| !i.is_empty()) {
+        let resolved = crate::ipc::sshkey_commands::resolve(state, &id).await?;
+        return Ok((
+            Some(KeySource::Material(resolved.private_key)),
+            resolved.passphrase,
+        ));
+    }
+    Ok((
+        key_path
+            .map(|p| p.trim().to_string())
+            .filter(|p| !p.is_empty())
+            .map(KeySource::Path),
+        None,
+    ))
 }
 
 #[tauri::command]
@@ -58,6 +85,7 @@ pub async fn ssh_connect(
     password: Option<String>,
     key_path: Option<String>,
     key_passphrase: Option<String>,
+    key_id: Option<String>,
     cols: u16,
     rows: u16,
     jump_chain: Option<Vec<JumpHostConnectParams>>,
@@ -79,7 +107,13 @@ pub async fn ssh_connect(
     if let Some(s) = shell.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
         tracing::info!("ssh_connect: per-session login shell override = '{}'", s);
     }
-    let auth = build_auth(&auth_method, password, key_path, key_passphrase)?;
+    // A key stored in the vault brings its own passphrase; one typed into the
+    // connect dialog still wins, so a saved passphrase that went stale can be
+    // corrected without editing the key.
+    let (key_source, stored_passphrase) =
+        resolve_key_source(&state, key_id, key_path).await?;
+    let key_passphrase = key_passphrase.filter(|p| !p.is_empty()).or(stored_passphrase);
+    let auth = build_auth(&auth_method, password, key_source, key_passphrase)?;
 
     // Establish the connection WITHOUT holding the global ssh_manager lock. The
     // handshake/auth/shell setup can take up to the connect timeout (longer if a
@@ -93,15 +127,28 @@ pub async fn ssh_connect(
                 .await
                 .map_err(|e| e.to_string())?
         } else {
+            // Resolve every jump host's key before the closure below, which
+            // cannot await.
+            let mut jump_key_sources: Vec<Option<(Option<KeySource>, Option<String>)>> =
+                Vec::with_capacity(chain.len());
+            for j in &chain {
+                jump_key_sources.push(Some(
+                    resolve_key_source(&state, j.key_id.clone(), j.key_path.clone()).await?,
+                ));
+            }
+
             // Build jump host params
             let jump_params: Result<Vec<JumpHostParams>, String> = chain
                 .into_iter()
                 .map(|j| {
+                    let (jsource, jstored) = jump_key_sources
+                        .remove(0)
+                        .ok_or_else(|| "Jump host key could not be resolved".to_string())?;
                     let jauth = build_auth(
                         &j.auth_method,
                         j.password,
-                        j.key_path,
-                        j.key_passphrase,
+                        jsource,
+                        j.key_passphrase.filter(|p| !p.is_empty()).or(jstored),
                     )?;
                     Ok(JumpHostParams {
                         host: j.host,

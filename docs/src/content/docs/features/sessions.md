@@ -10,8 +10,20 @@ Sessions are saved connections. Each one stores the host, port, username, auth m
 Reach supports three authentication methods:
 
 - **Password** - Just a username and password.
-- **Private Key** - Supports OpenSSH and PEM formats. Ed25519, RSA, and ECDSA keys all work. If your key has a passphrase, you'll be prompted for it.
+- **Private Key** - Supports OpenSSH and PEM formats. Ed25519, RSA, and ECDSA keys all work. Point at a key file on this machine, or import the key into your vault (below). A key with no passphrase connects without asking for anything.
 - **Agent** - SSH agent forwarding. This one is planned but not implemented yet.
+
+### Imported keys
+
+Choosing **Private Key** offers two sources: an **imported key** or a **key file**.
+
+A key file is read from this machine's disk every time you connect, so the session only works where that file is. Import the key instead and the key itself is stored in your vault — encrypted at rest, and carried to every machine you sign in from by the same sync that carries your sessions. That is the point: one import, and the session connects from your desktop, your laptop and anywhere else, with no copying of `~/.ssh` between them.
+
+**Import a key…** takes the key from a file or from a paste. A file is read by Reach itself, so key material never passes through the interface. Reach checks the key before saving it: a public key pasted by mistake, or a passphrase that does not open the key, is refused there and then rather than on your next connection attempt.
+
+The passphrase belongs to the key, not to the session. Save it once with the key and every session using that key connects without asking again; leave it empty and Reach asks when it needs it. An unencrypted key is never asked about at all.
+
+Each key shows its algorithm and SHA-256 fingerprint, so two keys with similar names stay distinguishable. **Forget key** removes one from the vault.
 
 ## The Top of the Sidebar
 
@@ -61,7 +73,7 @@ This works cross-platform: `~/.ssh/config` on Linux/macOS, `C:\Users\<you>\.ssh\
 
 ## Connecting
 
-Click a session card to connect. If you have a saved password or key, it connects right away. If not, you'll get a password prompt. There's a "Remember password" checkbox that stores the password encrypted in the vault for next time.
+Click a session card to connect. A session with a saved password, or with any key at all, connects right away — Reach only asks for a passphrase when the key turns out to be locked and it has none saved. If there is nothing to connect with, you'll get a password prompt. There's a "Remember password" checkbox that stores the password encrypted in the vault for next time.
 
 ## Security
 

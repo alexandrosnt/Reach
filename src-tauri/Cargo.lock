@@ -4912,6 +4912,7 @@ dependencies = [
  "serde_json",
  "serialport",
  "sha2",
+ "ssh-key",
  "ssh2-config",
  "tar",
  "tauri",

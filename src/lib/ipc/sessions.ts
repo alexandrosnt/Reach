@@ -3,8 +3,14 @@ import { invoke } from '@tauri-apps/api/core';
 export interface AuthMethod {
   type: 'Password' | 'Key' | 'Agent';
   password?: string; // for Password type - stored encrypted in vault
-  path?: string; // for Key type
+  path?: string; // for Key type - a key file on this machine
   passphrase?: string; // for Key type - stored encrypted in vault
+  /**
+   * For Key type - a key imported into the vault, used instead of `path`.
+   * Set when the user picked an imported key, so the session also works on a
+   * machine that has no copy of the key file.
+   */
+  key_id?: string;
 }
 
 export interface JumpHostConfig {

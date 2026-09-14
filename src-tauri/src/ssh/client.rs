@@ -1,5 +1,5 @@
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -13,7 +13,7 @@ use crate::state::ProxyConfig;
 /// Expand `~` and `~/` to the user's home directory. Cross-platform: works
 /// on Windows (resolves to %USERPROFILE%), macOS, and Linux. Leaves absolute
 /// paths and paths without leading `~` unchanged.
-pub(crate) fn expand_tilde(path: &str) -> PathBuf {
+pub fn expand_tilde(path: &str) -> PathBuf {
     let trimmed = path.trim();
     if trimmed == "~" {
         return dirs::home_dir().unwrap_or_else(|| PathBuf::from(trimmed));
@@ -127,18 +127,33 @@ async fn open_interactive_shell(
     Ok(())
 }
 
-/// Turn an opaque `load_secret_key` failure into a message that tells the user
+/// The one phrase that means "this key wants a passphrase and I do not have
+/// it". The connect dialog matches on it to decide whether asking the user for
+/// one could possibly help, so it must stay in step with the messages below.
+pub const NEEDS_PASSPHRASE: &str = "This private key is passphrase-protected. Enter its passphrase to unlock";
+
+/// Turn an opaque key-loading failure into a message that tells the user
 /// what's actually wrong. The most common mistake is selecting an OpenSSH
 /// *public* key (`id_ed25519.pub`) where the *private* key is required — russh
 /// reports that as a generic parse error (the public key's spaces look like a
 /// formatting problem), so we classify the file ourselves and point at the fix.
 fn describe_key_load_error(
-    raw_path: &str,
-    expanded: &Path,
+    raw_path: Option<&str>,
+    label: &str,
     had_passphrase: bool,
     err: &impl std::fmt::Display,
 ) -> String {
     use crate::ssh::keyfile::{classify_path, KeyFileKind};
+
+    // An imported key has no file to classify; the only thing that can be
+    // wrong with one is the passphrase.
+    let Some(raw_path) = raw_path else {
+        return if had_passphrase {
+            format!("Could not open {} — wrong passphrase? ({})", label, err)
+        } else {
+            format!("{} {} ({})", NEEDS_PASSPHRASE, label, err)
+        };
+    };
 
     let info = classify_path(raw_path);
     match info.kind {
@@ -160,32 +175,17 @@ fn describe_key_load_error(
             } else {
                 String::new()
             };
-            format!(
-                "'{}' is an OpenSSH public key{}, not a private key.{}",
-                expanded.display(),
-                algo,
-                fix
-            )
+            format!("'{}' is an OpenSSH public key{}, not a private key.{}", label, algo, fix)
         }
-        KeyFileKind::NotFound => format!("Key file not found: {}", expanded.display()),
-        KeyFileKind::NotAKey => format!(
-            "'{}' is not a recognized private key file ({})",
-            expanded.display(),
-            err
-        ),
+        KeyFileKind::NotFound => format!("Key file not found: {}", label),
+        KeyFileKind::NotAKey => {
+            format!("'{}' is not a recognized private key file ({})", label, err)
+        }
         KeyFileKind::PrivateKey => {
             if had_passphrase {
-                format!(
-                    "Could not load private key '{}' — wrong passphrase? ({})",
-                    expanded.display(),
-                    err
-                )
+                format!("Could not load private key '{}' — wrong passphrase? ({})", label, err)
             } else {
-                format!(
-                    "Could not load private key '{}'. If it is passphrase-protected, enter the passphrase. ({})",
-                    expanded.display(),
-                    err
-                )
+                format!("{} '{}' ({})", NEEDS_PASSPHRASE, label, err)
             }
         }
     }
@@ -206,24 +206,44 @@ async fn cascade_authenticate(
     username: &str,
     auth: &AuthParams,
 ) -> Result<bool, SshError> {
-    // 1. Configured private key (file).
+    // 1. Configured private key — a file on this machine, or material the
+    //    user imported into the vault.
     if let Some(key_auth) = &auth.key {
-        let expanded = expand_tilde(&key_auth.path);
-        tracing::info!(
-            "SSH key auth: loading key from '{}' (raw input: '{}')",
-            expanded.display(),
-            key_auth.path
-        );
-        let key = russh_keys::load_secret_key(&expanded, key_auth.passphrase.as_deref())
-            .map_err(|e| {
-                tracing::error!("SSH key load failed for '{}': {}", expanded.display(), e);
-                SshError::ConnectionFailed(describe_key_load_error(
-                    &key_auth.path,
-                    &expanded,
-                    key_auth.passphrase.is_some(),
-                    &e,
-                ))
-            })?;
+        let material = match &key_auth.source {
+            KeySource::Path(path) => {
+                let expanded = expand_tilde(path);
+                tracing::info!(
+                    "SSH key auth: loading key from '{}' (raw input: '{}')",
+                    expanded.display(),
+                    path
+                );
+                std::fs::read_to_string(&expanded).map_err(|e| {
+                    tracing::error!("SSH key read failed for '{}': {}", expanded.display(), e);
+                    SshError::ConnectionFailed(describe_key_load_error(
+                        Some(path),
+                        &key_auth.label(),
+                        key_auth.passphrase.is_some(),
+                        &e,
+                    ))
+                })?
+            }
+            KeySource::Material(material) => {
+                tracing::info!("SSH key auth: using an imported key from the vault");
+                material.clone()
+            }
+        };
+        let key = decode_key(&material, key_auth.passphrase.as_deref()).map_err(|e| {
+            tracing::error!("SSH key load failed for {}: {}", key_auth.label(), e);
+            SshError::ConnectionFailed(describe_key_load_error(
+                match &key_auth.source {
+                    KeySource::Path(p) => Some(p.as_str()),
+                    KeySource::Material(_) => None,
+                },
+                &key_auth.label(),
+                key_auth.passphrase.is_some(),
+                &e,
+            ))
+        })?;
         tracing::info!(
             "SSH key loaded successfully, attempting publickey auth as '{}'",
             username
@@ -394,10 +414,50 @@ pub struct AuthParams {
     pub allow_agent: bool,
 }
 
+/// Where a private key comes from. A path is read at connect time from this
+/// machine's disk; material was imported into the vault and travels with the
+/// session, which is what lets the same session connect from a machine that
+/// has never seen the user's `~/.ssh` (issue #46).
+#[derive(Debug, Clone)]
+pub enum KeySource {
+    Path(String),
+    Material(String),
+}
+
 #[derive(Debug, Clone)]
 pub struct KeyAuth {
-    pub path: String,
+    pub source: KeySource,
     pub passphrase: Option<String>,
+}
+
+impl KeyAuth {
+    /// How to name this key in a message to the user.
+    fn label(&self) -> String {
+        match &self.source {
+            KeySource::Path(p) => expand_tilde(p).display().to_string(),
+            KeySource::Material(_) => "the imported key".to_string(),
+        }
+    }
+}
+
+/// Read a private key, forgiving a passphrase that was never needed.
+///
+/// russh hands the passphrase straight to `PrivateKey::decrypt`, and ssh-key
+/// refuses to decrypt a key that was never encrypted — so a passphrase typed
+/// against an unencrypted key turned a working key into a hard failure
+/// (issue #46). A passphrase that the key does not want is not an error the
+/// user should ever have to understand: try it, then try without it, and keep
+/// the first error if neither works.
+pub fn decode_key(
+    material: &str,
+    passphrase: Option<&str>,
+) -> Result<russh_keys::key::KeyPair, russh_keys::Error> {
+    let pass = passphrase.filter(|p| !p.is_empty());
+    match russh_keys::decode_secret_key(material, pass) {
+        Ok(key) => Ok(key),
+        Err(e) if pass.is_some() => russh_keys::decode_secret_key(material, None).map_err(|_| e),
+        Err(e) => Err(e),
+    }
 }
 
 impl AuthParams {
@@ -406,7 +466,11 @@ impl AuthParams {
     }
 
     pub fn from_key(path: String, passphrase: Option<String>) -> Self {
-        Self { key: Some(KeyAuth { path, passphrase }), allow_agent: true, ..Default::default() }
+        Self {
+            key: Some(KeyAuth { source: KeySource::Path(path), passphrase }),
+            allow_agent: true,
+            ..Default::default()
+        }
     }
 
     pub fn from_agent() -> Self {

@@ -4,6 +4,7 @@
 	import Button from '$lib/components/shared/Button.svelte';
 	import Input from '$lib/components/shared/Input.svelte';
 	import KeyPathInput from '$lib/components/sessions/KeyPathInput.svelte';
+	import KeyPicker from '$lib/components/sessions/KeyPicker.svelte';
 	import { sshConnect, type JumpHostConnectParams } from '$lib/ipc/ssh';
 	import { createTab } from '$lib/state/tabs.svelte';
 	import { getSettings } from '$lib/state/settings.svelte';
@@ -29,6 +30,7 @@
 	let authMethod = $state<'password' | 'key'>('password');
 	let password = $state('');
 	let keyPath = $state('');
+	let keyId = $state('');
 	let keyPassphrase = $state('');
 	let shell = $state('');
 	let jumpEnabled = $state(false);
@@ -89,7 +91,8 @@
 				username: username.trim(),
 				authMethod,
 				password: authMethod === 'password' ? password : undefined,
-				keyPath: authMethod === 'key' ? keyPath.trim() : undefined,
+				keyPath: authMethod === 'key' && !keyId ? keyPath.trim() : undefined,
+				keyId: authMethod === 'key' && keyId ? keyId : undefined,
 				keyPassphrase: authMethod === 'key' && keyPassphrase ? keyPassphrase : undefined,
 				cols: 80,
 				rows: 24,
@@ -115,6 +118,7 @@
 			username = 'root';
 			password = '';
 			keyPath = '';
+			keyId = '';
 			keyPassphrase = '';
 			shell = '';
 			jumpEnabled = false;
@@ -186,8 +190,10 @@
 		{#if authMethod === 'password'}
 			<Input label={t('session.password')} bind:value={password} type="password" disabled={connecting} />
 		{:else}
-			<KeyPathInput label={t('session.key_path')} bind:value={keyPath} placeholder="~/.ssh/id_rsa" disabled={connecting} />
-			<Input label={t('session.passphrase_optional')} bind:value={keyPassphrase} type="password" disabled={connecting} />
+			<KeyPicker bind:path={keyPath} bind:keyId disabled={connecting} />
+			{#if !keyId}
+				<Input label={t('session.passphrase_optional')} bind:value={keyPassphrase} type="password" disabled={connecting} />
+			{/if}
 		{/if}
 
 		<div class="shell-field">

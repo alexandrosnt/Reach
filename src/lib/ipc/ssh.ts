@@ -8,6 +8,8 @@ export interface JumpHostConnectParams {
   password?: string;
   keyPath?: string;
   keyPassphrase?: string;
+  /** An imported key, used instead of keyPath. See ipc/sshkeys. */
+  keyId?: string;
 }
 
 export interface ProxyConfig {
@@ -27,6 +29,8 @@ export interface SshConnectParams {
   password?: string;
   keyPath?: string;
   keyPassphrase?: string;
+  /** An imported key, used instead of keyPath. See ipc/sshkeys. */
+  keyId?: string;
   cols: number;
   rows: number;
   jumpChain?: JumpHostConnectParams[];
@@ -54,6 +58,7 @@ export async function sshConnect(params: SshConnectParams): Promise<string> {
     password: params.password,
     keyPath: params.keyPath,
     keyPassphrase: params.keyPassphrase,
+    keyId: params.keyId ?? null,
     cols: params.cols,
     rows: params.rows,
     jumpChain: params.jumpChain ?? null,

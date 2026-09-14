@@ -1,6 +1,7 @@
 <script lang="ts">
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import Button from '$lib/components/shared/Button.svelte';
+	import KeyPicker from './KeyPicker.svelte';
 	import Input from '$lib/components/shared/Input.svelte';
 	import { sessionCreate, sessionUpdate, type SessionConfig, type AuthMethod, type JumpHostConfig, type Folder } from '$lib/ipc/sessions';
 	import { t } from '$lib/state/i18n.svelte';
@@ -23,6 +24,8 @@
 	let authType = $state<'Password' | 'Key' | 'Agent'>('Password');
 	let password = $state('');
 	let keyPath = $state('');
+	/** An imported key, used instead of keyPath. */
+	let keyId = $state('');
 	let keyPassphrase = $state('');
 	let shell = $state('');
 	let tagsStr = $state('');
@@ -51,6 +54,7 @@
 			authType = editSession.auth_method.type;
 			password = editSession.auth_method.password ?? '';
 			keyPath = editSession.auth_method.path ?? '';
+			keyId = editSession.auth_method.key_id ?? '';
 			keyPassphrase = editSession.auth_method.passphrase ?? '';
 			shell = editSession.shell ?? '';
 			tagsStr = editSession.tags.join(', ');
@@ -88,6 +92,7 @@
 			authType = 'Password';
 			password = '';
 			keyPath = '';
+			keyId = '';
 			keyPassphrase = '';
 			shell = '';
 			tagsStr = '';
@@ -113,7 +118,14 @@
 		const authMethod: AuthMethod = authType === 'Password'
 			? { type: 'Password', password: password || undefined }
 			: authType === 'Key'
-				? { type: 'Key', path: keyPath.trim(), passphrase: keyPassphrase || undefined }
+				? {
+						type: 'Key',
+						// One source or the other, never both: the picker clears
+						// whichever the user did not choose.
+						path: keyId ? undefined : keyPath.trim(),
+						key_id: keyId || undefined,
+						passphrase: keyPassphrase || undefined
+					}
 				: { type: 'Agent' };
 		const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
 
@@ -263,15 +275,10 @@
 		{#if authType === 'Password'}
 			<Input label={t('session.password_optional')} bind:value={password} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
 		{:else if authType === 'Key'}
-			<div class="key-path-row">
-				<div class="key-path-input">
-					<Input label={t('session.key_path')} bind:value={keyPath} placeholder="~/.ssh/id_rsa" disabled={saving} />
-				</div>
-				<Button variant="secondary" size="sm" onclick={() => browseKey((p) => (keyPath = p))} disabled={saving}>
-					{t('session.browse_key')}
-				</Button>
-			</div>
-			<Input label={t('session.passphrase_optional')} bind:value={keyPassphrase} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
+			<KeyPicker bind:path={keyPath} bind:keyId disabled={saving} />
+			{#if !keyId}
+				<Input label={t('session.passphrase_optional')} bind:value={keyPassphrase} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
+			{/if}
 		{/if}
 
 		<div class="shell-field">
