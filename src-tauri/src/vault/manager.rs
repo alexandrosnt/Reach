@@ -55,31 +55,34 @@ pub const INTERNAL_VAULTS: [&str; 9] = [
 /// server's patience, not short in absolute terms.
 const STREAM_IDLE_GRACE: std::time::Duration = std::time::Duration::from_secs(5);
 
-/// How long a remote connection may be used at all, however busy it is.
+/// How long any connection may be used at all, however busy it is.
 ///
-/// Idleness is not the only way a connection dies: a network blip, a token
-/// refresh or a server restart can kill one mid-use. Retiring on idleness
-/// alone would never replace it, because steady use keeps refreshing the
-/// idle clock — so someone hitting retry every second would pin the dead
-/// connection for as long as they kept trying, which is the behaviour this
-/// whole change exists to remove. An upper bound on age means a connection
-/// that has gone bad for any reason is replaced within a minute.
+/// Idleness is not the only way a connection dies, and remote ones are not
+/// the only ones that die. A network blip, a token refresh or a server
+/// restart kills a remote connection mid-use; an I/O error — a laptop waking
+/// up, a synced or network folder, a disk hiccup — can leave a local SQLite
+/// handle failing every query when a fresh one would work. Neither is
+/// idleness, so an idle rule would never replace either: steady use keeps
+/// refreshing the idle clock, and someone hitting retry every second would
+/// pin the broken connection for as long as they kept trying. That is the
+/// behaviour this whole change exists to remove, so the bound on age applies
+/// to local and remote alike. A connection that has gone bad for any reason
+/// is replaced within a minute, without restarting Reach.
 const STREAM_MAX_AGE: std::time::Duration = std::time::Duration::from_secs(60);
 
 /// Whether a cached connection should be thrown away before the next
 /// operation.
 ///
-/// Local databases keep their connection for good — there is no stream to
-/// lose. A remote one is replaced when it has been idle long enough that its
-/// stream may have expired, and also once it is simply old, because idleness
-/// alone would never replace a connection that keeps being used and keeps
-/// failing.
+/// Only a remote connection can expire from sitting still, so only a remote
+/// one is retired for being idle. Age applies to both: a local handle cannot
+/// time out, but it can still be broken in a way that outlives every retry,
+/// and nothing else would ever replace it.
 fn should_reconnect(
     is_remote: bool,
     idle_for: std::time::Duration,
     age: std::time::Duration,
 ) -> bool {
-    is_remote && (idle_for > STREAM_IDLE_GRACE || age > STREAM_MAX_AGE)
+    (is_remote && idle_for > STREAM_IDLE_GRACE) || age > STREAM_MAX_AGE
 }
 
 /// The connection a vault is currently using, when it was last used, and
@@ -116,7 +119,9 @@ impl VaultConnection {
     /// idleness alone is not enough. A new one, with a new stream, takes its
     /// place. Back-to-back work reuses one connection and pays nothing; only
     /// the first operation after a pause reconnects. A local database has no
-    /// stream to lose and keeps its connection for good.
+    /// stream to lose, so idleness never troubles it — but it is still
+    /// replaced on age, because a broken local handle is just as permanent as
+    /// a broken remote one.
     pub fn conn(&self) -> Result<Connection, VaultError> {
         let mut cached = self
             .conn
@@ -2756,11 +2761,28 @@ mod connection_tests {
     // given up.
 
     #[test]
-    fn a_local_vault_keeps_its_connection() {
-        // No stream, nothing to expire — and reconnecting would only cost
-        // time.
+    fn idleness_never_troubles_a_local_vault() {
+        // No stream, nothing to time out — reconnecting an idle local handle
+        // would only cost time.
         assert!(!should_reconnect(false, Duration::from_secs(0), Duration::from_secs(0)));
-        assert!(!should_reconnect(false, Duration::from_secs(3600), Duration::from_secs(86400)));
+        assert!(!should_reconnect(false, Duration::from_secs(3600), Duration::from_secs(1)));
+    }
+
+    #[test]
+    fn a_local_connection_is_not_kept_for_the_whole_session() {
+        // The fear worth having: a connection held open all day that quietly
+        // goes bad. A local handle cannot expire, but an I/O error — a laptop
+        // waking up, a synced folder, a disk hiccup — can leave it failing
+        // every query when a fresh one would work. Nothing about that is
+        // idleness, so without an age bound it would be kept until Reach was
+        // restarted, which is the bug we started from wearing a different
+        // hat.
+        assert!(should_reconnect(
+            false,
+            Duration::from_millis(1),
+            STREAM_MAX_AGE + Duration::from_millis(1)
+        ));
+        assert!(should_reconnect(false, Duration::from_secs(0), Duration::from_secs(3600)));
     }
 
     #[test]
@@ -2794,6 +2816,25 @@ mod connection_tests {
             Duration::from_millis(1),
             STREAM_MAX_AGE + Duration::from_millis(1)
         ));
+    }
+
+    #[test]
+    fn no_connection_outlives_the_age_bound_however_it_is_used() {
+        // Whatever the vault is and whatever the pattern of use, a connection
+        // that has gone bad is replaced within a minute rather than lasting
+        // until the app is closed and reopened.
+        for is_remote in [true, false] {
+            for idle_ms in [0u64, 1, 4_000, 60_000] {
+                assert!(
+                    should_reconnect(
+                        is_remote,
+                        Duration::from_millis(idle_ms),
+                        STREAM_MAX_AGE + Duration::from_millis(1)
+                    ),
+                    "remote={is_remote} idle={idle_ms}ms should have been given up"
+                );
+            }
+        }
     }
 
     #[test]
