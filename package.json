@@ -17,6 +17,7 @@
     "discord:github": "node scripts/discord/github-webhook.mjs",
     "discord:invite": "node scripts/discord/invite.mjs",
     "share:test": "node scripts/share-test.mjs",
+    "paste:test": "node scripts/paste-test.mjs",
     "tofu:test": "node scripts/tofu-json-test.mjs",
     "ansible:test": "node scripts/ansible-recap-test.mjs && node scripts/ansible-sessions-test.mjs"
   },

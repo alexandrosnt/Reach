@@ -1,3 +1,4 @@
+import { DEFAULT_PASTE_THRESHOLD } from '$lib/terminal/paste';
 import { invoke } from '@tauri-apps/api/core';
 import * as settingsIpc from '$lib/ipc/settings';
 import type { AppSettings } from '$lib/ipc/settings';
@@ -15,6 +16,19 @@ export interface Settings {
 	minimizeToTray: boolean;
 	startWithSystem: boolean;
 	injectShellColors: boolean;
+
+	/**
+	 * Confirm a multi-line paste before it reaches the shell.
+	 *
+	 * A newline runs what precedes it the moment it arrives, so a stray copy
+	 * can execute on a production host before anyone has read it. On by
+	 * default; off for people who paste blocks all day and have already
+	 * answered the question.
+	 */
+	warnOnMultilinePaste: boolean;
+	/** Warn once a paste reaches this many lines. See $lib/terminal/paste. */
+	multilinePasteThreshold: number;
+
 	setupComplete: boolean;
 	pendingTursoOrg: string;
 	pendingTursoApiToken: string;
@@ -62,6 +76,8 @@ const defaults: Settings = {
 	minimizeToTray: false,
 	startWithSystem: false,
 	injectShellColors: true,
+	warnOnMultilinePaste: true,
+	multilinePasteThreshold: DEFAULT_PASTE_THRESHOLD,
 	setupComplete: false,
 	pendingTursoOrg: '',
 	pendingTursoApiToken: '',

@@ -11,6 +11,7 @@
 	import LanguageSelect from '$lib/components/shared/LanguageSelect.svelte';
 	import Toggle from '$lib/components/shared/Toggle.svelte';
 	import { getSettings, updateSetting, syncTraySettings } from '$lib/state/settings.svelte';
+	import { effectiveThreshold, MIN_PASTE_THRESHOLD } from '$lib/terminal/paste';
 	import { t, changeLocale } from '$lib/state/i18n.svelte';
 
 	const settings = getSettings();
@@ -29,6 +30,23 @@
 
 	function onShellChange(value: string) {
 		updateSetting('defaultShell', value);
+	}
+
+	function onPasteWarningChange(checked: boolean) {
+		updateSetting('warnOnMultilinePaste', checked);
+	}
+
+	/**
+	 * A threshold below the minimum would stop a one-word paste, which
+	 * reads as a bug rather than a setting, so the field settles to the
+	 * lowest value that means anything. Turning the warning off is what the
+	 * toggle above is for.
+	 */
+	function onPasteThresholdChange(e: Event & { currentTarget: HTMLInputElement }) {
+		const typed = Number(e.currentTarget.value);
+		const next = effectiveThreshold(typed);
+		e.currentTarget.value = String(next);
+		updateSetting('multilinePasteThreshold', next);
 	}
 
 	function onLastSessionChange(checked: boolean) {
@@ -88,6 +106,40 @@
 			/>
 		</div>
 	</div>
+
+	<div class="setting-row">
+		<div class="setting-info">
+			<span class="setting-label">{t('settings.paste_warning')}</span>
+			<span class="setting-description">{t('settings.paste_warning_desc')}</span>
+		</div>
+		<div class="setting-control">
+			<Toggle
+				hideLabel
+				checked={settings.warnOnMultilinePaste}
+				label={t('settings.paste_warning')}
+				onchange={onPasteWarningChange}
+			/>
+		</div>
+	</div>
+
+	{#if settings.warnOnMultilinePaste}
+		<div class="setting-row">
+			<div class="setting-info">
+				<span class="setting-label">{t('settings.paste_threshold')}</span>
+				<span class="setting-description">{t('settings.paste_threshold_desc')}</span>
+			</div>
+			<div class="setting-control">
+				<input
+					class="threshold-input"
+					type="number"
+					min={MIN_PASTE_THRESHOLD}
+					step="1"
+					value={settings.multilinePasteThreshold}
+					onchange={onPasteThresholdChange}
+				/>
+			</div>
+		</div>
+	{/if}
 
 	<div class="setting-row">
 		<div class="setting-info">
@@ -174,6 +226,22 @@
 </div>
 
 <style>
+	.threshold-input {
+		width: 100%;
+		padding: 7px 10px;
+		border-radius: var(--radius-btn);
+		border: 1px solid var(--color-border);
+		background: var(--color-bg-primary);
+		color: var(--color-text-primary);
+		font-family: inherit;
+		font-size: 0.8125rem;
+	}
+
+	.threshold-input:focus {
+		outline: none;
+		border-color: var(--color-accent);
+	}
+
 
 	/* The link and its copy button share the column: one edge for every control. */
 	.link-group {

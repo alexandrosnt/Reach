@@ -11,6 +11,7 @@
 	import { registerBufferReader, unregisterBufferReader } from '$lib/state/terminal-buffer.svelte';
 	import { themeState } from '$lib/state/theme.svelte';
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
+	import { countPasteLines, shouldWarnOnPaste } from '$lib/terminal/paste';
 	import { trieMatch } from '$lib/state/snippets.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { readText as clipboardReadText, writeText as clipboardWriteText } from '@tauri-apps/plugin-clipboard-manager';
@@ -48,9 +49,12 @@
 	let fitAddon: FitAddon | undefined = $state();
 
 	// Pending multiline paste awaiting user confirmation (guards against
-	// accidentally executing pasted multi-line commands).
+	// accidentally executing pasted multi-line commands). Whether it asks
+	// at all, and from how many lines, is the user's to decide — see
+	// $lib/terminal/paste.
 	let pastePreview = $state<string | null>(null);
-	let pasteLineCount = $derived(pastePreview ? pastePreview.split(/\r\n|\r|\n/).length : 0);
+	let dontAskAgain = $state(false);
+	let pasteLineCount = $derived(pastePreview ? countPasteLines(pastePreview) : 0);
 
 	/** Copy the current selection to the OS clipboard via the Tauri plugin. */
 	async function copySelection(term: Terminal): Promise<void> {
@@ -74,21 +78,34 @@
 			return;
 		}
 		if (!text) return;
-		if (/\r|\n/.test(text)) {
+		const settings = getSettings();
+		const warn = shouldWarnOnPaste(text, {
+			enabled: settings.warnOnMultilinePaste,
+			threshold: settings.multilinePasteThreshold
+		});
+		if (warn) {
 			pastePreview = text;
 		} else {
 			term.paste(text);
 		}
 	}
 
+	/**
+	 * Pasting with "do not ask again" ticked turns the setting off for
+	 * good, not only for this paste. Settings is where it comes back on,
+	 * and the checkbox label says so rather than leaving it to be guessed.
+	 */
 	function confirmPaste(): void {
+		if (dontAskAgain) updateSetting('warnOnMultilinePaste', false);
 		if (pastePreview && terminal) terminal.paste(pastePreview);
 		pastePreview = null;
+		dontAskAgain = false;
 		terminal?.focus();
 	}
 
 	function cancelPaste(): void {
 		pastePreview = null;
+		dontAskAgain = false;
 		terminal?.focus();
 	}
 
@@ -693,6 +710,11 @@
 	<p class="paste-msg">{t('terminal.paste_confirm_message', { lines: String(pasteLineCount) })}</p>
 	<pre class="paste-preview">{pastePreview}</pre>
 
+	<label class="paste-dont-ask">
+		<input type="checkbox" bind:checked={dontAskAgain} />
+		<span>{t('terminal.paste_dont_ask')}</span>
+	</label>
+
 	{#snippet actions()}
 		<Button variant="secondary" onclick={cancelPaste}>{t('common.cancel')}</Button>
 		<Button variant="primary" onclick={confirmPaste}>{t('terminal.paste_confirm_action')}</Button>
@@ -700,6 +722,23 @@
 </Modal>
 
 <style>
+	.paste-dont-ask {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin-top: 12px;
+		font-size: 0.8125rem;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+		user-select: none;
+	}
+
+	.paste-dont-ask input {
+		accent-color: var(--color-accent);
+		margin: 0;
+		cursor: pointer;
+	}
+
 	.paste-msg {
 		margin: 0 0 10px;
 		font-size: 0.875rem;

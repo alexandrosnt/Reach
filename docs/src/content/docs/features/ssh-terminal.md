@@ -28,6 +28,10 @@ Tab titles update automatically based on the shell prompt. For SSH tabs, it pick
 
 **Ctrl+V** pastes. Right-click also pastes.
 
+A paste carrying a newline is shown to you first, because that newline runs the command the moment it arrives — a stray copy can execute on a server before you have read it. The dialog says how many lines are coming and shows them.
+
+If you paste blocks all day, that question gets old. **Settings → General → Confirm multi-line pastes** turns it off, and the dialog itself carries a **Don't ask again** checkbox that does the same thing without a trip to Settings. Leaving it on, **Ask from** sets how many lines it takes to earn a confirmation: raise it to 10 and short pastes go straight through while a wall of text still stops. The lowest it goes is 2, since a one-word paste stopping for confirmation would read as a bug rather than a setting — to silence it entirely, use the toggle.
+
 ## Split Panes
 
 You can split the terminal area horizontally or vertically. The divider between panes is draggable — grab it and slide to resize. Neither pane can shrink below 100px.
