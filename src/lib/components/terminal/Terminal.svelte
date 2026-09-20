@@ -12,6 +12,7 @@
 	import { themeState } from '$lib/state/theme.svelte';
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
 	import { countPasteLines, shouldWarnOnPaste } from '$lib/terminal/paste';
+	import { isWebKit } from '$lib/platform';
 	import { trieMatch } from '$lib/state/snippets.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { readText as clipboardReadText, writeText as clipboardWriteText } from '@tauri-apps/plugin-clipboard-manager';
@@ -77,6 +78,16 @@
 			console.error('Clipboard read failed:', e);
 			return;
 		}
+		pasteText(term, text);
+	}
+
+	/**
+	 * Paste text the user has produced, wherever it came from: the clipboard
+	 * plugin on Ctrl+V, or the native paste event macOS delivers for Cmd+V
+	 * and Edit → Paste. One entry point, so the multi-line confirmation is
+	 * never bypassed by one of the routes.
+	 */
+	function pasteText(term: Terminal, text: string): void {
 		if (!text) return;
 		const settings = getSettings();
 		const warn = shouldWarnOnPaste(text, {
@@ -236,7 +247,13 @@
 	function attachWebgl(term: Terminal, host: HTMLElement, attempt = 0): void {
 		let webgl: WebglAddon;
 		try {
-			webgl = new WebglAddon();
+			// WebKit — WKWebView on macOS, WebKitGTK on Linux — presents a
+			// WebGL canvas one frame behind unless the drawing buffer is
+			// preserved, so a keystroke's echo waits for the next redraw: the
+			// cursor blink, ~600ms later. Measured elsewhere at 528ms → 14ms
+			// from this one flag. Chromium does not need it and pays a small
+			// cost for it, so it stays off on WebView2 (issue #47).
+			webgl = new WebglAddon(isWebKit());
 		} catch {
 			console.warn('[Terminal] WebGL addon unavailable, using the DOM renderer');
 			return;
@@ -562,6 +579,20 @@
 				}
 			}
 			termEl.addEventListener('contextmenu', onContextMenu);
+
+			// On macOS, Cmd+V and Edit → Paste arrive as the native paste: the
+			// menu item runs the paste: selector and WebKit fires a DOM paste
+			// event on the focused element, which is xterm's hidden textarea.
+			// xterm would insert the text on its own, skipping the multi-line
+			// confirmation, so it is caught first — capture phase, on the
+			// textarea itself — and routed through the same path as Ctrl+V.
+			function onNativePaste(e: ClipboardEvent) {
+				const text = e.clipboardData?.getData('text/plain') ?? '';
+				e.preventDefault();
+				e.stopImmediatePropagation();
+				pasteText(term, text);
+			}
+			term.textarea?.addEventListener('paste', onNativePaste, { capture: true });
 
 			// Ctrl+Wheel zooms terminal font size
 			function onWheel(e: WheelEvent) {

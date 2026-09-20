@@ -23,6 +23,14 @@ sudo xattr -cr /Applications/Reach.app
 
 This strips the quarantine flag that macOS adds to downloaded apps. You only need to do this once after installing (or after updating).
 
+### Hosts on your local network
+
+On macOS 15 and later, connecting to a host on your own network — a NAS, a homelab box, anything on a private address like `10.x`, `192.168.x` or `172.16–31.x` — can fail with **No route to host (os error 65)** even though `ping` to the same address works from Terminal. The route is fine. macOS puts every app's access to the local network behind a permission, enforces it with a packet filter, and reports the dropped packets to the app as if the host were unreachable.
+
+Reach tells you this is what happened when it sees that error against a local address. The switch is **System Settings → Privacy & Security → Local Network**: turn on Reach.
+
+The honest catch: macOS only offers that prompt, and only lists the app there, for builds signed with an Apple-issued developer certificate — and the current macOS build is not signed. Until it is, the workarounds are to connect through a jump host on a public address, to use a hostname that resolves through a router rather than a link-local path, or to run Reach from a location macOS has already granted (some people report success launching it from Terminal with `open -a Reach`, since Terminal carries its own grant). The release pipeline signs and notarizes the build automatically once a certificate is configured, and that is the real fix.
+
 ## Linux
 
 There are a few options depending on your distro:

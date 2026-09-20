@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!--
+		Merged into the generated Info.plist by the Tauri CLI.
+
+		macOS 15 puts every app's access to the local network behind a
+		permission (issue #47). The prompt that asks for it needs this string,
+		and is only offered for builds signed with an Apple-issued certificate.
+	-->
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Reach connects to servers on your local network over SSH when you ask it to.</string>
+</dict>
+</plist>

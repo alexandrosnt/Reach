@@ -51,6 +51,35 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # macOS 15 only offers the Local Network prompt to builds signed with an
+      # Apple-issued certificate (issue #47). When the secrets are present the
+      # build is signed and notarized; when they are not, nothing changes.
+      # The variables are exported from the shell rather than set on the job,
+      # because an empty APPLE_SIGNING_IDENTITY would be taken as an identity.
+      - name: Enable macOS signing when credentials are present
+        if: matrix.platform == 'macos-latest'
+        env:
+          IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_ID_: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD_: ${{ secrets.APPLE_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$IDENTITY" ]; then
+            echo "No Apple signing identity configured; macOS build will be unsigned."
+            exit 0
+          fi
+          {
+            echo "APPLE_SIGNING_IDENTITY=$IDENTITY"
+            echo "APPLE_CERTIFICATE=$CERTIFICATE"
+            echo "APPLE_CERTIFICATE_PASSWORD=$CERTIFICATE_PASSWORD"
+            echo "APPLE_ID=$APPLE_ID_"
+            echo "APPLE_PASSWORD=$APPLE_PASSWORD_"
+            echo "APPLE_TEAM_ID=$TEAM_ID"
+          } >> "$GITHUB_ENV"
+          echo "macOS signing enabled."
+
       - name: Build and release
         uses: tauri-apps/tauri-action@v0
         env:

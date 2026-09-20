@@ -2,11 +2,16 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>com.apple.security.app-sandbox</key>
-    <true/>
-    <key>com.apple.security.network.client</key>
-    <true/>
-    <key>com.apple.security.network.server</key>
-    <true/>
+	<!--
+		Deliberately empty.
+
+		This file used to turn on com.apple.security.app-sandbox. It never took
+		effect, because unsigned builds carry no entitlements at all — but the
+		moment a signed build ships it would have, and the App Sandbox forbids
+		exactly what an SSH client does: read a key file at a path the user
+		typed, talk to an ssh-agent socket, run a local shell. The sandbox is
+		for App Store distribution; Reach is distributed directly, where the
+		hardened runtime that notarization requires is enough.
+	-->
 </dict>
 </plist>

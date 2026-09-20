@@ -559,7 +559,11 @@ impl SshManager {
             } else {
                 russh::client::connect(config, (host, port), handler)
                     .await
-                    .map_err(|e| SshError::ConnectionFailed(format!("{}", e)))?
+                    // "No route to host" on a Mac usually means the local
+                    // network permission, not the route (issue #47).
+                    .map_err(|e| SshError::ConnectionFailed(
+                        crate::ssh::netdiag::describe_connect_error(host, &e),
+                    ))?
             };
 
             // Authenticate using a cascading strategy: configured key → agent → password.

@@ -691,13 +691,21 @@ pub fn run() {
             app.manage(AppState::new());
 
             // Build application menu (macOS menu bar).
-            // We replace the default Copy/Paste menu items with custom ones that
-            // have NO keyboard accelerators.  The default ones (Cmd+C / Cmd+V)
-            // consume the key events before xterm's attachCustomKeyEventHandler
-            // can see them, which breaks clipboard in the terminal.
             //
-            // When the user clicks Edit > Copy / Paste we emit an event to the
-            // webview; the webview forwards it to the active terminal.
+            // Copy and Paste differ by platform, and the difference is the
+            // whole of issue #47's second report. On macOS, Cmd+C and Cmd+V
+            // are menu key equivalents: the system looks for a menu item
+            // bound to them and runs its selector, and if no item carries the
+            // native copy:/paste: selector the keystroke does nothing — in
+            // every text field in the app. Cut and Select All were native and
+            // worked; Copy and Paste were custom and did not. So on macOS they
+            // are the predefined items, and the terminal catches the native
+            // paste as a DOM event and routes it through its own confirmation.
+            //
+            // On Windows and Linux the predefined Paste is implemented by
+            // synthesising a Ctrl+V keystroke, which xterm's key handler
+            // already owns, so there the items stay custom and emit an event
+            // the terminal listens for.
             #[cfg(desktop)]
             {
                 use tauri::menu::{
@@ -732,9 +740,17 @@ pub fn run() {
                     .item(&PredefinedMenuItem::close_window(app, Some("Close Window"))?)
                     .build()?;
 
-                // --- Edit menu (custom Copy/Paste WITHOUT accelerators) ---
-                let copy_item = MenuItemBuilder::with_id("copy", "Copy").build(app)?;
-                let paste_item = MenuItemBuilder::with_id("paste", "Paste").build(app)?;
+                // --- Edit menu ---
+                #[cfg(target_os = "macos")]
+                let (copy_item, paste_item) = (
+                    PredefinedMenuItem::copy(app, None)?,
+                    PredefinedMenuItem::paste(app, None)?,
+                );
+                #[cfg(not(target_os = "macos"))]
+                let (copy_item, paste_item) = (
+                    MenuItemBuilder::with_id("copy", "Copy").build(app)?,
+                    MenuItemBuilder::with_id("paste", "Paste").build(app)?,
+                );
                 let cut_item = PredefinedMenuItem::cut(app, None)?;
                 let select_all = PredefinedMenuItem::select_all(app, None)?;
                 let edit_menu = SubmenuBuilder::new(app, "Edit")
