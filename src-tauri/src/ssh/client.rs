@@ -37,20 +37,66 @@ pub fn expand_tilde(path: &str) -> PathBuf {
 /// - `ls` color flag is detected: GNU `--color=auto` vs BSD `-G`, so the alias
 ///   doesn't break `ls` on macOS/BSD where `--color` is an unknown option.
 /// - `stty`/`clear` are tolerated-if-missing so a minimal box doesn't error.
+///
+/// 🔴 ONE COMPLETE COMMAND PER LINE, AND EVERY LINE SHORT. This used to be a
+/// single 606-byte line, which hung the shell on OpenWrt (issue #47 follow-up).
+/// BusyBox's line editor keeps the input line in an on-stack buffer capped at
+/// `CONFIG_FEATURE_EDITING_MAX_LEN`, and silently drops every character past it
+/// — `libbb/lineedit.c` breaks out of the insert with no beep and no error:
+///
+///     if ((int)command_len >= (maxsize - 2)) { /* no space for char and EOL */ break; }
+///
+/// OpenWrt ships that cap at 512 (its own ticket #18844 is titled "/bin/sh in
+/// some cases needed command prompt more than 512 bytes"), so 510 bytes of the
+/// 606 arrived, the cut landed inside `PS1="…`, and the surviving text carried
+/// an unterminated double quote. ash then sat at its `>` continuation prompt
+/// waiting for a quote that was never coming, and the session was dead on
+/// arrival. It applies to interactive sessions, which is exactly a PTY shell.
+///
+/// So: each line below is a COMPLETE command, quote-balanced, and under 96
+/// bytes — comfortably inside the 126 usable bytes of the smallest cap BusyBox
+/// can even be configured to (`range 128 8192`). A device cannot truncate us
+/// into a hang no matter how it was built. `posix_init_lines_are_short` pins
+/// it. Do not merge these back onto one line to make it tidy.
 const POSIX_COLOR_INIT: &str = concat!(
-    r#"stty -echo 2>/dev/null; export COLORTERM=truecolor; "#,
-    r#"[ -z "$LS_COLORS" ] && command -v dircolors >/dev/null 2>&1 && eval "$(dircolors -b 2>/dev/null)"; "#,
-    r#"if ls --color=auto >/dev/null 2>&1; then alias ls='ls --color=auto'; "#,
-    r#"elif ls -G >/dev/null 2>&1; then alias ls='ls -G'; fi; "#,
-    r#"alias grep='grep --color=auto' 2>/dev/null; "#,
-    r#"alias diff='diff --color=auto' 2>/dev/null; "#,
-    r#"if [ -n "$BASH" ]; then "#,
-    r#"case "$PS1" in *033*|*\\e\[*) ;; *) "#,
-    r#"_c=32; [ "${EUID:-$(id -u)}" = "0" ] && _c=31; "#,
-    r#"PS1="\\[\\033[01;${_c}m\\]\\u@\\h\\[\\033[00m\\]:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ "; "#,
-    r#"unset _c; esac; fi; stty echo 2>/dev/null; clear 2>/dev/null"#,
-    "\n"
+    "stty -echo 2>/dev/null\n",
+    "export COLORTERM=truecolor\n",
+    r#"_dc=''; command -v dircolors >/dev/null 2>&1 && [ -z "$LS_COLORS" ] && _dc=1"#,
+    "\n",
+    r#"[ -n "$_dc" ] && eval "$(dircolors -b 2>/dev/null)""#,
+    "\n",
+    r#"_lsc=''; ls --color=auto >/dev/null 2>&1 && _lsc='ls --color=auto'"#,
+    "\n",
+    r#"[ -n "$_lsc" ] || { ls -G >/dev/null 2>&1 && _lsc='ls -G'; }"#,
+    "\n",
+    r#"[ -n "$_lsc" ] && alias ls="$_lsc""#,
+    "\n",
+    r#"alias grep='grep --color=auto' 2>/dev/null"#,
+    "\n",
+    r#"alias diff='diff --color=auto' 2>/dev/null"#,
+    "\n",
+    r#"_rp=0; [ -n "$BASH" ] && _rp=1"#,
+    "\n",
+    r#"case "$PS1" in *033*|*\\e\[*) _rp=0;; esac"#,
+    "\n",
+    r#"[ "$_rp" = 1 ] && { _c=32; [ "${EUID:-$(id -u)}" = "0" ] && _c=31; }"#,
+    "\n",
+    r#"[ "$_rp" = 1 ] && _pp="\\[\\033[01;${_c}m\\]\\u@\\h\\[\\033[00m\\]""#,
+    "\n",
+    r#"[ "$_rp" = 1 ] && PS1="$_pp:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ ""#,
+    "\n",
+    "unset _c _dc _lsc _pp _rp\n",
+    "stty echo 2>/dev/null\n",
+    "clear 2>/dev/null\n",
 );
+
+/// The largest line we will ever type into a remote shell. BusyBox's smallest
+/// configurable input buffer is 128 bytes and it reserves two, so 126 is the
+/// floor across every device that exists; 96 leaves a margin for a prompt that
+/// shares the buffer and for anything appended later. Enforced by
+/// `posix_init_lines_are_short`, which is the only thing that reads it.
+#[cfg(test)]
+const MAX_INIT_LINE_BYTES: usize = 96;
 
 /// Shell families we tailor the post-login init for.
 enum ShellFamily {
@@ -1580,6 +1626,81 @@ mod shell_tests {
     fn init_is_posix_blob_when_unset_or_posix() {
         assert_eq!(shell_init(None).as_deref(), Some(POSIX_COLOR_INIT));
         assert_eq!(shell_init(Some("bash")).as_deref(), Some(POSIX_COLOR_INIT));
+    }
+
+    /// 🔴 The OpenWrt hang. BusyBox drops everything past its input buffer
+    /// without a word, so one long line arrives cut in half and the shell waits
+    /// forever for a quote to close. No line may approach that limit.
+    #[test]
+    fn posix_init_lines_are_short() {
+        for (n, line) in POSIX_COLOR_INIT.lines().enumerate() {
+            assert!(
+                line.len() <= MAX_INIT_LINE_BYTES,
+                "init line {} is {} bytes, over the {}-byte ceiling, and would be \
+                 truncated on a device with a small input buffer: {:?}",
+                n + 1,
+                line.len(),
+                MAX_INIT_LINE_BYTES,
+                line
+            );
+        }
+    }
+
+    /// Every line has to stand on its own. A line left quote-open, or ending in
+    /// `&&`, leaves the shell at its `>` continuation prompt: the exact state
+    /// the truncation used to produce, just reached a different way.
+    #[test]
+    fn posix_init_lines_are_self_contained() {
+        for (n, line) in POSIX_COLOR_INIT.lines().enumerate() {
+            assert_eq!(
+                line.matches('"').count() % 2,
+                0,
+                "init line {} leaves a double quote open: {:?}",
+                n + 1,
+                line
+            );
+            let t = line.trim_end();
+            assert!(
+                !(t.ends_with("&&") || t.ends_with("||") || t.ends_with('|') || t.ends_with('\\')),
+                "init line {} ends mid-construct: {:?}",
+                n + 1,
+                line
+            );
+        }
+    }
+
+    /// The init must be lines, not one blob: a single-line init is how this
+    /// broke, and a well-meant tidy-up could put it back.
+    #[test]
+    fn posix_init_is_many_lines() {
+        assert!(
+            POSIX_COLOR_INIT.lines().count() >= 10,
+            "the init collapsed back onto too few lines"
+        );
+        assert!(POSIX_COLOR_INIT.ends_with('\n'), "the last line needs its newline to run");
+    }
+
+    /// The behaviour the init exists for must survive being split up.
+    #[test]
+    fn posix_init_still_does_its_job() {
+        assert!(POSIX_COLOR_INIT.contains("COLORTERM=truecolor"));
+        assert!(POSIX_COLOR_INIT.contains("dircolors"));
+        assert!(POSIX_COLOR_INIT.contains("--color=auto"));
+        assert!(POSIX_COLOR_INIT.contains("ls -G"), "BSD/macOS ls must still be handled");
+        assert!(POSIX_COLOR_INIT.contains("PS1="));
+        assert!(POSIX_COLOR_INIT.contains("clear"));
+        // Temporaries must not be left behind in the user's shell.
+        let unset = POSIX_COLOR_INIT
+            .lines()
+            .find(|l| l.starts_with("unset "))
+            .expect("the init must unset its temporaries");
+        for v in ["_c", "_dc", "_lsc", "_pp", "_rp"] {
+            assert!(
+                unset.split_whitespace().any(|w| w == v),
+                "temporary {} is set by the init but never unset",
+                v
+            );
+        }
     }
 
     #[test]

@@ -48,21 +48,22 @@
 		};
 	});
 
-	function onBackdropClick(e: MouseEvent) {
-		if (e.target === e.currentTarget) {
-			onclose();
-		}
-	}
+	/*
+	 * 🔴 NO CLICK-OUTSIDE DISMISSAL, DELIBERATELY. It used to live here as
+	 * `if (e.target === e.currentTarget) onclose()` on the backdrop, and it
+	 * threw away people's work: a `click` fires on the nearest common ancestor
+	 * of where the button went DOWN and where it came UP, so pressing inside a
+	 * field, dragging a few pixels past the edge and releasing makes the
+	 * backdrop that ancestor. The dialog closed and whatever had been typed was
+	 * gone. Selecting text in an input near the edge is enough to do it.
+	 *
+	 * A dialog closes by its own buttons, or by Escape, which is a deliberate
+	 * keystroke nobody presses by accident. Do not add a backdrop handler back.
+	 */
 </script>
 
 {#if open}
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div
-		class="backdrop glass"
-		style:z-index={zIndex}
-		onkeydown={() => {}}
-		onclick={onBackdropClick}
-	>
+	<div class="backdrop glass" style:z-index={zIndex}>
 		<div class="modal" role="dialog" aria-modal="true" aria-label={title || t('common.close_dialog')} style:max-width={maxWidth} style:height={height}>
 			{#if title}
 				<header class="modal-header">

@@ -4900,6 +4900,7 @@ dependencies = [
  "keyring",
  "libsql",
  "mlua",
+ "objc2",
  "openssl-sys",
  "portable-pty",
  "rand 0.8.5",

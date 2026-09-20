@@ -119,11 +119,6 @@
 		formInputs = formInputs.map((entry, i) => (i === index ? { ...entry, value } : entry));
 	}
 
-	function handleBackdropClick(e: MouseEvent) {
-		if (e.target === e.currentTarget) {
-			handleClose();
-		}
-	}
 
 	$effect(() => {
 		function onKeydown(e: KeyboardEvent) {
@@ -138,6 +133,12 @@
 			document.removeEventListener('keydown', onKeydown);
 		};
 	});
+	/*
+	 * No click-outside dismissal: a `click` fires on the nearest common ancestor
+	 * of the press and the release, so a drag that starts in a field and ends on
+	 * the backdrop used to close this dialog and lose what was typed. Buttons and
+	 * Escape close it. See Modal.svelte for the full note.
+	 */
 </script>
 
 <div class="module-panel">
@@ -205,8 +206,7 @@
 </div>
 
 {#if showModal}
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="overlay" onclick={handleBackdropClick} onkeydown={() => {}}>
+	<div class="overlay">
 		<div class="modal" role="dialog" aria-modal="true" aria-label={editing ? t('tofu.edit_module') : t('tofu.add_module')}>
 			<header class="modal-header">
 				<h2 class="modal-title">

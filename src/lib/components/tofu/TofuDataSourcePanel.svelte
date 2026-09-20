@@ -213,13 +213,7 @@
 	}
 
 	// --- Shared modal handlers ---
-	function handlePickerBackdrop(e: MouseEvent) {
-		if (e.target === e.currentTarget) closePicker();
-	}
 
-	function handleConfigBackdrop(e: MouseEvent) {
-		if (e.target === e.currentTarget) closeConfig();
-	}
 
 	$effect(() => {
 		function onKeydown(e: KeyboardEvent) {
@@ -237,6 +231,12 @@
 			document.removeEventListener('keydown', onKeydown);
 		};
 	});
+	/*
+	 * No click-outside dismissal: a `click` fires on the nearest common ancestor
+	 * of the press and the release, so a drag that starts in a field and ends on
+	 * the backdrop used to close this dialog and lose what was typed. Buttons and
+	 * Escape close it. See Modal.svelte for the full note.
+	 */
 </script>
 
 <div class="ds-panel">
@@ -298,8 +298,7 @@
 
 <!-- Picker Modal -->
 {#if showPicker}
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="overlay" onclick={handlePickerBackdrop} onkeydown={() => {}}>
+	<div class="overlay">
 		<div class="modal" role="dialog" aria-modal="true" aria-label={t('tofu.add_data_source')}>
 			<header class="modal-header">
 				<h2 class="modal-title">{t('tofu.add_data_source')}</h2>
@@ -385,8 +384,7 @@
 
 <!-- Config Modal -->
 {#if configDataSourceId && configDataSource}
-	<!-- svelte-ignore a11y_no_static_element_interactions -->
-	<div class="overlay" onclick={handleConfigBackdrop} onkeydown={() => {}}>
+	<div class="overlay">
 		<div class="modal config-modal" role="dialog" aria-modal="true" aria-label={t('tofu.edit_data_source')}>
 			<header class="modal-header">
 				<h2 class="modal-title">{configCatalogEntry?.name ?? configDataSource.dataType}</h2>

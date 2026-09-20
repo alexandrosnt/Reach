@@ -96,6 +96,47 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+/// Let a held key repeat instead of offering accented characters.
+///
+/// macOS ships `ApplePressAndHoldEnabled` on, and WebKit honours it: hold a key
+/// over an editable element — which is what xterm.js focuses — and AppKit opens
+/// the accent picker rather than sending key repeats. In a terminal that means
+/// holding an arrow, Backspace or any character does *nothing at all*, which is
+/// exactly how it was reported (issue #47).
+///
+/// It has to be done here, at runtime. `ApplePressAndHoldEnabled` is read from
+/// `NSUserDefaults`, and `Info.plist` is not one of its domains, so the key that
+/// several projects put in their plist is never read by anything. Registering it
+/// puts the value in the *registration* domain: the lowest priority there is, so
+/// a user who has deliberately set the key either way still wins, and nothing is
+/// written to their preferences file.
+#[cfg(target_os = "macos")]
+fn disable_press_and_hold() {
+    use objc2::runtime::{AnyObject, Bool};
+    use objc2::{class, msg_send};
+    use std::ffi::c_char;
+
+    // SAFETY: plain Foundation constructors and one setter, each null-checked
+    // before it is used. Nothing here is kept past the call.
+    unsafe {
+        let name = b"ApplePressAndHoldEnabled\0".as_ptr() as *const c_char;
+        let key: *mut AnyObject = msg_send![class!(NSString), stringWithUTF8String: name];
+        let value: *mut AnyObject = msg_send![class!(NSNumber), numberWithBool: Bool::NO];
+        if key.is_null() || value.is_null() {
+            return;
+        }
+        let dict: *mut AnyObject =
+            msg_send![class!(NSDictionary), dictionaryWithObject: value, forKey: key];
+        if dict.is_null() {
+            return;
+        }
+        let defaults: *mut AnyObject = msg_send![class!(NSUserDefaults), standardUserDefaults];
+        if defaults.is_null() {
+            return;
+        }
+        let _: () = msg_send![defaults, registerDefaults: dict];
+    }
+}
 /// Build and run the Tauri application.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -665,9 +706,14 @@ pub fn run() {
         ]);
     }
 
+
     builder
         .setup(|app| {
             use tauri::Manager;
+
+            // Before anything can take a keystroke: a held key must repeat.
+            #[cfg(target_os = "macos")]
+            disable_press_and_hold();
 
             // Root all storage at a writable data dir, then manage AppState here
             // (not before build) so it picks up that dir.

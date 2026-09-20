@@ -108,11 +108,6 @@
 		return provider?.name ?? providerId;
 	}
 
-	function handleBackdropClick(e: MouseEvent) {
-		if (e.target === e.currentTarget) {
-			onclose();
-		}
-	}
 
 	function handleKeydown(e: KeyboardEvent) {
 		if (e.key === 'Escape') {
@@ -126,10 +121,15 @@
 			document.removeEventListener('keydown', handleKeydown);
 		};
 	});
+	/*
+	 * No click-outside dismissal: a `click` fires on the nearest common ancestor
+	 * of the press and the release, so a drag that starts in a field and ends on
+	 * the backdrop used to close this dialog and lose what was typed. Buttons and
+	 * Escape close it. See Modal.svelte for the full note.
+	 */
 </script>
 
-<!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="overlay" onclick={handleBackdropClick} onkeydown={() => {}}>
+<div class="overlay">
 	<div class="modal" role="dialog" aria-modal="true" aria-label={t('tofu.add_resource')}>
 		<header class="modal-header">
 			<h2 class="modal-title">{t('tofu.add_resource')}</h2>

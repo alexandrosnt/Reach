@@ -118,6 +118,16 @@ tauri-plugin-single-instance = "2"
 [target.'cfg(target_os = "linux")'.dependencies]
 openssl-sys = { version = "0.9", features = ["vendored"] }
 
+# macOS only, and only to turn one user default off at launch: holding a key in
+# a WKWebView opens the accent picker instead of repeating the key, so a held
+# arrow or backspace does nothing at all in the terminal. Setting it needs an
+# Objective-C message, and `Info.plist` is not an answer — it is not a
+# NSUserDefaults domain, so a key placed there is simply never read. See
+# `disable_press_and_hold` in lib.rs. objc2 is already in the tree under
+# tao/wry, so naming it here downloads nothing new.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+
 [target.'cfg(target_os = "linux")'.build-dependencies]
 openssl-sys = { version = "0.9", features = ["vendored"] }
 
