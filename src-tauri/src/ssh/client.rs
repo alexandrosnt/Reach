@@ -28,7 +28,8 @@ pub fn expand_tilde(path: &str) -> PathBuf {
 
 /// POSIX color/prompt initialization injected after login. Safe for bash, zsh,
 /// sh, dash, etc. It sets truecolor + `ls`/`grep` color aliases and, for bash
-/// without a colored prompt, a sensible `PS1`. `stty -echo`/`clear` hide it.
+/// without a colored prompt, a sensible `PS1`. A blank prompt while it runs and
+/// a clear at the end are what hide it.
 /// NOTE: this is bash/POSIX syntax — it is NOT valid in fish, which is why the
 /// init is selected per shell family (see `shell_init`).
 ///
@@ -36,7 +37,26 @@ pub fn expand_tilde(path: &str) -> PathBuf {
 /// - `dircolors` is guarded with `command -v` (absent on macOS/BSD).
 /// - `ls` color flag is detected: GNU `--color=auto` vs BSD `-G`, so the alias
 ///   doesn't break `ls` on macOS/BSD where `--color` is an unknown option.
-/// - `stty`/`clear` are tolerated-if-missing so a minimal box doesn't error.
+/// - `alias` calls are wrapped in `{ …; } 2>/dev/null`, because a strict POSIX
+///   shell without the builtin (posh) prints `alias: not found` from the SHELL,
+///   which a redirection on the command itself does not catch.
+/// - `clear` is tolerated-if-missing, and backed by a raw escape sequence.
+///
+/// 🔴 NO `stty` HERE. It was the obvious way to hide the init, it was in this
+/// code, and it drops input. `stty` applies the new termios with a flush, which
+/// discards whatever is still sitting unread in the tty input queue — that is,
+/// the init lines written behind it in the same burst. Measured with one
+/// `stty -echo` followed by twenty `echo` lines in a single write, five runs
+/// each, on a real PTY:
+///
+///     ksh93   12/20 survived, the SAME first 8 lines lost every run
+///     BusyBox ash, dash, bash, zsh, mksh, posh   20/20
+///     every one of the seven   20/20 with no stty at all
+///
+/// Only ksh93 loses lines here, but it loses them silently and reproducibly,
+/// and a shell that swallows the middle of its own init is the exact failure
+/// class of issue #47. The prompt is blanked for the duration instead: it costs
+/// nothing, hides just as much, and cannot discard input on any shell.
 ///
 /// 🔴 ONE COMPLETE COMMAND PER LINE, AND EVERY LINE SHORT. This used to be a
 /// single 606-byte line, which hung the shell on OpenWrt (issue #47 follow-up).
@@ -59,7 +79,12 @@ pub fn expand_tilde(path: &str) -> PathBuf {
 /// into a hang no matter how it was built. `posix_init_lines_are_short` pins
 /// it. Do not merge these back onto one line to make it tidy.
 const POSIX_COLOR_INIT: &str = concat!(
-    "stty -echo 2>/dev/null\n",
+    // Blanking the prompt is not cosmetics. The shell prints a prompt for EVERY
+    // line it reads, so the moment this stopped being one line it started
+    // printing one prompt per line, running together into a single garbage line
+    // of repeated prompts. `_op` carries the real prompt across; it is put back
+    // at the end, and the screen is cleared after that.
+    "_op=$PS1; PS1=''\n",
     "export COLORTERM=truecolor\n",
     r#"_dc=''; command -v dircolors >/dev/null 2>&1 && [ -z "$LS_COLORS" ] && _dc=1"#,
     "\n",
@@ -69,25 +94,50 @@ const POSIX_COLOR_INIT: &str = concat!(
     "\n",
     r#"[ -n "$_lsc" ] || { ls -G >/dev/null 2>&1 && _lsc='ls -G'; }"#,
     "\n",
-    r#"[ -n "$_lsc" ] && alias ls="$_lsc""#,
+    // Braces, not a trailing `2>/dev/null` on the command. A strict-POSIX shell
+    // with no `alias` builtin (posh) reports `alias: not found` from the SHELL,
+    // not from the command, and a redirection attached to the command does not
+    // cover that: it printed the error straight onto the user's screen. A
+    // redirection on the group covers everything inside it, error included.
+    r#"{ [ -n "$_lsc" ] && alias ls="$_lsc"; } 2>/dev/null"#,
     "\n",
-    r#"alias grep='grep --color=auto' 2>/dev/null"#,
+    r#"{ alias grep='grep --color=auto'; } 2>/dev/null"#,
     "\n",
-    r#"alias diff='diff --color=auto' 2>/dev/null"#,
+    r#"{ alias diff='diff --color=auto'; } 2>/dev/null"#,
     "\n",
     r#"_rp=0; [ -n "$BASH" ] && _rp=1"#,
     "\n",
-    r#"case "$PS1" in *033*|*\\e\[*) _rp=0;; esac"#,
+    // Against `_op`, not `$PS1`: PS1 is blank at this point, so testing it
+    // would never see the colored prompt the user already had, and we would
+    // stomp on it instead of leaving it alone.
+    r#"case "$_op" in *033*|*\\e\[*) _rp=0;; esac"#,
     "\n",
+    // The prompt we will end up with is chosen into `_np` and NOT installed
+    // yet. Assigning PS1 here would make every line after it print a prompt
+    // again: measured under BusyBox ash, restoring it at this point printed
+    // exactly one prompt per remaining line. That is the whole bug.
+    "_np=$_op\n",
     r#"[ "$_rp" = 1 ] && { _c=32; [ "${EUID:-$(id -u)}" = "0" ] && _c=31; }"#,
     "\n",
     r#"[ "$_rp" = 1 ] && _pp="\\[\\033[01;${_c}m\\]\\u@\\h\\[\\033[00m\\]""#,
     "\n",
-    r#"[ "$_rp" = 1 ] && PS1="$_pp:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ ""#,
+    r#"[ "$_rp" = 1 ] && _np="$_pp:\\[\\033[01;34m\\]\\w\\[\\033[00m\\]\\$ ""#,
     "\n",
-    "unset _c _dc _lsc _pp _rp\n",
-    "stty echo 2>/dev/null\n",
+    // The real prompt goes in, the temporaries go out. BEFORE the clears: a
+    // shell with its own line editor (mksh, BusyBox ash, zsh) echoes each line
+    // as it reads it, so anything typed after the final clear gets echoed back
+    // onto the screen that clear just cleaned. Measured on mksh: with this line
+    // last, its own text was left sitting on the fresh screen.
+    "PS1=$_np; unset _c _dc _lsc _np _op _pp _rp\n",
+    // Both, deliberately, and last. `clear` is an ncurses binary on most
+    // distros and it fails silently (its stderr is discarded) when the terminfo
+    // database is absent, which is the default on a minimal Alpine: the init
+    // noise then just stayed on screen. The raw sequence needs no terminfo and
+    // no binary, and being last it wipes its own echo along with every other
+    // line above, so the user lands on a clean screen with one prompt on it.
     "clear 2>/dev/null\n",
+    r#"printf '\033[H\033[2J' 2>/dev/null"#,
+    "\n",
 );
 
 /// The largest line we will ever type into a remote shell. BusyBox's smallest
@@ -1628,6 +1678,20 @@ mod shell_tests {
         assert_eq!(shell_init(Some("bash")).as_deref(), Some(POSIX_COLOR_INIT));
     }
 
+    /// Writes the init exactly as it is sent, so it can be run through real
+    /// shells on a real PTY instead of being reasoned about. Ignored by
+    /// default; this is how the BusyBox/dash/ksh93/mksh/posh/zsh behaviour
+    /// recorded in the comments above was measured, and how to re-measure it:
+    ///
+    ///     REACH_INIT_DUMP=/tmp/init.sh cargo test --lib dump_posix_init \
+    ///         -- --ignored --exact
+    #[test]
+    #[ignore = "dumps the init for out-of-process shell testing"]
+    fn dump_posix_init() {
+        let p = std::env::var("REACH_INIT_DUMP").expect("set REACH_INIT_DUMP to an output path");
+        std::fs::write(p, POSIX_COLOR_INIT).unwrap();
+    }
+
     /// 🔴 The OpenWrt hang. BusyBox drops everything past its input buffer
     /// without a word, so one long line arrives cut in half and the shell waits
     /// forever for a quote to close. No line may approach that limit.
@@ -1669,6 +1733,68 @@ mod shell_tests {
         }
     }
 
+    /// 🔴 `stty` in the init drops the init. It applies termios with a flush,
+    /// which throws away whatever is still queued unread behind it — measured
+    /// on ksh93, the same 8 of 20 following lines vanished on every run, with
+    /// no error anywhere. Nothing about hiding the init is worth that, and the
+    /// blanked prompt plus the final clear already hide it.
+    #[test]
+    fn posix_init_never_calls_stty() {
+        assert!(
+            !POSIX_COLOR_INIT.contains("stty"),
+            "stty is back in the init; it silently discards the queued lines behind it"
+        );
+    }
+
+    /// The prompt is blanked for the duration and put back at the end. Without
+    /// the blanking the shell prints one prompt per line and they run together
+    /// into a row of garbage; without the restore the user gets no prompt.
+    #[test]
+    fn posix_init_blanks_then_restores_the_prompt() {
+        let text = POSIX_COLOR_INIT;
+        let blank = text.find("PS1=''").expect("the init must blank the prompt");
+        let save = text.find("_op=$PS1").expect("the original prompt must be saved first");
+        let restore = text.find("PS1=$_np").expect("the prompt must be restored");
+        assert!(save < blank, "PS1 is blanked before the original is saved");
+        assert!(blank < restore, "PS1 is restored before it is blanked");
+        // Nothing between the restore and the end may print a prompt of its own.
+        assert!(
+            !text[restore..].contains("PS1=''"),
+            "the prompt is blanked again after being restored"
+        );
+    }
+
+    /// The last thing typed must be a screen clear. A shell with its own line
+    /// editor echoes each line as it reads it, so anything typed after the
+    /// clear lands on the screen the clear just cleaned (seen on mksh).
+    #[test]
+    fn posix_init_ends_with_a_clear() {
+        let last = POSIX_COLOR_INIT.lines().last().expect("the init has lines");
+        assert!(
+            last.contains("[2J") || last.contains("clear"),
+            "the init must end on a clear, ends on: {:?}",
+            last
+        );
+    }
+
+    /// A strict-POSIX shell with no `alias` builtin reports `alias: not found`
+    /// from the SHELL, which a redirection on the command does not catch. Only
+    /// a redirection on the surrounding group does. Seen on posh.
+    #[test]
+    fn posix_init_alias_errors_cannot_reach_the_screen() {
+        for (n, line) in POSIX_COLOR_INIT.lines().enumerate() {
+            if line.contains("alias ") {
+                assert!(
+                    line.trim_start().starts_with('{') && line.contains("} 2>/dev/null"),
+                    "init line {} runs alias without a group redirection, so a shell \
+                     without the builtin prints its error to the user: {:?}",
+                    n + 1,
+                    line
+                );
+            }
+        }
+    }
+
     /// The init must be lines, not one blob: a single-line init is how this
     /// broke, and a well-meant tidy-up could put it back.
     #[test]
@@ -1689,16 +1815,37 @@ mod shell_tests {
         assert!(POSIX_COLOR_INIT.contains("ls -G"), "BSD/macOS ls must still be handled");
         assert!(POSIX_COLOR_INIT.contains("PS1="));
         assert!(POSIX_COLOR_INIT.contains("clear"));
-        // Temporaries must not be left behind in the user's shell.
+        // Temporaries must not be left behind in the user's shell. Every `_x`
+        // the init assigns has to appear in the `unset`, so adding a new one
+        // without cleaning it up fails here rather than leaking into the shell.
         let unset = POSIX_COLOR_INIT
             .lines()
-            .find(|l| l.starts_with("unset "))
+            .find(|l| l.contains("unset "))
             .expect("the init must unset its temporaries");
-        for v in ["_c", "_dc", "_lsc", "_pp", "_rp"] {
+        let cleaned: Vec<&str> = unset
+            .split("unset ")
+            .nth(1)
+            .expect("unset has arguments")
+            .split_whitespace()
+            .collect();
+        let mut assigned: Vec<String> = Vec::new();
+        for line in POSIX_COLOR_INIT.lines() {
+            for tok in line.split(|c: char| !(c.is_alphanumeric() || c == '_')) {
+                if tok.starts_with('_') && tok.len() > 1 && line.contains(&format!("{}=", tok)) {
+                    let t = tok.to_string();
+                    if !assigned.contains(&t) {
+                        assigned.push(t);
+                    }
+                }
+            }
+        }
+        assert!(!assigned.is_empty(), "no temporaries found - parser broken?");
+        for v in &assigned {
             assert!(
-                unset.split_whitespace().any(|w| w == v),
-                "temporary {} is set by the init but never unset",
-                v
+                cleaned.contains(&v.as_str()),
+                "temporary {} is set by the init but never unset (unset line: {:?})",
+                v,
+                unset
             );
         }
     }
