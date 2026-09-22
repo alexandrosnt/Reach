@@ -12,7 +12,9 @@
 	import { themeState } from '$lib/state/theme.svelte';
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
 	import { countPasteLines, shouldWarnOnPaste } from '$lib/terminal/paste';
+	import { shouldRearmIme, REARM_SETTLE_MS } from '$lib/terminal/ime';
 	import { isWebKit } from '$lib/platform';
+	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { trieMatch } from '$lib/state/snippets.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { readText as clipboardReadText, writeText as clipboardWriteText } from '@tauri-apps/plugin-clipboard-manager';
@@ -114,6 +116,25 @@
 		terminal?.focus();
 	}
 
+	/**
+	 * Give the input method a fresh caret position after the window moved.
+	 *
+	 * Dragging a window on Windows runs a modal loop that stops WebView2
+	 * updating the position it hands the IME, and the stale one survives the
+	 * drag — so the candidate window is drawn where the caret used to be, or
+	 * at the screen corner (issue #49). A blur and focus is what makes the
+	 * webview work the position out again. The textarea never lost focus
+	 * during the drag, which is why clicking back into the terminal changes
+	 * nothing and this has to be done deliberately.
+	 */
+	function rearmIme(): void {
+		const ta = terminal?.textarea;
+		if (!ta) return;
+		if (!shouldRearmIme({ focused: document.activeElement === ta, composing })) return;
+		ta.blur();
+		ta.focus({ preventScroll: true });
+	}
+
 	function cancelPaste(): void {
 		pastePreview = null;
 		dontAskAgain = false;
@@ -124,6 +145,10 @@
 	let unlistenExit: UnlistenFn | undefined;
 	let unlistenMenuCopy: UnlistenFn | undefined;
 	let unlistenMenuPaste: UnlistenFn | undefined;
+	let unlistenMoved: UnlistenFn | undefined;
+	/** True between compositionstart and compositionend — see $lib/terminal/ime. */
+	let composing = false;
+	let rearmTimer: ReturnType<typeof setTimeout> | undefined;
 	let resizeObserver: ResizeObserver | undefined;
 
 	// Snippet autocomplete (Trie-based, ghost text via xterm Decoration API)
@@ -594,6 +619,25 @@
 			}
 			term.textarea?.addEventListener('paste', onNativePaste, { capture: true });
 
+			// Whether a character is part-way through being composed decides
+			// whether the window-move handler below may touch focus at all.
+			function onCompositionStart() { composing = true; }
+			function onCompositionEnd() { composing = false; }
+			term.textarea?.addEventListener('compositionstart', onCompositionStart);
+			term.textarea?.addEventListener('compositionend', onCompositionEnd);
+
+			// Moving the window emits a stream of events; the interesting moment
+			// is when it stops, which is when the user let go of the title bar.
+			getCurrentWindow()
+				.onMoved(() => {
+					clearTimeout(rearmTimer);
+					rearmTimer = setTimeout(rearmIme, REARM_SETTLE_MS);
+				})
+				.then((fn) => { unlistenMoved = fn; })
+				.catch(() => {
+					// No Tauri window (browser preview) — nothing to re-arm.
+				});
+
 			// Ctrl+Wheel zooms terminal font size
 			function onWheel(e: WheelEvent) {
 				if (!e.ctrlKey) return;
@@ -652,6 +696,8 @@
 			unlistenExit?.();
 			unlistenMenuCopy?.();
 			unlistenMenuPaste?.();
+			unlistenMoved?.();
+			clearTimeout(rearmTimer);
 			resizeObserver?.disconnect();
 			term.dispose();
 			terminal = undefined;

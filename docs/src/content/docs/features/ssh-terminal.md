@@ -32,6 +32,12 @@ A paste carrying a newline is shown to you first, because that newline runs the 
 
 If you paste blocks all day, that question gets old. **Settings → General → Confirm multi-line pastes** turns it off, and the dialog itself carries a **Don't ask again** checkbox that does the same thing without a trip to Settings. Leaving it on, **Ask from** sets how many lines it takes to earn a confirmation: raise it to 10 and short pastes go straight through while a wall of text still stops. The lowest it goes is 2, since a one-word paste stopping for confirmation would read as a bug rather than a setting — to silence it entirely, use the toggle.
 
+## Input methods
+
+Chinese, Japanese and Korean input all work in the terminal, with the candidate window following the caret.
+
+One quirk worth knowing about, because it comes from Windows rather than from Reach: dragging a window by its title bar puts the system into a modal loop, and while that loop runs the webview cannot tell the input method where the caret has moved to. The stale position outlives the drag, so the candidate window would appear where the caret used to be — or in the corner of the screen. Reach watches for the window settling after a move and quietly re-establishes the caret position, so the candidate window returns to where it belongs. It leaves the terminal alone if you are part-way through composing a character, since interrupting that would lose what you had typed.
+
 ## Split Panes
 
 You can split the terminal area horizontally or vertically. The divider between panes is draggable — grab it and slide to resize. Neither pane can shrink below 100px.
