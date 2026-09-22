@@ -53,9 +53,25 @@ jobs:
 
       # macOS 15 only offers the Local Network prompt to builds signed with an
       # Apple-issued certificate (issue #47). When the secrets are present the
-      # build is signed and notarized; when they are not, nothing changes.
+      # build is signed and notarized.
+      #
+      # When they are not, the bundle is still ad-hoc signed. Without this the
+      # only signature on a release is the one the linker puts on the
+      # executable, which leaves the bundle itself unsealed -- `codesign
+      # --verify --deep --strict` reports "code has no resources but signature
+      # indicates they must be present", and `Sealed Resources=none`. macOS
+      # identifies an app for the Local Network grant by its code signature, so
+      # a bundle with no seal has nothing stable to be granted, which is why
+      # re-signing by hand was what restored access on the reporter's machine.
+      # Tauri reads "-" as the ad-hoc identity and signs the whole bundle,
+      # nested code included, before it builds the DMG. This is not a
+      # substitute for Developer ID and notarization: Gatekeeper still blocks a
+      # downloaded copy, and the signature changes with every build, so the
+      # grant is not guaranteed to survive an update.
+      #
       # The variables are exported from the shell rather than set on the job,
-      # because an empty APPLE_SIGNING_IDENTITY would be taken as an identity.
+      # because an empty APPLE_SIGNING_IDENTITY would be taken as an identity
+      # and make codesign fail with "no identity found".
       - name: Enable macOS signing when credentials are present
         if: matrix.platform == 'macos-latest'
         env:
@@ -67,7 +83,8 @@ jobs:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [ -z "$IDENTITY" ]; then
-            echo "No Apple signing identity configured; macOS build will be unsigned."
+            echo "No Apple signing identity configured; falling back to ad-hoc."
+            echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
             exit 0
           fi
           {
@@ -96,6 +113,32 @@ jobs:
           prerelease: false
           updaterJsonPreferNsis: true
           args: ${{ matrix.args }}
+
+      # A bundle that ships without a sealed signature is the defect from
+      # issue #47, and it is invisible until someone runs codesign on an
+      # installed copy. Fail the build here instead.
+      - name: Verify the macOS bundle signature
+        if: matrix.platform == 'macos-latest'
+        run: |
+          set -euo pipefail
+          found=0
+          for app in src-tauri/target/*/release/bundle/macos/*.app; do
+            [ -d "$app" ] || continue
+            found=1
+            echo "::group::$app"
+            codesign --verify --deep --strict --verbose=4 "$app"
+            codesign --display --verbose=4 "$app" 2>&1 | tee /tmp/sig.txt
+            echo "::endgroup::"
+            if grep -q "Sealed Resources=none" /tmp/sig.txt; then
+              echo "::error::$app has no sealed resources; the bundle was not signed."
+              exit 1
+            fi
+          done
+          if [ "$found" -eq 0 ]; then
+            echo "::error::No .app bundle found to verify."
+            exit 1
+          fi
+          echo "Bundle signature verified."
 
   publish-release:
     needs: [build-desktop]

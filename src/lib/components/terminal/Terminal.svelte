@@ -13,6 +13,7 @@
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
 	import { countPasteLines, shouldWarnOnPaste } from '$lib/terminal/paste';
 	import { shouldRearmIme, REARM_SETTLE_MS } from '$lib/terminal/ime';
+	import { installWebkitInputFix } from '$lib/terminal/webkit-input-fix';
 	import { isWebKit } from '$lib/platform';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { trieMatch } from '$lib/state/snippets.svelte';
@@ -146,6 +147,7 @@
 	let unlistenMenuCopy: UnlistenFn | undefined;
 	let unlistenMenuPaste: UnlistenFn | undefined;
 	let unlistenMoved: UnlistenFn | undefined;
+	let disposeWebkitInputFix: (() => void) | undefined;
 	/** True between compositionstart and compositionend — see $lib/terminal/ime. */
 	let composing = false;
 	let rearmTimer: ReturnType<typeof setTimeout> | undefined;
@@ -402,6 +404,12 @@
 	}
 
 	function setupInputHandler(term: Terminal): void {
+		// Before anything reads onData: on WebKit, xterm drops characters
+		// outright when typing is fast, so without this the handler below
+		// never sees them (issue #47). No-op on WebView2.
+		disposeWebkitInputFix?.();
+		disposeWebkitInputFix = installWebkitInputFix(term);
+
 		term.onData((data: string) => {
 			// Track input buffer for snippet autocomplete
 			if (data === '\r' || data === '\n') {
@@ -697,6 +705,8 @@
 			unlistenMenuCopy?.();
 			unlistenMenuPaste?.();
 			unlistenMoved?.();
+			disposeWebkitInputFix?.();
+			disposeWebkitInputFix = undefined;
 			clearTimeout(rearmTimer);
 			resizeObserver?.disconnect();
 			term.dispose();

@@ -19,6 +19,7 @@
 	import { getSettings } from '$lib/state/settings.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import * as share from '$lib/state/share.svelte';
+	import { installWebkitInputFix } from '$lib/terminal/webkit-input-fix';
 
 	let container: HTMLDivElement | undefined = $state();
 	let term: Terminal | undefined;
@@ -46,6 +47,9 @@
 		term.loadAddon(new Unicode11Addon());
 		term.unicode.activeVersion = '11';
 		term.open(container);
+		// Same WebKit character loss as the main terminal (issue #47); the
+		// textarea only exists once open() has run.
+		const disposeWebkitInputFix = installWebkitInputFix(term);
 
 		const encoder = new TextEncoder();
 		term.onData((data) => {
@@ -56,6 +60,7 @@
 
 		return () => {
 			unsubscribe();
+			disposeWebkitInputFix();
 			term?.dispose();
 			term = undefined;
 		};
