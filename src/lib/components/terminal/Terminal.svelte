@@ -12,7 +12,7 @@
 	import { themeState } from '$lib/state/theme.svelte';
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
 	import { countPasteLines, shouldWarnOnPaste } from '$lib/terminal/paste';
-	import { shouldRearmIme, REARM_SETTLE_MS } from '$lib/terminal/ime';
+	import { shouldRearmIme, nudgeCaret, REARM_SETTLE_MS } from '$lib/terminal/ime';
 	import { installWebkitInputFix } from '$lib/terminal/webkit-input-fix';
 	import { isWebKit } from '$lib/platform';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -120,20 +120,19 @@
 	/**
 	 * Give the input method a fresh caret position after the window moved.
 	 *
-	 * Dragging a window on Windows runs a modal loop that stops WebView2
-	 * updating the position it hands the IME, and the stale one survives the
-	 * drag — so the candidate window is drawn where the caret used to be, or
-	 * at the screen corner (issue #49). A blur and focus is what makes the
-	 * webview work the position out again. The textarea never lost focus
-	 * during the drag, which is why clicking back into the terminal changes
-	 * nothing and this has to be done deliberately.
+	 * A drag changes the window's position but not its layout, so the caret's
+	 * rectangle never changes and nothing new is pushed to the input method —
+	 * which goes on using a position it cached in screen coordinates before
+	 * the window moved (issue #49). A resize does not suffer this because it
+	 * re-lays-out. Moving the caret a pixel and putting it back is what makes
+	 * the position be recomputed. See $lib/terminal/ime for what was measured
+	 * and ruled out, including the blur-and-focus this replaces.
 	 */
 	function rearmIme(): void {
 		const ta = terminal?.textarea;
 		if (!ta) return;
 		if (!shouldRearmIme({ focused: document.activeElement === ta, composing })) return;
-		ta.blur();
-		ta.focus({ preventScroll: true });
+		nudgeCaret(ta);
 	}
 
 	function cancelPaste(): void {
