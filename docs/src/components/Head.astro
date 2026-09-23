@@ -22,7 +22,11 @@ const entry = (Astro.props as Props).entry as Props['entry'] | undefined;
 
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : Astro.url.href;
 const origin = Astro.site?.href.replace(/\/$/, '') ?? '';
-const image = `${origin}${import.meta.env.BASE_URL}og.png`.replace(/([^:])\/\//g, '$1/');
+// Built by scripts/make-og-image.mjs: the banner whole, never cropped, on a
+// blurred fill. Named .jpg rather than .png both because it is a fifth of the
+// weight and because renaming it is what makes Discord and Slack drop the
+// card they already cached.
+const image = `${origin}${import.meta.env.BASE_URL}og.jpg`.replace(/([^:])\/\//g, '$1/');
 
 // Empty on the index page. Starlight calls this `slug`; Astro 5's content
 // layer calls it `id`, and which one arrives depends on the version, so read
@@ -97,6 +101,7 @@ const softwareGraph = {
 
 <meta property="og:site_name" content={ORG.name} />
 <meta property="og:image" content={image} />
+<meta property="og:image:type" content="image/jpeg" />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta property="og:image:alt" content={`${PRODUCT.name} — ${PRODUCT.tagline}`} />
