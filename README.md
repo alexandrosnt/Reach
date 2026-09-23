@@ -24,7 +24,9 @@
 ---
 
 <p align="center">
-  <img src="assets/preview.png" alt="Reach Preview" width="900" />
+  <a href="https://alexandrosnt.github.io/Reach/download/">
+    <img src="assets/banner.png" alt="Reach — manage your servers, everywhere" width="900" />
+  </a>
 </p>
 
 ---
