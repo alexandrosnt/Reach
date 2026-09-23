@@ -66,6 +66,19 @@
  * `_keyDownSeen` is byte-identical in 6.0.0 and on master, so upgrading alone
  * is not a fix.
  *
+ * There is a different shape this could take, worth knowing about before
+ * anyone extends this one. Rather than repairing xterm's gate, take plain
+ * printable keys away from it entirely: `preventDefault()` on `beforeinput`,
+ * feed the text to `term.input()`, and use the public
+ * `attachCustomKeyEventHandler` to make xterm stand aside for those keys. The
+ * textarea then never mutates, which makes #6045 structurally impossible
+ * instead of something to suppress, and it covers dead keys too. It uses
+ * public API, so it survives upgrades better than this does. It was not taken
+ * because it moves the whole printable-key path off xterm, which is a much
+ * larger behavioural change than repairing one flag, and the only published
+ * implementation is hand-tested with no automated coverage. If a fourth bug in
+ * this family turns up, reach for that before adding a fourth patch here.
+ *
  * This reaches into xterm's private API. It verifies every internal it needs
  * before touching anything and installs nothing, with a warning, if the shape
  * changes — so an xterm upgrade degrades to today's bug rather than a crash or
