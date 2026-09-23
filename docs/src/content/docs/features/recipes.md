@@ -70,7 +70,7 @@ Parameter values are single-quoted before they reach the shell. A value cannot b
 
 ## Risk analysis
 
-Before running, Reach reads the script and classifies every line using the same rules the [MCP server](/Reach/features/mcp-server/) applies to an AI's commands.
+Before running, Reach reads the script and classifies every line using the same rules the [MCP server](../mcp-server/) applies to an AI's commands.
 
 | Level | Means |
 | --- | --- |

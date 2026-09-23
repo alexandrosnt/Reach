@@ -6,6 +6,11 @@ on:
     paths:
       - 'docs/**'
 
+  # Download links are resolved into the HTML while the site builds, so a new
+  # release has to rebuild the site or the buttons keep offering the old one.
+  release:
+    types: [published]
+
   workflow_dispatch:
 
 permissions:
@@ -36,6 +41,22 @@ jobs:
       - name: Build docs
         run: npm run build
         working-directory: docs
+        env:
+          # The canonical home. Everything absolute in the output — sitemap,
+          # robots, llms.txt, canonical and og: tags — is built from these.
+          SITE_URL: https://reachssh.com
+          BASE_PATH: /
+          # Lifts the anonymous API allowance, so the release lookup that bakes
+          # the download links in is never rate limited on a shared runner.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Keeps the offline fallback in step with what was just published, so a
+      # later docs-only build still emits the current links.
+      - name: Refresh the committed release snapshot
+        run: node scripts/snapshot-release.mjs
+        working-directory: docs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5

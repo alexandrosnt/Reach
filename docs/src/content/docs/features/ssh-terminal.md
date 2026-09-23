@@ -85,7 +85,7 @@ Data flows through an async event loop using `tokio::select!` to handle both inc
 
 ## Jump Host Chains
 
-If your session has a ProxyJump chain configured, Reach connects through each hop using SSH `direct-tcpip` channels. The chain is ordered outermost-first — connect to bastion A, tunnel through to bastion B, then reach the target. All intermediate connections stay alive for the duration. See the [Jump Hosts](/Reach/features/jump-hosts/) page for details.
+If your session has a ProxyJump chain configured, Reach connects through each hop using SSH `direct-tcpip` channels. The chain is ordered outermost-first — connect to bastion A, tunnel through to bastion B, then reach the target. All intermediate connections stay alive for the duration. See the [Jump Hosts](../jump-hosts/) page for details.
 
 ## Buffer Access
 

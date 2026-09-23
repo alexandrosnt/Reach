@@ -18,13 +18,13 @@
 </p>
 
 <p align="center">
-  <a href="https://alexandrosnt.github.io/Reach/"><strong>Documentation</strong></a> · <a href="https://github.com/alexandrosnt/Reach/releases">Download</a> · <a href="https://discord.gg/CSbEybvDVV">Discord</a> · <a href="https://github.com/alexandrosnt/Reach/issues">Report a Bug</a>
+  <a href="https://reachssh.com/"><strong>Documentation</strong></a> · <a href="https://github.com/alexandrosnt/Reach/releases">Download</a> · <a href="https://discord.gg/CSbEybvDVV">Discord</a> · <a href="https://github.com/alexandrosnt/Reach/issues">Report a Bug</a>
 </p>
 
 ---
 
 <p align="center">
-  <a href="https://alexandrosnt.github.io/Reach/download/">
+  <a href="https://reachssh.com/download/">
     <img src="assets/banner.png" alt="Reach — manage your servers, everywhere" width="900" />
   </a>
 </p>
@@ -89,7 +89,7 @@ Reach is a [Tauri v2](https://v2.tauri.app) app with a Rust backend and Svelte 5
 
 ## Getting started
 
-Head to the [download page](https://alexandrosnt.github.io/Reach/download/), which always points at the current release: Windows (`.exe`, `.msi`), macOS (`.dmg`, Apple silicon and Intel), Linux (`.AppImage`, `.deb`, `.rpm`) and Android (`.apk`). Every build is on the [Releases page](https://github.com/alexandrosnt/Reach/releases) too, and Reach updates itself once installed.
+Head to the [download page](https://reachssh.com/download/), which always points at the current release: Windows (`.exe`, `.msi`), macOS (`.dmg`, Apple silicon and Intel), Linux (`.AppImage`, `.deb`, `.rpm`) and Android (`.apk`). Every build is on the [Releases page](https://github.com/alexandrosnt/Reach/releases) too, and Reach updates itself once installed.
 
 ## Building from source
 

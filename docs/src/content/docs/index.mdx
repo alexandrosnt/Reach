@@ -1,49 +1,12 @@
 ---
-title: Reach Documentation
-description: Docs for Reach, the cross-platform SSH client built with Tauri and Svelte.
+title: Reach
+description: A modern, lightweight SSH client and remote server manager. Terminals, files, tunnels, secrets and automation in one place.
 template: splash
-hero:
-  tagline: Everything you need to know about Reach, the SSH client that doesn't suck.
-  actions:
-    - text: Get Started
-      link: /Reach/getting-started/introduction/
-      icon: right-arrow
-    - text: Download
-      link: /Reach/download/
-      icon: down-caret
-      variant: minimal
+editUrl: false
+lastUpdated: false
+tableOfContents: false
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import Landing from '../../components/Landing.astro';
 
-## What's inside
-
-<CardGrid>
-	<Card title="SSH Terminal" icon="laptop">
-		Tabbed terminals with split panes, search, and per-session shell history.
-	</Card>
-	<Card title="File Explorer" icon="document">
-		Browse remote filesystems over SFTP with drag-and-drop uploads and downloads.
-	</Card>
-	<Card title="Encrypted Vault" icon="approve-check-circle">
-		Store passwords and secrets locally with XChaCha20-Poly1305 encryption, unlocked by your OS keychain.
-	</Card>
-	<Card title="Cloud Sync" icon="rocket">
-		Sync sessions and shared vaults across devices using Turso (SQLite edge database).
-	</Card>
-	<Card title="AI Assistant" icon="star">
-		Ask questions about your servers, get command suggestions, and troubleshoot issues with a built-in AI chat.
-	</Card>
-	<Card title="Playbooks" icon="list-format">
-		Automate server tasks with Ansible-compatible YAML playbooks, executed natively over SSH.
-	</Card>
-	<Card title="Session Sharing" icon="comment">
-		Put your terminal and someone else's side by side, peer to peer and encrypted end to end. Read-only or read-and-write, your call, enforced on your machine.
-	</Card>
-	<Card title="MCP Server" icon="puzzle">
-		Let an AI client read a session you choose and type into it only through a guard that enforces its rules. Loopback only, off by default.
-	</Card>
-	<Card title="Recipes" icon="open-book">
-		Reusable bash scripts with parameters and a risk check, run against the terminal you have open, shared through a signed registry.
-	</Card>
-</CardGrid>
+<Landing />

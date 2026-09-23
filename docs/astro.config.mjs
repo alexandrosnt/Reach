@@ -2,14 +2,30 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
+/*
+ * The origin and path the site is served from.
+ *
+ * Both are environment variables so moving to a bought domain is a deploy-time
+ * change rather than an edit here and in every internal link. On GitHub Pages
+ * these keep their defaults; on a custom domain the workflow sets
+ * SITE_URL=https://example.com and BASE_PATH=/ and nothing else moves.
+ */
+const site = (process.env.SITE_URL ?? 'https://reachssh.com').replace(/\/$/, '');
+const base = process.env.BASE_PATH ?? '/';
+
 // https://astro.build/config
 export default defineConfig({
-	site: 'https://alexandrosnt.github.io',
-	base: '/Reach',
+	site,
+	base,
 	integrations: [
 		starlight({
-			title: 'Reach Docs',
+			title: 'Reach',
+			description:
+				'Reach is a free, open source SSH client and remote server manager for Windows, macOS, Linux and Android. Terminals, SFTP, tunnels, secrets and automation in one app.',
 			customCss: ['./src/styles/custom.css'],
+			components: {
+				Head: './src/components/Head.astro',
+			},
 			logo: {
 				src: './src/assets/reach-logo.png',
 			},

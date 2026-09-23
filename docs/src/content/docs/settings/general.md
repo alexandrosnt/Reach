@@ -103,7 +103,7 @@ Expose a terminal session to an AI client over the Model Context Protocol. Off b
 - **Connect your client** — the exact command or config for eleven clients.
 - **Token** — stored in the vault and reused across restarts. Regenerating locks out every configured client, so it asks first.
 
-See [MCP Server](/Reach/features/mcp-server/) for how the guard works and what the AI can see.
+See [MCP Server](../../features/mcp-server/) for how the guard works and what the AI can see.
 
 ## Sync
 
@@ -188,7 +188,7 @@ Each plugin shows:
 - **Description** and **author** (if provided)
 - **Toggle switch** — enable or disable the plugin
 
-See the [Plugins](/Reach/features/plugins/) page for details on writing plugins.
+See the [Plugins](../../features/plugins/) page for details on writing plugins.
 
 ## Sharing
 
@@ -197,4 +197,4 @@ Share a live terminal with another person, peer to peer. Off by default, and whi
 - **Session sharing** — the switch.
 - **Connection servers** — the STUN and TURN servers used to find a route to the other machine. Add, remove, or clear the list. TURN credentials are stored in the vault.
 
-See [Session Sharing](/Reach/features/session-sharing/) for how it connects, how it is encrypted, and what to do when two machines cannot reach each other.
+See [Session Sharing](../../features/session-sharing/) for how it connects, how it is encrypted, and what to do when two machines cannot reach each other.

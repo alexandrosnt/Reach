@@ -14,8 +14,6 @@
  * rather than empty.
  */
 
-const REPO = 'alexandrosnt/Reach';
-
 /** Matched against asset names in order; the first hit wins. */
 const PLATFORMS = [
 	{
@@ -62,30 +60,29 @@ const ALSO = [
 	{ id: 'rpm', name: 'Fedora / RHEL (.rpm)', match: ['.x86_64.rpm'] },
 ];
 
-const releasesUrl = `https://github.com/${REPO}/releases/latest`;
+import { latestRelease, RELEASES_URL, resolve } from '../lib/release';
+
+const releasesUrl = RELEASES_URL;
+const release = await latestRelease();
+const platforms = PLATFORMS.map((p) => ({ ...p, ...resolve(release, p.match) }));
+const also = ALSO.map((p) => ({ ...p, ...resolve(release, p.match) }));
+const version = release?.tag_name ? `Latest release · ${release.tag_name}` : 'Latest release';
 ---
 
-<section class="downloads not-content" data-repo={REPO}>
+<section class="downloads not-content">
 	<p class="downloads-version">
-		<span data-version>Latest release</span>
+		<span>{version}</span>
 		<a href={releasesUrl}>All releases and changelog</a>
 	</p>
 
 	<div class="downloads-grid">
 		{
-			PLATFORMS.map((p) => (
-				<a
-					class="download-card"
-					href={releasesUrl}
-					data-platform={p.id}
-					data-match={p.match.join('|')}
-				>
+			platforms.map((p) => (
+				<a class="download-card" href={p.href} data-platform={p.id}>
 					<span class="download-os">{p.name}</span>
 					<span class="download-note">{p.note}</span>
-					<span class="download-file" data-label>
-						{p.label}
-					</span>
-					<span class="download-size" data-size />
+					<span class="download-file">{p.label}</span>
+					<span class="download-size">{p.size}</span>
 				</a>
 			))
 		}
@@ -94,10 +91,10 @@ const releasesUrl = `https://github.com/${REPO}/releases/latest`;
 	<p class="downloads-also">
 		Other formats:
 		{
-			ALSO.map((p, i) => (
+			also.map((p, i) => (
 				<>
 					{i > 0 && <span aria-hidden="true"> · </span>}
-					<a href={releasesUrl} data-platform={p.id} data-match={p.match.join('|')}>
+					<a href={p.href} data-platform={p.id}>
 						{p.name}
 					</a>
 				</>
@@ -106,43 +103,6 @@ const releasesUrl = `https://github.com/${REPO}/releases/latest`;
 	</p>
 </section>
 
-<script>
-	// Fill in the real asset links once the current release is known. Any
-	// failure leaves the markup above untouched, which already works.
-	const section = document.querySelector<HTMLElement>('.downloads');
-	if (section) {
-		const repo = section.dataset.repo;
-		const megabytes = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-
-		fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
-			headers: { Accept: 'application/vnd.github+json' },
-		})
-			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
-			.then((release) => {
-				const version = section.querySelector('[data-version]');
-				if (version && release.tag_name) {
-					version.textContent = `Latest release · ${release.tag_name}`;
-				}
-
-				for (const el of section.querySelectorAll<HTMLAnchorElement>('[data-match]')) {
-					const patterns = (el.dataset.match ?? '').split('|').filter(Boolean);
-					const asset = (release.assets ?? []).find((a: { name: string }) =>
-						patterns.some((p) => a.name.endsWith(p)),
-					);
-					// A platform missing from a release keeps pointing at the
-					// releases page rather than becoming a dead link.
-					if (!asset) continue;
-
-					el.href = asset.browser_download_url;
-					const size = el.querySelector('[data-size]');
-					if (size) size.textContent = megabytes(asset.size);
-				}
-			})
-			.catch(() => {
-				/* Offline, rate limited, or blocked: the static links stand. */
-			});
-	}
-</script>
 
 <style>
 	.downloads {

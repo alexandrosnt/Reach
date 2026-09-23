@@ -70,4 +70,4 @@ Updates are downloaded in the background and applied on restart.
 
 ## Next steps
 
-After installation, the first time you open Reach you'll see a quick setup wizard. Head over to [First Run & Setup](/Reach/getting-started/first-run/) to see what that looks like.
+After installation, the first time you open Reach you'll see a quick setup wizard. Head over to [First Run & Setup](../first-run/) to see what that looks like.

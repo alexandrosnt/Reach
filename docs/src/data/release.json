@@ -1,0 +1,126 @@
+{
+	"tag_name": "v0.6.5",
+	"published_at": "2026-09-23T17:21:40Z",
+	"assets": [
+		{
+			"name": "app-universal-release.apk",
+			"size": 220841555,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/app-universal-release.apk"
+		},
+		{
+			"name": "latest.json",
+			"size": 6428,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/latest.json"
+		},
+		{
+			"name": "Reach-0.6.5-1.x86_64.rpm",
+			"size": 19423210,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach-0.6.5-1.x86_64.rpm"
+		},
+		{
+			"name": "Reach-0.6.5-1.x86_64.rpm.sig",
+			"size": 412,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach-0.6.5-1.x86_64.rpm.sig"
+		},
+		{
+			"name": "Reach_0.6.5_aarch64.dmg",
+			"size": 18113102,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_aarch64.dmg"
+		},
+		{
+			"name": "Reach_0.6.5_amd64.AppImage",
+			"size": 95836664,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_amd64.AppImage"
+		},
+		{
+			"name": "Reach_0.6.5_amd64.AppImage.sig",
+			"size": 416,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_amd64.AppImage.sig"
+		},
+		{
+			"name": "Reach_0.6.5_amd64.AppImage.tar.gz",
+			"size": 95135631,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_amd64.AppImage.tar.gz"
+		},
+		{
+			"name": "Reach_0.6.5_amd64.AppImage.tar.gz.sig",
+			"size": 424,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_amd64.AppImage.tar.gz.sig"
+		},
+		{
+			"name": "Reach_0.6.5_amd64.deb",
+			"size": 19423642,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_amd64.deb"
+		},
+		{
+			"name": "Reach_0.6.5_amd64.deb.sig",
+			"size": 408,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_amd64.deb.sig"
+		},
+		{
+			"name": "Reach_0.6.5_x64-setup.exe",
+			"size": 12059416,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_x64-setup.exe"
+		},
+		{
+			"name": "Reach_0.6.5_x64-setup.exe.sig",
+			"size": 416,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_x64-setup.exe.sig"
+		},
+		{
+			"name": "Reach_0.6.5_x64-setup.nsis.zip",
+			"size": 12059564,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_x64-setup.nsis.zip"
+		},
+		{
+			"name": "Reach_0.6.5_x64-setup.nsis.zip.sig",
+			"size": 420,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_x64-setup.nsis.zip.sig"
+		},
+		{
+			"name": "Reach_0.6.5_x64.dmg",
+			"size": 19487012,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_x64.dmg"
+		},
+		{
+			"name": "Reach_0.6.5_x64_en-US.msi",
+			"size": 17059840,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_x64_en-US.msi"
+		},
+		{
+			"name": "Reach_0.6.5_x64_en-US.msi.sig",
+			"size": 416,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_x64_en-US.msi.sig"
+		},
+		{
+			"name": "Reach_0.6.5_x64_en-US.msi.zip",
+			"size": 17059988,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_x64_en-US.msi.zip"
+		},
+		{
+			"name": "Reach_0.6.5_x64_en-US.msi.zip.sig",
+			"size": 420,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_0.6.5_x64_en-US.msi.zip.sig"
+		},
+		{
+			"name": "Reach_aarch64.app.tar.gz",
+			"size": 17747542,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_aarch64.app.tar.gz"
+		},
+		{
+			"name": "Reach_aarch64.app.tar.gz.sig",
+			"size": 404,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_aarch64.app.tar.gz.sig"
+		},
+		{
+			"name": "Reach_x64.app.tar.gz",
+			"size": 18958785,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_x64.app.tar.gz"
+		},
+		{
+			"name": "Reach_x64.app.tar.gz.sig",
+			"size": 404,
+			"browser_download_url": "https://github.com/alexandrosnt/Reach/releases/download/v0.6.5/Reach_x64.app.tar.gz.sig"
+		}
+	]
+}

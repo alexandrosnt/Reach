@@ -1,0 +1,1166 @@
+---
+/**
+ * The landing page, built to match the product banner.
+ *
+ * Starlight's splash hero is a title, a tagline and two buttons. That is fine
+ * for a docs index and says nothing about what the thing is. This says it: the
+ * mark under its own glow, the promise, what it does with the same coloured
+ * icons as the banner, the platform you are on offered by name, and the app
+ * itself visible without scrolling far.
+ *
+ * One component rather than markdown, so the layout can be a real grid. Every
+ * colour is either a Starlight token or a named accent below, so the light and
+ * dark switch keeps working and there is one place to change a hue.
+ */
+import Downloads from './Downloads.astro';
+import logo from '../assets/reach-logo.png';
+import { latestRelease, RELEASES_URL, resolve } from '../lib/release';
+import AppDemo from './AppDemo.astro';
+
+/**
+ * The left column of the banner. Each keeps the banner's own colour, because
+ * a row of five identical blue tiles reads as a list and the banner's does
+ * not.
+ */
+const CAPABILITIES = [
+	{
+		title: 'SSH terminal',
+		body: 'Tabs, split panes and a real terminal that gets out of the way.',
+		hue: 268,
+		icon: 'M13 2 3 14h7l-1 8 10-12h-7l1-8z',
+	},
+	{
+		title: 'Organise servers',
+		body: 'Folders, tags and search across every machine you look after.',
+		hue: 205,
+		icon: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 16a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM7 6.5h.01M7 17.5h.01',
+	},
+	{
+		title: 'Work together',
+		body: 'Share a vault with your team, or put two terminals side by side.',
+		hue: 152,
+		icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+	},
+	{
+		title: 'Self hosted',
+		body: 'Your keys and passwords stay yours. Sync is optional and it is your database.',
+		hue: 192,
+		icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4',
+	},
+	{
+		title: 'Light on its feet',
+		body: 'A native binary, not a browser in a costume. It opens straight away.',
+		hue: 222,
+		icon: 'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
+	},
+	{
+		title: 'Automation built in',
+		body: 'Ansible and OpenTofu, run against the servers you already have saved.',
+		hue: 32,
+		icon: 'M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z',
+	},
+];
+
+/**
+ * Platforms offered directly in the hero, each with the asset name pattern
+ * that identifies its build in a release.
+ */
+const PLATFORMS = [
+	{
+		id: 'windows',
+		name: 'Windows',
+		note: '10 and 11',
+		match: '_x64-setup.exe',
+		icon: 'M3 5.5 10 4.6v6.6H3zM11.2 4.4 21 3v8.2h-9.8zM3 12.8h7v6.6l-7-.9zM11.2 12.8H21V21l-9.8-1.4z',
+		solid: true,
+	},
+	{
+		id: 'macos-arm',
+		name: 'macOS',
+		note: 'Apple silicon',
+		match: '_aarch64.dmg',
+		icon: 'M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.9-3.5.9s-1.8-.8-3-.8c-1.5 0-2.9.9-3.7 2.3-1.6 2.7-.4 6.8 1.1 9 .8 1.1 1.7 2.3 2.9 2.2 1.2 0 1.6-.7 3-.7s1.8.7 3 .7 2-1.1 2.8-2.2c.9-1.2 1.2-2.5 1.2-2.5s-2.4-.9-2.4-3.6zM14.2 5.9c.6-.8 1.1-1.9 1-3-.9 0-2.1.6-2.8 1.4-.6.7-1.2 1.8-1 2.9 1 .1 2.1-.5 2.8-1.3z',
+		solid: true,
+	},
+	{
+		id: 'macos-intel',
+		name: 'macOS',
+		note: 'Intel',
+		match: '_x64.dmg',
+		icon: 'M16.4 12.7c0-2.3 1.9-3.4 2-3.5-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.2-2.8.9-3.5.9s-1.8-.8-3-.8c-1.5 0-2.9.9-3.7 2.3-1.6 2.7-.4 6.8 1.1 9 .8 1.1 1.7 2.3 2.9 2.2 1.2 0 1.6-.7 3-.7s1.8.7 3 .7 2-1.1 2.8-2.2c.9-1.2 1.2-2.5 1.2-2.5s-2.4-.9-2.4-3.6zM14.2 5.9c.6-.8 1.1-1.9 1-3-.9 0-2.1.6-2.8 1.4-.6.7-1.2 1.8-1 2.9 1 .1 2.1-.5 2.8-1.3z',
+		solid: true,
+	},
+	{
+		id: 'linux',
+		name: 'Linux',
+		note: 'AppImage',
+		match: '_amd64.AppImage',
+		icon: 'M12 2c2.2 0 3.6 1.8 3.6 4.3 0 1.5.4 2.3 1.2 3.4 1 1.4 1.8 2.6 1.8 4.6 0 1.3-.4 2.4-1 3.2.5.5.9 1.1.9 1.8 0 1.4-1.6 2.2-2.9 2.2-1 0-1.6-.3-2.2-.6-.5-.2-.9-.4-1.4-.4s-.9.2-1.4.4c-.6.3-1.2.6-2.2.6-1.3 0-2.9-.8-2.9-2.2 0-.7.4-1.3.9-1.8-.6-.8-1-1.9-1-3.2 0-2 .8-3.2 1.8-4.6.8-1.1 1.2-1.9 1.2-3.4C8.4 3.8 9.8 2 12 2zM10.3 7.2h.01M13.7 7.2h.01M12 9.6c-.6 0-1.1.3-1.1.6s.5.6 1.1.6 1.1-.3 1.1-.6-.5-.6-1.1-.6z',
+		solid: false,
+	},
+	{
+		id: 'android',
+		name: 'Android',
+		note: 'APK',
+		match: '.apk',
+		icon: 'M6 10.5a1 1 0 0 1 1 1V16a1 1 0 0 1-2 0v-4.5a1 1 0 0 1 1-1zm12 0a1 1 0 0 1 1 1V16a1 1 0 0 1-2 0v-4.5a1 1 0 0 1 1-1zM8 9.5h8V17a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1zm1.5 9.5h1V21a1 1 0 0 1-2 0v-1.7zm4 0h1V21a1 1 0 0 1-2 0v-1.7zM8.2 7.8a4 4 0 0 1 7.6 0zM9.8 5.4h.01M14.2 5.4h.01M8.5 4 7.4 2.5M15.5 4l1.1-1.5',
+		solid: false,
+	},
+];
+
+/**
+ * Resolved while the site is built, so the links in the shipped HTML are
+ * already direct links to the right files — no API call from the reader's
+ * machine, and nothing to rate limit. See src/lib/release.ts for why.
+ */
+const release = await latestRelease();
+const version = release?.tag_name ?? '';
+const platforms = PLATFORMS.map((p) => ({ ...p, ...resolve(release, [p.match]) }));
+
+/** The strip along the bottom of the banner. */
+const CHIPS = [
+	{ title: 'Powerful terminal', body: 'Built for real work', icon: 'M4 17l6-5-6-5M12 19h8' },
+	{ title: 'Many servers', body: 'Organised, not scattered', icon: 'M3 5h18v6H3zM3 13h18v6H3zM7 8h.01M7 16h.01' },
+	{ title: 'Secure by design', body: 'Encrypted at rest', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' },
+	{ title: 'Team ready', body: 'Share what you choose', icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z' },
+	{ title: 'Open source', body: 'MIT, community driven', icon: 'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5' },
+];
+---
+
+<div class="landing not-content">
+	<!-- The banner's light source, recreated: one warm blue wash behind the
+	     mark and a violet one off to the side. -->
+	<div class="glow" aria-hidden="true"></div>
+	<!-- Follows the pointer across the hero. It is the only thing on the
+	     page that reacts to where you are rather than what you click. -->
+	<div class="spot" aria-hidden="true" data-spot></div>
+
+	<header class="lead">
+		<!-- Three layers of transform, one each: the wrapper is revealed on load,
+		     the tilt layer answers the pointer, the mark itself breathes. -->
+		<span class="mark-wrap" data-rise style="--delay:40ms">
+			<span class="mark-tilt" data-tilt>
+				<img class="mark" src={logo.src} alt="" width="112" height="112" />
+			</span>
+		</span>
+		<h1 data-rise style="--delay:120ms">Reach</h1>
+		<p class="promise" data-rise style="--delay:200ms">Manage your servers, everywhere.</p>
+		<p class="blurb" data-rise style="--delay:280ms">
+			A modern, lightweight SSH client and remote server manager. Terminals, files,
+			tunnels, secrets and automation, in one place that stays out of your way.
+		</p>
+
+		<div class="cta" data-rise style="--delay:360ms">
+			<!-- Split button: the left half is the build for whatever the
+			     reader is on, the right half opens every other option. Until
+			     the release is known both halves still go to the download
+			     section, so this works with no JavaScript at all. -->
+			<div class="split" data-picker>
+				<a class="btn primary" href={RELEASES_URL} data-primary>
+					<svg
+							viewBox="0 0 24 24"
+							aria-hidden="true"
+							data-primary-icon
+							fill="currentColor"
+							stroke="none"
+							stroke-width="1.6"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+						<path d={PLATFORMS[0].icon} />
+					</svg>
+					<span data-primary-label>Download Reach</span>
+				</a>
+				<button
+					class="btn primary caret"
+					type="button"
+					aria-expanded="false"
+					aria-haspopup="true"
+					aria-label="Choose a different platform"
+					data-toggle
+				>
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="m6 9 6 6 6-6" />
+					</svg>
+				</button>
+
+				<div class="menu" data-menu hidden>
+					{
+						platforms.map((p) => (
+							<a
+								class="menu-item"
+								href={p.href}
+								data-option={p.id}
+								data-name={p.name}
+								data-note={p.note}
+								data-size={p.size}
+							>
+								<svg
+									viewBox="0 0 24 24"
+									fill={p.solid ? 'currentColor' : 'none'}
+									stroke={p.solid ? 'none' : 'currentColor'}
+									stroke-width="1.6"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path d={p.icon} />
+								</svg>
+								<span class="menu-name">
+									{p.name}
+									<small>{p.note}</small>
+								</span>
+								<em>{p.size}</em>
+							</a>
+						))
+					}
+					<a class="menu-item all" href={RELEASES_URL}>
+						<span class="menu-name">Every format and older releases</span>
+					</a>
+				</div>
+			</div>
+
+			<a class="btn ghost" href={`${import.meta.env.BASE_URL}getting-started/introduction/`.replace('//', '/')}>
+				Read the docs
+			</a>
+		</div>
+
+		<p
+			class="release-line"
+			data-rise
+			style="--delay:440ms"
+			data-release
+			data-version={version}
+		>
+			{version ? `${version} · ` : ''}Free and open source · MIT licensed
+		</p>
+	</header>
+
+	<section class="shot" data-reveal>
+		<AppDemo />
+	</section>
+
+	<section class="block" data-reveal>
+		<p class="eyebrow">What is inside</p>
+		<h2 class="block-title">Everything the job needs, on one screen</h2>
+		<div class="capabilities">
+			{
+				CAPABILITIES.map((c) => (
+					<div class="capability" style={`--hue:${c.hue}`}>
+						<span class="cap-icon" aria-hidden="true">
+							<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+								<path d={c.icon} />
+							</svg>
+						</span>
+						<div>
+							<h3>{c.title}</h3>
+							<p>{c.body}</p>
+						</div>
+					</div>
+				))
+			}
+		</div>
+	</section>
+
+	<section id="get-it" class="block get-it" data-reveal>
+		<p class="eyebrow">Downloads</p>
+		<h2 class="block-title">Get Reach</h2>
+		<Downloads />
+	</section>
+
+	<section class="chips" data-reveal>
+		{
+			CHIPS.map((c) => (
+				<div class="chip">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<path d={c.icon} />
+					</svg>
+					<div>
+						<strong>{c.title}</strong>
+						<span>{c.body}</span>
+					</div>
+				</div>
+			))
+		}
+	</section>
+</div>
+
+<script>
+	const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	/* --- Sections arriving ------------------------------------------------ */
+
+	// Cheap and one-way: once something has been shown it is left alone, so
+	// scrolling back up does not replay anything.
+	const reveal = (el: Element) => el.classList.add('is-in');
+
+	const hero = document.querySelectorAll('.landing [data-rise]');
+	// Two frames, so the starting position is painted before it moves.
+	requestAnimationFrame(() => requestAnimationFrame(() => hero.forEach(reveal)));
+
+	const onScreen = document.querySelectorAll('.landing [data-reveal]');
+	if (!('IntersectionObserver' in window)) {
+		onScreen.forEach(reveal);
+	} else {
+		const io = new IntersectionObserver(
+			(entries) => {
+				for (const e of entries) {
+					if (!e.isIntersecting) continue;
+					reveal(e.target);
+					io.unobserve(e.target);
+				}
+			},
+			// Fires a little before the edge, so nothing is caught mid-move.
+			{ rootMargin: '0px 0px -12% 0px', threshold: 0.08 },
+		);
+		onScreen.forEach((el) => io.observe(el));
+	}
+
+	/* --- The mark, which you can push around ----------------------------- */
+
+	const tilt = document.querySelector<HTMLElement>('[data-tilt]');
+	const lead = document.querySelector<HTMLElement>('.landing .lead');
+
+	if (tilt && lead && !reduced) {
+		// Tracked across the whole lead rather than the mark itself, so the cube
+		// turns to follow you before the pointer ever arrives on it.
+		const MAX_DEG = 16;
+
+		lead.addEventListener('pointermove', (event) => {
+			const box = lead.getBoundingClientRect();
+			const x = (event.clientX - box.left) / box.width - 0.5;
+			const y = (event.clientY - box.top) / box.height - 0.5;
+			tilt.classList.add('is-tracking');
+			tilt.style.setProperty('--ry', `${(x * MAX_DEG * 2).toFixed(2)}deg`);
+			tilt.style.setProperty('--rx', `${(-y * MAX_DEG).toFixed(2)}deg`);
+		});
+
+		const settle = () => {
+			tilt.classList.remove('is-tracking');
+			tilt.style.setProperty('--ry', '0deg');
+			tilt.style.setProperty('--rx', '0deg');
+		};
+		lead.addEventListener('pointerleave', settle);
+		lead.addEventListener('blur', settle);
+
+		// A full turn on click, because a thing that only leans is not really
+		// playable. The animation drives the same two angles the pointer does,
+		// so it overrides the tilt while it runs and hands control straight
+		// back afterwards.
+		tilt.addEventListener('click', () => {
+			tilt.classList.remove('is-spinning');
+			void tilt.offsetWidth; // flush the removal, so it can restart
+			tilt.classList.add('is-spinning');
+		});
+		tilt.addEventListener('animationend', () => tilt.classList.remove('is-spinning'));
+	}
+
+	/* --- The spotlight --------------------------------------------------- */
+
+	const spot = document.querySelector<HTMLElement>('[data-spot]');
+	if (spot && lead && !reduced) {
+		lead.addEventListener('pointermove', (event) => {
+			const box = lead.getBoundingClientRect();
+			spot.style.setProperty('--mx', `${event.clientX - box.left}px`);
+			spot.style.setProperty('--my', `${event.clientY - box.top}px`);
+			spot.classList.add('is-lit');
+		});
+		lead.addEventListener('pointerleave', () => spot.classList.remove('is-lit'));
+	}
+
+	/* --- The download control -------------------------------------------- */
+
+	const picker = document.querySelector<HTMLElement>('[data-picker]');
+	const toggle = picker?.querySelector<HTMLButtonElement>('[data-toggle]');
+	const menu = picker?.querySelector<HTMLElement>('[data-menu]');
+	const primary = picker?.querySelector<HTMLAnchorElement>('[data-primary]');
+
+	if (picker && toggle && menu && primary) {
+		const setOpen = (open: boolean) => {
+			menu.hidden = !open;
+			toggle.setAttribute('aria-expanded', String(open));
+		};
+
+		toggle.addEventListener('click', (event) => {
+			// Without this the click that opens the menu bubbles to the document
+			// handler below and closes it again in the same tick.
+			event.stopPropagation();
+			setOpen(menu.hidden);
+		});
+		document.addEventListener('click', (event) => {
+			if (!picker.contains(event.target as Node)) setOpen(false);
+		});
+		document.addEventListener('keydown', (event) => {
+			if (event.key !== 'Escape' || menu.hidden) return;
+			setOpen(false);
+			toggle.focus();
+		});
+		// Picking an option starts a download; either way the menu is finished.
+		menu.addEventListener('click', () => setOpen(false));
+
+		// Which build to offer first. Every link in the menu is already a real
+		// asset URL baked in at build time, so this only chooses which one the
+		// button points at — guessing wrong costs one click, which is why it
+		// guesses at all instead of making everybody choose. Apple silicon is
+		// the default Mac because Intel Macs stopped shipping in 2023.
+		const ua = navigator.userAgent;
+		const platform = navigator.platform ?? '';
+		const guess = /Android/i.test(ua)
+			? 'android'
+			: /Mac/i.test(platform) || /Mac OS X/.test(ua)
+				? 'macos-arm'
+				: /Win/i.test(platform) || /Windows/.test(ua)
+					? 'windows'
+					: /Linux|X11|CrOS/i.test(ua)
+						? 'linux'
+						: 'windows';
+
+		const mine = picker.querySelector<HTMLAnchorElement>(`[data-option="${guess}"]`);
+
+		if (mine) {
+			primary.href = mine.href;
+
+			const label = picker.querySelector<HTMLElement>('[data-primary-label]');
+			if (label) label.textContent = `Download for ${mine.dataset.name}`;
+
+			// The menu already draws every platform's icon, so the button borrows
+			// one rather than this component carrying a second copy of the paths.
+			const icon = picker.querySelector<SVGElement>('[data-primary-icon]');
+			const source = mine.querySelector('svg');
+			if (icon && source) {
+				for (const attribute of ['fill', 'stroke', 'stroke-width']) {
+					const value = source.getAttribute(attribute);
+					if (value !== null) icon.setAttribute(attribute, value);
+				}
+				icon.innerHTML = source.innerHTML;
+			}
+
+			const line = document.querySelector<HTMLElement>('[data-release]');
+			if (line) {
+				line.textContent = [
+					line.dataset.version,
+					`${mine.dataset.name} ${mine.dataset.note}`,
+					mine.dataset.size,
+					'MIT licensed',
+				]
+					.filter(Boolean)
+					.join(' · ');
+			}
+		}
+	}
+</script>
+
+<style>
+	.landing {
+		position: relative;
+		max-width: 70rem;
+		margin: 0 auto;
+		padding: 0 1.25rem 4rem;
+	}
+
+	/* Starlight prints the page title above a splash page. Here the mark and
+	   the wordmark are the title, so the duplicate goes. */
+	:global(.content-panel h1#_top) {
+		display: none;
+	}
+
+	.glow {
+		position: absolute;
+		inset: -8rem -20% auto -20%;
+		height: 46rem;
+		pointer-events: none;
+		z-index: -1;
+		background:
+			radial-gradient(38rem 26rem at 50% 12%, hsl(211 100% 50% / 0.22), transparent 66%),
+			radial-gradient(30rem 22rem at 18% 4%, hsl(268 90% 60% / 0.16), transparent 68%),
+			radial-gradient(28rem 20rem at 84% 8%, hsl(190 95% 50% / 0.12), transparent 70%);
+		filter: blur(6px);
+	}
+
+	:global(:root[data-theme='light']) .glow {
+		opacity: 0.55;
+	}
+
+	/* A soft light that follows the pointer across the hero. It starts at zero
+	   and only fades in once the pointer has actually been somewhere, so it
+	   never flashes in a corner on load. */
+	.spot {
+		position: absolute;
+		inset: 0 0 auto;
+		height: 34rem;
+		pointer-events: none;
+		z-index: -1;
+		opacity: 0;
+		transition: opacity 0.5s ease;
+		background: radial-gradient(
+			16rem 16rem at var(--mx, 50%) var(--my, 30%),
+			hsl(190 100% 62% / 0.16),
+			transparent 70%
+		);
+	}
+
+	.spot.is-lit {
+		opacity: 1;
+	}
+
+	/* --- Lead ---------------------------------------------------------- */
+
+	.lead {
+		text-align: center;
+		padding: 3rem 0 2.5rem;
+	}
+
+	/* Three layers, one transform each: the wrapper is revealed on load, the
+	   tilt layer answers the pointer, the drawing itself breathes. Stacking
+	   them is the only way to run all three at once. */
+	.mark-wrap {
+		display: inline-block;
+		perspective: 760px;
+	}
+
+	.mark-tilt {
+		display: block;
+		transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg));
+		transform-style: preserve-3d;
+		/* Slow on the way back to rest, so letting go reads as the cube settling
+		   rather than snapping. */
+		transition: transform 0.6s cubic-bezier(0.22, 0.68, 0.24, 1);
+		cursor: grab;
+	}
+
+	/* While the pointer is driving it, the easing becomes a damper instead of
+	   a delay: long enough to smooth the jitter out of raw pointer events,
+	   short enough that the cube feels attached to the cursor. */
+	.mark-tilt.is-tracking {
+		transition-duration: 0.12s;
+	}
+
+	.mark-tilt.is-spinning {
+		animation: turn 0.85s cubic-bezier(0.34, 0.72, 0.18, 1);
+	}
+
+	.mark-tilt:active {
+		cursor: grabbing;
+	}
+
+	.mark {
+		filter: drop-shadow(0 16px 40px hsl(211 100% 50% / 0.45));
+	}
+
+	/* A highlight crossing the top face, most of the cycle spent off-stage so
+	   it reads as an occasional glint and not a loop. */
+	.sheen {
+		animation: sweep 7s ease-in-out infinite;
+	}
+
+	.horns {
+		animation: horns 5s ease-in-out infinite;
+		transform-origin: 60px 47px;
+	}
+
+	.cursor {
+		animation: click 5s ease-in-out infinite;
+		transform-origin: 62px 62px;
+	}
+
+	.lead h1 {
+		margin: 1.1rem 0 0.25rem;
+		font-size: clamp(3.2rem, 10vw, 5.6rem);
+		line-height: 0.96;
+		letter-spacing: -0.045em;
+		font-weight: 760;
+		background: linear-gradient(
+			104deg,
+			var(--sl-color-white) 0%,
+			var(--sl-color-white) 32%,
+			hsl(190 95% 62%) 88%
+		);
+		-webkit-background-clip: text;
+		background-clip: text;
+		-webkit-text-fill-color: transparent;
+	}
+
+	.promise {
+		margin: 0;
+		font-size: clamp(1.15rem, 2.6vw, 1.6rem);
+		font-weight: 560;
+		color: var(--sl-color-gray-2);
+	}
+
+	.blurb {
+		margin: 1.1rem auto 0;
+		max-width: 48ch;
+		color: var(--sl-color-gray-3);
+		line-height: 1.75;
+	}
+
+	.cta {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.75rem;
+		justify-content: center;
+		margin-top: 2.2rem;
+	}
+
+	.btn {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.6rem;
+		padding: 0.85rem 1.8rem;
+		border-radius: 999px;
+		font-size: 1.02rem;
+		font-weight: 640;
+		text-decoration: none;
+		transition:
+			transform 0.16s ease,
+			box-shadow 0.16s ease,
+			border-color 0.16s ease;
+	}
+
+	.btn svg {
+		width: 18px;
+		height: 18px;
+	}
+
+	.btn.primary {
+		color: hsl(0 0% 100%);
+		background: linear-gradient(100deg, hsl(222 100% 55%), hsl(190 95% 52%));
+		box-shadow: 0 14px 38px -14px hsl(205 100% 52% / 0.95);
+	}
+
+	.btn.primary:hover {
+		box-shadow: 0 18px 44px -14px hsl(205 100% 52%);
+	}
+
+	.btn.ghost {
+		color: var(--sl-color-white);
+		border: 1px solid var(--reach-border, #2a2f3a);
+	}
+
+	.btn:hover {
+		transform: translateY(-2px);
+	}
+
+	.btn.ghost:hover {
+		border-color: var(--sl-color-accent);
+	}
+
+	/* --- The download control ------------------------------------------- */
+
+	/* One object with a seam down it, not two buttons that happen to touch.
+	   The gradient is painted on the container and the halves are transparent,
+	   so the sweep runs unbroken across both and the seam stays a hairline. */
+	.split {
+		position: relative;
+		display: inline-flex;
+		align-items: stretch;
+		border-radius: 999px;
+		background: linear-gradient(100deg, hsl(222 100% 55%), hsl(190 95% 52%));
+		box-shadow: 0 14px 38px -14px hsl(205 100% 52% / 0.95);
+		transition:
+			transform 0.16s ease,
+			box-shadow 0.16s ease;
+	}
+
+	/* The whole control lifts, rather than each half lifting out of the other. */
+	.split:hover {
+		transform: translateY(-2px);
+		box-shadow: 0 20px 46px -14px hsl(205 100% 52%);
+	}
+
+	.split .btn.primary {
+		background: none;
+		box-shadow: none;
+	}
+
+	.split .btn.primary:hover,
+	.split .btn.primary:focus-visible {
+		transform: none;
+		box-shadow: none;
+	}
+
+	.split [data-primary] {
+		padding-right: 1.3rem;
+		border-radius: 999px 0 0 999px;
+	}
+
+	.caret {
+		padding: 0.85rem 1.15rem 0.85rem 1rem;
+		border: 0;
+		border-radius: 0 999px 999px 0;
+		cursor: pointer;
+		/* A translucent divider rather than a line in a fixed colour, so it sits
+		   correctly at both ends of the gradient underneath. */
+		box-shadow: inset 1px 0 0 hsl(0 0% 100% / 0.28);
+	}
+
+	.caret svg {
+		width: 16px;
+		height: 16px;
+		transition: transform 0.22s cubic-bezier(0.22, 0.68, 0.24, 1);
+	}
+
+	.caret[aria-expanded='true'] svg {
+		transform: rotate(180deg);
+	}
+
+	.split .btn:focus-visible,
+	.caret:focus-visible {
+		outline: 2px solid var(--sl-color-white);
+		outline-offset: 3px;
+	}
+
+	.menu {
+		position: absolute;
+		top: calc(100% + 0.7rem);
+		left: 50%;
+		translate: -50% 0;
+		z-index: 30;
+		width: min(23rem, calc(100vw - 2.5rem));
+		padding: 0.4rem;
+		text-align: left;
+		border-radius: 16px;
+		border: 1px solid var(--reach-border, #2a2f3a);
+		background: hsl(215 28% 9% / 0.92);
+		backdrop-filter: blur(18px) saturate(150%);
+		-webkit-backdrop-filter: blur(18px) saturate(150%);
+		box-shadow:
+			0 1px 0 hsl(0 0% 100% / 0.06) inset,
+			0 28px 60px -24px hsl(215 40% 2% / 0.9);
+		animation: menu-in 0.2s cubic-bezier(0.22, 0.68, 0.24, 1);
+	}
+
+	:global(:root[data-theme='light']) .menu {
+		background: hsl(0 0% 100% / 0.94);
+	}
+
+	.menu-item {
+		display: flex;
+		align-items: center;
+		gap: 0.8rem;
+		padding: 0.6rem 0.7rem;
+		border-radius: 11px;
+		text-decoration: none;
+		color: var(--sl-color-gray-2);
+		transition:
+			background 0.14s ease,
+			color 0.14s ease;
+	}
+
+	.menu-item:hover,
+	.menu-item:focus-visible {
+		background: hsl(211 100% 52% / 0.16);
+		outline: none;
+	}
+
+	.menu-item svg {
+		flex: none;
+		width: 20px;
+		height: 20px;
+		color: var(--sl-color-accent-high);
+	}
+
+	.menu-name {
+		flex: 1;
+		font-size: 0.95rem;
+		font-weight: 600;
+		color: var(--sl-color-white);
+	}
+
+	.menu-name small {
+		display: block;
+		font-size: 0.78rem;
+		font-weight: 400;
+		color: var(--sl-color-gray-3);
+	}
+
+	/* Reserved whether or not a size has arrived, so the rows do not shift
+	   under the pointer when the release resolves. */
+	.menu-item em {
+		flex: none;
+		min-width: 4.2em;
+		text-align: right;
+		font-style: normal;
+		font-size: 0.78rem;
+		font-variant-numeric: tabular-nums;
+		color: var(--sl-color-gray-3);
+	}
+
+	.menu-item.all {
+		margin-top: 0.3rem;
+		padding-top: 0.7rem;
+		border-top: 1px solid var(--reach-border-soft, #23272f);
+		justify-content: center;
+	}
+
+	.menu-item.all .menu-name {
+		flex: none;
+		font-size: 0.85rem;
+		font-weight: 500;
+		color: var(--sl-color-accent-high);
+	}
+
+	.release-line {
+		margin: 1.4rem 0 0;
+		font-size: 0.86rem;
+		color: var(--sl-color-gray-3);
+		font-variant-numeric: tabular-nums;
+	}
+
+
+	/* --- Screenshot ----------------------------------------------------- */
+
+	.shot {
+		margin: 1.5rem auto 3.5rem;
+		border-radius: 14px;
+		overflow: hidden;
+		border: 1px solid var(--reach-border, #2a2f3a);
+		/* Lifted off the page the way the banner lifts the laptop. */
+		box-shadow:
+			0 2px 0 hsl(0 0% 100% / 0.05) inset,
+			0 40px 80px -40px hsl(211 100% 40% / 0.55);
+	}
+
+	.shot img {
+		display: block;
+		width: 100%;
+		height: auto;
+		/* Leans back a touch and straightens when you reach for it. */
+		transform: perspective(1400px) rotateX(1.6deg) scale(1.005);
+		transition: transform 0.7s cubic-bezier(0.22, 0.68, 0.24, 1);
+	}
+
+	.shot:hover img {
+		transform: perspective(1400px) rotateX(0deg) scale(1);
+	}
+
+	/* --- Section headings ----------------------------------------------- */
+
+	.block {
+		padding-bottom: 3.5rem;
+	}
+
+	.eyebrow {
+		margin: 0 0 0.4rem;
+		font-size: 0.74rem;
+		font-weight: 620;
+		letter-spacing: 0.12em;
+		text-transform: uppercase;
+		color: var(--sl-color-accent-high);
+	}
+
+	.block-title {
+		margin: 0 0 2rem;
+		font-size: clamp(1.55rem, 3.4vw, 2.1rem);
+		font-weight: 680;
+		letter-spacing: -0.03em;
+		line-height: 1.15;
+		color: var(--sl-color-white);
+	}
+
+	/* --- Capabilities --------------------------------------------------- */
+
+	.capabilities {
+		display: grid;
+		gap: 1.6rem 2.5rem;
+		grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+	}
+
+	.capability {
+		display: flex;
+		gap: 0.95rem;
+		align-items: flex-start;
+	}
+
+	.cap-icon {
+		flex: none;
+		display: grid;
+		place-items: center;
+		width: 46px;
+		height: 46px;
+		border-radius: 12px;
+		color: hsl(var(--hue) 92% 68%);
+		border: 1px solid hsl(var(--hue) 70% 50% / 0.32);
+		background: linear-gradient(150deg, hsl(var(--hue) 90% 55% / 0.22), hsl(var(--hue) 90% 45% / 0.08));
+		box-shadow: 0 10px 24px -14px hsl(var(--hue) 90% 55% / 0.9);
+		transition:
+			transform 0.25s cubic-bezier(0.22, 0.68, 0.24, 1),
+			box-shadow 0.25s ease;
+	}
+
+	.capability:hover .cap-icon {
+		transform: translateY(-2px) scale(1.04);
+		box-shadow: 0 16px 30px -14px hsl(var(--hue) 90% 55%);
+	}
+
+	.cap-icon svg {
+		width: 22px;
+		height: 22px;
+	}
+
+	.capability h3 {
+		margin: 0.15rem 0 0.3rem;
+		font-size: 1.05rem;
+		font-weight: 640;
+		color: var(--sl-color-white);
+	}
+
+	.capability p {
+		margin: 0;
+		font-size: 0.92rem;
+		line-height: 1.65;
+		color: var(--sl-color-gray-3);
+	}
+
+	/* --- Downloads ------------------------------------------------------ */
+
+	.get-it {
+		scroll-margin-top: calc(var(--sl-nav-height) + 1rem);
+		padding-top: 2.5rem;
+		border-top: 1px solid var(--reach-border-soft, #23272f);
+	}
+
+	.get-it .block-title {
+		margin-bottom: 0;
+	}
+
+	/* --- Chips ---------------------------------------------------------- */
+
+	.chips {
+		display: grid;
+		gap: 0.75rem;
+		grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+		margin-top: 2.5rem;
+	}
+
+	.chip {
+		display: flex;
+		align-items: flex-start;
+		gap: 0.7rem;
+		padding: 0.95rem 1rem;
+		border-radius: 11px;
+		border: 1px solid var(--reach-border-soft, #23272f);
+		background: linear-gradient(180deg, hsl(215 22% 13% / 0.5), hsl(215 25% 10% / 0.5));
+		transition:
+			transform 0.22s cubic-bezier(0.22, 0.68, 0.24, 1),
+			border-color 0.22s ease,
+			box-shadow 0.22s ease;
+	}
+
+	.chip:hover {
+		transform: translateY(-3px);
+		border-color: hsl(211 100% 52% / 0.5);
+		box-shadow: 0 18px 38px -24px hsl(211 100% 52% / 0.9);
+	}
+
+	:global(:root[data-theme='light']) .chip {
+		background: linear-gradient(180deg, hsl(0 0% 100%), hsl(215 30% 99%));
+	}
+
+	.chip svg {
+		flex: none;
+		width: 18px;
+		height: 18px;
+		margin-top: 2px;
+		color: var(--sl-color-accent-high);
+	}
+
+	.chip strong {
+		display: block;
+		font-size: 0.92rem;
+		color: var(--sl-color-white);
+	}
+
+	.chip span {
+		font-size: 0.8rem;
+		color: var(--sl-color-gray-3);
+	}
+
+	/* --- Motion --------------------------------------------------------- */
+
+	/* One easing for everything, so nothing feels like it belongs to a
+	   different page. Slightly overshooting at the end is what reads as
+	   "smooth" rather than "animated". */
+	[data-rise],
+	[data-reveal] {
+		opacity: 0;
+		transform: translateY(18px);
+		transition:
+			opacity 0.75s cubic-bezier(0.22, 0.68, 0.24, 1),
+			transform 0.75s cubic-bezier(0.22, 0.68, 0.24, 1);
+		transition-delay: var(--delay, 0ms);
+	}
+
+	[data-rise].is-in,
+	[data-reveal].is-in {
+		opacity: 1;
+		transform: none;
+	}
+
+	/* The mark breathes, very slightly. Enough to feel alive on a still page
+	   and not enough to notice while reading. */
+	.mark {
+		animation: float 7s ease-in-out infinite;
+	}
+
+	@keyframes float {
+		0%,
+		100% {
+			transform: translateY(0);
+		}
+		50% {
+			transform: translateY(-7px);
+		}
+	}
+
+	/* Declared so the spin can animate them. Custom properties are strings to
+	   the animation engine unless they are typed, and a string cannot be
+	   interpolated — without this the turn would jump 0 to 360 in one frame. */
+	@property --rx {
+		syntax: '<angle>';
+		inherits: false;
+		initial-value: 0deg;
+	}
+
+	@property --ry {
+		syntax: '<angle>';
+		inherits: false;
+		initial-value: 0deg;
+	}
+
+	/* Leans into the turn on the way round, which is what stops a flat spin
+	   looking like a loading spinner. */
+	@keyframes turn {
+		from {
+			--ry: 0deg;
+			--rx: 0deg;
+		}
+		50% {
+			--rx: 10deg;
+		}
+		to {
+			--ry: 360deg;
+			--rx: 0deg;
+		}
+	}
+
+	/* Off-stage for most of the cycle, so it reads as an occasional glint. */
+	@keyframes sweep {
+		0%,
+		58% {
+			transform: translateX(0);
+			opacity: 0;
+		}
+		62% {
+			opacity: 1;
+		}
+		88% {
+			opacity: 1;
+		}
+		92%,
+		100% {
+			transform: translateX(152px);
+			opacity: 0;
+		}
+	}
+
+	@keyframes horns {
+		0%,
+		100% {
+			opacity: 0.85;
+			transform: translateY(0);
+		}
+		50% {
+			opacity: 1;
+			transform: translateY(-1.5px);
+		}
+	}
+
+	/* The pointer presses, once, every few seconds. */
+	@keyframes click {
+		0%,
+		74%,
+		100% {
+			transform: none;
+		}
+		79% {
+			transform: translate(3px, 3px) scale(0.94);
+		}
+		86% {
+			transform: none;
+		}
+	}
+
+	@keyframes menu-in {
+		from {
+			opacity: 0;
+			transform: translateY(-8px) scale(0.97);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.btn:hover,
+		.split:hover,
+		.chip:hover,
+		.capability:hover .cap-icon {
+			transform: none;
+		}
+
+		.shot img,
+		.shot:hover img {
+			transform: none;
+		}
+
+		.sheen,
+		.horns,
+		.cursor,
+		.menu {
+			animation: none;
+		}
+
+		.mark-tilt {
+			transition: none;
+		}
+
+		/* Everything below is decoration, and the page has to work without it:
+		   revealed elements must start visible, not stay hidden. */
+		[data-rise],
+		[data-reveal] {
+			opacity: 1;
+			transform: none;
+			transition: none;
+		}
+
+		.mark {
+			animation: none;
+		}
+	}
+
+	/* --- Narrow screens -------------------------------------------------- */
+
+	@media (max-width: 30rem) {
+		/* The two calls to action stack, and a half-width pill looks broken, so
+		   the control spans the column instead. */
+		.cta {
+			flex-direction: column;
+			align-items: stretch;
+		}
+
+		.split {
+			width: 100%;
+		}
+
+		.split [data-primary] {
+			flex: 1;
+			justify-content: center;
+		}
+
+		.btn.ghost {
+			justify-content: center;
+		}
+	}
+</style>

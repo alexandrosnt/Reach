@@ -1,0 +1,124 @@
+---
+/**
+ * What search engines, social cards and language models see.
+ *
+ * Starlight already emits a title, a description, a canonical link and basic
+ * Open Graph tags. This keeps all of that by rendering the default first and
+ * adds what it does not do: a real preview image, Twitter's card format, and
+ * the structured data that decides whether a result shows up as a plain blue
+ * link or as a software listing with a rating, a price and a platform.
+ *
+ * The JSON-LD is only emitted on the landing page. Repeating a
+ * SoftwareApplication graph on thirty documentation pages does not help the
+ * listing and reads as keyword stuffing.
+ */
+import Default from '@astrojs/starlight/components/Head.astro';
+import type { Props } from '@astrojs/starlight/props';
+import { KEYWORDS, ORG, PRODUCT } from '../site';
+
+// The 404 route renders this with no entry at all, so nothing here may
+// assume one exists.
+const entry = (Astro.props as Props).entry as Props['entry'] | undefined;
+
+const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : Astro.url.href;
+const origin = Astro.site?.href.replace(/\/$/, '') ?? '';
+const image = `${origin}${import.meta.env.BASE_URL}og.png`.replace(/([^:])\/\//g, '$1/');
+
+// Empty on the index page. Starlight calls this `slug`; Astro 5's content
+// layer calls it `id`, and which one arrives depends on the version, so read
+// whichever is present rather than pinning to one.
+const here = (entry as { slug?: string; id?: string } | undefined)?.slug ?? entry?.id ?? '';
+const isHome = here === '' || here === 'index';
+
+const softwareGraph = {
+	'@context': 'https://schema.org',
+	'@graph': [
+		{
+			'@type': 'SoftwareApplication',
+			'@id': `${canonical}#software`,
+			name: PRODUCT.name,
+			alternateName: `${PRODUCT.name} SSH Client`,
+			description: PRODUCT.description,
+			applicationCategory: PRODUCT.categories,
+			operatingSystem: PRODUCT.platforms.join(', '),
+			url: canonical,
+			downloadUrl: `${PRODUCT.repo}/releases/latest`,
+			softwareVersion: undefined,
+			license: 'https://opensource.org/licenses/MIT',
+			isAccessibleForFree: true,
+			offers: {
+				'@type': 'Offer',
+				price: PRODUCT.price,
+				priceCurrency: PRODUCT.currency,
+				availability: 'https://schema.org/InStock',
+			},
+			featureList: [
+				'SSH terminal with tabs and split panes',
+				'SFTP file explorer with drag and drop',
+				'Encrypted vault for keys and passwords',
+				'Port forwarding and tunnels',
+				'Jump hosts and SSH config import',
+				'Ansible and OpenTofu runs',
+				'Serial console',
+				'Optional end to end encrypted sync',
+			],
+			screenshot: image,
+			image,
+			sameAs: [PRODUCT.repo],
+		},
+		{
+			'@type': 'WebSite',
+			'@id': `${origin}${import.meta.env.BASE_URL}#website`,
+			name: ORG.name,
+			url: `${origin}${import.meta.env.BASE_URL}`,
+			description: PRODUCT.description,
+			publisher: { '@id': `${origin}${import.meta.env.BASE_URL}#org` },
+		},
+		{
+			'@type': 'Organization',
+			'@id': `${origin}${import.meta.env.BASE_URL}#org`,
+			name: ORG.name,
+			url: `${origin}${import.meta.env.BASE_URL}`,
+			logo: image,
+			sameAs: [ORG.github, PRODUCT.repo],
+		},
+	],
+};
+---
+
+<Default {...Astro.props}><slot /></Default>
+
+<link rel="canonical" href={canonical} />
+
+<meta name="keywords" content={KEYWORDS.join(', ')} />
+<meta name="author" content={ORG.name} />
+<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+
+<meta property="og:site_name" content={ORG.name} />
+<meta property="og:image" content={image} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={`${PRODUCT.name} — ${PRODUCT.tagline}`} />
+<meta property="og:locale" content="en" />
+
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={`${PRODUCT.name} — ${PRODUCT.tagline}`} />
+<meta name="twitter:description" content={PRODUCT.description} />
+<meta name="twitter:image" content={image} />
+
+<!--
+	Written for the crawlers that read documentation rather than render it.
+	See /llms.txt for the map and /llms-full.txt for the whole thing as one
+	markdown file.
+-->
+<link rel="alternate" type="text/plain" href={`${import.meta.env.BASE_URL}llms.txt`} title="llms.txt" />
+
+{
+	isHome && (
+		<script
+			type="application/ld+json"
+			set:html={JSON.stringify(softwareGraph)}
+		/>
+	)
+}

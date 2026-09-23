@@ -1,0 +1,1413 @@
+---
+/**
+ * Reach itself, running in the page.
+ *
+ * A screenshot tells you the app exists. This lets you use it: the tabs
+ * switch, the sessions in the sidebar change which machine you are on, the
+ * terminal takes real typing and answers, files select and open a context
+ * menu, and the automation tabs run. Nothing talks to a server — every answer
+ * is canned — but the shapes, the order of things and the wording are the real
+ * product, so what you try here is what you get once it is installed.
+ *
+ * Deliberately no real hosts, addresses or team names anywhere in the data.
+ */
+
+/** The sidebar. Names are invented and carry no addresses. */
+const SESSIONS = [
+	{ name: 'web-01', tag: 'Production', dot: 'ok' },
+	{ name: 'db-primary', tag: 'Production', dot: 'ok' },
+	{ name: 'cache-node', tag: 'Production', dot: 'ok' },
+	{ name: 'build-runner', tag: 'CI', dot: 'warn' },
+	{ name: 'edge-eu', tag: 'Edge', dot: 'off' },
+];
+
+const TABS = [
+	{ id: 'terminal', label: 'Terminal' },
+	{ id: 'ansible', label: 'Ansible' },
+	{ id: 'tofu', label: 'OpenTofu' },
+];
+
+const FILES = [
+	{ name: 'releases', kind: 'dir', size: '—', when: '2 days ago' },
+	{ name: 'config', kind: 'dir', size: '—', when: '5 days ago' },
+	{ name: 'backup-2026-09-21.tar.gz', kind: 'archive', size: '412 MB', when: '2 days ago' },
+	{ name: 'site.tar.gz', kind: 'archive', size: '88 MB', when: '1 week ago' },
+	{ name: 'deploy.sh', kind: 'file', size: '2.1 KB', when: '1 week ago' },
+	{ name: 'notes.md', kind: 'file', size: '6.4 KB', when: '3 weeks ago' },
+];
+
+const RAIL = [
+	{ label: 'Sessions', view: 'terminal', icon: 'M4 6h16M4 12h16M4 18h16' },
+	{ label: 'Monitoring', view: '', icon: 'M3 12h4l3 8 4-16 3 8h4' },
+	{
+		label: 'File explorer',
+		view: 'files',
+		icon: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+	},
+	{ label: 'Vault', view: '', icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' },
+	{
+		label: 'Tunnels',
+		view: '',
+		icon: 'M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1',
+	},
+];
+
+const ICONS = {
+	dir: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z',
+	archive: 'M4 7h16v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1zM4 7l1.5-4h13L20 7M12 3v8M10 11h4',
+	file: 'M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8zM14 3v5h5',
+};
+---
+
+<div class="demo" data-demo>
+	<!-- The app's own title bar: 38px, secondary ground, exactly as it is in
+	     the product. Every measurement in this component is taken from
+	     src/app.css and src/lib/components/layout rather than eyeballed. -->
+	<div class="titlebar">
+		<span class="brand">
+			<svg viewBox="0 0 24 24" aria-hidden="true">
+				<path d="M12 3 20 7.5 12 12 4 7.5Z" fill="#0a84ff" />
+				<path d="M4 7.5 12 12v9l-8-4.5Z" fill="#0a84ff" opacity="0.55" />
+				<path d="M20 7.5 12 12v9l8-4.5Z" fill="#409cff" opacity="0.8" />
+			</svg>
+			Reach
+		</span>
+		<span class="ver">v0.6.5</span>
+		<span class="live"><i aria-hidden="true"></i>Live demo — type in it</span>
+		<button class="icon-btn" type="button" aria-label="Settings">
+			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+				<circle cx="12" cy="12" r="3" />
+				<path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1.08-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 8.9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+			</svg>
+		</button>
+	</div>
+
+	<div class="tabbar">
+		<div class="pages" role="tablist" aria-label="Reach workspace">
+			{
+				TABS.map((t, i) => (
+					<button
+						class="page-btn"
+						type="button"
+						role="tab"
+						id={`demo-tab-${t.id}`}
+						aria-controls={`demo-panel-${t.id}`}
+						aria-selected={i === 0 ? 'true' : 'false'}
+						tabindex={i === 0 ? 0 : -1}
+						data-tab={t.id}
+					>
+						{t.label}
+					</button>
+				))
+			}
+		</div>
+		<span class="divider" aria-hidden="true"></span>
+		<div class="tabs-scroll">
+			<span class="tab is-active">
+				<i class="dot ok" aria-hidden="true"></i>
+				<span class="tab-title" data-host-label>web-01</span>
+				<span class="tab-close" aria-hidden="true">
+					<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>
+				</span>
+			</span>
+		</div>
+	</div>
+
+	<div class="body">
+		<nav class="rail" aria-label="Sections">
+			{
+				RAIL.map((r, i) => (
+					<button
+						class="rail-btn"
+						type="button"
+						title={r.label}
+						aria-label={r.label}
+						aria-pressed={i === 0 ? 'true' : 'false'}
+						data-rail
+						data-view={r.view}
+					>
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="1.7"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							aria-hidden="true"
+						>
+							<path d={r.icon} />
+						</svg>
+					</button>
+				))
+			}
+		</nav>
+
+		<aside class="sessions">
+			<div class="vault">
+				<span>All vaults</span>
+				<small>5 sessions · 1 shared</small>
+			</div>
+			<ul>
+				{
+					SESSIONS.map((s, i) => (
+						<li>
+							<button
+								class="session"
+								type="button"
+								aria-pressed={i === 0 ? 'true' : 'false'}
+								data-host={s.name}
+							>
+								<i class={`dot ${s.dot}`} aria-hidden="true" />
+								<span>
+									{s.name}
+									<small>{s.tag}</small>
+								</span>
+							</button>
+						</li>
+					))
+				}
+			</ul>
+		</aside>
+
+		<main class="pane">
+			<!-- Terminal ------------------------------------------------------ -->
+			<section
+				class="panel term"
+				id="demo-panel-terminal"
+				role="tabpanel"
+				aria-labelledby="demo-tab-terminal"
+				data-panel="terminal"
+			>
+				<div class="screen" data-screen role="log" aria-live="polite" />
+				<!-- A real input, so typing works with a phone keyboard too and
+				     none of this needs a synthetic key handler. -->
+				<label class="line prompt-line">
+					<span class="prompt"
+						>demo@<b data-host-label>web-01</b>:<i>~</i>$</span
+					>
+					<input
+						class="cmd"
+						type="text"
+						spellcheck="false"
+						autocomplete="off"
+						autocapitalize="off"
+						aria-label="Demo terminal input"
+						data-cmd
+					/>
+				</label>
+			</section>
+
+			<!-- Files --------------------------------------------------------- -->
+			<section
+				class="panel files"
+				id="demo-panel-files"
+				aria-label="File explorer"
+				data-panel="files"
+				hidden
+			>
+				<div class="path">
+					<span>/srv/<b data-host-label>web-01</b>/</span>
+					<small>SFTP</small>
+				</div>
+				<div class="rows" data-rows>
+					{
+						FILES.map((f) => (
+							<button class="row" type="button" data-file={f.name} data-kind={f.kind}>
+								<svg
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="1.6"
+									stroke-linecap="round"
+									stroke-linejoin="round"
+									aria-hidden="true"
+								>
+									<path d={ICONS[f.kind as keyof typeof ICONS]} />
+								</svg>
+								<span class="fname">{f.name}</span>
+								<span class="fsize">{f.size}</span>
+								<span class="fwhen">{f.when}</span>
+							</button>
+						))
+					}
+				</div>
+				<p class="hint">Right-click a file to see what Reach does with it.</p>
+
+				<div class="ctx" data-ctx hidden role="menu" aria-label="File actions">
+					<button type="button" role="menuitem">Download</button>
+					<button type="button" role="menuitem">Rename</button>
+					<button type="button" role="menuitem" class="has-sub">
+						Archive
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						>
+							<path d="m9 6 6 6-6 6" />
+						</svg>
+					</button>
+					<button type="button" role="menuitem">Permissions</button>
+					<button type="button" role="menuitem" class="danger">Delete</button>
+				</div>
+			</section>
+
+			<!-- Ansible ------------------------------------------------------- -->
+			<section
+				class="panel run"
+				id="demo-panel-ansible"
+				role="tabpanel"
+				aria-labelledby="demo-tab-ansible"
+				data-panel="ansible"
+				hidden
+			>
+				<div class="run-bar">
+					<span class="play">site.yml</span>
+					<span class="against">against <b>Production</b> · 3 hosts</span>
+					<button class="go" type="button" data-run="ansible">Run</button>
+				</div>
+				<div class="bar"><i data-bar /></div>
+				<div class="screen small" data-out="ansible" role="log" aria-live="polite" />
+			</section>
+
+			<!-- OpenTofu ------------------------------------------------------ -->
+			<section
+				class="panel run"
+				id="demo-panel-tofu"
+				role="tabpanel"
+				aria-labelledby="demo-tab-tofu"
+				data-panel="tofu"
+				hidden
+			>
+				<div class="run-bar">
+					<span class="play">infra/edge</span>
+					<span class="against">workspace <b>staging</b></span>
+					<button class="go" type="button" data-run="tofu">Plan</button>
+				</div>
+				<div class="bar"><i data-bar /></div>
+				<div class="screen small" data-out="tofu" role="log" aria-live="polite" />
+			</section>
+		</main>
+	</div>
+
+	<div class="statusbar">
+		<span><i class="dot ok" aria-hidden="true"></i> Connected</span>
+		<span data-status-host>demo@web-01</span>
+		<span class="spacer"></span>
+		<span>Vault unlocked</span>
+		<span>UTF-8</span>
+	</div>
+</div>
+
+<script>
+	/*
+	 * The demo's behaviour. Every answer is canned: nothing here opens a
+	 * connection, reads anything about the visitor, or leaves the page.
+	 */
+
+	const demo = document.querySelector<HTMLElement>('[data-demo]');
+	const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+	if (demo) {
+		const one = <T extends Element>(sel: string) => demo.querySelector<T>(sel);
+		const all = <T extends Element>(sel: string) => [...demo.querySelectorAll<T>(sel)];
+
+		let host = 'web-01';
+
+		/* --- Tabs ---------------------------------------------------------- */
+
+		const tabs = all<HTMLButtonElement>('[data-tab]');
+		const panels = all<HTMLElement>('[data-panel]');
+
+		const showView = (id: string) => {
+			for (const panel of panels) panel.hidden = panel.dataset.panel !== id;
+		};
+
+		const show = (id: string) => {
+			for (const tab of tabs) {
+				const on = tab.dataset.tab === id;
+				tab.setAttribute('aria-selected', String(on));
+				tab.tabIndex = on ? 0 : -1;
+			}
+			showView(id);
+		};
+
+		const litRail = (view: string) => {
+			for (const button of all('[data-rail]')) {
+				button.setAttribute('aria-pressed', String(button.getAttribute('data-view') === view));
+			}
+		};
+
+		for (const tab of tabs) {
+			tab.addEventListener('click', () => {
+				show(tab.dataset.tab ?? 'terminal');
+				litRail('terminal');
+			});
+		}
+
+		// Left and right move between tabs, which is what a tablist is expected
+		// to do and costs five lines.
+		one('[role="tablist"]')?.addEventListener('keydown', (event) => {
+			const key = (event as KeyboardEvent).key;
+			const step = key === 'ArrowRight' ? 1 : key === 'ArrowLeft' ? -1 : 0;
+			if (!step) return;
+			event.preventDefault();
+			const at = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+			const next = tabs[(at + step + tabs.length) % tabs.length];
+			show(next.dataset.tab ?? 'terminal');
+			next.focus();
+		});
+
+		/* --- Terminal ------------------------------------------------------ */
+
+		const screen = one<HTMLElement>('[data-screen]');
+		const input = one<HTMLInputElement>('[data-cmd]');
+
+		/** One line on screen. `tone` only picks a colour. */
+		const write = (text: string, tone = '') => {
+			if (!screen) return null;
+			const line = document.createElement('div');
+			line.className = tone ? `line ${tone}` : 'line';
+			line.textContent = text;
+			screen.append(line);
+			screen.scrollTop = screen.scrollHeight;
+			return line;
+		};
+
+		const echo = (command: string) => {
+			const line = write('');
+			if (!line) return;
+			const prompt = document.createElement('span');
+			prompt.className = 'prompt';
+			prompt.textContent = `demo@${host}:~$`;
+			const typed = document.createElement('span');
+			typed.className = 'typed';
+			typed.textContent = ` ${command}`;
+			line.append(prompt, typed);
+		};
+
+		// Left column is the distribution's mark, right column the facts. Kept
+		// as two columns so neither has to be padded to a fixed width.
+		const BANNER: [string, string, string][] = [
+			['       /\\      ', 'OS', 'Alpine Linux v3.24 x86_64'],
+			['      /  \\     ', 'Kernel', 'Linux 6.18.52-0-lts'],
+			['     / /\\ \\    ', 'Uptime', '3 days, 23 hours, 44 mins'],
+			['    / /  \\ \\   ', 'Packages', '192 (apk)'],
+			['   / /    \\ \\  ', 'Shell', 'ash 1.37.0'],
+			['  /_/      \\_\\ ', 'Memory', '412 MiB / 2.00 GiB'],
+			['               ', 'Managed with', 'Reach'],
+		];
+
+		const fastfetch = () => {
+			for (const [art, key, value] of BANNER) {
+				const line = write('');
+				if (!line) continue;
+				const artEl = document.createElement('span');
+				artEl.className = 'art';
+				artEl.textContent = art;
+				const keyEl = document.createElement('b');
+				keyEl.className = 'key';
+				keyEl.textContent = `${key}: `;
+				const valueEl = document.createElement('span');
+				valueEl.textContent = value;
+				line.append(artEl, keyEl, valueEl);
+			}
+		};
+
+		const HELP = [
+			'Commands this demo knows:',
+			'  fastfetch    what the machine is',
+			'  ls           list the working directory',
+			'  df           disk usage',
+			'  uptime       how long it has been up',
+			'  whoami       the current user',
+			'  clear        clear the screen',
+			'',
+			'The real terminal runs whatever your shell runs.',
+		];
+
+		const run = (raw: string) => {
+			const command = raw.trim();
+			echo(command);
+			if (!command) return;
+
+			const [name] = command.split(/\s+/);
+			switch (name) {
+				case 'help':
+				case '?':
+					for (const line of HELP) write(line);
+					break;
+				case 'fastfetch':
+				case 'neofetch':
+				case 'ff':
+					fastfetch();
+					break;
+				case 'ls':
+					write('releases  config  backup-2026-09-21.tar.gz  site.tar.gz', 'ok');
+					write('deploy.sh  notes.md', 'ok');
+					break;
+				case 'pwd':
+					write('/root');
+					break;
+				case 'whoami':
+					write('demo');
+					break;
+				case 'uptime':
+					write(' 19:48:02 up 3 days, 23:44,  1 user,  load average: 0.04 0.09 0.06');
+					break;
+				case 'df':
+					write('Filesystem      Size  Used Avail Use% Mounted on');
+					write('/dev/vda1        40G   11G   27G  29% /');
+					break;
+				case 'clear':
+					if (screen) screen.textContent = '';
+					break;
+				case 'exit':
+					write('This one stays open. Install Reach for the real thing.', 'ok');
+					break;
+				case 'reach':
+					write('Reach v0.6.5 — SSH, SFTP, tunnels, vault, Ansible, OpenTofu.', 'ok');
+					break;
+				default:
+					write(`ash: ${name}: not found`, 'bad');
+					write("Type 'help' to see what this demo knows.", 'dim');
+			}
+		};
+
+		input?.addEventListener('keydown', (event) => {
+			if (event.key !== 'Enter') return;
+			event.preventDefault();
+			run(input.value);
+			input.value = '';
+		});
+
+		const reset = () => {
+			if (screen) screen.textContent = '';
+			write(`Connected to ${host}. This is a demo — nothing leaves the page.`, 'dim');
+			write('');
+			fastfetch();
+			write('');
+			write("Type a command. 'help' lists what it knows.", 'dim');
+		};
+
+		// Clicking the screen puts the caret back in the input, the way a
+		// terminal behaves — but never while text is selected, or copying a line
+		// would be impossible.
+		one('.term')?.addEventListener('click', (event) => {
+			if ((event.target as HTMLElement).closest('input')) return;
+			if (getSelection()?.toString()) return;
+			input?.focus({ preventScroll: true });
+		});
+
+		reset();
+
+		/* --- Sessions and the rail ----------------------------------------- */
+
+		const setHost = (name: string) => {
+			host = name;
+			for (const el of all('[data-host-label]')) el.textContent = name;
+			const status = one('[data-status-host]');
+			if (status) status.textContent = `demo@${name}`;
+		};
+
+		for (const session of all<HTMLButtonElement>('[data-host]')) {
+			session.addEventListener('click', () => {
+				for (const other of all('[data-host]')) other.setAttribute('aria-pressed', 'false');
+				session.setAttribute('aria-pressed', 'true');
+				setHost(session.dataset.host ?? 'web-01');
+				show('terminal');
+				reset();
+			});
+		}
+
+		for (const button of all<HTMLButtonElement>('[data-rail]')) {
+			button.addEventListener('click', () => {
+				for (const other of all('[data-rail]')) other.setAttribute('aria-pressed', 'false');
+				button.setAttribute('aria-pressed', 'true');
+				// The rail sits beside the page switcher rather than inside it, so
+				// opening the file explorer has to leave the page tabs alone.
+				const view = button.dataset.view;
+				if (view) showView(view);
+			});
+		}
+
+		/* --- Files --------------------------------------------------------- */
+
+		const ctx = one<HTMLElement>('[data-ctx]');
+		const rows = one<HTMLElement>('[data-rows]');
+		const closeMenu = () => {
+			if (ctx) ctx.hidden = true;
+		};
+
+		rows?.addEventListener('contextmenu', (event) => {
+			const row = (event.target as HTMLElement).closest<HTMLElement>('.row');
+			if (!row || !ctx || !rows) return;
+			event.preventDefault();
+
+			for (const other of all('.row')) other.classList.remove('is-target');
+			row.classList.add('is-target');
+
+			// Placed inside the window, and flipped up when it would otherwise
+			// hang off the bottom of it.
+			ctx.hidden = false;
+			const box = rows.getBoundingClientRect();
+			const x = Math.min(event.clientX - box.left, box.width - ctx.offsetWidth - 8);
+			const y = event.clientY - box.top;
+			const flip = y + ctx.offsetHeight > box.height;
+			ctx.style.left = `${Math.max(8, x)}px`;
+			ctx.style.top = `${Math.max(8, flip ? y - ctx.offsetHeight : y)}px`;
+		});
+
+		rows?.addEventListener('click', (event) => {
+			const row = (event.target as HTMLElement).closest<HTMLElement>('.row');
+			if (!row) return;
+			for (const other of all('.row')) other.classList.remove('is-selected');
+			row.classList.add('is-selected');
+			closeMenu();
+		});
+
+		document.addEventListener('click', (event) => {
+			if (!ctx || ctx.hidden) return;
+			if (!(event.target as HTMLElement).closest('[data-ctx]')) closeMenu();
+		});
+		document.addEventListener('keydown', (event) => {
+			if (event.key === 'Escape') closeMenu();
+		});
+		for (const item of all<HTMLButtonElement>('[data-ctx] button')) {
+			item.addEventListener('click', closeMenu);
+		}
+
+		/* --- Runs ---------------------------------------------------------- */
+
+		const SCRIPTS: Record<string, [string, string][]> = {
+			ansible: [
+				['PLAY [Deploy site] *********************************************', ''],
+				['TASK [Gathering facts] *****************************************', ''],
+				['ok: [web-01]', 'ok'],
+				['ok: [db-primary]', 'ok'],
+				['ok: [cache-node]', 'ok'],
+				['TASK [Sync release] ********************************************', ''],
+				['changed: [web-01]', 'warn'],
+				['changed: [cache-node]', 'warn'],
+				['ok: [db-primary]', 'ok'],
+				['TASK [Restart service] *****************************************', ''],
+				['changed: [web-01]', 'warn'],
+				['PLAY RECAP *****************************************************', ''],
+				['web-01      : ok=4  changed=2  failed=0', 'ok'],
+				['db-primary  : ok=3  changed=0  failed=0', 'ok'],
+				['cache-node  : ok=4  changed=1  failed=0', 'ok'],
+			],
+			tofu: [
+				['Initialising the backend...', 'dim'],
+				['Initialising provider plugins...', 'dim'],
+				['OpenTofu will perform the following actions:', ''],
+				['  # module.edge.compute_instance.node[0] will be created', 'dim'],
+				['  + resource "compute_instance" "node" {', 'ok'],
+				['      + name   = "edge-eu-2"', 'ok'],
+				['      + region = "eu-central"', 'ok'],
+				['      + size   = "s-2vcpu-4gb"', 'ok'],
+				['    }', 'ok'],
+				['  # module.edge.dns_record.node[0] will be updated in place', 'dim'],
+				['  ~ resource "dns_record" "node" {', 'warn'],
+				['      ~ ttl = 3600 -> 300', 'warn'],
+				['    }', 'warn'],
+				['Plan: 1 to add, 1 to change, 0 to destroy.', 'ok'],
+			],
+		};
+
+		const running = new Set<string>();
+
+		for (const button of all<HTMLButtonElement>('[data-run]')) {
+			const which = button.dataset.run ?? '';
+			const out = one<HTMLElement>(`[data-out="${which}"]`);
+			const bar = button.closest('.panel')?.querySelector<HTMLElement>('[data-bar]');
+
+			button.addEventListener('click', () => {
+				if (running.has(which) || !out) return;
+				running.add(which);
+				button.disabled = true;
+				out.textContent = '';
+				if (bar) bar.style.width = '0%';
+
+				const script = SCRIPTS[which] ?? [];
+				// Lines land one at a time so it reads as work happening, and all
+				// at once for anyone who asked not to see movement.
+				const step = (i: number) => {
+					if (i >= script.length) {
+						running.delete(which);
+						button.disabled = false;
+						return;
+					}
+					const [text, tone] = script[i];
+					const line = document.createElement('div');
+					line.className = tone ? `line ${tone}` : 'line';
+					line.textContent = text;
+					out.append(line);
+					out.scrollTop = out.scrollHeight;
+					if (bar) bar.style.width = `${Math.round(((i + 1) / script.length) * 100)}%`;
+					window.setTimeout(() => step(i + 1), reduced ? 0 : 80 + Math.random() * 130);
+				};
+				step(0);
+			});
+		}
+	}
+</script>
+
+<style>
+	/*
+	 * Every value below is the app's own, copied from src/app.css and
+	 * src/lib/components/layout/*.svelte rather than matched by eye: the same
+	 * tokens, the same 38px title bar, the same 36px tab bar with its 6px
+	 * page pills, the same 24px status bar. If the product's tokens change,
+	 * this is the file to change with them.
+	 */
+
+	.demo {
+		/* src/app.css, dark theme. */
+		--bg-primary: #0a0a0a;
+		--bg-secondary: #141414;
+		--bg-elevated: #1c1c1e;
+		--border: rgba(255, 255, 255, 0.08);
+		--text-primary: #f5f5f7;
+		--text-secondary: #86868b;
+		--text-tertiary: #6e6e73;
+		--accent: #0a84ff;
+		--accent-hover: #409cff;
+		--success: #30d158;
+		--warning: #ffd60a;
+		--danger: #ff453a;
+		--surface-hover: rgba(255, 255, 255, 0.06);
+		--surface-active: rgba(255, 255, 255, 0.1);
+		--mono: 'JetBrains Mono', 'SF Mono', 'Cascadia Code', ui-monospace, monospace;
+		--ease: cubic-bezier(0.25, 0.1, 0.25, 1);
+
+		display: flex;
+		flex-direction: column;
+		overflow: hidden;
+		border-radius: 12px;
+		border: 1px solid var(--border);
+		background: var(--bg-primary);
+		color: var(--text-primary);
+		font-family: 'Inter', system-ui, -apple-system, sans-serif;
+		font-size: 0.8125rem;
+		/* Fixed, so switching pages never changes the page height under you. */
+		height: 31rem;
+	}
+
+	/* Title bar — 38px ------------------------------------------------------ */
+
+	.titlebar {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		height: 38px;
+		min-height: 38px;
+		padding: 0 12px;
+		background-color: var(--bg-secondary);
+		border-bottom: 1px solid var(--border);
+	}
+
+	.brand {
+		display: inline-flex;
+		align-items: center;
+		gap: 7px;
+		font-size: 0.8125rem;
+		font-weight: 600;
+		color: var(--text-primary);
+	}
+
+	.brand svg {
+		width: 18px;
+		height: 18px;
+	}
+
+	.ver {
+		font-size: 0.6875rem;
+		color: var(--text-secondary);
+	}
+
+	.live {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		margin-left: auto;
+		font-size: 0.6875rem;
+		color: var(--text-secondary);
+	}
+
+	.live i {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: var(--success);
+		animation: pulse 2.4s ease-out infinite;
+	}
+
+	.icon-btn {
+		display: grid;
+		place-items: center;
+		width: 28px;
+		height: 28px;
+		border: none;
+		border-radius: 8px;
+		background: transparent;
+		color: var(--text-secondary);
+		cursor: pointer;
+		transition:
+			background-color 200ms var(--ease),
+			color 200ms var(--ease);
+	}
+
+	.icon-btn svg {
+		width: 15px;
+		height: 15px;
+	}
+
+	.icon-btn:hover {
+		background-color: var(--surface-hover);
+		color: var(--text-primary);
+	}
+
+	/* Tab bar — 36px -------------------------------------------------------- */
+
+	.tabbar {
+		display: flex;
+		align-items: stretch;
+		height: 36px;
+		min-height: 36px;
+		background-color: var(--bg-primary);
+		border-bottom: 1px solid var(--border);
+		user-select: none;
+	}
+
+	.pages {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		padding: 0 8px;
+		flex-shrink: 0;
+	}
+
+	.page-btn {
+		display: flex;
+		align-items: center;
+		padding: 4px 10px;
+		border: none;
+		border-radius: 6px;
+		background: transparent;
+		color: var(--text-secondary);
+		font: inherit;
+		font-size: 0.6875rem;
+		font-weight: 500;
+		cursor: pointer;
+		white-space: nowrap;
+		transition:
+			background-color 150ms ease,
+			color 150ms ease;
+	}
+
+	.page-btn:hover {
+		background-color: var(--bg-secondary);
+		color: var(--text-primary);
+	}
+
+	.page-btn[aria-selected='true'] {
+		background-color: var(--bg-elevated);
+		color: var(--text-primary);
+	}
+
+	.divider {
+		width: 1px;
+		margin: 8px 0;
+		background: var(--border);
+		flex-shrink: 0;
+	}
+
+	.tabs-scroll {
+		display: flex;
+		flex: 1;
+		overflow: hidden;
+	}
+
+	.tab {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		min-width: 120px;
+		max-width: 200px;
+		padding: 0 8px 0 12px;
+		border-bottom: 2px solid transparent;
+		color: var(--text-secondary);
+		font-size: 0.75rem;
+		white-space: nowrap;
+		flex-shrink: 0;
+	}
+
+	.tab.is-active {
+		background-color: var(--bg-secondary);
+		color: var(--text-primary);
+		border-bottom-color: var(--accent);
+	}
+
+	.tab-title {
+		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.tab-close {
+		display: grid;
+		place-items: center;
+		width: 18px;
+		height: 18px;
+		border-radius: 50%;
+		color: var(--text-tertiary);
+	}
+
+	.tab-close svg {
+		width: 9px;
+		height: 9px;
+	}
+
+	/* Body ------------------------------------------------------------------ */
+
+	.body {
+		display: grid;
+		grid-template-columns: 40px 200px 1fr;
+		flex: 1;
+		min-height: 0;
+	}
+
+	.rail {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		gap: 2px;
+		padding: 8px 0;
+		border-right: 1px solid var(--border);
+		background-color: var(--bg-secondary);
+	}
+
+	.rail-btn {
+		display: grid;
+		place-items: center;
+		width: 28px;
+		height: 28px;
+		border: 0;
+		border-radius: 8px;
+		background: none;
+		color: var(--text-secondary);
+		cursor: pointer;
+		transition:
+			background-color 200ms var(--ease),
+			color 200ms var(--ease);
+	}
+
+	.rail-btn svg {
+		width: 16px;
+		height: 16px;
+	}
+
+	.rail-btn:hover {
+		background-color: var(--surface-hover);
+		color: var(--text-primary);
+	}
+
+	.rail-btn[aria-pressed='true'] {
+		color: var(--accent);
+		background: color-mix(in srgb, var(--accent) 14%, transparent);
+	}
+
+	.sessions {
+		display: flex;
+		flex-direction: column;
+		min-height: 0;
+		border-right: 1px solid var(--border);
+		background-color: var(--bg-secondary);
+	}
+
+	.vault {
+		padding: 8px 12px;
+		border-bottom: 1px solid var(--border);
+	}
+
+	.vault span {
+		display: block;
+		font-size: 0.75rem;
+		font-weight: 600;
+	}
+
+	.vault small {
+		font-size: 0.6875rem;
+		color: var(--text-secondary);
+	}
+
+	.sessions ul {
+		margin: 0;
+		padding: 4px;
+		list-style: none;
+		overflow-y: auto;
+	}
+
+	.session {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		width: 100%;
+		padding: 6px 8px;
+		border: 0;
+		border-radius: 8px;
+		background: none;
+		color: inherit;
+		font: inherit;
+		text-align: left;
+		cursor: pointer;
+		transition: background-color 200ms var(--ease);
+	}
+
+	.session:hover {
+		background-color: var(--surface-hover);
+	}
+
+	.session[aria-pressed='true'] {
+		background: color-mix(in srgb, var(--accent) 14%, transparent);
+		color: var(--text-primary);
+	}
+
+	.session > span {
+		display: block;
+		font-size: 0.75rem;
+		line-height: 1.3;
+	}
+
+	.session small {
+		display: block;
+		font-size: 0.625rem;
+		color: var(--text-secondary);
+	}
+
+	.dot {
+		flex: none;
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background-color: var(--text-secondary);
+	}
+
+	.dot.ok {
+		background-color: var(--success);
+	}
+
+	.dot.warn {
+		background-color: var(--warning);
+	}
+
+	.pane {
+		position: relative;
+		min-width: 0;
+		min-height: 0;
+		background-color: var(--bg-primary);
+	}
+
+	.panel {
+		display: flex;
+		flex-direction: column;
+		height: 100%;
+		min-height: 0;
+	}
+
+	/* `display: flex` above beats the browser's rule for [hidden], so inactive
+	   panels have to be hidden explicitly or all four stack up. */
+	.panel[hidden] {
+		display: none;
+	}
+
+	/* Terminal --------------------------------------------------------------- */
+
+	.term {
+		padding: 8px 12px;
+		cursor: text;
+	}
+
+	.screen {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+	}
+
+	.screen,
+	.prompt-line {
+		font-family: var(--mono);
+		font-size: 0.75rem;
+		line-height: 1.55;
+	}
+
+	/* Everything below is :global because these elements are created by the
+	   script, and Astro scopes its CSS with an attribute that only the markup
+	   above is given. Without it the terminal output loses its colours and,
+	   worse, its `white-space: pre` — which is what collapses the runs of
+	   spaces the distribution mark is drawn with. */
+	.demo :global(.line) {
+		white-space: pre-wrap;
+		word-break: break-word;
+		min-height: 1.55em;
+	}
+
+	.demo :global(.line.ok) {
+		color: var(--success);
+	}
+
+	.demo :global(.line.warn) {
+		color: var(--warning);
+	}
+
+	.demo :global(.line.bad) {
+		color: var(--danger);
+	}
+
+	.demo :global(.line.dim) {
+		color: var(--text-tertiary);
+	}
+
+	.demo :global(.art) {
+		display: inline-block;
+		width: 16ch;
+		white-space: pre;
+		color: var(--accent-hover);
+	}
+
+	.demo :global(.key) {
+		color: var(--accent-hover);
+		font-weight: 600;
+	}
+
+	.demo :global(.prompt) {
+		color: var(--success);
+		white-space: pre;
+	}
+
+	.demo :global(.typed) {
+		color: var(--text-primary);
+	}
+
+	.prompt-line {
+		display: flex;
+		align-items: baseline;
+		gap: 6px;
+		padding-top: 2px;
+	}
+
+	.prompt-line :global(.prompt) b {
+		color: var(--accent-hover);
+		font-weight: 400;
+	}
+
+	.prompt-line :global(.prompt) i {
+		font-style: normal;
+		color: var(--text-secondary);
+	}
+
+	.cmd {
+		flex: 1;
+		min-width: 0;
+		border: 0;
+		background: none;
+		color: var(--text-primary);
+		font: inherit;
+		caret-color: var(--accent);
+		outline: none;
+	}
+
+	/* Files ------------------------------------------------------------------ */
+
+	.path {
+		display: flex;
+		align-items: baseline;
+		gap: 8px;
+		padding: 8px 12px;
+		border-bottom: 1px solid var(--border);
+		font-family: var(--mono);
+		font-size: 0.75rem;
+		color: var(--text-secondary);
+	}
+
+	.path b {
+		color: var(--accent-hover);
+		font-weight: 400;
+	}
+
+	.path small {
+		margin-left: auto;
+		font-size: 0.625rem;
+		text-transform: uppercase;
+		letter-spacing: 0.06em;
+	}
+
+	.rows {
+		position: relative;
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+		padding: 4px;
+	}
+
+	.row {
+		display: grid;
+		grid-template-columns: 18px 1fr auto auto;
+		align-items: center;
+		gap: 10px;
+		width: 100%;
+		padding: 6px 8px;
+		border: 0;
+		border-radius: 8px;
+		background: none;
+		color: inherit;
+		font: inherit;
+		font-size: 0.75rem;
+		text-align: left;
+		cursor: default;
+		transition: background-color 150ms var(--ease);
+	}
+
+	.row svg {
+		width: 15px;
+		height: 15px;
+		color: var(--text-secondary);
+	}
+
+	.row[data-kind='dir'] svg {
+		color: var(--accent);
+	}
+
+	.row[data-kind='archive'] svg {
+		color: var(--warning);
+	}
+
+	.row:hover {
+		background-color: var(--surface-hover);
+	}
+
+	.row.is-selected {
+		background: color-mix(in srgb, var(--accent) 14%, transparent);
+	}
+
+	/* The row you right-clicked, so there is never a doubt which one the menu
+	   is about — the same affordance the app itself grew. */
+	.row.is-target {
+		background: color-mix(in srgb, var(--accent) 22%, transparent);
+		box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 55%, transparent);
+	}
+
+	.fsize,
+	.fwhen {
+		font-size: 0.6875rem;
+		color: var(--text-secondary);
+		font-variant-numeric: tabular-nums;
+	}
+
+	.fwhen {
+		min-width: 6.5em;
+		text-align: right;
+	}
+
+	.hint {
+		margin: 0;
+		padding: 6px 12px;
+		border-top: 1px solid var(--border);
+		font-size: 0.6875rem;
+		color: var(--text-tertiary);
+	}
+
+	.ctx {
+		position: absolute;
+		z-index: 5;
+		min-width: 11rem;
+		padding: 4px;
+		border-radius: 12px;
+		border: 1px solid var(--border);
+		background-color: var(--bg-elevated);
+		box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+		animation: menu-pop 0.14s var(--ease);
+	}
+
+	.ctx button {
+		display: flex;
+		align-items: center;
+		width: 100%;
+		padding: 6px 8px;
+		border: 0;
+		border-radius: 8px;
+		background: none;
+		color: var(--text-primary);
+		font: inherit;
+		font-size: 0.75rem;
+		text-align: left;
+		cursor: pointer;
+	}
+
+	.ctx button:hover {
+		background: color-mix(in srgb, var(--accent) 18%, transparent);
+	}
+
+	.ctx button.danger {
+		color: var(--danger);
+	}
+
+	.ctx button.danger:hover {
+		background: color-mix(in srgb, var(--danger) 18%, transparent);
+	}
+
+	.ctx .has-sub svg {
+		width: 12px;
+		height: 12px;
+		margin-left: auto;
+		color: var(--text-secondary);
+	}
+
+	/* Runs ------------------------------------------------------------------- */
+
+	.run-bar {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 8px 12px;
+		border-bottom: 1px solid var(--border);
+	}
+
+	.play {
+		font-family: var(--mono);
+		font-size: 0.75rem;
+		font-weight: 600;
+		color: var(--accent-hover);
+	}
+
+	.against {
+		font-size: 0.6875rem;
+		color: var(--text-secondary);
+	}
+
+	.against b {
+		color: var(--text-primary);
+		font-weight: 600;
+	}
+
+	.go {
+		margin-left: auto;
+		padding: 5px 14px;
+		border: 0;
+		border-radius: 8px;
+		background-color: var(--accent);
+		color: #fff;
+		font: inherit;
+		font-size: 0.75rem;
+		font-weight: 600;
+		cursor: pointer;
+		transition:
+			background-color 200ms var(--ease),
+			opacity 200ms var(--ease);
+	}
+
+	.go:hover:not(:disabled) {
+		background-color: var(--accent-hover);
+	}
+
+	.go:disabled {
+		opacity: 0.5;
+		cursor: default;
+	}
+
+	.bar {
+		height: 2px;
+		background: rgba(255, 255, 255, 0.06);
+	}
+
+	.bar i {
+		display: block;
+		width: 0;
+		height: 100%;
+		background-color: var(--accent);
+		transition: width 0.25s var(--ease);
+	}
+
+	.screen.small {
+		padding: 8px 12px;
+	}
+
+	/* Status bar — 24px ------------------------------------------------------ */
+
+	.statusbar {
+		display: flex;
+		align-items: center;
+		gap: 16px;
+		height: 24px;
+		min-height: 24px;
+		padding: 0 12px;
+		background-color: var(--bg-secondary);
+		border-top: 1px solid var(--border);
+		font-size: 0.6875rem;
+		color: var(--text-secondary);
+	}
+
+	.statusbar span {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+	}
+
+	.spacer {
+		flex: 1;
+	}
+
+	/* Motion and small screens ----------------------------------------------- */
+
+	@keyframes pulse {
+		0% {
+			box-shadow: 0 0 0 0 color-mix(in srgb, var(--success) 60%, transparent);
+		}
+		70%,
+		100% {
+			box-shadow: 0 0 0 6px transparent;
+		}
+	}
+
+	@keyframes menu-pop {
+		from {
+			opacity: 0;
+			transform: scale(0.96);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+
+	/* The session list is the first thing to go: the pane is what people came
+	   to press, and 200px of sidebar is most of a phone. */
+	@media (max-width: 52rem) {
+		.body {
+			grid-template-columns: 40px 1fr;
+		}
+
+		.sessions,
+		.fwhen {
+			display: none;
+		}
+
+		.demo {
+			height: 27rem;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.live i,
+		.ctx {
+			animation: none;
+		}
+
+		.bar i {
+			transition: none;
+		}
+	}
+</style>
