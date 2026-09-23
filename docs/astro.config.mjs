@@ -60,7 +60,9 @@ export default defineConfig({
 					items: [
 						{ label: 'SSH Terminal', slug: 'features/ssh-terminal' },
 						{ label: 'Session Manager', slug: 'features/sessions' },
+						{ label: 'Host Key Verification', slug: 'features/host-keys' },
 						{ label: 'File Explorer (SFTP)', slug: 'features/file-explorer' },
+						{ label: 'Snippets', slug: 'features/snippets' },
 						{ label: 'Port Tunneling', slug: 'features/tunnels' },
 						{ label: 'System Monitoring', slug: 'features/monitoring' },
 						{ label: 'Serial Console', slug: 'features/serial' },
@@ -68,6 +70,8 @@ export default defineConfig({
 						{ label: 'Ansible', slug: 'features/ansible' },
 						{ label: 'OpenTofu', slug: 'features/opentofu' },
 						{ label: 'Plugins', slug: 'features/plugins' },
+						{ label: 'Themes', slug: 'features/themes' },
+						{ label: 'Marketplace', slug: 'features/marketplace' },
 						{ label: 'AI Assistant', slug: 'features/ai-assistant' },
 						{ label: 'MCP Server', slug: 'features/mcp-server' },
 						{ label: 'Recipes', slug: 'features/recipes' },

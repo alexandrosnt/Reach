@@ -51,12 +51,12 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 ### Productivity
 
 - **Port Tunneling** · Local, remote, and dynamic SOCKS forwarding. Set it up once, save it with the session.
-- **Multi-Exec** · Broadcast the same command to 10 servers at once. Handy for fleet updates.
+- **Snippets** · Save the commands you keep retyping and complete them with Tab. Prefix-matched, so a hundred of them feel like three.
 - **System Monitoring** · Live CPU, memory, and disk stats from connected hosts without installing agents.
 
 ### Infrastructure as Code
 
-- **Ansible** · Manage playbooks, inventories, roles, and collections. Run playbooks and ad-hoc commands with streaming output. Encrypts/decrypts files with ansible-vault. On Windows, automatically runs through WSL.
+- **Ansible** · Run one command across a whole inventory, or a full playbook. Manage playbooks, inventories, roles, and collections. Run playbooks and ad-hoc commands with streaming output. Encrypts/decrypts files with ansible-vault. On Windows, automatically runs through WSL.
 - **OpenTofu** · Plan, apply, and destroy infrastructure. Browse state, manage providers and modules. Full workspace with file editor and streaming command output.
 
 ### Working with others — people and AI
@@ -69,6 +69,8 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 
 - **Serial Console** · Talk to routers, switches, and embedded devices over COM/TTY.
 - **AI Assistant** · Optional AI integration for command suggestions and troubleshooting (bring your own API key).
+- **Host Key Verification** · Trust on first use, and a loud stop when a known key changes. Never accepts one silently, and refuses rather than connecting if it cannot ask.
+- **Themes** · Colour tokens the whole app reads, not just the terminal. Install more from a registry, pinned by SHA-256.
 - **Encrypted Vault** · Store secrets, credentials, and SSH keys in an encrypted vault with cloud sync support.
 - **Lua Plugins** · Extend Reach with sandboxed Lua scripts. Access SSH, storage, and UI hooks through the host API.
 - **Auto-Updates** · The app checks for updates on startup and periodically while running. No manual downloads.
