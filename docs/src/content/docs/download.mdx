@@ -1,0 +1,43 @@
+---
+title: Download Reach
+description: Get the current release of Reach for Windows, macOS, Linux or Android.
+tableOfContents: false
+---
+
+import Downloads from '../../components/Downloads.astro';
+
+Pick your platform. These point at the current release and update themselves,
+so this page never goes stale between releases.
+
+<Downloads />
+
+## After downloading
+
+**Windows.** The installer is not signed with a paid certificate, so
+SmartScreen will warn you. Choose *More info*, then *Run anyway*.
+
+**macOS.** The app is ad-hoc signed rather than notarised, so Gatekeeper
+blocks it on first launch. Right-click the app and choose *Open*, or clear
+the quarantine flag:
+
+```sh
+xattr -cr /Applications/Reach.app
+```
+
+**Linux.** The AppImage needs to be marked executable before it will run:
+
+```sh
+chmod +x Reach_*_amd64.AppImage
+./Reach_*_amd64.AppImage
+```
+
+The `.deb` and `.rpm` packages are linked under the cards if you would rather
+install through your package manager.
+
+**Android.** The APK is installed outside the Play Store, so Android will ask
+you to allow installs from this source.
+
+## Updating
+
+Reach checks for new releases on its own and offers them in place, so this
+page is only needed for a first install or a fresh machine.

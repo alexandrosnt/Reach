@@ -1,7 +1,310 @@
-/* Fix: Starlight ToC sidebar doesn't scroll to all sections */
-/* https://github.com/withastro/starlight/issues/1746 */
+/*
+ * Reach documentation theme.
+ *
+ * Starlight's defaults are clean but generic, and its purple accent is not
+ * Reach's colour. This restyles rather than rebuilds: everything below either
+ * redefines a Starlight custom property or adds depth on top of one, so the
+ * framework keeps doing the work and upgrades do not fight a fork.
+ *
+ * Dark is the real design and light is kept honest rather than an
+ * afterthought, because a docs link opened from a bright editor should not
+ * flashbang anyone.
+ */
 
-/* Make the right sidebar ToC independently scrollable */
+:root {
+	/* Reach's blue, the one on the release badges, expressed as the ramp
+	   Starlight expects. */
+	--sl-hue-accent: 211;
+	--sl-color-accent-low: hsl(211 80% 18%);
+	--sl-color-accent: hsl(211 100% 52%);
+	--sl-color-accent-high: hsl(211 100% 80%);
+
+	/* A near-black with a trace of blue in it. Flat #000 reads as cheap and
+	   makes every border float; this gives surfaces something to sit on. */
+	--sl-color-black: hsl(215 28% 7%);
+	--sl-color-gray-6: hsl(215 25% 10%);
+	--sl-color-gray-5: hsl(215 22% 14%);
+	--sl-color-gray-4: hsl(215 18% 22%);
+	--sl-color-gray-3: hsl(215 14% 45%);
+	--sl-color-gray-2: hsl(215 12% 72%);
+	--sl-color-gray-1: hsl(215 20% 92%);
+	--sl-color-white: hsl(210 33% 98%);
+
+	--sl-color-bg-nav: hsl(215 28% 7% / 0.78);
+	--sl-color-bg-sidebar: transparent;
+
+	/* Slightly tighter than default: technical prose is read in columns, not
+	   paragraphs, and the default line height makes reference pages sprawl. */
+	--sl-line-height: 1.7;
+	--sl-text-code: 0.875rem;
+
+	--reach-radius: 12px;
+	--reach-border: hsl(215 18% 20%);
+	--reach-border-soft: hsl(215 18% 16%);
+	--reach-glow: hsl(211 100% 52% / 0.14);
+}
+
+/* Light stays deliberate rather than inherited.
+ *
+ * The whole ramp is restated, not just the accents. The block above sets the
+ * greys on bare `:root`, which applies in both themes, so anything left out
+ * here keeps its dark value — which is how the light theme ended up with a
+ * near-black page background. */
+:root[data-theme='light'] {
+	--sl-color-accent-low: hsl(211 100% 92%);
+	--sl-color-accent: hsl(211 96% 42%);
+	--sl-color-accent-high: hsl(211 90% 26%);
+
+	--sl-color-black: hsl(0 0% 100%);
+	--sl-color-gray-6: hsl(215 30% 97%);
+	--sl-color-gray-5: hsl(215 28% 94%);
+	--sl-color-gray-4: hsl(215 20% 86%);
+	--sl-color-gray-3: hsl(215 14% 52%);
+	--sl-color-gray-2: hsl(215 16% 34%);
+	--sl-color-gray-1: hsl(215 22% 20%);
+	--sl-color-white: hsl(215 30% 12%);
+
+	--sl-color-bg-nav: hsl(0 0% 100% / 0.82);
+	--reach-border: hsl(215 20% 86%);
+	--reach-border-soft: hsl(215 20% 91%);
+	--reach-glow: hsl(211 96% 42% / 0.1);
+}
+
+/* --- Page ground ------------------------------------------------------- */
+
+/* Two very wide, very faint washes. They give the page a light source
+   without ever being noticeable as gradients, which is the difference
+   between depth and decoration. */
+body {
+	background-image:
+		radial-gradient(70rem 40rem at 12% -12%, hsl(211 100% 50% / 0.07), transparent 60%),
+		radial-gradient(60rem 36rem at 92% 0%, hsl(265 90% 60% / 0.05), transparent 62%);
+	background-attachment: fixed;
+}
+
+:root[data-theme='light'] body {
+	background-image:
+		radial-gradient(70rem 40rem at 12% -12%, hsl(211 100% 50% / 0.06), transparent 60%),
+		radial-gradient(60rem 36rem at 92% 0%, hsl(265 90% 60% / 0.04), transparent 62%);
+}
+
+/* A glass header rather than a solid bar, so content scrolling under it
+   reads as depth instead of a seam. */
+header.header {
+	backdrop-filter: blur(14px) saturate(140%);
+	-webkit-backdrop-filter: blur(14px) saturate(140%);
+	border-bottom: 1px solid var(--reach-border-soft);
+}
+
+.site-title {
+	font-weight: 650;
+	letter-spacing: -0.015em;
+}
+
+/* --- Typography -------------------------------------------------------- */
+
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3 {
+	letter-spacing: -0.021em;
+	font-weight: 640;
+}
+
+/* A rule under h2 only, to break long reference pages into readable slabs
+   without adding a line to every heading level. */
+.sl-markdown-content h2 {
+	padding-bottom: 0.4rem;
+	border-bottom: 1px solid var(--reach-border-soft);
+}
+
+.sl-markdown-content a:not(:where(.not-content *)) {
+	text-underline-offset: 0.22em;
+	text-decoration-thickness: 1px;
+	transition: color 0.15s ease;
+}
+
+/* --- Hero -------------------------------------------------------------- */
+
+.hero h1 {
+	font-size: clamp(2.6rem, 7vw, 4.4rem);
+	letter-spacing: -0.035em;
+	line-height: 1.02;
+	/* Stops at 70% so the tail of the word keeps full contrast: a gradient
+	   that runs to transparent looks clever and reads badly. */
+	background: linear-gradient(
+		112deg,
+		var(--sl-color-white) 0%,
+		var(--sl-color-white) 38%,
+		var(--sl-color-accent-high) 78%
+	);
+	-webkit-background-clip: text;
+	background-clip: text;
+	-webkit-text-fill-color: transparent;
+}
+
+.hero .tagline {
+	font-size: clamp(1.05rem, 2vw, 1.3rem);
+	color: var(--sl-color-gray-2);
+	max-width: 46ch;
+}
+
+.hero .actions a {
+	border-radius: 999px;
+	font-weight: 560;
+	transition:
+		transform 0.16s ease,
+		box-shadow 0.16s ease,
+		background 0.16s ease;
+}
+
+.hero .actions a[data-variant='primary'] {
+	box-shadow: 0 8px 26px -10px var(--sl-color-accent);
+}
+
+.hero .actions a:hover {
+	transform: translateY(-1px);
+}
+
+/* --- Cards ------------------------------------------------------------- */
+
+.card {
+	border-radius: var(--reach-radius);
+	border: 1px solid var(--reach-border-soft);
+	background:
+		linear-gradient(180deg, hsl(215 22% 13% / 0.5), hsl(215 25% 10% / 0.5));
+	transition:
+		border-color 0.18s ease,
+		transform 0.18s ease,
+		box-shadow 0.18s ease;
+}
+
+:root[data-theme='light'] .card {
+	background: linear-gradient(180deg, hsl(0 0% 100%), hsl(215 30% 99%));
+}
+
+.card:hover {
+	transform: translateY(-2px);
+	border-color: var(--sl-color-accent);
+	box-shadow:
+		0 1px 0 hsl(0 0% 100% / 0.04) inset,
+		0 14px 34px -20px var(--reach-glow);
+}
+
+/* Starlight's card icons are SVGs drawn with currentColor, so they take a
+   colour and not a background: clipping a gradient to "text" here makes them
+   vanish entirely. Keep Starlight's own per-card hue and give it a lift. */
+.card .icon {
+	border-radius: 8px;
+	border-color: var(--reach-border-soft);
+}
+
+.card:hover .icon {
+	border-color: var(--sl-color-accent);
+}
+
+/* --- Sidebar ----------------------------------------------------------- */
+
+/* The current page gets a rail rather than a filled block: a solid pill in a
+   long list pulls the eye harder than the heading above it. */
+.sidebar-content a[aria-current='page'] {
+	background: linear-gradient(90deg, var(--sl-color-accent-low), transparent 72%);
+	border-left: 2px solid var(--sl-color-accent);
+	border-radius: 0 6px 6px 0;
+	font-weight: 600;
+	/* Set explicitly: Starlight's own accent text colour lands on the same
+	   value as the tint behind it, which makes the current page invisible. */
+	color: var(--sl-color-white);
+}
+
+.sidebar-content a:not([aria-current='page']):hover {
+	background: hsl(215 22% 16% / 0.6);
+	border-radius: 6px;
+}
+
+:root[data-theme='light'] .sidebar-content a:not([aria-current='page']):hover {
+	background: hsl(215 30% 95%);
+}
+
+.sidebar-content summary,
+.sidebar-content .large {
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	font-size: 0.72rem;
+	color: var(--sl-color-gray-3);
+}
+
+/* --- Code -------------------------------------------------------------- */
+
+.expressive-code .frame {
+	border-radius: var(--reach-radius);
+	border: 1px solid var(--reach-border-soft);
+	overflow: hidden;
+}
+
+.sl-markdown-content :not(pre) > code {
+	border: 1px solid var(--reach-border-soft);
+	border-radius: 6px;
+	padding: 0.1em 0.38em;
+	background: hsl(215 22% 14% / 0.8);
+}
+
+:root[data-theme='light'] .sl-markdown-content :not(pre) > code {
+	background: hsl(215 30% 96%);
+}
+
+/* --- Tables ------------------------------------------------------------ */
+
+.sl-markdown-content table {
+	border: 1px solid var(--reach-border-soft);
+	border-radius: var(--reach-radius);
+	border-collapse: separate;
+	border-spacing: 0;
+	overflow: hidden;
+	width: 100%;
+}
+
+.sl-markdown-content th {
+	background: hsl(215 22% 13% / 0.7);
+	font-weight: 600;
+	text-align: left;
+}
+
+:root[data-theme='light'] .sl-markdown-content th {
+	background: hsl(215 30% 96%);
+}
+
+.sl-markdown-content :is(th, td) {
+	border-bottom: 1px solid var(--reach-border-soft);
+	padding: 0.6rem 0.85rem;
+}
+
+.sl-markdown-content tr:last-child td {
+	border-bottom: 0;
+}
+
+/* --- Asides ------------------------------------------------------------ */
+
+.starlight-aside {
+	border-radius: var(--reach-radius);
+	border-left-width: 3px;
+}
+
+/* --- Search ------------------------------------------------------------ */
+
+site-search button[data-open-modal] {
+	border-radius: 999px;
+	border: 1px solid var(--reach-border-soft);
+	transition: border-color 0.15s ease;
+}
+
+site-search button[data-open-modal]:hover {
+	border-color: var(--sl-color-accent);
+}
+
+/* --- Table of contents ------------------------------------------------- */
+
+/* Starlight's ToC does not scroll to every section on a long page.
+   https://github.com/withastro/starlight/issues/1746 */
 starlight-toc nav {
 	position: sticky;
 	top: var(--sl-nav-height);
@@ -10,8 +313,31 @@ starlight-toc nav {
 	padding-bottom: 2rem;
 }
 
-/* Make the mobile ToC dropdown scrollable when it has many items */
+starlight-toc nav a[aria-current='true'] {
+	color: var(--sl-color-accent-high);
+	font-weight: 600;
+}
+
+/* The mobile dropdown needs its own limit, or a long page runs off-screen. */
 starlight-toc details > div {
 	max-height: 60vh;
 	overflow-y: auto;
+}
+
+/* --- Motion ------------------------------------------------------------ */
+
+/* Every transition above is decoration. Anyone who has asked not to see
+   movement should not have to. */
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+	}
+
+	.card:hover,
+	.hero .actions a:hover {
+		transform: none;
+	}
 }

@@ -1,0 +1,232 @@
+---
+/**
+ * Download cards that always point at the current release.
+ *
+ * The asset filenames carry the version, so no fixed URL can name them. They
+ * are resolved in the browser from the GitHub releases API instead of being
+ * baked in at build time, because the docs are rebuilt on documentation
+ * changes and a release does not necessarily cause one — baked links would
+ * quietly rot between builds.
+ *
+ * Everything degrades: the cards render as links to the releases page and are
+ * useful with no JavaScript at all, then upgrade in place once the release is
+ * known. A rate-limited or offline API leaves the page exactly as shipped
+ * rather than empty.
+ */
+
+const REPO = 'alexandrosnt/Reach';
+
+/** Matched against asset names in order; the first hit wins. */
+const PLATFORMS = [
+	{
+		id: 'windows',
+		name: 'Windows',
+		note: '10 and 11, 64-bit',
+		match: ['_x64-setup.exe'],
+		label: 'Installer (.exe)',
+	},
+	{
+		id: 'macos-arm',
+		name: 'macOS',
+		note: 'Apple silicon',
+		match: ['_aarch64.dmg'],
+		label: 'Disk image (.dmg)',
+	},
+	{
+		id: 'macos-intel',
+		name: 'macOS',
+		note: 'Intel',
+		match: ['_x64.dmg'],
+		label: 'Disk image (.dmg)',
+	},
+	{
+		id: 'linux',
+		name: 'Linux',
+		note: 'Runs anywhere',
+		match: ['_amd64.AppImage'],
+		label: 'AppImage',
+	},
+	{
+		id: 'android',
+		name: 'Android',
+		note: 'Universal build',
+		match: ['.apk'],
+		label: 'APK',
+	},
+];
+
+/** Secondary formats, shown under the cards for people who want them. */
+const ALSO = [
+	{ id: 'msi', name: 'Windows MSI', match: ['_en-US.msi'] },
+	{ id: 'deb', name: 'Debian / Ubuntu (.deb)', match: ['_amd64.deb'] },
+	{ id: 'rpm', name: 'Fedora / RHEL (.rpm)', match: ['.x86_64.rpm'] },
+];
+
+const releasesUrl = `https://github.com/${REPO}/releases/latest`;
+---
+
+<section class="downloads not-content" data-repo={REPO}>
+	<p class="downloads-version">
+		<span data-version>Latest release</span>
+		<a href={releasesUrl}>All releases and changelog</a>
+	</p>
+
+	<div class="downloads-grid">
+		{
+			PLATFORMS.map((p) => (
+				<a
+					class="download-card"
+					href={releasesUrl}
+					data-platform={p.id}
+					data-match={p.match.join('|')}
+				>
+					<span class="download-os">{p.name}</span>
+					<span class="download-note">{p.note}</span>
+					<span class="download-file" data-label>
+						{p.label}
+					</span>
+					<span class="download-size" data-size />
+				</a>
+			))
+		}
+	</div>
+
+	<p class="downloads-also">
+		Other formats:
+		{
+			ALSO.map((p, i) => (
+				<>
+					{i > 0 && <span aria-hidden="true"> · </span>}
+					<a href={releasesUrl} data-platform={p.id} data-match={p.match.join('|')}>
+						{p.name}
+					</a>
+				</>
+			))
+		}
+	</p>
+</section>
+
+<script>
+	// Fill in the real asset links once the current release is known. Any
+	// failure leaves the markup above untouched, which already works.
+	const section = document.querySelector<HTMLElement>('.downloads');
+	if (section) {
+		const repo = section.dataset.repo;
+		const megabytes = (bytes: number) => `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+
+		fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
+			headers: { Accept: 'application/vnd.github+json' },
+		})
+			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+			.then((release) => {
+				const version = section.querySelector('[data-version]');
+				if (version && release.tag_name) {
+					version.textContent = `Latest release · ${release.tag_name}`;
+				}
+
+				for (const el of section.querySelectorAll<HTMLAnchorElement>('[data-match]')) {
+					const patterns = (el.dataset.match ?? '').split('|').filter(Boolean);
+					const asset = (release.assets ?? []).find((a: { name: string }) =>
+						patterns.some((p) => a.name.endsWith(p)),
+					);
+					// A platform missing from a release keeps pointing at the
+					// releases page rather than becoming a dead link.
+					if (!asset) continue;
+
+					el.href = asset.browser_download_url;
+					const size = el.querySelector('[data-size]');
+					if (size) size.textContent = megabytes(asset.size);
+				}
+			})
+			.catch(() => {
+				/* Offline, rate limited, or blocked: the static links stand. */
+			});
+	}
+</script>
+
+<style>
+	.downloads {
+		margin: 2rem 0 3rem;
+	}
+
+	.downloads-version {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1rem;
+		align-items: baseline;
+		justify-content: space-between;
+		margin: 0 0 1rem;
+		font-size: 0.9rem;
+		color: var(--sl-color-gray-3);
+	}
+
+	.downloads-version span {
+		font-weight: 600;
+		color: var(--sl-color-gray-2);
+	}
+
+	.downloads-grid {
+		display: grid;
+		gap: 0.85rem;
+		/* Cards keep a sensible width at every size rather than stretching to
+		   one per row on a phone and five on a desktop. */
+		grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+	}
+
+	.download-card {
+		display: flex;
+		flex-direction: column;
+		gap: 0.15rem;
+		padding: 1.1rem 1.15rem 1rem;
+		border: 1px solid var(--reach-border-soft, #2a2f3a);
+		border-radius: var(--reach-radius, 12px);
+		background: linear-gradient(180deg, hsl(215 22% 13% / 0.5), hsl(215 25% 10% / 0.5));
+		text-decoration: none;
+		color: inherit;
+		transition:
+			transform 0.18s ease,
+			border-color 0.18s ease,
+			box-shadow 0.18s ease;
+	}
+
+	:global(:root[data-theme='light']) .download-card {
+		background: linear-gradient(180deg, hsl(0 0% 100%), hsl(215 30% 99%));
+	}
+
+	.download-card:hover {
+		transform: translateY(-2px);
+		border-color: var(--sl-color-accent);
+		box-shadow: 0 14px 34px -20px var(--reach-glow, rgba(10, 132, 255, 0.14));
+	}
+
+	.download-os {
+		font-size: 1.05rem;
+		font-weight: 640;
+		letter-spacing: -0.01em;
+		color: var(--sl-color-white);
+	}
+
+	.download-note {
+		font-size: 0.8rem;
+		color: var(--sl-color-gray-3);
+	}
+
+	.download-file {
+		margin-top: 0.55rem;
+		font-size: 0.85rem;
+		font-weight: 560;
+		color: var(--sl-color-accent-high);
+	}
+
+	.download-size {
+		font-size: 0.78rem;
+		color: var(--sl-color-gray-3);
+		min-height: 1.1em; /* reserve the line so cards do not jump when filled */
+	}
+
+	.downloads-also {
+		margin-top: 1.25rem;
+		font-size: 0.88rem;
+		color: var(--sl-color-gray-3);
+	}
+</style>
