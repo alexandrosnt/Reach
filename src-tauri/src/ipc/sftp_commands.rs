@@ -201,3 +201,149 @@ pub async fn sftp_mkdir(
         .await
         .map_err(|e| e.to_string())
 }
+
+// --- Archives -------------------------------------------------------------
+//
+// The commands themselves live in `sftp::archive`, which decides what to run
+// and is tested there. These three do the talking: probe once, then run what
+// the probe says is possible. Nothing here builds a command from a filename.
+
+use crate::sftp::archive::{self, ArchiveFormat, ArchiveTools};
+
+/// Which archive tools the remote machine has.
+///
+/// Worth calling once when the explorer opens and remembering, so the menu can
+/// offer only what will actually work. Cheap: one command, one round trip.
+#[tauri::command]
+pub async fn sftp_archive_tools(
+    state: tauri::State<'_, AppState>,
+    connection_id: String,
+) -> Result<ArchiveTools, String> {
+    let handle = {
+        let manager = state.ssh_manager.lock().await;
+        manager.get_handle(&connection_id).map_err(|e| e.to_string())?
+    };
+    let (stdout, _stderr, _code) =
+        crate::ssh::client::exec_on_connection_with_exit_code(&handle, &archive::probe_command())
+            .await
+            .map_err(|e| e.to_string())?;
+    let tools = ArchiveTools::parse(&stdout);
+    info!(
+        "sftp_archive_tools: conn={} found {:?}",
+        connection_id, tools.present
+    );
+    Ok(tools)
+}
+
+/// What a finished archive operation has to say for itself.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArchiveOutcome {
+    /// The tool that ended up doing the work, so the user can be told.
+    pub tool: String,
+    /// What was produced: the archive, or the directory extracted into.
+    pub produced: String,
+}
+
+/// Turn a failed command into something worth reading.
+///
+/// A bare exit code tells the user nothing. The last line of stderr is almost
+/// always the real reason — "No space left on device" and the like.
+fn failure(tool: &str, stderr: &str, code: i32) -> String {
+    let detail = stderr
+        .lines()
+        .map(str::trim)
+        .filter(|l| !l.is_empty())
+        .next_back()
+        .unwrap_or("no output");
+    format!("{tool} failed (exit {code}): {detail}")
+}
+
+/// Compress `entries` inside `directory` into a new archive.
+#[tauri::command]
+pub async fn sftp_archive_create(
+    state: tauri::State<'_, AppState>,
+    connection_id: String,
+    directory: String,
+    entries: Vec<String>,
+    archive_name: String,
+    format: ArchiveFormat,
+) -> Result<ArchiveOutcome, String> {
+    let handle = {
+        let manager = state.ssh_manager.lock().await;
+        manager.get_handle(&connection_id).map_err(|e| e.to_string())?
+    };
+    let tools = {
+        let (stdout, _, _) = crate::ssh::client::exec_on_connection_with_exit_code(
+            &handle,
+            &archive::probe_command(),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+        ArchiveTools::parse(&stdout)
+    };
+
+    let plan = archive::create_command(&tools, format, &directory, &entries, &archive_name)
+        .ok_or_else(|| {
+            format!(
+                "This machine has no tool that can create a {} archive.",
+                format.extension()
+            )
+        })?;
+
+    let (_out, stderr, code) =
+        crate::ssh::client::exec_on_connection_with_exit_code(&handle, &plan.command)
+            .await
+            .map_err(|e| e.to_string())?;
+    if code != 0 {
+        return Err(failure(&plan.tool, &stderr, code));
+    }
+    Ok(ArchiveOutcome {
+        tool: plan.tool,
+        produced: archive_name,
+    })
+}
+
+/// Extract `archive_name` inside `directory`, into a directory of its own.
+///
+/// The destination is always a fresh subdirectory rather than the current one:
+/// an archive full of loose files should not scatter them over whatever the
+/// user happens to be looking at, and a hostile archive should not be able to
+/// quietly replace a neighbour.
+#[tauri::command]
+pub async fn sftp_archive_extract(
+    state: tauri::State<'_, AppState>,
+    connection_id: String,
+    directory: String,
+    archive_name: String,
+) -> Result<ArchiveOutcome, String> {
+    let handle = {
+        let manager = state.ssh_manager.lock().await;
+        manager.get_handle(&connection_id).map_err(|e| e.to_string())?
+    };
+    let tools = {
+        let (stdout, _, _) = crate::ssh::client::exec_on_connection_with_exit_code(
+            &handle,
+            &archive::probe_command(),
+        )
+        .await
+        .map_err(|e| e.to_string())?;
+        ArchiveTools::parse(&stdout)
+    };
+
+    let dest = archive::extract_dir_name(&archive_name);
+    let plan = archive::extract_command(&tools, &directory, &archive_name, &dest)
+        .ok_or_else(|| "This machine has no tool that can open that archive.".to_string())?;
+
+    let (_out, stderr, code) =
+        crate::ssh::client::exec_on_connection_with_exit_code(&handle, &plan.command)
+            .await
+            .map_err(|e| e.to_string())?;
+    if code != 0 {
+        return Err(failure(&plan.tool, &stderr, code));
+    }
+    Ok(ArchiveOutcome {
+        tool: plan.tool,
+        produced: dest,
+    })
+}

@@ -1310,5 +1310,12 @@
   "ansible.no_vault_files": "Select a file to encrypt, decrypt, or view.",
   "ansible.save": "Save",
   "ansible.edit": "Edit",
-  "ansible.remove": "Remove"
+  "ansible.remove": "Remove",
+  "explorer.archive": "Архив",
+  "explorer.archive_extract": "Распаковать здесь",
+  "explorer.archive_compress": "Сжать как",
+  "explorer.archive_busy": "Выполняется…",
+  "explorer.archive_created": "{{name}} создан с помощью {{tool}}",
+  "explorer.archive_extracted": "Распаковано в {{name}} с помощью {{tool}}",
+  "explorer.archive_none": "На этой машине нет подходящего инструмента"
 }

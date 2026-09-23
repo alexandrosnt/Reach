@@ -1,24 +1,20 @@
 {
   "app.name": "Reach",
   "app.version": "v{{version}}",
-
   "sidebar.sessions": "会话",
   "sidebar.explorer": "文件管理器",
   "sidebar.follow_path": "跟踪路径",
   "sidebar.tunnels": "隧道",
   "sidebar.expand": "展开侧边栏",
   "sidebar.collapse": "收起侧边栏",
-
   "titlebar.open_settings": "打开设置",
   "titlebar.ai_assistant": "AI 助手",
   "titlebar.minimize": "最小化",
   "titlebar.maximize": "最大化",
   "titlebar.close": "关闭",
-
   "statusbar.no_session": "无会话",
   "statusbar.connected_to": "已连接到 {{title}}",
   "statusbar.local": "本地",
-
   "terminal.new_tab": "新建标签页",
   "terminal.close_tab": "关闭标签页",
   "terminal.split_horizontal": "水平分屏",
@@ -45,7 +41,6 @@
   "terminal.reconnecting": "正在重新连接...",
   "terminal.reconnected": "已重新连接",
   "terminal.reconnect_failed": "重新连接失败",
-
   "session.connect": "连接",
   "session.disconnect": "断开",
   "session.edit": "编辑",
@@ -161,7 +156,6 @@
   "session.recipient_required": "需要接收方 UUID 和公钥",
   "session.invalid_public_key_length": "无效的公钥：必须为 32 字节（X25519）",
   "session.invalid_public_key_base64": "无效的公钥：必须是有效的 base64",
-
   "monitoring.cpu": "CPU",
   "monitoring.ram": "内存",
   "monitoring.disk": "磁盘",
@@ -171,7 +165,6 @@
   "monitoring.one_user": "1 位用户",
   "monitoring.n_users": "{{count}} 位用户",
   "monitoring.you": "（你）",
-
   "tunnel.local_forward": "本地转发",
   "tunnel.remote_forward": "远程转发",
   "tunnel.dynamic": "动态（SOCKS）",
@@ -201,7 +194,6 @@
   "tunnel.invalid_local_port": "无效的本地端口（1-65535）",
   "tunnel.invalid_remote_port": "无效的远程端口（1-65535）",
   "tunnel.remote_host_required": "需要远程主机",
-
   "explorer.upload": "上传",
   "explorer.download": "下载",
   "explorer.delete": "删除",
@@ -229,14 +221,12 @@
   "explorer.cd_here": "在此执行 cd 命令",
   "explorer.cd_sent": "已将 cd {{path}} 发送到终端",
   "explorer.search_placeholder": "筛选文件...",
-
   "editor.close": "关闭编辑器",
   "editor.saving": "保存中...",
   "editor.save": "保存",
   "editor.unsaved_changes": "你有未保存的更改。不保存直接关闭？",
   "editor.file_saved_toast": "文件已保存",
   "editor.opening": "打开文件中...",
-
   "ai.title": "AI 助手",
   "ai.clear_chat": "清空聊天",
   "ai.close_panel": "关闭面板",
@@ -249,7 +239,6 @@
   "ai.copy": "复制",
   "ai.copy_message": "复制消息",
   "ai.copied": "已复制！",
-
   "vault.unlock": "解锁保险库",
   "vault.no_password_warning": "未设置主密码。保管库只能通过系统钥匙串打开 — 请在“设置 > 安全”中设置密码。",
   "vault.enter_password": "输入你的主密码...",
@@ -406,7 +395,6 @@
   "vault.type_selection": "保险库类型选择",
   "vault.password_required": "密码为必填",
   "vault.passwords_mismatch": "两次输入的密码不一致",
-
   "settings.title": "设置",
   "settings.language": "语言",
   "settings.language_search": "搜索语言...",
@@ -476,7 +464,6 @@
   "settings.system_startup_desc": "登录时自动启动 Reach",
   "settings.font_size_desc": "终端文字大小（{{size}}px）",
   "settings.font_desc": "终端模拟器中使用的字体",
-
   "security.master_password_status": "主密码状态",
   "security.set_password": "设置密码",
   "security.change_password": "更改密码",
@@ -493,7 +480,6 @@
   "security.new_password": "新密码",
   "security.saving": "保存中...",
   "security.save_password": "保存密码",
-
   "sync.identity": "身份",
   "sync.user_uuid": "用户 UUID",
   "sync.public_key": "公钥",
@@ -528,7 +514,6 @@
   "sync.url_token_required": "同步 URL 和令牌均为必填",
   "sync.cloud_sync_active": "你的所有数据都同步到云端",
   "sync.local_only": "数据仅存储在本地",
-
   "backup.export": "导出备份",
   "backup.export_desc": "创建包含所有保险库、机密和设置的加密备份。",
   "backup.export_password": "导出密码",
@@ -556,7 +541,6 @@
   "backup.imported_toast": "备份导入成功——正在重启应用",
   "backup.import_failed_toast": "导入失败",
   "backup.passwords_mismatch": "两次输入的密码不一致",
-
   "ai_settings.enable": "启用 AI 功能",
   "ai_settings.enable_desc": "连接 OpenRouter 以获得命令建议和服务器分析等 AI 功能。",
   "ai_settings.api_key": "API 密钥",
@@ -571,7 +555,6 @@
   "ai_settings.search_models": "搜索模型...",
   "ai_settings.no_models": "未加载模型。验证你的 API 密钥以加载可用模型。",
   "ai_settings.no_match": "没有匹配你搜索的模型。",
-
   "updater.available": "Reach v{{version}} 可用",
   "updater.installing": "安装中...",
   "updater.update_now": "立即更新",
@@ -588,7 +571,6 @@
   "updater.continue_without": "不更新继续",
   "updater.downloading": "下载中... {{progress}}%",
   "updater.retry": "重试",
-
   "transfer.uploading": "上传中",
   "transfer.downloading": "下载中",
   "transfer.complete": "完成",
@@ -598,7 +580,6 @@
   "transfer.no_active": "没有活动的传输",
   "transfer.clear_finished": "清除已完成",
   "transfer.dismiss": "忽略",
-
   "common.close_dialog": "关闭对话框",
   "common.close_tab": "关闭标签页 {{title}}",
   "common.new_tab": "新建标签页",
@@ -614,7 +595,6 @@
   "common.copy": "复制",
   "common.clear": "清除",
   "common.dismiss": "忽略通知",
-
   "setup.welcome_title": "欢迎使用 Reach",
   "setup.welcome_subtitle": "让我们帮你完成设置",
   "setup.personalize_title": "个性化设置",
@@ -642,7 +622,6 @@
   "setup.get_started": "开始使用",
   "setup.complete_title": "一切就绪！",
   "setup.complete_subtitle": "Reach 已准备好使用",
-
   "toolchain.checking": "正在检查 {{tool}}...",
   "toolchain.installed": "{{tool}} {{version}}",
   "toolchain.not_installed": "未找到 {{tool}}",
@@ -653,7 +632,6 @@
   "toolchain.install_failed": "安装 {{tool}} 失败",
   "toolchain.python_required": "安装 Ansible 需要 Python 3",
   "toolchain.retry": "重试",
-
   "sidebar.snippets": "命令片段",
   "sidebar.plugins": "插件",
   "common.edit": "编辑",
@@ -753,7 +731,6 @@
   "recipes.danger_mutating": "会修改",
   "recipes.danger_sensitive": "敏感",
   "recipes.danger_destructive": "破坏性",
-
   "plugin.title": "插件",
   "plugin.no_plugins": "未找到插件",
   "plugin.no_plugins_hint": "将插件文件夹放入你的插件目录",
@@ -872,7 +849,6 @@
   "plugin.perm.http": "发起 HTTP 请求",
   "plugin.perm.notify": "显示通知",
   "plugin.perm.ui": "渲染界面元素",
-
   "settings.plugins": "插件",
   "settings.plugins_dir": "插件目录",
   "settings.plugins_dir_desc": "Reach 查找插件包的文件夹",
@@ -884,7 +860,6 @@
   "settings.plugins_discover": "发现插件",
   "settings.plugins_version": "v{{version}}",
   "settings.plugins_by": "作者 {{author}}",
-
   "session.jump_host": "跳板主机",
   "session.jump_host_enable": "通过跳板主机连接",
   "session.jump_host_hint": "通过堡垒/代理服务器转发连接",
@@ -913,11 +888,9 @@
   "session.no_folder": "无文件夹",
   "session.move_to_folder": "移动到文件夹",
   "session.remove_from_folder": "从文件夹移除",
-
   "nav.terminal": "终端",
   "nav.ansible": "Ansible",
   "nav.tofu": "OpenTofu",
-
   "tofu.tool_not_installed": "未安装 OpenTofu CLI",
   "tofu.install": "安装 OpenTofu",
   "tofu.installing": "安装中...",
@@ -977,12 +950,10 @@
   "tofu.run_errored": "失败",
   "tofu.run_elapsed": "{{s}} 秒",
   "tofu.run_refreshed": "已刷新 {{count}} 个资源，无需更改。",
-
   "tofu.tab_actions": "操作",
   "tofu.tab_providers": "提供商",
   "tofu.tab_variables": "变量",
   "tofu.tab_environments": "环境",
-
   "tofu.providers": "提供商",
   "tofu.add_provider": "添加提供商",
   "tofu.remove_provider": "移除提供商",
@@ -999,7 +970,6 @@
   "tofu.provider_category_utility": "工具",
   "tofu.provider_version_placeholder": ">= 1.0",
   "tofu.save": "保存",
-
   "tofu.add_variable": "添加变量",
   "tofu.edit_variable": "编辑变量",
   "tofu.no_variables": "未定义变量。添加一个变量以开始使用。",
@@ -1018,7 +988,6 @@
   "tofu.variable_sensitive": "敏感",
   "tofu.variable_name_invalid": "无效的名称。必须以字母或下划线开头。",
   "tofu.variable_name_exists": "已存在同名变量。",
-
   "tofu.environments": "环境",
   "tofu.add_environment": "添加",
   "tofu.delete_environment": "删除",
@@ -1031,13 +1000,11 @@
   "tofu.save_values": "保存值",
   "tofu.no_variables_defined": "没有需要配置的变量或敏感提供商字段。",
   "tofu.delete_environment_confirm": "删除此环境？此操作无法撤销。",
-
   "tofu.generate_hcl": "生成 HCL",
   "tofu.hcl_preview": "HCL 预览",
   "tofu.write_files": "写入文件",
   "tofu.overwrite_warning": "写入将覆盖同名的现有文件。",
   "tofu.no_providers_to_generate": "未配置提供商。添加提供商以生成 HCL 文件。",
-
   "tofu.tab_resources": "资源",
   "tofu.resources_title": "资源",
   "tofu.add_resource": "添加资源",
@@ -1061,47 +1028,26 @@
   "tofu.resource_logical_name": "逻辑名称",
   "tofu.resource_logical_name_help": "用于 HCL 的唯一标识符（例如 resource \"aws_instance\" \"web\" 中的 \"web\"）。",
   "tofu.no_providers_for_resources": "先添加提供商以查看可用资源。",
-
   "tofu.tab_state": "状态",
-
   "tofu.tab_overview": "概览",
-
   "tofu.tab_code": "代码",
-
   "tofu.more_actions": "更多操作",
-
   "tofu.target_remote": "远程",
-
   "tofu.env_default": "默认环境",
-
   "tofu.no_var_file": "无变量文件",
-
   "tofu.state_encrypted": "状态已加密",
-
   "tofu.backend_is": "后端：{{backend}}",
-
   "tofu.plan_gate": "将要应用的就是这个计划，仅此而已。",
-
   "tofu.plan_gate_full": "完整计划",
-
   "tofu.plan_gate_result": "返回结果",
-
   "tofu.plan_discard": "放弃",
-
   "tofu.plan_apply_this": "应用此计划",
-
   "tofu.danger_zone": "危险区域",
-
   "tofu.destroy_explain": "Destroy 会删除此项目管理的所有资源。输入项目名称以启用。",
-
   "tofu.destroy_type_name": "输入 {{name}} 以确认",
-
   "tofu.close": "关闭",
-
   "tofu.loading": "加载中…",
-
   "tofu.show_files": "显示文件",
-
   "tofu.hide_files": "隐藏文件",
   "tofu.state_title": "状态管理",
   "tofu.state_refresh": "刷新",
@@ -1120,7 +1066,6 @@
   "tofu.state_import_id_help": "现有基础设施资源的提供商特定 ID。",
   "tofu.state_move_prompt": "为此资源输入新地址：",
   "tofu.state_remove_confirm": "从状态中移除此资源？实际的基础设施不会被销毁。",
-
   "tofu.tab_graph": "图形",
   "tofu.tab_outputs": "输出",
   "tofu.graph_title": "依赖关系图",
@@ -1145,7 +1090,6 @@
   "tofu.from_template": "从模板",
   "tofu.template_apply": "使用模板",
   "tofu.template_search": "搜索模板...",
-
   "tofu.tab_backend": "后端",
   "tofu.backend_title": "后端配置",
   "tofu.backend_type": "后端类型",
@@ -1162,7 +1106,6 @@
   "tofu.encryption_warning": "丢失口令后任何人（包括 Reach）都无法读取状态。请在可信的地方保存一份副本。",
   "tofu.encryption_save": "保存加密设置",
   "tofu.encryption_saved": "已保存",
-
   "tofu.tab_data_sources": "数据源",
   "tofu.data_sources_title": "数据源",
   "tofu.add_data_source": "添加数据源",
@@ -1171,7 +1114,6 @@
   "tofu.data_source_type": "数据源类型",
   "tofu.data_source_name": "数据源名称",
   "tofu.data_source_name_invalid": "无效的名称。必须以字母或下划线开头，且只能包含字母、数字和下划线。",
-
   "tofu.tab_locals": "局部值",
   "tofu.locals_title": "局部值",
   "tofu.add_local": "添加局部值",
@@ -1182,7 +1124,6 @@
   "tofu.local_expression_placeholder": "例如：\"${var.prefix}-${var.environment}\"",
   "tofu.local_name_invalid": "无效的名称。必须以字母或下划线开头。",
   "tofu.local_name_exists": "已存在同名局部值。",
-
   "tofu.tab_modules": "模块",
   "tofu.modules_title": "模块",
   "tofu.add_module": "添加模块",
@@ -1197,7 +1138,6 @@
   "tofu.module_input_key": "键",
   "tofu.module_input_value": "值",
   "tofu.module_name_invalid": "无效的名称。必须以字母或下划线开头。",
-
   "tofu.tab_workspaces": "工作区",
   "tofu.workspaces_title": "工作区",
   "tofu.workspace_current": "当前工作区",
@@ -1210,13 +1150,11 @@
   "tofu.workspace_empty": "没有可用的工作区信息。先运行 init。",
   "tofu.workspace_delete_confirm": "删除此工作区？此操作无法撤销。",
   "tofu.workspace_cannot_delete_default": "无法删除默认工作区。",
-
   "tofu.format": "格式化",
   "tofu.format_check": "检查格式",
   "tofu.format_success": "所有文件格式正确。",
   "tofu.format_changed": "已格式化文件",
   "tofu.format_error": "格式错误",
-
   "tofu.plan_view": "查看计划",
   "tofu.plan_summary": "计划摘要",
   "tofu.plan_no_changes": "无更改。基础设施是最新的。",
@@ -1234,7 +1172,6 @@
   "tofu.plan_known_after_apply": "（apply 后可知）",
   "tofu.plan_sensitive_value": "（敏感）",
   "tofu.plan_loading": "加载计划中...",
-
   "tofu.schema_fetch": "获取架构",
   "tofu.schema_refresh": "刷新架构",
   "tofu.schema_fetching": "获取中...",
@@ -1243,7 +1180,6 @@
   "tofu.schema_hint": "已加载动态架构。资源和数据源字段将使用实时的提供商定义。",
   "tofu.schema_resource_count": "{{count}} 种资源类型",
   "tofu.resource_category_dynamic": "动态",
-
   "ansible.tool_not_installed": "未安装 Ansible",
   "ansible.install": "安装 Ansible",
   "ansible.installing": "安装中...",
@@ -1374,5 +1310,12 @@
   "ansible.no_vault_files": "选择一个文件以加密、解密或查看。",
   "ansible.save": "保存",
   "ansible.edit": "编辑",
-  "ansible.remove": "移除"
+  "ansible.remove": "移除",
+  "explorer.archive": "压缩包",
+  "explorer.archive_extract": "解压到此处",
+  "explorer.archive_compress": "压缩为",
+  "explorer.archive_busy": "正在处理…",
+  "explorer.archive_created": "已使用 {{tool}} 创建 {{name}}",
+  "explorer.archive_extracted": "已使用 {{tool}} 解压到 {{name}}",
+  "explorer.archive_none": "此机器没有可用于此操作的工具"
 }

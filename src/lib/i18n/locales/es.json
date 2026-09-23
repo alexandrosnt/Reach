@@ -1,24 +1,20 @@
 {
   "app.name": "Reach",
   "app.version": "v{{version}}",
-
   "sidebar.sessions": "Sesiones",
   "sidebar.explorer": "Explorador de archivos",
   "sidebar.follow_path": "Seguir ruta",
   "sidebar.tunnels": "Túneles",
   "sidebar.expand": "Expandir barra lateral",
   "sidebar.collapse": "Contraer barra lateral",
-
   "titlebar.open_settings": "Abrir configuración",
   "titlebar.ai_assistant": "Asistente de IA",
   "titlebar.minimize": "Minimizar",
   "titlebar.maximize": "Maximizar",
   "titlebar.close": "Cerrar",
-
   "statusbar.no_session": "Sin sesión",
   "statusbar.connected_to": "Conectado a {{title}}",
   "statusbar.local": "Local",
-
   "terminal.new_tab": "Nueva pestaña",
   "terminal.close_tab": "Cerrar pestaña",
   "terminal.split_horizontal": "Dividir horizontalmente",
@@ -45,7 +41,6 @@
   "terminal.reconnecting": "Reconectando...",
   "terminal.reconnected": "Reconectado",
   "terminal.reconnect_failed": "Error al reconectar",
-
   "session.connect": "Conectar",
   "session.disconnect": "Desconectar",
   "session.edit": "Editar",
@@ -144,7 +139,6 @@
   "session.start_fresh": "Comenzar de nuevo",
   "session.keychain_locked_desc": "No se puede acceder al llavero. Verifica los permisos del sistema.",
   "session.enter_backup_key": "Ingresa tu clave de respaldo",
-
   "session.share": "Compartir",
   "session.share_session": "Compartir sesión",
   "session.share_success": "¡Sesión compartida con éxito!",
@@ -162,7 +156,6 @@
   "session.recipient_required": "Se requieren el UUID y la clave pública del destinatario",
   "session.invalid_public_key_length": "Clave pública inválida: debe tener 32 bytes (X25519)",
   "session.invalid_public_key_base64": "Clave pública inválida: debe ser base64 válido",
-
   "monitoring.cpu": "CPU",
   "monitoring.ram": "RAM",
   "monitoring.disk": "Disco",
@@ -172,7 +165,6 @@
   "monitoring.one_user": "1 usuario",
   "monitoring.n_users": "{{count}} usuarios",
   "monitoring.you": "(tú)",
-
   "tunnel.local_forward": "Reenvío local",
   "tunnel.remote_forward": "Reenvío remoto",
   "tunnel.dynamic": "Dinámico (SOCKS)",
@@ -202,7 +194,6 @@
   "tunnel.invalid_local_port": "Puerto local inválido (1-65535)",
   "tunnel.invalid_remote_port": "Puerto remoto inválido (1-65535)",
   "tunnel.remote_host_required": "Se requiere el host remoto",
-
   "explorer.upload": "Subir",
   "explorer.download": "Descargar",
   "explorer.delete": "Eliminar",
@@ -230,14 +221,12 @@
   "explorer.cd_here": "CD aquí",
   "explorer.cd_sent": "cd {{path}} enviado a la terminal",
   "explorer.search_placeholder": "Filtrar archivos...",
-
   "editor.close": "Cerrar editor",
   "editor.saving": "Guardando...",
   "editor.save": "Guardar",
   "editor.unsaved_changes": "Tienes cambios sin guardar. ¿Cerrar sin guardar?",
   "editor.file_saved_toast": "Archivo guardado",
   "editor.opening": "Abriendo archivo...",
-
   "ai.title": "Asistente de IA",
   "ai.clear_chat": "Limpiar chat",
   "ai.close_panel": "Cerrar panel",
@@ -250,7 +239,6 @@
   "ai.copy": "Copiar",
   "ai.copy_message": "Copiar mensaje",
   "ai.copied": "¡Copiado!",
-
   "vault.unlock": "Desbloquear Vault",
   "vault.no_password_warning": "No hay ninguna contraseña maestra configurada. Tu bóveda solo puede abrirse con el llavero del sistema — establece una contraseña en Ajustes > Seguridad para poder entrar si lo pierdes.",
   "vault.enter_password": "Ingresa tu contraseña maestra...",
@@ -296,7 +284,6 @@
   "vault.vaults_refreshed_toast": "Vaults actualizados",
   "vault.locked_toast": "Vault bloqueado",
   "vault.vault_created_toast": "Vault creado",
-
   "vault.import_backup": "Importar respaldo",
   "vault.import_backup_desc": "Restaura tus datos de Reach desde un archivo de respaldo cifrado.",
   "vault.select_backup_file": "Seleccionar archivo de respaldo",
@@ -313,7 +300,6 @@
   "vault.import_warning": "La importación reemplazará tus datos actuales. Esto no se puede deshacer.",
   "vault.importing": "Importando...",
   "vault.backup_restored_toast": "Respaldo restaurado con éxito. La aplicación se reiniciará.",
-
   "vault.edit_secret": "Editar secreto",
   "vault.new_secret": "Nuevo secreto",
   "vault.secret_name": "Nombre",
@@ -337,7 +323,6 @@
   "vault.copied_toast": "Copiado al portapapeles",
   "vault.secret_updated_toast": "Secreto actualizado",
   "vault.secret_created_toast": "Secreto creado",
-
   "vault.secrets": "Secretos",
   "vault.add_secret": "Agregar secreto",
   "vault.no_secrets": "Aún no hay secretos",
@@ -349,7 +334,6 @@
   "vault.delete_irreversible": "Esta acción no se puede deshacer.",
   "vault.deleting": "Eliminando...",
   "vault.save_changes": "Guardar cambios",
-
   "vault.manage_members_title": "Administrar miembros - {{name}}",
   "vault.tab_invite": "Invitar",
   "vault.tab_members": "Miembros",
@@ -383,7 +367,6 @@
   "vault.invited_toast": "Miembro invitado con éxito",
   "vault.cannot_remove_self": "No puedes eliminarte a ti mismo",
   "vault.member_removed_toast": "Miembro eliminado",
-
   "vault.delete_vault": "Eliminar vault",
   "vault.delete_vault_warning": "Esto eliminará permanentemente este vault y todos sus secretos. Esta acción no se puede deshacer.",
   "vault.create_vault_short": "Crear vault",
@@ -412,7 +395,6 @@
   "vault.type_selection": "Selección de tipo de vault",
   "vault.password_required": "Se requiere la contraseña",
   "vault.passwords_mismatch": "Las contraseñas no coinciden",
-
   "settings.title": "Configuración",
   "settings.language": "Idioma",
   "settings.language_search": "Buscar idiomas...",
@@ -482,7 +464,6 @@
   "settings.system_startup_desc": "Iniciar Reach automáticamente cuando inicies sesión",
   "settings.font_size_desc": "Tamaño del texto de la terminal ({{size}}px)",
   "settings.font_desc": "Fuente utilizada en el emulador de terminal",
-
   "security.master_password_status": "Estado de la contraseña maestra",
   "security.set_password": "Establecer contraseña",
   "security.change_password": "Cambiar contraseña",
@@ -499,7 +480,6 @@
   "security.new_password": "Nueva contraseña",
   "security.saving": "Guardando...",
   "security.save_password": "Guardar contraseña",
-
   "sync.identity": "Identidad",
   "sync.user_uuid": "UUID de usuario",
   "sync.public_key": "Clave pública",
@@ -534,7 +514,6 @@
   "sync.url_token_required": "Se requieren tanto la URL de sincronización como el token",
   "sync.cloud_sync_active": "Todos tus datos se sincronizan en la nube",
   "sync.local_only": "Datos almacenados solo localmente",
-
   "backup.export": "Exportar respaldo",
   "backup.export_desc": "Crea un respaldo cifrado de todos tus vaults, secretos y configuraciones.",
   "backup.export_password": "Exportar contraseña",
@@ -562,7 +541,6 @@
   "backup.imported_toast": "Respaldo importado con éxito — reiniciando la aplicación",
   "backup.import_failed_toast": "Error al importar",
   "backup.passwords_mismatch": "Las contraseñas no coinciden",
-
   "ai_settings.enable": "Habilitar funciones de IA",
   "ai_settings.enable_desc": "Conéctate a OpenRouter para funciones impulsadas por IA como sugerencias de comandos y análisis de servidores.",
   "ai_settings.api_key": "Clave API",
@@ -577,7 +555,6 @@
   "ai_settings.search_models": "Buscar modelos...",
   "ai_settings.no_models": "No hay modelos cargados. Valida tu clave API para cargar los modelos disponibles.",
   "ai_settings.no_match": "No hay modelos que coincidan con tu búsqueda.",
-
   "updater.available": "Reach v{{version}} está disponible",
   "updater.installing": "Instalando...",
   "updater.update_now": "Actualizar ahora",
@@ -594,7 +571,6 @@
   "updater.continue_without": "Continuar sin actualizar",
   "updater.downloading": "Descargando... {{progress}}%",
   "updater.retry": "Reintentar",
-
   "transfer.uploading": "Subiendo",
   "transfer.downloading": "Descargando",
   "transfer.complete": "Completo",
@@ -604,7 +580,6 @@
   "transfer.no_active": "No hay transferencias activas",
   "transfer.clear_finished": "Limpiar completados",
   "transfer.dismiss": "Descartar",
-
   "common.close_dialog": "Cerrar diálogo",
   "common.close_tab": "Cerrar pestaña {{title}}",
   "common.new_tab": "Nueva pestaña",
@@ -620,7 +595,6 @@
   "common.copy": "Copiar",
   "common.clear": "Limpiar",
   "common.dismiss": "Descartar notificación",
-
   "setup.welcome_title": "Bienvenido a Reach",
   "setup.welcome_subtitle": "Vamos a configurarlo",
   "setup.personalize_title": "Hazlo tuyo",
@@ -648,7 +622,6 @@
   "setup.get_started": "Comenzar",
   "setup.complete_title": "¡Todo listo!",
   "setup.complete_subtitle": "Reach está listo para usar",
-
   "toolchain.checking": "Verificando {{tool}}...",
   "toolchain.installed": "{{tool}} {{version}}",
   "toolchain.not_installed": "{{tool}} no encontrado",
@@ -659,7 +632,6 @@
   "toolchain.install_failed": "Error al instalar {{tool}}",
   "toolchain.python_required": "Se requiere Python 3 para instalar Ansible",
   "toolchain.retry": "Reintentar",
-
   "sidebar.snippets": "Fragmentos",
   "sidebar.plugins": "Complementos",
   "common.edit": "Editar",
@@ -759,7 +731,6 @@
   "recipes.danger_mutating": "Modifica",
   "recipes.danger_sensitive": "Delicado",
   "recipes.danger_destructive": "Destructivo",
-
   "plugin.title": "Complementos",
   "plugin.no_plugins": "No se encontraron complementos",
   "plugin.no_plugins_hint": "Coloca las carpetas de complementos en tu directorio de complementos",
@@ -878,7 +849,6 @@
   "plugin.perm.http": "Hacer solicitudes HTTP",
   "plugin.perm.notify": "Mostrar notificaciones",
   "plugin.perm.ui": "Renderizar elementos de interfaz",
-
   "settings.plugins": "Complementos",
   "settings.plugins_dir": "Directorio de complementos",
   "settings.plugins_dir_desc": "Carpeta donde Reach busca paquetes de complementos",
@@ -890,7 +860,6 @@
   "settings.plugins_discover": "Descubrir complementos",
   "settings.plugins_version": "v{{version}}",
   "settings.plugins_by": "por {{author}}",
-
   "session.jump_host": "Host de salto",
   "session.jump_host_enable": "Conectar a través de host de salto",
   "session.jump_host_hint": "Enrutar la conexión a través de un servidor bastión/proxy",
@@ -916,15 +885,12 @@
   "session.add": "Añadir",
   "session.new_folder": "Nueva carpeta",
   "session.folder_name": "Nombre de la carpeta",
-  "session.folder": "Carpeta",
   "session.no_folder": "Sin carpeta",
   "session.move_to_folder": "Mover a carpeta",
   "session.remove_from_folder": "Quitar de la carpeta",
-
   "nav.terminal": "Terminal",
   "nav.ansible": "Ansible",
   "nav.tofu": "OpenTofu",
-
   "tofu.tool_not_installed": "OpenTofu CLI no está instalado",
   "tofu.install": "Instalar OpenTofu",
   "tofu.installing": "Instalando...",
@@ -984,12 +950,10 @@
   "tofu.run_errored": "falló",
   "tofu.run_elapsed": "{{s}}s",
   "tofu.run_refreshed": "{{count}} recursos actualizados, nada que cambiar.",
-
   "tofu.tab_actions": "Acciones",
   "tofu.tab_providers": "Proveedores",
   "tofu.tab_variables": "Variables",
   "tofu.tab_environments": "Entornos",
-
   "tofu.providers": "Proveedores",
   "tofu.add_provider": "Agregar proveedor",
   "tofu.remove_provider": "Eliminar proveedor",
@@ -1006,7 +970,6 @@
   "tofu.provider_category_utility": "Utilidad",
   "tofu.provider_version_placeholder": ">= 1.0",
   "tofu.save": "Guardar",
-
   "tofu.add_variable": "Agregar variable",
   "tofu.edit_variable": "Editar variable",
   "tofu.no_variables": "No hay variables definidas. Agrega una variable para empezar.",
@@ -1025,7 +988,6 @@
   "tofu.variable_sensitive": "Sensible",
   "tofu.variable_name_invalid": "Nombre inválido. Debe comenzar con una letra o guión bajo.",
   "tofu.variable_name_exists": "Ya existe una variable con este nombre.",
-
   "tofu.environments": "Entornos",
   "tofu.add_environment": "Agregar",
   "tofu.delete_environment": "Eliminar",
@@ -1038,13 +1000,11 @@
   "tofu.save_values": "Guardar valores",
   "tofu.no_variables_defined": "No hay variables ni campos sensibles de proveedores para configurar.",
   "tofu.delete_environment_confirm": "¿Eliminar este entorno? Esto no se puede deshacer.",
-
   "tofu.generate_hcl": "Generar HCL",
   "tofu.hcl_preview": "Vista previa HCL",
   "tofu.write_files": "Escribir archivos",
   "tofu.overwrite_warning": "La escritura sobrescribirá los archivos existentes con los mismos nombres.",
   "tofu.no_providers_to_generate": "No hay proveedores configurados. Agrega proveedores para generar archivos HCL.",
-
   "tofu.tab_resources": "Recursos",
   "tofu.resources_title": "Recursos",
   "tofu.add_resource": "Agregar recurso",
@@ -1068,47 +1028,26 @@
   "tofu.resource_logical_name": "Nombre lógico",
   "tofu.resource_logical_name_help": "Un identificador único usado en HCL (ej. \"web\" en resource \"aws_instance\" \"web\").",
   "tofu.no_providers_for_resources": "Agrega un proveedor primero para ver los recursos disponibles.",
-
   "tofu.tab_state": "Estado",
-
   "tofu.tab_overview": "Resumen",
-
   "tofu.tab_code": "Código",
-
   "tofu.more_actions": "Más acciones",
-
   "tofu.target_remote": "Remoto",
-
   "tofu.env_default": "Entorno predeterminado",
-
   "tofu.no_var_file": "sin archivo de variables",
-
   "tofu.state_encrypted": "estado cifrado",
-
   "tofu.backend_is": "backend: {{backend}}",
-
   "tofu.plan_gate": "Este es el plan que se aplicará. Nada más.",
-
   "tofu.plan_gate_full": "Plan completo",
-
   "tofu.plan_gate_result": "Volver al resultado",
-
   "tofu.plan_discard": "Descartar",
-
   "tofu.plan_apply_this": "Aplicar este plan",
-
   "tofu.danger_zone": "Zona de peligro",
-
   "tofu.destroy_explain": "Destroy elimina todos los recursos que gestiona este proyecto. Escribe el nombre del proyecto para habilitarlo.",
-
   "tofu.destroy_type_name": "Escribe {{name}} para confirmar",
-
   "tofu.close": "Cerrar",
-
   "tofu.loading": "Cargando…",
-
   "tofu.show_files": "Mostrar archivos",
-
   "tofu.hide_files": "Ocultar archivos",
   "tofu.state_title": "Administración del estado",
   "tofu.state_refresh": "Actualizar",
@@ -1127,7 +1066,6 @@
   "tofu.state_import_id_help": "El ID específico del proveedor del recurso de infraestructura existente.",
   "tofu.state_move_prompt": "Ingresa la nueva dirección para este recurso:",
   "tofu.state_remove_confirm": "¿Eliminar este recurso del estado? La infraestructura real no se destruirá.",
-
   "tofu.tab_graph": "Gráfico",
   "tofu.tab_outputs": "Salidas",
   "tofu.graph_title": "Gráfico de dependencias",
@@ -1152,7 +1090,6 @@
   "tofu.from_template": "Desde plantilla",
   "tofu.template_apply": "Usar plantilla",
   "tofu.template_search": "Buscar plantillas...",
-
   "tofu.tab_backend": "Backend",
   "tofu.backend_title": "Configuración del backend",
   "tofu.backend_type": "Tipo de backend",
@@ -1169,7 +1106,6 @@
   "tofu.encryption_warning": "Si pierdes la frase, nadie podrá leer el estado, ni Reach. Guarda una copia en un lugar de confianza.",
   "tofu.encryption_save": "Guardar cifrado",
   "tofu.encryption_saved": "Guardado",
-
   "tofu.tab_data_sources": "Fuentes de datos",
   "tofu.data_sources_title": "Fuentes de datos",
   "tofu.add_data_source": "Agregar fuente de datos",
@@ -1178,7 +1114,6 @@
   "tofu.data_source_type": "Tipo de fuente de datos",
   "tofu.data_source_name": "Nombre de la fuente de datos",
   "tofu.data_source_name_invalid": "Nombre inválido. Debe comenzar con una letra o guión bajo y contener solo letras, números y guiones bajos.",
-
   "tofu.tab_locals": "Locales",
   "tofu.locals_title": "Valores locales",
   "tofu.add_local": "Agregar local",
@@ -1189,7 +1124,6 @@
   "tofu.local_expression_placeholder": "ej. \"${var.prefix}-${var.environment}\"",
   "tofu.local_name_invalid": "Nombre inválido. Debe comenzar con una letra o guión bajo.",
   "tofu.local_name_exists": "Ya existe un local con este nombre.",
-
   "tofu.tab_modules": "Módulos",
   "tofu.modules_title": "Módulos",
   "tofu.add_module": "Agregar módulo",
@@ -1204,7 +1138,6 @@
   "tofu.module_input_key": "Clave",
   "tofu.module_input_value": "Valor",
   "tofu.module_name_invalid": "Nombre inválido. Debe comenzar con una letra o guión bajo.",
-
   "tofu.tab_workspaces": "Espacios de trabajo",
   "tofu.workspaces_title": "Espacios de trabajo",
   "tofu.workspace_current": "Espacio de trabajo actual",
@@ -1217,13 +1150,11 @@
   "tofu.workspace_empty": "No hay información de espacios de trabajo disponible. Ejecuta init primero.",
   "tofu.workspace_delete_confirm": "¿Eliminar este espacio de trabajo? Esto no se puede deshacer.",
   "tofu.workspace_cannot_delete_default": "No se puede eliminar el espacio de trabajo predeterminado.",
-
   "tofu.format": "Formatear",
   "tofu.format_check": "Verificar formato",
   "tofu.format_success": "Todos los archivos están correctamente formateados.",
   "tofu.format_changed": "Archivos formateados",
   "tofu.format_error": "Error de formato",
-
   "tofu.plan_view": "Ver plan",
   "tofu.plan_summary": "Resumen del plan",
   "tofu.plan_no_changes": "Sin cambios. La infraestructura está actualizada.",
@@ -1241,7 +1172,6 @@
   "tofu.plan_known_after_apply": "(conocido después de aplicar)",
   "tofu.plan_sensitive_value": "(sensible)",
   "tofu.plan_loading": "Cargando plan...",
-
   "tofu.schema_fetch": "Obtener esquema",
   "tofu.schema_refresh": "Actualizar esquema",
   "tofu.schema_fetching": "Obteniendo...",
@@ -1250,7 +1180,6 @@
   "tofu.schema_hint": "Esquema dinámico cargado. Los campos de recursos y fuentes de datos usarán definiciones de proveedores en vivo.",
   "tofu.schema_resource_count": "{{count}} tipos de recursos",
   "tofu.resource_category_dynamic": "Dinámico",
-
   "ansible.tool_not_installed": "Ansible no está instalado",
   "ansible.install": "Instalar Ansible",
   "ansible.installing": "Instalando...",
@@ -1381,5 +1310,12 @@
   "ansible.no_vault_files": "Selecciona un archivo para cifrar, descifrar o ver.",
   "ansible.save": "Guardar",
   "ansible.edit": "Editar",
-  "ansible.remove": "Eliminar"
+  "ansible.remove": "Eliminar",
+  "explorer.archive": "Archivo",
+  "explorer.archive_extract": "Extraer aquí",
+  "explorer.archive_compress": "Comprimir como",
+  "explorer.archive_busy": "Trabajando…",
+  "explorer.archive_created": "{{name}} creado con {{tool}}",
+  "explorer.archive_extracted": "Extraído en {{name}} con {{tool}}",
+  "explorer.archive_none": "Esta máquina no tiene ninguna herramienta para eso"
 }

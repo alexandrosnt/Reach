@@ -231,6 +231,9 @@ pub fn run() {
             sftp_touch,
             sftp_read_file,
             sftp_write_file,
+            sftp_archive_tools,
+            sftp_archive_create,
+            sftp_archive_extract,
             // Session commands
             session_list,
             session_get,
@@ -497,6 +500,9 @@ pub fn run() {
             sftp_touch,
             sftp_read_file,
             sftp_write_file,
+            sftp_archive_tools,
+            sftp_archive_create,
+            sftp_archive_extract,
             // Session commands
             session_list,
             session_get,

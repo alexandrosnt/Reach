@@ -1,24 +1,20 @@
 {
   "app.name": "Reach",
   "app.version": "v{{version}}",
-
   "sidebar.sessions": "Sessions",
   "sidebar.explorer": "Explorateur de fichiers",
   "sidebar.follow_path": "Suivre le chemin",
   "sidebar.tunnels": "Tunnels",
   "sidebar.expand": "Agrandir la barre laterale",
   "sidebar.collapse": "Reduire la barre laterale",
-
   "titlebar.open_settings": "Ouvrir les parametres",
   "titlebar.ai_assistant": "Assistant AI",
   "titlebar.minimize": "Reduire",
   "titlebar.maximize": "Agrandir",
   "titlebar.close": "Fermer",
-
   "statusbar.no_session": "Aucune session",
   "statusbar.connected_to": "Connecte a {{title}}",
   "statusbar.local": "Local",
-
   "terminal.new_tab": "Nouvel onglet",
   "terminal.close_tab": "Fermer l'onglet",
   "terminal.split_horizontal": "Division horizontale",
@@ -45,7 +41,6 @@
   "terminal.reconnecting": "Reconnexion...",
   "terminal.reconnected": "Reconnecté",
   "terminal.reconnect_failed": "Reconnexion échouée",
-
   "session.connect": "Connecter",
   "session.disconnect": "Deconnecter",
   "session.edit": "Modifier",
@@ -144,7 +139,6 @@
   "session.start_fresh": "Recommencer a zero",
   "session.keychain_locked_desc": "Impossible d'acceder au trousseau. Veuillez verifier les permissions du systeme.",
   "session.enter_backup_key": "Veuillez entrer votre cle de sauvegarde",
-
   "session.share": "Partager",
   "session.share_session": "Partager la session",
   "session.share_success": "Session partagee avec succes !",
@@ -162,7 +156,6 @@
   "session.recipient_required": "L'UUID et la cle publique du destinataire sont requis",
   "session.invalid_public_key_length": "Cle publique invalide : doit faire 32 octets (X25519)",
   "session.invalid_public_key_base64": "Cle publique invalide : doit etre en base64 valide",
-
   "monitoring.cpu": "CPU",
   "monitoring.ram": "RAM",
   "monitoring.disk": "Disque",
@@ -172,7 +165,6 @@
   "monitoring.one_user": "1 utilisateur",
   "monitoring.n_users": "{{count}} utilisateurs",
   "monitoring.you": "(vous)",
-
   "tunnel.local_forward": "Redirection locale",
   "tunnel.remote_forward": "Redirection distante",
   "tunnel.dynamic": "Dynamique (SOCKS)",
@@ -202,7 +194,6 @@
   "tunnel.invalid_local_port": "Port local invalide (1-65535)",
   "tunnel.invalid_remote_port": "Port distant invalide (1-65535)",
   "tunnel.remote_host_required": "L'hote distant est requis",
-
   "explorer.upload": "Envoyer",
   "explorer.download": "Telecharger",
   "explorer.delete": "Supprimer",
@@ -230,14 +221,12 @@
   "explorer.cd_here": "CD ici",
   "explorer.cd_sent": "cd {{path}} envoyé au terminal",
   "explorer.search_placeholder": "Filtrer les fichiers...",
-
   "editor.close": "Fermer l'editeur",
   "editor.saving": "Enregistrement...",
   "editor.save": "Enregistrer",
   "editor.unsaved_changes": "Vous avez des modifications non enregistrees. Fermer sans enregistrer ?",
   "editor.file_saved_toast": "Fichier enregistré",
   "editor.opening": "Ouverture du fichier...",
-
   "ai.title": "Assistant AI",
   "ai.clear_chat": "Effacer la conversation",
   "ai.close_panel": "Fermer le panneau",
@@ -250,7 +239,6 @@
   "ai.copy": "Copier",
   "ai.copy_message": "Copier le message",
   "ai.copied": "Copie !",
-
   "vault.unlock": "Deverrouiller le coffre",
   "vault.no_password_warning": "Aucun mot de passe principal défini. Le coffre ne peut être ouvert que par le trousseau du système — définissez-en un dans Paramètres > Sécurité.",
   "vault.enter_password": "Entrez votre mot de passe principal...",
@@ -296,7 +284,6 @@
   "vault.vaults_refreshed_toast": "Coffres actualises",
   "vault.locked_toast": "Coffre verrouille",
   "vault.vault_created_toast": "Coffre cree",
-
   "vault.import_backup": "Importer une sauvegarde",
   "vault.import_backup_desc": "Restaurez vos donnees Reach depuis un fichier de sauvegarde chiffre.",
   "vault.select_backup_file": "Selectionner le fichier de sauvegarde",
@@ -313,7 +300,6 @@
   "vault.import_warning": "L'importation remplacera vos donnees actuelles. Cette action est irreversible.",
   "vault.importing": "Importation...",
   "vault.backup_restored_toast": "Sauvegarde restauree avec succes. L'application va redemarrer.",
-
   "vault.edit_secret": "Modifier le secret",
   "vault.new_secret": "Nouveau secret",
   "vault.secret_name": "Nom",
@@ -337,7 +323,6 @@
   "vault.copied_toast": "Copie dans le presse-papiers",
   "vault.secret_updated_toast": "Secret mis a jour",
   "vault.secret_created_toast": "Secret cree",
-
   "vault.secrets": "Secrets",
   "vault.add_secret": "Ajouter un secret",
   "vault.no_secrets": "Aucun secret pour le moment",
@@ -349,7 +334,6 @@
   "vault.delete_irreversible": "Cette action est irreversible.",
   "vault.deleting": "Suppression...",
   "vault.save_changes": "Enregistrer les modifications",
-
   "vault.manage_members_title": "Gerer les membres - {{name}}",
   "vault.tab_invite": "Inviter",
   "vault.tab_members": "Membres",
@@ -383,7 +367,6 @@
   "vault.invited_toast": "Membre invite avec succes",
   "vault.cannot_remove_self": "Impossible de vous retirer vous-meme",
   "vault.member_removed_toast": "Membre retire",
-
   "vault.delete_vault": "Supprimer le coffre",
   "vault.delete_vault_warning": "Cela supprimera definitivement ce coffre et tous ses secrets. Cette action est irreversible.",
   "vault.create_vault_short": "Creer le coffre",
@@ -412,7 +395,6 @@
   "vault.type_selection": "Selection du type de coffre",
   "vault.password_required": "Le mot de passe est requis",
   "vault.passwords_mismatch": "Les mots de passe ne correspondent pas",
-
   "settings.title": "Parametres",
   "settings.language": "Langue",
   "settings.language_search": "Rechercher des langues...",
@@ -482,7 +464,6 @@
   "settings.system_startup_desc": "Lancer Reach automatiquement a la connexion",
   "settings.font_size_desc": "Taille du texte du terminal ({{size}}px)",
   "settings.font_desc": "Police utilisee dans l'emulateur de terminal",
-
   "security.master_password_status": "Etat du mot de passe principal",
   "security.set_password": "Definir le mot de passe",
   "security.change_password": "Changer le mot de passe",
@@ -499,7 +480,6 @@
   "security.new_password": "Nouveau mot de passe",
   "security.saving": "Enregistrement...",
   "security.save_password": "Enregistrer le mot de passe",
-
   "sync.identity": "Identite",
   "sync.user_uuid": "UUID utilisateur",
   "sync.public_key": "Cle publique",
@@ -534,7 +514,6 @@
   "sync.url_token_required": "L'URL de synchronisation et le jeton sont tous deux requis",
   "sync.cloud_sync_active": "Toutes vos donnees sont synchronisees dans le cloud",
   "sync.local_only": "Donnees stockees localement uniquement",
-
   "backup.export": "Exporter la sauvegarde",
   "backup.export_desc": "Creez une sauvegarde chiffree de tous vos coffres, secrets et parametres.",
   "backup.export_password": "Mot de passe d'exportation",
@@ -562,7 +541,6 @@
   "backup.imported_toast": "Sauvegarde importee avec succes — redemarrage de l'application",
   "backup.import_failed_toast": "Echec de l'importation",
   "backup.passwords_mismatch": "Les mots de passe ne correspondent pas",
-
   "ai_settings.enable": "Activer les fonctionnalites AI",
   "ai_settings.enable_desc": "Connectez-vous a OpenRouter pour des fonctionnalites alimentees par l'AI comme les suggestions de commandes et l'analyse de serveurs.",
   "ai_settings.api_key": "Cle API",
@@ -577,7 +555,6 @@
   "ai_settings.search_models": "Rechercher des modeles...",
   "ai_settings.no_models": "Aucun modele charge. Validez votre cle API pour charger les modeles disponibles.",
   "ai_settings.no_match": "Aucun modele ne correspond a votre recherche.",
-
   "updater.available": "Reach v{{version}} est disponible",
   "updater.installing": "Installation...",
   "updater.update_now": "Mettre a jour maintenant",
@@ -594,7 +571,6 @@
   "updater.continue_without": "Continuer sans mettre a jour",
   "updater.downloading": "Telechargement... {{progress}}%",
   "updater.retry": "Reessayer",
-
   "transfer.uploading": "Envoi",
   "transfer.downloading": "Telechargement",
   "transfer.complete": "Termine",
@@ -604,7 +580,6 @@
   "transfer.no_active": "Aucun transfert en cours",
   "transfer.clear_finished": "Effacer les termines",
   "transfer.dismiss": "Ignorer",
-
   "common.close_dialog": "Fermer la boite de dialogue",
   "common.close_tab": "Fermer l'onglet {{title}}",
   "common.new_tab": "Nouvel onglet",
@@ -620,7 +595,6 @@
   "common.copy": "Copier",
   "common.clear": "Effacer",
   "common.dismiss": "Ignorer la notification",
-
   "setup.welcome_title": "Bienvenue sur Reach",
   "setup.welcome_subtitle": "Configurons votre environnement",
   "setup.personalize_title": "Personnalisez",
@@ -648,7 +622,6 @@
   "setup.get_started": "Commencer",
   "setup.complete_title": "Tout est pret !",
   "setup.complete_subtitle": "Reach est pret a etre utilise",
-
   "toolchain.checking": "Recherche de {{tool}}...",
   "toolchain.installed": "{{tool}} {{version}}",
   "toolchain.not_installed": "{{tool}} non trouve",
@@ -659,7 +632,6 @@
   "toolchain.install_failed": "Echec de l'installation de {{tool}}",
   "toolchain.python_required": "Python 3 est requis pour installer Ansible",
   "toolchain.retry": "Reessayer",
-
   "sidebar.snippets": "Extraits",
   "sidebar.plugins": "Plugins",
   "common.edit": "Modifier",
@@ -759,7 +731,6 @@
   "recipes.danger_mutating": "Modifie",
   "recipes.danger_sensitive": "Sensible",
   "recipes.danger_destructive": "Destructeur",
-
   "plugin.title": "Plugins",
   "plugin.no_plugins": "Aucun plugin trouvé",
   "plugin.no_plugins_hint": "Placez les dossiers de plugins dans votre répertoire de plugins",
@@ -878,7 +849,6 @@
   "plugin.perm.http": "Effectuer des requêtes HTTP",
   "plugin.perm.notify": "Afficher les notifications",
   "plugin.perm.ui": "Afficher des éléments d'interface",
-
   "settings.plugins": "Plugins",
   "settings.plugins_dir": "Répertoire des plugins",
   "settings.plugins_dir_desc": "Dossier où Reach recherche les plugins",
@@ -890,7 +860,6 @@
   "settings.plugins_discover": "Découvrir les plugins",
   "settings.plugins_version": "v{{version}}",
   "settings.plugins_by": "par {{author}}",
-
   "session.jump_host": "Hôte de rebond",
   "session.jump_host_enable": "Se connecter via un hôte de rebond",
   "session.jump_host_hint": "Acheminer la connexion via un serveur bastion/proxy",
@@ -916,15 +885,12 @@
   "session.add": "Ajouter",
   "session.new_folder": "Nouveau dossier",
   "session.folder_name": "Nom du dossier",
-  "session.folder": "Dossier",
   "session.no_folder": "Aucun dossier",
   "session.move_to_folder": "Déplacer vers le dossier",
   "session.remove_from_folder": "Retirer du dossier",
-
   "nav.terminal": "Terminal",
   "nav.ansible": "Ansible",
   "nav.tofu": "OpenTofu",
-
   "tofu.tool_not_installed": "OpenTofu CLI n'est pas installé",
   "tofu.install": "Installer OpenTofu",
   "tofu.installing": "Installation en cours...",
@@ -984,12 +950,10 @@
   "tofu.run_errored": "échoué",
   "tofu.run_elapsed": "{{s}}s",
   "tofu.run_refreshed": "{{count}} ressources rafraîchies, rien à changer.",
-
   "tofu.tab_actions": "Actions",
   "tofu.tab_providers": "Fournisseurs",
   "tofu.tab_variables": "Variables",
   "tofu.tab_environments": "Environnements",
-
   "tofu.providers": "Fournisseurs",
   "tofu.add_provider": "Ajouter un fournisseur",
   "tofu.remove_provider": "Supprimer le fournisseur",
@@ -1006,7 +970,6 @@
   "tofu.provider_category_utility": "Utilitaire",
   "tofu.provider_version_placeholder": ">= 1.0",
   "tofu.save": "Enregistrer",
-
   "tofu.add_variable": "Ajouter une variable",
   "tofu.edit_variable": "Modifier la variable",
   "tofu.no_variables": "Aucune variable définie. Ajoutez une variable pour commencer.",
@@ -1025,7 +988,6 @@
   "tofu.variable_sensitive": "Sensible",
   "tofu.variable_name_invalid": "Nom invalide. Doit commencer par une lettre ou un tiret bas.",
   "tofu.variable_name_exists": "Une variable avec ce nom existe déjà.",
-
   "tofu.environments": "Environnements",
   "tofu.add_environment": "Ajouter",
   "tofu.delete_environment": "Supprimer",
@@ -1038,13 +1000,11 @@
   "tofu.save_values": "Enregistrer les valeurs",
   "tofu.no_variables_defined": "Aucune variable ou champ sensible de fournisseur à configurer.",
   "tofu.delete_environment_confirm": "Supprimer cet environnement ? Cette action est irréversible.",
-
   "tofu.generate_hcl": "Générer HCL",
   "tofu.hcl_preview": "Aperçu HCL",
   "tofu.write_files": "Écrire les fichiers",
   "tofu.overwrite_warning": "Les fichiers existants portant les mêmes noms seront écrasés.",
   "tofu.no_providers_to_generate": "Aucun fournisseur configuré. Ajoutez des fournisseurs pour générer des fichiers HCL.",
-
   "tofu.tab_resources": "Ressources",
   "tofu.resources_title": "Ressources",
   "tofu.add_resource": "Ajouter une ressource",
@@ -1068,47 +1028,26 @@
   "tofu.resource_logical_name": "Nom logique",
   "tofu.resource_logical_name_help": "Un identifiant unique utilisé dans le HCL (ex. \"web\" dans resource \"aws_instance\" \"web\").",
   "tofu.no_providers_for_resources": "Ajoutez d'abord un fournisseur pour voir les ressources disponibles.",
-
   "tofu.tab_state": "État",
-
   "tofu.tab_overview": "Aperçu",
-
   "tofu.tab_code": "Code",
-
   "tofu.more_actions": "Plus d'actions",
-
   "tofu.target_remote": "Distant",
-
   "tofu.env_default": "Environnement par défaut",
-
   "tofu.no_var_file": "pas de fichier de variables",
-
   "tofu.state_encrypted": "état chiffré",
-
   "tofu.backend_is": "backend : {{backend}}",
-
   "tofu.plan_gate": "C'est ce plan qui sera appliqué. Rien d'autre.",
-
   "tofu.plan_gate_full": "Plan complet",
-
   "tofu.plan_gate_result": "Retour au résultat",
-
   "tofu.plan_discard": "Abandonner",
-
   "tofu.plan_apply_this": "Appliquer ce plan",
-
   "tofu.danger_zone": "Zone de danger",
-
   "tofu.destroy_explain": "Destroy supprime toutes les ressources gérées par ce projet. Saisissez le nom du projet pour l'activer.",
-
   "tofu.destroy_type_name": "Saisissez {{name}} pour confirmer",
-
   "tofu.close": "Fermer",
-
   "tofu.loading": "Chargement…",
-
   "tofu.show_files": "Afficher les fichiers",
-
   "tofu.hide_files": "Masquer les fichiers",
   "tofu.state_title": "Gestion de l'état",
   "tofu.state_refresh": "Actualiser",
@@ -1127,7 +1066,6 @@
   "tofu.state_import_id_help": "L'ID spécifique au fournisseur de la ressource d'infrastructure existante.",
   "tofu.state_move_prompt": "Entrez la nouvelle adresse pour cette ressource :",
   "tofu.state_remove_confirm": "Supprimer cette ressource de l'état ? L'infrastructure réelle ne sera pas détruite.",
-
   "tofu.tab_graph": "Graphe",
   "tofu.tab_outputs": "Sorties",
   "tofu.graph_title": "Graphe de dépendances",
@@ -1152,7 +1090,6 @@
   "tofu.from_template": "Depuis un modèle",
   "tofu.template_apply": "Utiliser le modèle",
   "tofu.template_search": "Rechercher des modèles...",
-
   "tofu.tab_backend": "Backend",
   "tofu.backend_title": "Configuration du backend",
   "tofu.backend_type": "Type de backend",
@@ -1169,7 +1106,6 @@
   "tofu.encryption_warning": "Perdez la phrase et personne ne pourra lire l'état, Reach compris. Gardez-en une copie en lieu sûr.",
   "tofu.encryption_save": "Enregistrer le chiffrement",
   "tofu.encryption_saved": "Enregistré",
-
   "tofu.tab_data_sources": "Sources de données",
   "tofu.data_sources_title": "Sources de données",
   "tofu.add_data_source": "Ajouter une source de données",
@@ -1178,7 +1114,6 @@
   "tofu.data_source_type": "Type de source de données",
   "tofu.data_source_name": "Nom de la source de données",
   "tofu.data_source_name_invalid": "Nom invalide. Doit commencer par une lettre ou un underscore et ne contenir que des lettres, chiffres et underscores.",
-
   "tofu.tab_locals": "Locaux",
   "tofu.locals_title": "Valeurs locales",
   "tofu.add_local": "Ajouter un local",
@@ -1189,7 +1124,6 @@
   "tofu.local_expression_placeholder": "ex. \"${var.prefix}-${var.environment}\"",
   "tofu.local_name_invalid": "Nom invalide. Doit commencer par une lettre ou un underscore.",
   "tofu.local_name_exists": "Un local avec ce nom existe déjà.",
-
   "tofu.tab_modules": "Modules",
   "tofu.modules_title": "Modules",
   "tofu.add_module": "Ajouter un module",
@@ -1204,7 +1138,6 @@
   "tofu.module_input_key": "Clé",
   "tofu.module_input_value": "Valeur",
   "tofu.module_name_invalid": "Nom invalide. Doit commencer par une lettre ou un underscore.",
-
   "tofu.tab_workspaces": "Espaces de travail",
   "tofu.workspaces_title": "Espaces de travail",
   "tofu.workspace_current": "Espace de travail actuel",
@@ -1217,13 +1150,11 @@
   "tofu.workspace_empty": "Aucune information sur les espaces. Exécutez init d'abord.",
   "tofu.workspace_delete_confirm": "Supprimer cet espace de travail ? Cette action est irréversible.",
   "tofu.workspace_cannot_delete_default": "Impossible de supprimer l'espace de travail par défaut.",
-
   "tofu.format": "Formater",
   "tofu.format_check": "Vérifier le format",
   "tofu.format_success": "Tous les fichiers sont correctement formatés.",
   "tofu.format_changed": "Fichiers formatés",
   "tofu.format_error": "Erreur de formatage",
-
   "tofu.plan_view": "Voir le plan",
   "tofu.plan_summary": "Résumé du plan",
   "tofu.plan_no_changes": "Aucun changement. L'infrastructure est à jour.",
@@ -1241,7 +1172,6 @@
   "tofu.plan_known_after_apply": "(connu après application)",
   "tofu.plan_sensitive_value": "(sensible)",
   "tofu.plan_loading": "Chargement du plan...",
-
   "tofu.schema_fetch": "Charger le schema",
   "tofu.schema_refresh": "Actualiser le schema",
   "tofu.schema_fetching": "Chargement...",
@@ -1250,7 +1180,6 @@
   "tofu.schema_hint": "Schema dynamique charge. Les champs des ressources et sources de donnees utiliseront les definitions du fournisseur.",
   "tofu.schema_resource_count": "{{count}} types de ressources",
   "tofu.resource_category_dynamic": "Dynamique",
-
   "ansible.tool_not_installed": "Ansible n'est pas installé",
   "ansible.install": "Installer Ansible",
   "ansible.installing": "Installation en cours...",
@@ -1381,5 +1310,12 @@
   "ansible.no_vault_files": "Sélectionnez un fichier à chiffrer, déchiffrer ou visualiser.",
   "ansible.save": "Enregistrer",
   "ansible.edit": "Modifier",
-  "ansible.remove": "Supprimer"
+  "ansible.remove": "Supprimer",
+  "explorer.archive": "Archive",
+  "explorer.archive_extract": "Extraire ici",
+  "explorer.archive_compress": "Compresser en",
+  "explorer.archive_busy": "En cours…",
+  "explorer.archive_created": "{{name}} créé avec {{tool}}",
+  "explorer.archive_extracted": "Extrait dans {{name}} avec {{tool}}",
+  "explorer.archive_none": "Cette machine n’a aucun outil pour cela"
 }

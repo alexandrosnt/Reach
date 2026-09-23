@@ -1,24 +1,20 @@
 {
   "app.name": "Reach",
   "app.version": "v{{version}}",
-
   "sidebar.sessions": "Συνεδρίες",
   "sidebar.explorer": "Εξερευνητής Αρχείων",
   "sidebar.follow_path": "Ακολούθηση Διαδρομής",
   "sidebar.tunnels": "Σήραγγες",
   "sidebar.expand": "Ανάπτυξη πλαϊνής μπάρας",
   "sidebar.collapse": "Σύμπτυξη πλαϊνής μπάρας",
-
   "titlebar.open_settings": "Άνοιγμα ρυθμίσεων",
   "titlebar.ai_assistant": "Βοηθός AI",
   "titlebar.minimize": "Ελαχιστοποίηση",
   "titlebar.maximize": "Μεγιστοποίηση",
   "titlebar.close": "Κλείσιμο",
-
   "statusbar.no_session": "Καμία συνεδρία",
   "statusbar.connected_to": "Συνδεδεμένο σε {{title}}",
   "statusbar.local": "Τοπικό",
-
   "terminal.new_tab": "Νέα Καρτέλα",
   "terminal.close_tab": "Κλείσιμο Καρτέλας",
   "terminal.split_horizontal": "Οριζόντιος Διαχωρισμός",
@@ -45,7 +41,6 @@
   "terminal.reconnecting": "Επανασύνδεση...",
   "terminal.reconnected": "Επανασυνδέθηκε",
   "terminal.reconnect_failed": "Η επανασύνδεση απέτυχε",
-
   "session.connect": "Σύνδεση",
   "session.disconnect": "Αποσύνδεση",
   "session.edit": "Επεξεργασία",
@@ -144,7 +139,6 @@
   "session.start_fresh": "Νέα Αρχή",
   "session.keychain_locked_desc": "Δεν είναι δυνατή η πρόσβαση στην κλειδοθήκη. Ελέγξτε τα δικαιώματα του ΛΣ.",
   "session.enter_backup_key": "Εισάγετε το κλειδί αντιγράφου ασφαλείας σας",
-
   "session.share": "Κοινοποίηση",
   "session.share_session": "Κοινοποίηση Συνεδρίας",
   "session.share_success": "Η συνεδρία κοινοποιήθηκε επιτυχώς!",
@@ -162,7 +156,6 @@
   "session.recipient_required": "Απαιτούνται το UUID και το δημόσιο κλειδί του παραλήπτη",
   "session.invalid_public_key_length": "Μη έγκυρο δημόσιο κλειδί: πρέπει να είναι 32 bytes (X25519)",
   "session.invalid_public_key_base64": "Μη έγκυρο δημόσιο κλειδί: πρέπει να είναι έγκυρο base64",
-
   "monitoring.cpu": "CPU",
   "monitoring.ram": "RAM",
   "monitoring.disk": "Δίσκος",
@@ -172,7 +165,6 @@
   "monitoring.one_user": "1 χρήστης",
   "monitoring.n_users": "{{count}} χρήστες",
   "monitoring.you": "(εσύ)",
-
   "tunnel.local_forward": "Τοπική Προώθηση",
   "tunnel.remote_forward": "Απομακρυσμένη Προώθηση",
   "tunnel.dynamic": "Δυναμική (SOCKS)",
@@ -202,7 +194,6 @@
   "tunnel.invalid_local_port": "Μη έγκυρη τοπική θύρα (1-65535)",
   "tunnel.invalid_remote_port": "Μη έγκυρη απομακρυσμένη θύρα (1-65535)",
   "tunnel.remote_host_required": "Απαιτείται απομακρυσμένος κεντρικός υπολογιστής",
-
   "explorer.upload": "Μεταφόρτωση",
   "explorer.download": "Λήψη",
   "explorer.delete": "Διαγραφή",
@@ -230,14 +221,12 @@
   "explorer.cd_here": "CD εδώ",
   "explorer.cd_sent": "cd {{path}} στάλθηκε στο τερματικό",
   "explorer.search_placeholder": "Φιλτράρισμα αρχείων...",
-
   "editor.close": "Κλείσιμο επεξεργαστή",
   "editor.saving": "Αποθήκευση...",
   "editor.save": "Αποθήκευση",
   "editor.unsaved_changes": "Έχετε μη αποθηκευμένες αλλαγές. Κλείσιμο χωρίς αποθήκευση;",
   "editor.file_saved_toast": "Το αρχείο αποθηκεύτηκε",
   "editor.opening": "Άνοιγμα αρχείου...",
-
   "ai.title": "Βοηθός AI",
   "ai.clear_chat": "Εκκαθάριση συνομιλίας",
   "ai.close_panel": "Κλείσιμο πίνακα",
@@ -250,7 +239,6 @@
   "ai.copy": "Αντιγραφή",
   "ai.copy_message": "Αντιγραφή μηνύματος",
   "ai.copied": "Αντιγράφηκε!",
-
   "vault.unlock": "Ξεκλείδωμα Θησαυροφυλακίου",
   "vault.no_password_warning": "Δεν έχει οριστεί κύριος κωδικός. Το θησαυροφυλάκιο ανοίγει μόνο με την κλειδοθήκη του συστήματος — ορίστε έναν στις Ρυθμίσεις > Ασφάλεια.",
   "vault.enter_password": "Εισάγετε τον κύριο κωδικό πρόσβασης...",
@@ -296,7 +284,6 @@
   "vault.vaults_refreshed_toast": "Τα θησαυροφυλάκια ανανεώθηκαν",
   "vault.locked_toast": "Το θησαυροφυλάκιο κλειδώθηκε",
   "vault.vault_created_toast": "Το θησαυροφυλάκιο δημιουργήθηκε",
-
   "vault.import_backup": "Εισαγωγή Αντιγράφου Ασφαλείας",
   "vault.import_backup_desc": "Αποκαταστήστε τα δεδομένα του Reach από ένα κρυπτογραφημένο αντίγραφο ασφαλείας.",
   "vault.select_backup_file": "Επιλογή Αρχείου Αντιγράφου Ασφαλείας",
@@ -313,7 +300,6 @@
   "vault.import_warning": "Η εισαγωγή θα αντικαταστήσει τα τρέχοντα δεδομένα σας. Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
   "vault.importing": "Εισαγωγή...",
   "vault.backup_restored_toast": "Το αντίγραφο ασφαλείας αποκαταστάθηκε επιτυχώς. Η εφαρμογή θα επανεκκινήσει.",
-
   "vault.edit_secret": "Επεξεργασία Μυστικού",
   "vault.new_secret": "Νέο Μυστικό",
   "vault.secret_name": "Όνομα",
@@ -337,7 +323,6 @@
   "vault.copied_toast": "Αντιγράφηκε στο πρόχειρο",
   "vault.secret_updated_toast": "Το μυστικό ενημερώθηκε",
   "vault.secret_created_toast": "Το μυστικό δημιουργήθηκε",
-
   "vault.secrets": "Μυστικά",
   "vault.add_secret": "Προσθήκη Μυστικού",
   "vault.no_secrets": "Δεν υπάρχουν μυστικά ακόμα",
@@ -349,7 +334,6 @@
   "vault.delete_irreversible": "Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
   "vault.deleting": "Διαγραφή...",
   "vault.save_changes": "Αποθήκευση Αλλαγών",
-
   "vault.manage_members_title": "Διαχείριση Μελών - {{name}}",
   "vault.tab_invite": "Πρόσκληση",
   "vault.tab_members": "Μέλη",
@@ -383,7 +367,6 @@
   "vault.invited_toast": "Το μέλος προσκλήθηκε επιτυχώς",
   "vault.cannot_remove_self": "Δεν μπορείτε να αφαιρέσετε τον εαυτό σας",
   "vault.member_removed_toast": "Το μέλος αφαιρέθηκε",
-
   "vault.delete_vault": "Διαγραφή Θησαυροφυλακίου",
   "vault.delete_vault_warning": "Αυτό θα διαγράψει μόνιμα αυτό το θησαυροφυλάκιο και όλα τα μυστικά του. Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
   "vault.create_vault_short": "Δημιουργία Θησαυροφυλακίου",
@@ -412,7 +395,6 @@
   "vault.type_selection": "Επιλογή τύπου θησαυροφυλακίου",
   "vault.password_required": "Απαιτείται κωδικός πρόσβασης",
   "vault.passwords_mismatch": "Οι κωδικοί δεν ταιριάζουν",
-
   "settings.title": "Ρυθμίσεις",
   "settings.language": "Γλώσσα",
   "settings.language_search": "Αναζήτηση γλωσσών...",
@@ -482,7 +464,6 @@
   "settings.system_startup_desc": "Αυτόματη εκκίνηση του Reach κατά τη σύνδεση",
   "settings.font_size_desc": "Μέγεθος κειμένου τερματικού ({{size}}px)",
   "settings.font_desc": "Γραμματοσειρά που χρησιμοποιείται στον εξομοιωτή τερματικού",
-
   "security.master_password_status": "Κατάσταση Κύριου Κωδικού",
   "security.set_password": "Ορισμός Κωδικού",
   "security.change_password": "Αλλαγή Κωδικού",
@@ -499,7 +480,6 @@
   "security.new_password": "Νέος Κωδικός",
   "security.saving": "Αποθήκευση...",
   "security.save_password": "Αποθήκευση Κωδικού",
-
   "sync.identity": "Ταυτότητα",
   "sync.user_uuid": "UUID Χρήστη",
   "sync.public_key": "Δημόσιο Κλειδί",
@@ -534,7 +514,6 @@
   "sync.url_token_required": "Απαιτούνται τόσο η Διεύθυνση Συγχρονισμού όσο και το Token",
   "sync.cloud_sync_active": "Όλα τα δεδομένα σας συγχρονίζονται στο cloud",
   "sync.local_only": "Τα δεδομένα αποθηκεύονται μόνο τοπικά",
-
   "backup.export": "Εξαγωγή Αντιγράφου Ασφαλείας",
   "backup.export_desc": "Δημιουργία κρυπτογραφημένου αντιγράφου ασφαλείας όλων των θησαυροφυλακίων, μυστικών και ρυθμίσεών σας.",
   "backup.export_password": "Κωδικός Εξαγωγής",
@@ -562,7 +541,6 @@
   "backup.imported_toast": "Το αντίγραφο ασφαλείας εισήχθη επιτυχώς — επανεκκίνηση εφαρμογής",
   "backup.import_failed_toast": "Η εισαγωγή απέτυχε",
   "backup.passwords_mismatch": "Οι κωδικοί δεν ταιριάζουν",
-
   "ai_settings.enable": "Ενεργοποίηση Λειτουργιών AI",
   "ai_settings.enable_desc": "Σύνδεση στο OpenRouter για λειτουργίες που υποστηρίζονται από AI, όπως προτάσεις εντολών και ανάλυση διακομιστή.",
   "ai_settings.api_key": "Κλειδί API",
@@ -577,7 +555,6 @@
   "ai_settings.search_models": "Αναζήτηση μοντέλων...",
   "ai_settings.no_models": "Δεν φορτώθηκαν μοντέλα. Επικυρώστε το κλειδί API σας για φόρτωση διαθέσιμων μοντέλων.",
   "ai_settings.no_match": "Κανένα μοντέλο δεν ταιριάζει με την αναζήτησή σας.",
-
   "updater.available": "Το Reach v{{version}} είναι διαθέσιμο",
   "updater.installing": "Εγκατάσταση...",
   "updater.update_now": "Ενημέρωση Τώρα",
@@ -594,7 +571,6 @@
   "updater.continue_without": "Συνέχεια χωρίς ενημέρωση",
   "updater.downloading": "Λήψη... {{progress}}%",
   "updater.retry": "Επανάληψη",
-
   "transfer.uploading": "Μεταφόρτωση",
   "transfer.downloading": "Λήψη",
   "transfer.complete": "Ολοκληρώθηκε",
@@ -604,7 +580,6 @@
   "transfer.no_active": "Δεν υπάρχουν ενεργές μεταφορές",
   "transfer.clear_finished": "Εκκαθάριση ολοκληρωμένων",
   "transfer.dismiss": "Απόρριψη",
-
   "common.close_dialog": "Κλείσιμο διαλόγου",
   "common.close_tab": "Κλείσιμο καρτέλας {{title}}",
   "common.new_tab": "Νέα καρτέλα",
@@ -620,7 +595,6 @@
   "common.copy": "Αντιγραφή",
   "common.clear": "Εκκαθάριση",
   "common.dismiss": "Απόρριψη ειδοποίησης",
-
   "setup.welcome_title": "Καλώς ήρθατε στο Reach",
   "setup.welcome_subtitle": "Ας σας ρυθμίσουμε",
   "setup.personalize_title": "Κάν' το δικό σου",
@@ -648,7 +622,6 @@
   "setup.get_started": "Ξεκινήστε",
   "setup.complete_title": "Είστε έτοιμοι!",
   "setup.complete_subtitle": "Το Reach είναι έτοιμο για χρήση",
-
   "toolchain.checking": "Αναζήτηση {{tool}}...",
   "toolchain.installed": "{{tool}} {{version}}",
   "toolchain.not_installed": "Το {{tool}} δεν βρέθηκε",
@@ -659,7 +632,6 @@
   "toolchain.install_failed": "Αποτυχία εγκατάστασης {{tool}}",
   "toolchain.python_required": "Απαιτείται Python 3 για την εγκατάσταση του Ansible",
   "toolchain.retry": "Επανάληψη",
-
   "sidebar.snippets": "Αποσπάσματα",
   "sidebar.plugins": "Πρόσθετα",
   "common.edit": "Επεξεργασία",
@@ -759,7 +731,6 @@
   "recipes.danger_mutating": "Μεταβάλλει",
   "recipes.danger_sensitive": "Ευαίσθητη",
   "recipes.danger_destructive": "Καταστροφική",
-
   "plugin.title": "Πρόσθετα",
   "plugin.no_plugins": "Δεν βρέθηκαν πρόσθετα",
   "plugin.no_plugins_hint": "Τοποθετήστε φακέλους πρόσθετων στον κατάλογο πρόσθετων",
@@ -878,7 +849,6 @@
   "plugin.perm.http": "Αποστολή αιτημάτων HTTP",
   "plugin.perm.notify": "Εμφάνιση ειδοποιήσεων",
   "plugin.perm.ui": "Εμφάνιση στοιχείων διεπαφής",
-
   "settings.plugins": "Πρόσθετα",
   "settings.plugins_dir": "Κατάλογος πρόσθετων",
   "settings.plugins_dir_desc": "Φάκελος στον οποίο το Reach αναζητά πρόσθετα",
@@ -890,7 +860,6 @@
   "settings.plugins_discover": "Ανακάλυψη πρόσθετων",
   "settings.plugins_version": "v{{version}}",
   "settings.plugins_by": "από {{author}}",
-
   "session.jump_host": "Jump Host",
   "session.jump_host_enable": "Σύνδεση μέσω Jump Host",
   "session.jump_host_hint": "Δρομολόγηση σύνδεσης μέσω bastion/proxy server",
@@ -916,15 +885,12 @@
   "session.add": "Προσθήκη",
   "session.new_folder": "Νέος φάκελος",
   "session.folder_name": "Όνομα φακέλου",
-  "session.folder": "Φάκελος",
   "session.no_folder": "Χωρίς φάκελο",
   "session.move_to_folder": "Μετακίνηση σε φάκελο",
   "session.remove_from_folder": "Αφαίρεση από φάκελο",
-
   "nav.terminal": "Τερματικό",
   "nav.ansible": "Ansible",
   "nav.tofu": "OpenTofu",
-
   "tofu.tool_not_installed": "Το OpenTofu CLI δεν είναι εγκατεστημένο",
   "tofu.install": "Εγκατάσταση OpenTofu",
   "tofu.installing": "Εγκατάσταση...",
@@ -984,12 +950,10 @@
   "tofu.run_errored": "απέτυχε",
   "tofu.run_elapsed": "{{s}}s",
   "tofu.run_refreshed": "{{count}} πόροι ανανεώθηκαν, τίποτα προς αλλαγή.",
-
   "tofu.tab_actions": "Ενέργειες",
   "tofu.tab_providers": "Πάροχοι",
   "tofu.tab_variables": "Μεταβλητές",
   "tofu.tab_environments": "Περιβάλλοντα",
-
   "tofu.providers": "Πάροχοι",
   "tofu.add_provider": "Προσθήκη παρόχου",
   "tofu.remove_provider": "Αφαίρεση παρόχου",
@@ -1006,7 +970,6 @@
   "tofu.provider_category_utility": "Βοηθήματα",
   "tofu.provider_version_placeholder": ">= 1.0",
   "tofu.save": "Αποθήκευση",
-
   "tofu.add_variable": "Προσθήκη μεταβλητής",
   "tofu.edit_variable": "Επεξεργασία μεταβλητής",
   "tofu.no_variables": "Δεν έχουν οριστεί μεταβλητές. Προσθέστε μια μεταβλητή για να ξεκινήσετε.",
@@ -1025,7 +988,6 @@
   "tofu.variable_sensitive": "Ευαίσθητο",
   "tofu.variable_name_invalid": "Μη έγκυρο όνομα. Πρέπει να ξεκινά με γράμμα ή κάτω παύλα.",
   "tofu.variable_name_exists": "Υπάρχει ήδη μεταβλητή με αυτό το όνομα.",
-
   "tofu.environments": "Περιβάλλοντα",
   "tofu.add_environment": "Προσθήκη",
   "tofu.delete_environment": "Διαγραφή",
@@ -1038,13 +1000,11 @@
   "tofu.save_values": "Αποθήκευση τιμών",
   "tofu.no_variables_defined": "Δεν υπάρχουν μεταβλητές ή ευαίσθητα πεδία παρόχων για ρύθμιση.",
   "tofu.delete_environment_confirm": "Διαγραφή αυτού του περιβάλλοντος; Αυτή η ενέργεια δεν μπορεί να αναιρεθεί.",
-
   "tofu.generate_hcl": "Δημιουργία HCL",
   "tofu.hcl_preview": "Προεπισκόπηση HCL",
   "tofu.write_files": "Εγγραφή αρχείων",
   "tofu.overwrite_warning": "Τα υπάρχοντα αρχεία με τα ίδια ονόματα θα αντικατασταθούν.",
   "tofu.no_providers_to_generate": "Δεν έχουν ρυθμιστεί πάροχοι. Προσθέστε παρόχους για τη δημιουργία αρχείων HCL.",
-
   "tofu.tab_resources": "Πόροι",
   "tofu.resources_title": "Πόροι",
   "tofu.add_resource": "Προσθήκη πόρου",
@@ -1068,47 +1028,26 @@
   "tofu.resource_logical_name": "Λογικό όνομα",
   "tofu.resource_logical_name_help": "Ένα μοναδικό αναγνωριστικό που χρησιμοποιείται στο HCL (π.χ. \"web\" στο resource \"aws_instance\" \"web\").",
   "tofu.no_providers_for_resources": "Προσθέστε πρώτα έναν πάροχο για να δείτε τους διαθέσιμους πόρους.",
-
   "tofu.tab_state": "Κατάσταση",
-
   "tofu.tab_overview": "Επισκόπηση",
-
   "tofu.tab_code": "Κώδικας",
-
   "tofu.more_actions": "Περισσότερες ενέργειες",
-
   "tofu.target_remote": "Απομακρυσμένο",
-
   "tofu.env_default": "Προεπιλεγμένο περιβάλλον",
-
   "tofu.no_var_file": "χωρίς αρχείο μεταβλητών",
-
   "tofu.state_encrypted": "κρυπτογραφημένο state",
-
   "tofu.backend_is": "backend: {{backend}}",
-
   "tofu.plan_gate": "Αυτό είναι το πλάνο που θα εφαρμοστεί. Τίποτα άλλο.",
-
   "tofu.plan_gate_full": "Πλήρες πλάνο",
-
   "tofu.plan_gate_result": "Πίσω στο αποτέλεσμα",
-
   "tofu.plan_discard": "Απόρριψη",
-
   "tofu.plan_apply_this": "Εφαρμογή αυτού του πλάνου",
-
   "tofu.danger_zone": "Ζώνη κινδύνου",
-
   "tofu.destroy_explain": "Το Destroy αφαιρεί κάθε πόρο που διαχειρίζεται αυτό το έργο. Πληκτρολογήστε το όνομα του έργου για να ενεργοποιηθεί.",
-
   "tofu.destroy_type_name": "Πληκτρολογήστε {{name}} για επιβεβαίωση",
-
   "tofu.close": "Κλείσιμο",
-
   "tofu.loading": "Φόρτωση…",
-
   "tofu.show_files": "Εμφάνιση αρχείων",
-
   "tofu.hide_files": "Απόκρυψη αρχείων",
   "tofu.state_title": "Διαχείριση κατάστασης",
   "tofu.state_refresh": "Ανανέωση",
@@ -1127,7 +1066,6 @@
   "tofu.state_import_id_help": "Το αναγνωριστικό του υπάρχοντος πόρου υποδομής, ειδικό για τον πάροχο.",
   "tofu.state_move_prompt": "Εισάγετε νέα διεύθυνση για αυτόν τον πόρο:",
   "tofu.state_remove_confirm": "Αφαίρεση αυτού του πόρου από την κατάσταση; Η πραγματική υποδομή δεν θα καταστραφεί.",
-
   "tofu.tab_graph": "Γράφημα",
   "tofu.tab_outputs": "Έξοδοι",
   "tofu.graph_title": "Γράφημα εξαρτήσεων",
@@ -1152,7 +1090,6 @@
   "tofu.from_template": "Από πρότυπο",
   "tofu.template_apply": "Χρήση προτύπου",
   "tofu.template_search": "Αναζήτηση προτύπων...",
-
   "tofu.tab_backend": "Backend",
   "tofu.backend_title": "Ρύθμιση Backend",
   "tofu.backend_type": "Τύπος Backend",
@@ -1169,7 +1106,6 @@
   "tofu.encryption_warning": "Αν χαθεί η φράση, κανείς δεν μπορεί να διαβάσει το state, ούτε το Reach. Κράτησε αντίγραφο κάπου που εμπιστεύεσαι.",
   "tofu.encryption_save": "Αποθήκευση κρυπτογράφησης",
   "tofu.encryption_saved": "Αποθηκεύτηκε",
-
   "tofu.tab_data_sources": "Πηγές Δεδομένων",
   "tofu.data_sources_title": "Πηγές Δεδομένων",
   "tofu.add_data_source": "Προσθήκη Πηγής Δεδομένων",
@@ -1178,7 +1114,6 @@
   "tofu.data_source_type": "Τύπος Πηγής Δεδομένων",
   "tofu.data_source_name": "Όνομα Πηγής Δεδομένων",
   "tofu.data_source_name_invalid": "Μη έγκυρο όνομα. Πρέπει να αρχίζει με γράμμα ή κάτω παύλα και να περιέχει μόνο γράμματα, αριθμούς και κάτω παύλες.",
-
   "tofu.tab_locals": "Τοπικά",
   "tofu.locals_title": "Τοπικές Τιμές",
   "tofu.add_local": "Προσθήκη Τοπικού",
@@ -1189,7 +1124,6 @@
   "tofu.local_expression_placeholder": "π.χ. \"${var.prefix}-${var.environment}\"",
   "tofu.local_name_invalid": "Μη έγκυρο όνομα. Πρέπει να αρχίζει με γράμμα ή κάτω παύλα.",
   "tofu.local_name_exists": "Υπάρχει ήδη τοπικό με αυτό το όνομα.",
-
   "tofu.tab_modules": "Ενότητες",
   "tofu.modules_title": "Ενότητες",
   "tofu.add_module": "Προσθήκη Ενότητας",
@@ -1204,7 +1138,6 @@
   "tofu.module_input_key": "Κλειδί",
   "tofu.module_input_value": "Τιμή",
   "tofu.module_name_invalid": "Μη έγκυρο όνομα. Πρέπει να αρχίζει με γράμμα ή κάτω παύλα.",
-
   "tofu.tab_workspaces": "Χώροι εργασίας",
   "tofu.workspaces_title": "Χώροι εργασίας",
   "tofu.workspace_current": "Τρέχων χώρος εργασίας",
@@ -1217,13 +1150,11 @@
   "tofu.workspace_empty": "Δεν υπάρχουν πληροφορίες χώρων εργασίας. Εκτελέστε πρώτα init.",
   "tofu.workspace_delete_confirm": "Διαγραφή αυτού του χώρου εργασίας; Αυτό δεν μπορεί να αναιρεθεί.",
   "tofu.workspace_cannot_delete_default": "Δεν είναι δυνατή η διαγραφή του προεπιλεγμένου χώρου εργασίας.",
-
   "tofu.format": "Μορφοποίηση",
   "tofu.format_check": "Έλεγχος μορφοποίησης",
   "tofu.format_success": "Όλα τα αρχεία είναι σωστά μορφοποιημένα.",
   "tofu.format_changed": "Μορφοποιημένα αρχεία",
   "tofu.format_error": "Σφάλμα μορφοποίησης",
-
   "tofu.plan_view": "Προβολή σχεδίου",
   "tofu.plan_summary": "Σύνοψη σχεδίου",
   "tofu.plan_no_changes": "Χωρίς αλλαγές. Η υποδομή είναι ενημερωμένη.",
@@ -1241,7 +1172,6 @@
   "tofu.plan_known_after_apply": "(γνωστό μετά την εφαρμογή)",
   "tofu.plan_sensitive_value": "(ευαίσθητο)",
   "tofu.plan_loading": "Φόρτωση σχεδίου...",
-
   "tofu.schema_fetch": "Φόρτωση σχήματος",
   "tofu.schema_refresh": "Ανανέωση σχήματος",
   "tofu.schema_fetching": "Φόρτωση...",
@@ -1250,7 +1180,6 @@
   "tofu.schema_hint": "Δυναμικό σχήμα φορτωμένο. Τα πεδία πόρων και πηγών δεδομένων θα χρησιμοποιούν ζωντανούς ορισμούς παρόχων.",
   "tofu.schema_resource_count": "{{count}} τύποι πόρων",
   "tofu.resource_category_dynamic": "Δυναμικό",
-
   "ansible.tool_not_installed": "Το Ansible δεν είναι εγκατεστημένο",
   "ansible.install": "Εγκατάσταση Ansible",
   "ansible.installing": "Εγκατάσταση...",
@@ -1381,5 +1310,12 @@
   "ansible.no_vault_files": "Επιλέξτε ένα αρχείο για κρυπτογράφηση, αποκρυπτογράφηση ή προβολή.",
   "ansible.save": "Αποθήκευση",
   "ansible.edit": "Επεξεργασία",
-  "ansible.remove": "Αφαίρεση"
+  "ansible.remove": "Αφαίρεση",
+  "explorer.archive": "Αρχειοθέτηση",
+  "explorer.archive_extract": "Εξαγωγή εδώ",
+  "explorer.archive_compress": "Συμπίεση ως",
+  "explorer.archive_busy": "Σε εξέλιξη…",
+  "explorer.archive_created": "Το {{name}} δημιουργήθηκε με {{tool}}",
+  "explorer.archive_extracted": "Έγινε εξαγωγή στο {{name}} με {{tool}}",
+  "explorer.archive_none": "Αυτό το μηχάνημα δεν έχει εργαλείο για αυτό"
 }

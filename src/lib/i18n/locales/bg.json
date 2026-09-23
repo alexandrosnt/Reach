@@ -1,24 +1,20 @@
 {
   "app.name": "Reach",
   "app.version": "v{{version}}",
-
   "sidebar.sessions": "Сесии",
   "sidebar.explorer": "Файлов мениджър",
   "sidebar.follow_path": "Следвай пътя",
   "sidebar.tunnels": "Тунели",
   "sidebar.expand": "Разшири страничната лента",
   "sidebar.collapse": "Свий страничната лента",
-
   "titlebar.open_settings": "Отвори настройки",
   "titlebar.ai_assistant": "AI Асистент",
   "titlebar.minimize": "Минимизирай",
   "titlebar.maximize": "Максимизирай",
   "titlebar.close": "Затвори",
-
   "statusbar.no_session": "Няма сесия",
   "statusbar.connected_to": "Свързан с {{title}}",
   "statusbar.local": "Локален",
-
   "terminal.new_tab": "Нов раздел",
   "terminal.close_tab": "Затвори раздел",
   "terminal.split_horizontal": "Раздели хоризонтално",
@@ -45,7 +41,6 @@
   "terminal.reconnecting": "Свързване...",
   "terminal.reconnected": "Свързан отново",
   "terminal.reconnect_failed": "Неуспешно свързване",
-
   "session.connect": "Свържи",
   "session.disconnect": "Прекъсни",
   "session.edit": "Редактирай",
@@ -144,7 +139,6 @@
   "session.start_fresh": "Започни отначало",
   "session.keychain_locked_desc": "Не може да се осъществи достъп до ключодържателя. Моля, проверете разрешенията на ОС.",
   "session.enter_backup_key": "Моля, въведете вашия резервен ключ",
-
   "session.share": "Сподели",
   "session.share_session": "Сподели сесия",
   "session.share_success": "Сесията е споделена успешно!",
@@ -162,7 +156,6 @@
   "session.recipient_required": "UUID и публичен ключ на получателя са задължителни",
   "session.invalid_public_key_length": "Невалиден публичен ключ: трябва да е 32 байта (X25519)",
   "session.invalid_public_key_base64": "Невалиден публичен ключ: трябва да е валиден base64",
-
   "monitoring.cpu": "CPU",
   "monitoring.ram": "RAM",
   "monitoring.disk": "Диск",
@@ -172,7 +165,6 @@
   "monitoring.one_user": "1 потребител",
   "monitoring.n_users": "{{count}} потребители",
   "monitoring.you": "(вие)",
-
   "tunnel.local_forward": "Локално пренасочване",
   "tunnel.remote_forward": "Отдалечено пренасочване",
   "tunnel.dynamic": "Динамичен (SOCKS)",
@@ -202,7 +194,6 @@
   "tunnel.invalid_local_port": "Невалиден локален порт (1-65535)",
   "tunnel.invalid_remote_port": "Невалиден отдалечен порт (1-65535)",
   "tunnel.remote_host_required": "Отдалеченият хост е задължителен",
-
   "explorer.upload": "Качи",
   "explorer.download": "Изтегли",
   "explorer.delete": "Изтрий",
@@ -230,14 +221,12 @@
   "explorer.cd_here": "CD тук",
   "explorer.cd_sent": "cd {{path}} изпратено към терминала",
   "explorer.search_placeholder": "Филтриране на файлове...",
-
   "editor.close": "Затвори редактора",
   "editor.saving": "Запазване...",
   "editor.save": "Запази",
   "editor.unsaved_changes": "Имате незапазени промени. Затваряне без запазване?",
   "editor.file_saved_toast": "Файлът е запазен",
   "editor.opening": "Отваряне на файл...",
-
   "ai.title": "AI Асистент",
   "ai.clear_chat": "Изчисти чата",
   "ai.close_panel": "Затвори панела",
@@ -250,7 +239,6 @@
   "ai.copy": "Копирай",
   "ai.copy_message": "Копирай съобщение",
   "ai.copied": "Копирано!",
-
   "vault.unlock": "Отключи трезора",
   "vault.no_password_warning": "Не е зададена главна парола. Трезорът може да се отвори само чрез системната ключодържателка — задайте парола в Настройки > Сигурност.",
   "vault.enter_password": "Въведете вашата главна парола...",
@@ -296,7 +284,6 @@
   "vault.vaults_refreshed_toast": "Трезорите са обновени",
   "vault.locked_toast": "Трезорът е заключен",
   "vault.vault_created_toast": "Трезорът е създаден",
-
   "vault.import_backup": "Импортирай резервно копие",
   "vault.import_backup_desc": "Възстановете вашите данни от Reach от криптиран файл с резервно копие.",
   "vault.select_backup_file": "Изберете файл с резервно копие",
@@ -313,7 +300,6 @@
   "vault.import_warning": "Импортирането ще замени текущите ви данни. Това не може да бъде отменено.",
   "vault.importing": "Импортиране...",
   "vault.backup_restored_toast": "Резервното копие е възстановено успешно. Приложението ще се рестартира.",
-
   "vault.edit_secret": "Редактирай тайна",
   "vault.new_secret": "Нова тайна",
   "vault.secret_name": "Име",
@@ -337,7 +323,6 @@
   "vault.copied_toast": "Копирано в клипборда",
   "vault.secret_updated_toast": "Тайната е обновена",
   "vault.secret_created_toast": "Тайната е създадена",
-
   "vault.secrets": "Тайни",
   "vault.add_secret": "Добави тайна",
   "vault.no_secrets": "Все още няма тайни",
@@ -349,7 +334,6 @@
   "vault.delete_irreversible": "Това действие не може да бъде отменено.",
   "vault.deleting": "Изтриване...",
   "vault.save_changes": "Запази промените",
-
   "vault.manage_members_title": "Управление на членове - {{name}}",
   "vault.tab_invite": "Покана",
   "vault.tab_members": "Членове",
@@ -383,7 +367,6 @@
   "vault.invited_toast": "Членът е поканен успешно",
   "vault.cannot_remove_self": "Не можете да премахнете себе си",
   "vault.member_removed_toast": "Членът е премахнат",
-
   "vault.delete_vault": "Изтрий трезор",
   "vault.delete_vault_warning": "Това ще изтрие завинаги този трезор и всичките му тайни. Това действие не може да бъде отменено.",
   "vault.create_vault_short": "Създай трезор",
@@ -412,7 +395,6 @@
   "vault.type_selection": "Избор на тип трезор",
   "vault.password_required": "Паролата е задължителна",
   "vault.passwords_mismatch": "Паролите не съвпадат",
-
   "settings.title": "Настройки",
   "settings.language": "Език",
   "settings.language_search": "Търсене на езици...",
@@ -482,7 +464,6 @@
   "settings.system_startup_desc": "Стартирай Reach автоматично при влизане в системата",
   "settings.font_size_desc": "Размер на текста в терминала ({{size}}px)",
   "settings.font_desc": "Шрифт, използван в емулатора на терминала",
-
   "security.master_password_status": "Състояние на главната парола",
   "security.set_password": "Задай парола",
   "security.change_password": "Смени парола",
@@ -499,7 +480,6 @@
   "security.new_password": "Нова парола",
   "security.saving": "Запазване...",
   "security.save_password": "Запази парола",
-
   "sync.identity": "Идентичност",
   "sync.user_uuid": "UUID на потребителя",
   "sync.public_key": "Публичен ключ",
@@ -534,7 +514,6 @@
   "sync.url_token_required": "URL за синхронизиране и токенът са задължителни",
   "sync.cloud_sync_active": "Всичките ви данни се синхронизират в облака",
   "sync.local_only": "Данните се съхраняват само локално",
-
   "backup.export": "Експортирай резервно копие",
   "backup.export_desc": "Създайте криптирано резервно копие на всичките ви трезори, тайни и настройки.",
   "backup.export_password": "Парола за експорт",
@@ -562,7 +541,6 @@
   "backup.imported_toast": "Резервното копие е импортирано успешно — приложението се рестартира",
   "backup.import_failed_toast": "Импортирането е неуспешно",
   "backup.passwords_mismatch": "Паролите не съвпадат",
-
   "ai_settings.enable": "Активирай AI функции",
   "ai_settings.enable_desc": "Свържете се с OpenRouter за AI функции като генериране на плейбуци и анализ на сървъри.",
   "ai_settings.api_key": "API Ключ",
@@ -577,7 +555,6 @@
   "ai_settings.search_models": "Търсене на модели...",
   "ai_settings.no_models": "Няма заредени модели. Валидирайте вашия API ключ, за да заредите наличните модели.",
   "ai_settings.no_match": "Няма модели, отговарящи на вашето търсене.",
-
   "updater.available": "Reach v{{version}} е наличен",
   "updater.installing": "Инсталиране...",
   "updater.update_now": "Обнови сега",
@@ -594,7 +571,6 @@
   "updater.continue_without": "Продължи без актуализация",
   "updater.downloading": "Изтегляне... {{progress}}%",
   "updater.retry": "Опитай отново",
-
   "transfer.uploading": "Качване",
   "transfer.downloading": "Изтегляне",
   "transfer.complete": "Завършено",
@@ -604,7 +580,6 @@
   "transfer.no_active": "Няма активни трансфери",
   "transfer.clear_finished": "Изчисти завършените",
   "transfer.dismiss": "Отхвърли",
-
   "common.close_dialog": "Затвори диалога",
   "common.close_tab": "Затвори раздел {{title}}",
   "common.new_tab": "Нов раздел",
@@ -620,7 +595,6 @@
   "common.copy": "Копирай",
   "common.clear": "Изчистване",
   "common.dismiss": "Отхвърли известието",
-
   "setup.welcome_title": "Добре дошли в Reach",
   "setup.welcome_subtitle": "Нека ви настроим",
   "setup.personalize_title": "Направи го твое",
@@ -648,7 +622,6 @@
   "setup.get_started": "Започнете",
   "setup.complete_title": "Всичко е готово!",
   "setup.complete_subtitle": "Reach е готов за използване",
-
   "toolchain.checking": "Търсене на {{tool}}...",
   "toolchain.installed": "{{tool}} {{version}}",
   "toolchain.not_installed": "{{tool}} не е намерен",
@@ -659,7 +632,6 @@
   "toolchain.install_failed": "Неуспешна инсталация на {{tool}}",
   "toolchain.python_required": "Python 3 е необходим за инсталиране на Ansible",
   "toolchain.retry": "Опитай отново",
-
   "sidebar.snippets": "Команди",
   "sidebar.plugins": "Плъгини",
   "common.edit": "Редактирай",
@@ -759,7 +731,6 @@
   "recipes.danger_mutating": "Променя",
   "recipes.danger_sensitive": "Чувствителна",
   "recipes.danger_destructive": "Разрушителна",
-
   "plugin.title": "Плъгини",
   "plugin.no_plugins": "Няма намерени плъгини",
   "plugin.no_plugins_hint": "Поставете папки с плъгини в директорията за плъгини",
@@ -878,7 +849,6 @@
   "plugin.perm.http": "Изпращане на HTTP заявки",
   "plugin.perm.notify": "Показване на известия",
   "plugin.perm.ui": "Показване на елементи на интерфейса",
-
   "settings.plugins": "Плъгини",
   "settings.plugins_dir": "Директория за плъгини",
   "settings.plugins_dir_desc": "Папка, в която Reach търси плъгини",
@@ -890,7 +860,6 @@
   "settings.plugins_discover": "Откриване на плъгини",
   "settings.plugins_version": "v{{version}}",
   "settings.plugins_by": "от {{author}}",
-
   "session.jump_host": "Jump Host",
   "session.jump_host_enable": "Свързване чрез Jump Host",
   "session.jump_host_hint": "Маршрутизиране на връзката през bastion/proxy сървър",
@@ -916,15 +885,12 @@
   "session.add": "Добавяне",
   "session.new_folder": "Нова папка",
   "session.folder_name": "Име на папката",
-  "session.folder": "Папка",
   "session.no_folder": "Без папка",
   "session.move_to_folder": "Преместване в папка",
   "session.remove_from_folder": "Премахване от папка",
-
   "nav.terminal": "Терминал",
   "nav.ansible": "Ansible",
   "nav.tofu": "OpenTofu",
-
   "tofu.tool_not_installed": "OpenTofu CLI не е инсталиран",
   "tofu.install": "Инсталирай OpenTofu",
   "tofu.installing": "Инсталиране...",
@@ -984,12 +950,10 @@
   "tofu.run_errored": "неуспешно",
   "tofu.run_elapsed": "{{s}}с",
   "tofu.run_refreshed": "{{count}} ресурса опреснени, нищо за промяна.",
-
   "tofu.tab_actions": "Действия",
   "tofu.tab_providers": "Доставчици",
   "tofu.tab_variables": "Променливи",
   "tofu.tab_environments": "Среди",
-
   "tofu.providers": "Доставчици",
   "tofu.add_provider": "Добави доставчик",
   "tofu.remove_provider": "Премахни доставчик",
@@ -1006,7 +970,6 @@
   "tofu.provider_category_utility": "Помощни",
   "tofu.provider_version_placeholder": ">= 1.0",
   "tofu.save": "Запази",
-
   "tofu.add_variable": "Добави променлива",
   "tofu.edit_variable": "Редактирай променлива",
   "tofu.no_variables": "Няма дефинирани променливи. Добавете променлива, за да започнете.",
@@ -1025,7 +988,6 @@
   "tofu.variable_sensitive": "Чувствителна",
   "tofu.variable_name_invalid": "Невалидно име. Трябва да започва с буква или долна черта.",
   "tofu.variable_name_exists": "Променлива с това име вече съществува.",
-
   "tofu.environments": "Среди",
   "tofu.add_environment": "Добави",
   "tofu.delete_environment": "Изтрий",
@@ -1038,13 +1000,11 @@
   "tofu.save_values": "Запази стойности",
   "tofu.no_variables_defined": "Няма променливи или чувствителни полета на доставчици за настройване.",
   "tofu.delete_environment_confirm": "Изтриване на тази среда? Това действие не може да бъде отменено.",
-
   "tofu.generate_hcl": "Генериране на HCL",
   "tofu.hcl_preview": "Преглед на HCL",
   "tofu.write_files": "Запис на файлове",
   "tofu.overwrite_warning": "Съществуващите файлове със същите имена ще бъдат презаписани.",
   "tofu.no_providers_to_generate": "Няма конфигурирани доставчици. Добавете доставчици за генериране на HCL файлове.",
-
   "tofu.tab_resources": "Ресурси",
   "tofu.resources_title": "Ресурси",
   "tofu.add_resource": "Добавяне на ресурс",
@@ -1068,47 +1028,26 @@
   "tofu.resource_logical_name": "Логическо име",
   "tofu.resource_logical_name_help": "Уникален идентификатор, използван в HCL (напр. \"web\" в resource \"aws_instance\" \"web\").",
   "tofu.no_providers_for_resources": "Първо добавете доставчик, за да видите наличните ресурси.",
-
   "tofu.tab_state": "Състояние",
-
   "tofu.tab_overview": "Преглед",
-
   "tofu.tab_code": "Код",
-
   "tofu.more_actions": "Още действия",
-
   "tofu.target_remote": "Отдалечен",
-
   "tofu.env_default": "Среда по подразбиране",
-
   "tofu.no_var_file": "без файл с променливи",
-
   "tofu.state_encrypted": "state е криптиран",
-
   "tofu.backend_is": "backend: {{backend}}",
-
   "tofu.plan_gate": "Това е планът, който ще бъде приложен. Нищо друго.",
-
   "tofu.plan_gate_full": "Пълен план",
-
   "tofu.plan_gate_result": "Обратно към резултата",
-
   "tofu.plan_discard": "Отхвърли",
-
   "tofu.plan_apply_this": "Приложи този план",
-
   "tofu.danger_zone": "Опасна зона",
-
   "tofu.destroy_explain": "Destroy премахва всеки ресурс, управляван от този проект. Въведете името на проекта, за да го активирате.",
-
   "tofu.destroy_type_name": "Въведете {{name}} за потвърждение",
-
   "tofu.close": "Затвори",
-
   "tofu.loading": "Зареждане…",
-
   "tofu.show_files": "Покажи файловете",
-
   "tofu.hide_files": "Скрий файловете",
   "tofu.state_title": "Управление на състоянието",
   "tofu.state_refresh": "Обновяване",
@@ -1127,7 +1066,6 @@
   "tofu.state_import_id_help": "Специфичният за доставчика ID на съществуващия инфраструктурен ресурс.",
   "tofu.state_move_prompt": "Въведете нов адрес за този ресурс:",
   "tofu.state_remove_confirm": "Премахване на този ресурс от състоянието? Реалната инфраструктура няма да бъде унищожена.",
-
   "tofu.tab_graph": "Графика",
   "tofu.tab_outputs": "Изходи",
   "tofu.graph_title": "Графика на зависимости",
@@ -1152,7 +1090,6 @@
   "tofu.from_template": "От шаблон",
   "tofu.template_apply": "Използвай шаблон",
   "tofu.template_search": "Търсене на шаблони...",
-
   "tofu.tab_backend": "Backend",
   "tofu.backend_title": "Конфигурация на backend",
   "tofu.backend_type": "Тип backend",
@@ -1169,7 +1106,6 @@
   "tofu.encryption_warning": "Загубите ли фразата, никой не може да прочете състоянието, включително Reach. Пазете копие на сигурно място.",
   "tofu.encryption_save": "Запази криптирането",
   "tofu.encryption_saved": "Запазено",
-
   "tofu.tab_data_sources": "Източници на данни",
   "tofu.data_sources_title": "Източници на данни",
   "tofu.add_data_source": "Добавяне на източник на данни",
@@ -1178,7 +1114,6 @@
   "tofu.data_source_type": "Тип на източник на данни",
   "tofu.data_source_name": "Име на източник на данни",
   "tofu.data_source_name_invalid": "Невалидно име. Трябва да започва с буква или долна черта и да съдържа само букви, цифри и долни черти.",
-
   "tofu.tab_locals": "Локални",
   "tofu.locals_title": "Локални стойности",
   "tofu.add_local": "Добавяне на локална",
@@ -1189,7 +1124,6 @@
   "tofu.local_expression_placeholder": "напр. \"${var.prefix}-${var.environment}\"",
   "tofu.local_name_invalid": "Невалидно име. Трябва да започва с буква или долна черта.",
   "tofu.local_name_exists": "Локална с това име вече съществува.",
-
   "tofu.tab_modules": "Модули",
   "tofu.modules_title": "Модули",
   "tofu.add_module": "Добавяне на модул",
@@ -1204,7 +1138,6 @@
   "tofu.module_input_key": "Ключ",
   "tofu.module_input_value": "Стойност",
   "tofu.module_name_invalid": "Невалидно име. Трябва да започва с буква или долна черта.",
-
   "tofu.tab_workspaces": "Работни пространства",
   "tofu.workspaces_title": "Работни пространства",
   "tofu.workspace_current": "Текущо работно пространство",
@@ -1217,13 +1150,11 @@
   "tofu.workspace_empty": "Няма информация за работни пространства. Изпълнете първо init.",
   "tofu.workspace_delete_confirm": "Изтриване на това работно пространство? Това не може да бъде отменено.",
   "tofu.workspace_cannot_delete_default": "Работното пространство по подразбиране не може да бъде изтрито.",
-
   "tofu.format": "Форматиране",
   "tofu.format_check": "Проверка на формата",
   "tofu.format_success": "Всички файлове са правилно форматирани.",
   "tofu.format_changed": "Форматирани файлове",
   "tofu.format_error": "Грешка при форматиране",
-
   "tofu.plan_view": "Преглед на план",
   "tofu.plan_summary": "Обобщение на план",
   "tofu.plan_no_changes": "Без промени. Инфраструктурата е актуална.",
@@ -1241,7 +1172,6 @@
   "tofu.plan_known_after_apply": "(известно след прилагане)",
   "tofu.plan_sensitive_value": "(чувствително)",
   "tofu.plan_loading": "Зареждане на план...",
-
   "tofu.schema_fetch": "Зареди схема",
   "tofu.schema_refresh": "Обнови схема",
   "tofu.schema_fetching": "Зареждане...",
@@ -1250,7 +1180,6 @@
   "tofu.schema_hint": "Динамичната схема е заредена. Полетата за ресурси и източници на данни ще използват дефиниции от доставчика.",
   "tofu.schema_resource_count": "{{count}} типа ресурси",
   "tofu.resource_category_dynamic": "Динамичен",
-
   "ansible.tool_not_installed": "Ansible не е инсталиран",
   "ansible.install": "Инсталирай Ansible",
   "ansible.installing": "Инсталиране...",
@@ -1381,5 +1310,12 @@
   "ansible.no_vault_files": "Изберете файл за криптиране, декриптиране или преглед.",
   "ansible.save": "Запази",
   "ansible.edit": "Редактирай",
-  "ansible.remove": "Премахни"
+  "ansible.remove": "Премахни",
+  "explorer.archive": "Архив",
+  "explorer.archive_extract": "Разархивирай тук",
+  "explorer.archive_compress": "Компресирай като",
+  "explorer.archive_busy": "Изпълнява се…",
+  "explorer.archive_created": "{{name}} е създаден с {{tool}}",
+  "explorer.archive_extracted": "Разархивирано в {{name}} с {{tool}}",
+  "explorer.archive_none": "Тази машина няма инструмент за това"
 }

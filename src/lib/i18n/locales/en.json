@@ -1,24 +1,20 @@
 {
   "app.name": "Reach",
   "app.version": "v{{version}}",
-
   "sidebar.sessions": "Sessions",
   "sidebar.explorer": "File Explorer",
   "sidebar.follow_path": "Follow Path",
   "sidebar.tunnels": "Tunnels",
   "sidebar.expand": "Expand sidebar",
   "sidebar.collapse": "Collapse sidebar",
-
   "titlebar.open_settings": "Open settings",
   "titlebar.ai_assistant": "AI Assistant",
   "titlebar.minimize": "Minimize",
   "titlebar.maximize": "Maximize",
   "titlebar.close": "Close",
-
   "statusbar.no_session": "No session",
   "statusbar.connected_to": "Connected to {{title}}",
   "statusbar.local": "Local",
-
   "terminal.new_tab": "New Tab",
   "terminal.close_tab": "Close Tab",
   "terminal.split_horizontal": "Split Horizontal",
@@ -45,7 +41,6 @@
   "terminal.reconnecting": "Reconnecting...",
   "terminal.reconnected": "Reconnected",
   "terminal.reconnect_failed": "Reconnect failed",
-
   "session.connect": "Connect",
   "session.disconnect": "Disconnect",
   "session.edit": "Edit",
@@ -144,7 +139,6 @@
   "session.start_fresh": "Start Fresh",
   "session.keychain_locked_desc": "Unable to access keychain. Please check OS permissions.",
   "session.enter_backup_key": "Please enter your backup key",
-
   "session.share": "Share",
   "session.share_session": "Share Session",
   "session.share_success": "Session shared successfully!",
@@ -162,7 +156,6 @@
   "session.recipient_required": "Recipient UUID and public key are required",
   "session.invalid_public_key_length": "Invalid public key: must be 32 bytes (X25519)",
   "session.invalid_public_key_base64": "Invalid public key: must be valid base64",
-
   "monitoring.cpu": "CPU",
   "monitoring.ram": "RAM",
   "monitoring.disk": "Disk",
@@ -172,7 +165,6 @@
   "monitoring.one_user": "1 user",
   "monitoring.n_users": "{{count}} users",
   "monitoring.you": "(you)",
-
   "tunnel.local_forward": "Local Forward",
   "tunnel.remote_forward": "Remote Forward",
   "tunnel.dynamic": "Dynamic (SOCKS)",
@@ -202,7 +194,6 @@
   "tunnel.invalid_local_port": "Invalid local port (1-65535)",
   "tunnel.invalid_remote_port": "Invalid remote port (1-65535)",
   "tunnel.remote_host_required": "Remote host is required",
-
   "explorer.upload": "Upload",
   "explorer.download": "Download",
   "explorer.delete": "Delete",
@@ -230,14 +221,12 @@
   "explorer.cd_here": "CD here",
   "explorer.cd_sent": "cd {{path}} sent to terminal",
   "explorer.search_placeholder": "Filter files...",
-
   "editor.close": "Close editor",
   "editor.saving": "Saving...",
   "editor.save": "Save",
   "editor.unsaved_changes": "You have unsaved changes. Close without saving?",
   "editor.file_saved_toast": "File saved",
   "editor.opening": "Opening file...",
-
   "ai.title": "AI Assistant",
   "ai.clear_chat": "Clear chat",
   "ai.close_panel": "Close panel",
@@ -250,7 +239,6 @@
   "ai.copy": "Copy",
   "ai.copy_message": "Copy message",
   "ai.copied": "Copied!",
-
   "vault.unlock": "Unlock Vault",
   "vault.no_password_warning": "No master password is set. Your vault can only be opened by the OS keychain — set a password in Settings > Security so you can still get in if that is lost.",
   "vault.enter_password": "Enter your master password...",
@@ -296,7 +284,6 @@
   "vault.vaults_refreshed_toast": "Vaults refreshed",
   "vault.locked_toast": "Vault locked",
   "vault.vault_created_toast": "Vault created",
-
   "vault.import_backup": "Import Backup",
   "vault.import_backup_desc": "Restore your Reach data from an encrypted backup file.",
   "vault.select_backup_file": "Select Backup File",
@@ -313,7 +300,6 @@
   "vault.import_warning": "Importing will replace your current data. This cannot be undone.",
   "vault.importing": "Importing...",
   "vault.backup_restored_toast": "Backup restored successfully. The app will restart.",
-
   "vault.edit_secret": "Edit Secret",
   "vault.new_secret": "New Secret",
   "vault.secret_name": "Name",
@@ -337,7 +323,6 @@
   "vault.copied_toast": "Copied to clipboard",
   "vault.secret_updated_toast": "Secret updated",
   "vault.secret_created_toast": "Secret created",
-
   "vault.secrets": "Secrets",
   "vault.add_secret": "Add Secret",
   "vault.no_secrets": "No secrets yet",
@@ -349,7 +334,6 @@
   "vault.delete_irreversible": "This action cannot be undone.",
   "vault.deleting": "Deleting...",
   "vault.save_changes": "Save Changes",
-
   "vault.manage_members_title": "Manage Members - {{name}}",
   "vault.tab_invite": "Invite",
   "vault.tab_members": "Members",
@@ -383,7 +367,6 @@
   "vault.invited_toast": "Member invited successfully",
   "vault.cannot_remove_self": "Cannot remove yourself",
   "vault.member_removed_toast": "Member removed",
-
   "vault.delete_vault": "Delete Vault",
   "vault.delete_vault_warning": "This will permanently delete this vault and all its secrets. This action cannot be undone.",
   "vault.create_vault_short": "Create Vault",
@@ -412,7 +395,6 @@
   "vault.type_selection": "Vault type selection",
   "vault.password_required": "Password is required",
   "vault.passwords_mismatch": "Passwords do not match",
-
   "settings.title": "Settings",
   "settings.language": "Language",
   "settings.language_search": "Search languages...",
@@ -482,7 +464,6 @@
   "settings.system_startup_desc": "Launch Reach automatically when you log in",
   "settings.font_size_desc": "Terminal text size ({{size}}px)",
   "settings.font_desc": "Font used in the terminal emulator",
-
   "security.master_password_status": "Master Password Status",
   "security.set_password": "Set Password",
   "security.change_password": "Change Password",
@@ -499,7 +480,6 @@
   "security.new_password": "New Password",
   "security.saving": "Saving...",
   "security.save_password": "Save Password",
-
   "sync.identity": "Identity",
   "sync.user_uuid": "User UUID",
   "sync.public_key": "Public Key",
@@ -534,7 +514,6 @@
   "sync.url_token_required": "Both Sync URL and Token are required",
   "sync.cloud_sync_active": "All your data syncs to cloud",
   "sync.local_only": "Data stored locally only",
-
   "backup.export": "Export Backup",
   "backup.export_desc": "Create an encrypted backup of all your vaults, secrets, and settings.",
   "backup.export_password": "Export Password",
@@ -562,7 +541,6 @@
   "backup.imported_toast": "Backup imported successfully — restarting app",
   "backup.import_failed_toast": "Import failed",
   "backup.passwords_mismatch": "Passwords do not match",
-
   "ai_settings.enable": "Enable AI Features",
   "ai_settings.enable_desc": "Connect to OpenRouter for AI-powered features like command suggestions and server analysis.",
   "ai_settings.api_key": "API Key",
@@ -577,7 +555,6 @@
   "ai_settings.search_models": "Search models...",
   "ai_settings.no_models": "No models loaded. Validate your API key to load available models.",
   "ai_settings.no_match": "No models match your search.",
-
   "updater.available": "Reach v{{version}} is available",
   "updater.installing": "Installing...",
   "updater.update_now": "Update Now",
@@ -594,7 +571,6 @@
   "updater.continue_without": "Continue without updating",
   "updater.downloading": "Downloading... {{progress}}%",
   "updater.retry": "Retry",
-
   "transfer.uploading": "Uploading",
   "transfer.downloading": "Downloading",
   "transfer.complete": "Complete",
@@ -604,7 +580,6 @@
   "transfer.no_active": "No active transfers",
   "transfer.clear_finished": "Clear finished",
   "transfer.dismiss": "Dismiss",
-
   "common.close_dialog": "Close dialog",
   "common.close_tab": "Close tab {{title}}",
   "common.new_tab": "New tab",
@@ -620,7 +595,6 @@
   "common.copy": "Copy",
   "common.clear": "Clear",
   "common.dismiss": "Dismiss notification",
-
   "setup.welcome_title": "Welcome to Reach",
   "setup.welcome_subtitle": "Let's get you set up",
   "setup.personalize_title": "Make it yours",
@@ -648,7 +622,6 @@
   "setup.get_started": "Get Started",
   "setup.complete_title": "You're all set!",
   "setup.complete_subtitle": "Reach is ready to use",
-
   "toolchain.checking": "Checking for {{tool}}...",
   "toolchain.installed": "{{tool}} {{version}}",
   "toolchain.not_installed": "{{tool}} not found",
@@ -659,7 +632,6 @@
   "toolchain.install_failed": "Failed to install {{tool}}",
   "toolchain.python_required": "Python 3 is required to install Ansible",
   "toolchain.retry": "Retry",
-
   "sidebar.snippets": "Snippets",
   "sidebar.plugins": "Plugins",
   "common.edit": "Edit",
@@ -759,7 +731,6 @@
   "recipes.danger_mutating": "Mutating",
   "recipes.danger_sensitive": "Sensitive",
   "recipes.danger_destructive": "Destructive",
-
   "plugin.title": "Plugins",
   "plugin.no_plugins": "No plugins found",
   "plugin.no_plugins_hint": "Place plugin folders in your plugins directory",
@@ -878,7 +849,6 @@
   "plugin.perm.http": "Make HTTP requests",
   "plugin.perm.notify": "Show notifications",
   "plugin.perm.ui": "Render UI elements",
-
   "settings.plugins": "Plugins",
   "settings.plugins_dir": "Plugins Directory",
   "settings.plugins_dir_desc": "Folder where Reach looks for plugin packages",
@@ -890,7 +860,6 @@
   "settings.plugins_discover": "Discover Plugins",
   "settings.plugins_version": "v{{version}}",
   "settings.plugins_by": "by {{author}}",
-
   "session.jump_host": "Jump Host",
   "session.jump_host_enable": "Connect via Jump Host",
   "session.jump_host_hint": "Route connection through a bastion/proxy server",
@@ -916,15 +885,12 @@
   "session.add": "Add",
   "session.new_folder": "New Folder",
   "session.folder_name": "Folder name",
-  "session.folder": "Folder",
   "session.no_folder": "No folder",
   "session.move_to_folder": "Move to Folder",
   "session.remove_from_folder": "Remove from Folder",
-
   "nav.terminal": "Terminal",
   "nav.ansible": "Ansible",
   "nav.tofu": "OpenTofu",
-
   "tofu.tool_not_installed": "OpenTofu CLI is not installed",
   "tofu.install": "Install OpenTofu",
   "tofu.installing": "Installing...",
@@ -984,12 +950,10 @@
   "tofu.run_errored": "failed",
   "tofu.run_elapsed": "{{s}}s",
   "tofu.run_refreshed": "{{count}} resources refreshed, nothing to change.",
-
   "tofu.tab_actions": "Actions",
   "tofu.tab_providers": "Providers",
   "tofu.tab_variables": "Variables",
   "tofu.tab_environments": "Environments",
-
   "tofu.providers": "Providers",
   "tofu.add_provider": "Add Provider",
   "tofu.remove_provider": "Remove Provider",
@@ -1006,7 +970,6 @@
   "tofu.provider_category_utility": "Utility",
   "tofu.provider_version_placeholder": ">= 1.0",
   "tofu.save": "Save",
-
   "tofu.add_variable": "Add Variable",
   "tofu.edit_variable": "Edit Variable",
   "tofu.no_variables": "No variables defined. Add a variable to get started.",
@@ -1025,7 +988,6 @@
   "tofu.variable_sensitive": "Sensitive",
   "tofu.variable_name_invalid": "Invalid name. Must start with a letter or underscore.",
   "tofu.variable_name_exists": "A variable with this name already exists.",
-
   "tofu.environments": "Environments",
   "tofu.add_environment": "Add",
   "tofu.delete_environment": "Delete",
@@ -1038,13 +1000,11 @@
   "tofu.save_values": "Save Values",
   "tofu.no_variables_defined": "No variables or sensitive provider fields to configure.",
   "tofu.delete_environment_confirm": "Delete this environment? This cannot be undone.",
-
   "tofu.generate_hcl": "Generate HCL",
   "tofu.hcl_preview": "HCL Preview",
   "tofu.write_files": "Write Files",
   "tofu.overwrite_warning": "Writing will overwrite existing files with the same names.",
   "tofu.no_providers_to_generate": "No providers configured. Add providers to generate HCL files.",
-
   "tofu.tab_resources": "Resources",
   "tofu.resources_title": "Resources",
   "tofu.add_resource": "Add Resource",
@@ -1068,47 +1028,26 @@
   "tofu.resource_logical_name": "Logical Name",
   "tofu.resource_logical_name_help": "A unique identifier used in HCL (e.g. \"web\" in resource \"aws_instance\" \"web\").",
   "tofu.no_providers_for_resources": "Add a provider first to see available resources.",
-
   "tofu.tab_state": "State",
-
   "tofu.tab_overview": "Overview",
-
   "tofu.tab_code": "Code",
-
   "tofu.more_actions": "More actions",
-
   "tofu.target_remote": "Remote",
-
   "tofu.env_default": "Default environment",
-
   "tofu.no_var_file": "no var file",
-
   "tofu.state_encrypted": "state encrypted",
-
   "tofu.backend_is": "backend: {{backend}}",
-
   "tofu.plan_gate": "This is the plan that will be applied. Nothing else.",
-
   "tofu.plan_gate_full": "Full plan",
-
   "tofu.plan_gate_result": "Back to result",
-
   "tofu.plan_discard": "Discard",
-
   "tofu.plan_apply_this": "Apply this plan",
-
   "tofu.danger_zone": "Danger zone",
-
   "tofu.destroy_explain": "Destroy removes every resource this project manages. Type the project name to enable it.",
-
   "tofu.destroy_type_name": "Type {{name}} to confirm",
-
   "tofu.close": "Close",
-
   "tofu.loading": "Loading…",
-
   "tofu.show_files": "Show files",
-
   "tofu.hide_files": "Hide files",
   "tofu.state_title": "State Management",
   "tofu.state_refresh": "Refresh",
@@ -1127,7 +1066,6 @@
   "tofu.state_import_id_help": "The provider-specific ID of the existing infrastructure resource.",
   "tofu.state_move_prompt": "Enter new address for this resource:",
   "tofu.state_remove_confirm": "Remove this resource from state? The actual infrastructure will not be destroyed.",
-
   "tofu.tab_graph": "Graph",
   "tofu.tab_outputs": "Outputs",
   "tofu.graph_title": "Dependency Graph",
@@ -1152,7 +1090,6 @@
   "tofu.from_template": "From Template",
   "tofu.template_apply": "Use Template",
   "tofu.template_search": "Search templates...",
-
   "tofu.tab_backend": "Backend",
   "tofu.backend_title": "Backend Configuration",
   "tofu.backend_type": "Backend Type",
@@ -1169,7 +1106,6 @@
   "tofu.encryption_warning": "Lose the passphrase and the state cannot be read by anyone, Reach included. Keep a copy somewhere you trust.",
   "tofu.encryption_save": "Save encryption",
   "tofu.encryption_saved": "Saved",
-
   "tofu.tab_data_sources": "Data Sources",
   "tofu.data_sources_title": "Data Sources",
   "tofu.add_data_source": "Add Data Source",
@@ -1178,7 +1114,6 @@
   "tofu.data_source_type": "Data Source Type",
   "tofu.data_source_name": "Data Source Name",
   "tofu.data_source_name_invalid": "Invalid name. Must start with a letter or underscore and contain only letters, numbers, and underscores.",
-
   "tofu.tab_locals": "Locals",
   "tofu.locals_title": "Local Values",
   "tofu.add_local": "Add Local",
@@ -1189,7 +1124,6 @@
   "tofu.local_expression_placeholder": "e.g. \"${var.prefix}-${var.environment}\"",
   "tofu.local_name_invalid": "Invalid name. Must start with a letter or underscore.",
   "tofu.local_name_exists": "A local with this name already exists.",
-
   "tofu.tab_modules": "Modules",
   "tofu.modules_title": "Modules",
   "tofu.add_module": "Add Module",
@@ -1204,7 +1138,6 @@
   "tofu.module_input_key": "Key",
   "tofu.module_input_value": "Value",
   "tofu.module_name_invalid": "Invalid name. Must start with a letter or underscore.",
-
   "tofu.tab_workspaces": "Workspaces",
   "tofu.workspaces_title": "Workspaces",
   "tofu.workspace_current": "Current workspace",
@@ -1217,13 +1150,11 @@
   "tofu.workspace_empty": "No workspace information available. Run init first.",
   "tofu.workspace_delete_confirm": "Delete this workspace? This cannot be undone.",
   "tofu.workspace_cannot_delete_default": "Cannot delete the default workspace.",
-
   "tofu.format": "Format",
   "tofu.format_check": "Check Format",
   "tofu.format_success": "All files are properly formatted.",
   "tofu.format_changed": "Formatted files",
   "tofu.format_error": "Format error",
-
   "tofu.plan_view": "View Plan",
   "tofu.plan_summary": "Plan Summary",
   "tofu.plan_no_changes": "No changes. Infrastructure is up-to-date.",
@@ -1241,7 +1172,6 @@
   "tofu.plan_known_after_apply": "(known after apply)",
   "tofu.plan_sensitive_value": "(sensitive)",
   "tofu.plan_loading": "Loading plan...",
-
   "tofu.schema_fetch": "Fetch Schema",
   "tofu.schema_refresh": "Refresh Schema",
   "tofu.schema_fetching": "Fetching...",
@@ -1250,7 +1180,6 @@
   "tofu.schema_hint": "Dynamic schema loaded. Resource and data source fields will use live provider definitions.",
   "tofu.schema_resource_count": "{{count}} resource types",
   "tofu.resource_category_dynamic": "Dynamic",
-
   "ansible.tool_not_installed": "Ansible is not installed",
   "ansible.install": "Install Ansible",
   "ansible.installing": "Installing...",
@@ -1381,5 +1310,12 @@
   "ansible.no_vault_files": "Select a file to encrypt, decrypt, or view.",
   "ansible.save": "Save",
   "ansible.edit": "Edit",
-  "ansible.remove": "Remove"
+  "ansible.remove": "Remove",
+  "explorer.archive": "Archive",
+  "explorer.archive_extract": "Extract here",
+  "explorer.archive_compress": "Compress as",
+  "explorer.archive_busy": "Working…",
+  "explorer.archive_created": "Created {{name}} using {{tool}}",
+  "explorer.archive_extracted": "Extracted into {{name}} using {{tool}}",
+  "explorer.archive_none": "This machine has no tool that can do that"
 }

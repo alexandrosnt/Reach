@@ -5,6 +5,16 @@
 	import { getCurrentPath, getEntries, setCurrentPath, setEntries } from '$lib/state/explorer.svelte';
 	import { sftpListDir, sftpUpload, sftpDownload, sftpDelete, sftpRename, sftpMkdir, sftpTouch, sftpReadFile } from '$lib/ipc/sftp';
 	import { sshSend } from '$lib/ipc/ssh';
+	import {
+		archiveTools,
+		archiveCreate,
+		archiveExtract,
+		creatableFormats,
+		isExtractable,
+		FORMAT_EXTENSION,
+		type ArchiveTools,
+		type ArchiveFormat
+	} from '$lib/ipc/archive';
 	import { openEditor } from '$lib/state/editor.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { positionMenu } from '$lib/utils/positionMenu';
@@ -86,6 +96,8 @@
 		e.preventDefault();
 		e.stopPropagation();
 		contextMenu = { x: e.clientX, y: e.clientY, entry };
+		archiveOpen = false;
+		void ensureTools();
 	}
 
 	function openBackgroundContextMenu(e: MouseEvent): void {
@@ -95,6 +107,65 @@
 
 	function closeContextMenu(): void {
 		contextMenu = undefined;
+		archiveOpen = false;
+	}
+
+	// What the connected machine can compress with. Asked once per connection
+	// and remembered, so opening a context menu never waits on a round trip.
+	let tools: ArchiveTools = $state({ present: [] });
+	let toolsFor: string | undefined;
+	/** Whether the Archive group in the context menu is expanded. */
+	let archiveOpen = $state(false);
+	let archiveBusy = $state(false);
+
+	async function ensureTools(): Promise<void> {
+		if (!connectionId || toolsFor === connectionId) return;
+		try {
+			tools = await archiveTools(connectionId);
+			toolsFor = connectionId;
+		} catch {
+			// An older machine, or one we cannot run commands on. The menu
+			// simply offers nothing rather than showing a broken item.
+			tools = { present: [] };
+			toolsFor = connectionId;
+		}
+	}
+
+	async function runArchive(work: () => Promise<{ tool: string; produced: string }>, messageKey: string): Promise<void> {
+		if (archiveBusy) return;
+		archiveBusy = true;
+		closeContextMenu();
+		addToast(t('explorer.archive_busy'), 'info');
+		try {
+			const outcome = await work();
+			addToast(t(messageKey, { name: outcome.produced, tool: outcome.tool }), 'success');
+			await refresh();
+		} catch (err) {
+			addToast(String(err), 'error');
+		} finally {
+			archiveBusy = false;
+		}
+	}
+
+	function handleCompress(format: ArchiveFormat): void {
+		const entry = contextMenu?.entry;
+		if (!entry || !connectionId) return;
+		const dir = getCurrentPath(connectionId);
+		const name = `${entry.name}.${FORMAT_EXTENSION[format]}`;
+		void runArchive(
+			() => archiveCreate(connectionId, dir, [entry.name], name, format),
+			'explorer.archive_created'
+		);
+	}
+
+	function handleExtract(): void {
+		const entry = contextMenu?.entry;
+		if (!entry || !connectionId) return;
+		const dir = getCurrentPath(connectionId);
+		void runArchive(
+			() => archiveExtract(connectionId, dir, entry.name),
+			'explorer.archive_extracted'
+		);
 	}
 
 	async function handleDownload(): Promise<void> {
@@ -931,6 +1002,39 @@
 				</svg>
 				{t('explorer.copy_filename')}
 			</button>
+			{#if creatableFormats(tools).length > 0 || isExtractable(contextMenu.entry.name, tools)}
+				<button
+					class="context-item"
+					onclick={() => (archiveOpen = !archiveOpen)}
+					type="button"
+					aria-expanded={archiveOpen}
+				>
+					<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+						<rect x="3" y="7" width="18" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/>
+						<path d="M3 7l2-3h14l2 3" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+						<line x1="10" y1="12" x2="14" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+					</svg>
+					{t('explorer.archive')}
+					<span class="context-chevron" class:open={archiveOpen}>›</span>
+				</button>
+				{#if archiveOpen}
+					{#if isExtractable(contextMenu.entry.name, tools)}
+						<button class="context-item sub" onclick={handleExtract} type="button" disabled={archiveBusy}>
+							{t('explorer.archive_extract')}
+						</button>
+					{/if}
+					{#each creatableFormats(tools) as format (format)}
+						<button
+							class="context-item sub"
+							onclick={() => handleCompress(format)}
+							type="button"
+							disabled={archiveBusy}
+						>
+							{t('explorer.archive_compress')} .{FORMAT_EXTENSION[format]}
+						</button>
+					{/each}
+				{/if}
+			{/if}
 			<button class="context-item" onclick={startRename} type="button">
 				<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
 					<path d="M17 3a2.83 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1431,6 +1535,26 @@
 		white-space: pre-wrap;
 		word-break: break-all;
 		tab-size: 4;
+	}
+
+	.context-item.sub {
+		padding-left: 2.25rem;
+		font-size: 0.8rem;
+		opacity: 0.9;
+	}
+
+	.context-item.sub:disabled {
+		opacity: 0.45;
+		cursor: default;
+	}
+
+	.context-chevron {
+		margin-left: auto;
+		transition: transform 0.12s ease;
+	}
+
+	.context-chevron.open {
+		transform: rotate(90deg);
 	}
 
 	.context-menu {
