@@ -5,6 +5,24 @@ template: splash
 editUrl: false
 lastUpdated: false
 tableOfContents: false
+# Starlight builds the document title as "page title | site title", and on the
+# home page both are "Reach" — so it shipped as "Reach | Reach": redundant, and
+# 13 characters where a search result gives you 50 to 60. These override the
+# two headline tags without touching `title`, which the sidebar and breadcrumbs
+# still use.
+head:
+  - tag: title
+    content: Reach — Free Open Source SSH Client and Server Manager
+  # The headline on a shared link, where the search keywords matter less than
+  # saying plainly what the thing does.
+  - tag: meta
+    attrs:
+      property: og:title
+      content: Reach — Manage your servers, everywhere.
+  - tag: meta
+    attrs:
+      name: twitter:title
+      content: Reach — Manage your servers, everywhere.
 ---
 
 import Landing from '../../components/Landing.astro';

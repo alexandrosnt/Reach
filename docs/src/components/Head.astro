@@ -107,9 +107,14 @@ const softwareGraph = {
 <meta property="og:image:alt" content={`${PRODUCT.name} — ${PRODUCT.tagline}`} />
 <meta property="og:locale" content="en" />
 
+<!--
+	Only the two tags Starlight does not emit. twitter:title and
+	twitter:description are deliberately absent: every client falls back to the
+	og: equivalents, which Starlight already writes per page — hardcoding the
+	product tagline here put the same headline on all thirty-three pages, and
+	on the home page it collided with the one set in frontmatter.
+-->
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content={`${PRODUCT.name} — ${PRODUCT.tagline}`} />
-<meta name="twitter:description" content={PRODUCT.description} />
 <meta name="twitter:image" content={image} />
 
 <!--
