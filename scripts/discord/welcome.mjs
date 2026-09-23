@@ -140,7 +140,8 @@ if (!posted.ok) {
 const message = await posted.json();
 console.log(`Posted (${message.id}).`);
 
-const pinned = await api(`/channels/${WELCOME_CHANNEL}/messages/${message.id}/pin`, {
+// PUT /channels/{id}/pins/{message} — not /messages/{id}/pin, which 404s.
+const pinned = await api(`/channels/${WELCOME_CHANNEL}/pins/${message.id}`, {
 	method: 'PUT',
 	headers: { 'X-Audit-Log-Reason': 'Welcome message' },
 });
