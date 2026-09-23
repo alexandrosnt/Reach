@@ -1,0 +1,64 @@
+# Keyboard input on WebKit, checked on a real Mac.
+#
+# Issue #47 cost two rounds of asking the reporter to test for us, because
+# nobody on the project has a Mac. This runs the terminal's input path against
+# real WebKit on a macOS runner instead, so the next WebKit regression is
+# caught here rather than by a user.
+#
+# Two levels, both cheap:
+#   webkit-input-test  the adapter's logic, against a transcription of xterm's
+#                      handlers. Fast, runs anywhere, catches most mistakes.
+#   webkit-live-test   the real xterm bundle in a real browser, fed the event
+#                      order WKWebView produces. Takes the transcription out of
+#                      the chain of trust, which is the part that matters.
+
+name: WebKit input
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/lib/terminal/**'
+      - 'src/lib/platform.ts'
+      - 'scripts/webkit-input-test.mjs'
+      - 'scripts/webkit-live-test.mjs'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/webkit-input.yml'
+  pull_request:
+    paths:
+      - 'src/lib/terminal/**'
+      - 'src/lib/platform.ts'
+      - 'scripts/webkit-input-test.mjs'
+      - 'scripts/webkit-live-test.mjs'
+      - '.github/workflows/webkit-input.yml'
+  workflow_dispatch:
+
+jobs:
+  webkit:
+    # A real Mac, because the whole point is the engine.
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Not a project dependency: it is only needed here, and adding it would
+      # put a browser download in front of every contributor.
+      - name: Install Playwright WebKit
+        run: |
+          npm install --no-save playwright
+          npx playwright install --with-deps webkit
+
+      - name: Adapter logic
+        run: npm run webkit:test
+
+      - name: Real xterm in real WebKit
+        run: npm run webkit:live
