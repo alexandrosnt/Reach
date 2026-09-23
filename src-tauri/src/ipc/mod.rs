@@ -1,3 +1,4 @@
+pub mod webview_commands;
 pub mod dragout_commands;
 pub mod ai_commands;
 pub mod plugin_commands;

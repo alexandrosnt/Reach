@@ -41,6 +41,7 @@ use ipc::serial_commands::*;
 use ipc::session_commands::*;
 use ipc::sftp_commands::*;
 use ipc::dragout_commands::*;
+use ipc::webview_commands::*;
 use ipc::ssh_commands::*;
 use ipc::sshconfig_commands::*;
 use ipc::sshkey_commands::*;
@@ -243,6 +244,7 @@ pub fn run() {
             sftp_archive_cancel,
             drag_preview_icon,
             dragout_start,
+            webview_refocus,
             // Session commands
             session_list,
             session_get,
@@ -515,6 +517,7 @@ pub fn run() {
             sftp_archive_cancel,
             drag_preview_icon,
             dragout_start,
+            webview_refocus,
             // Session commands
             session_list,
             session_get,

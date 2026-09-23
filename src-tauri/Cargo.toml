@@ -137,6 +137,8 @@ windows = { version = "0.61", features = [
 # The #[implement] macro expands to paths rooted at this crate, so it has to
 # be a direct dependency even though everything else comes through `windows`.
 windows-core = "0.61"
+# Reaching the WebView2 controller to tell it focus moved (issue #49).
+webview2-com = "0.38"
 
 [target.'cfg(target_os = "linux")'.dependencies]
 openssl-sys = { version = "0.9", features = ["vendored"] }

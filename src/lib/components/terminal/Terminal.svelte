@@ -16,6 +16,7 @@
 	import { installWebkitInputFix } from '$lib/terminal/webkit-input-fix';
 	import { isWebKit } from '$lib/platform';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
+	import { invoke } from '@tauri-apps/api/core';
 	import { trieMatch } from '$lib/state/snippets.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { readText as clipboardReadText, writeText as clipboardWriteText } from '@tauri-apps/plugin-clipboard-manager';
@@ -132,6 +133,19 @@
 		const ta = terminal?.textarea;
 		if (!ta) return;
 		if (!shouldRearmIme({ focused: document.activeElement === ta, composing })) return;
+
+		// The thing that actually fixes it, found by the reporter of #49:
+		// clicking another window and back. That is the native window losing
+		// and regaining focus, which makes wry call MoveFocus on the WebView2
+		// controller — and the controller is what holds the stale caret
+		// position. A title-bar drag never produces that, so we do it
+		// deliberately. Two earlier attempts worked at the wrong level: the
+		// DOM textarea's focus, and the caret's rectangle. Neither reaches
+		// the controller.
+		void invoke('webview_refocus').catch(() => {
+			// Not on Windows, or no controller. Nothing is lost by trying.
+		});
+
 		nudgeCaret(ta);
 	}
 

@@ -31,10 +31,18 @@
  * offset seen on screen, and it explains why blurring and refocusing did
  * nothing: neither changes the caret's rectangle either.
  *
- * So the remedy is to make the caret rectangle genuinely change, and then put
- * it back. Two layouts, one frame apart, which is enough for the position to
- * be recomputed and sent. The textarea this moves is transparent and sits
- * behind the terminal, so nothing is visible.
+ * That reasoning was wrong too, and the reporter found what actually fixes
+ * it: click another window, then click back into Reach. That is not a DOM
+ * focus change and not a caret change — it is the *native window* losing and
+ * regaining focus. wry handles `WM_SETFOCUS` by calling `MoveFocus` on the
+ * WebView2 controller, and the controller is what holds the stale position.
+ * A title-bar drag never produces `WM_SETFOCUS`; wry calls `MoveFocus` when
+ * a drag starts and not when it ends.
+ *
+ * So the terminal now asks the backend to do that deliberately once the drag
+ * settles, which is `webview_refocus`. The caret nudge below is kept because
+ * it costs a frame and may still help where the rectangle itself went stale,
+ * but it is no longer the mechanism being relied on.
  *
  * The input method itself lives in the WebView2 browser process, which is a
  * different process from this app, reached through neither the page nor Tauri.
