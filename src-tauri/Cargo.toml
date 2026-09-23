@@ -132,6 +132,7 @@ windows = { version = "0.61", features = [
     "Win32_System_SystemServices",
     "Win32_UI_Shell",
     "Win32_UI_Shell_Common",
+    "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_WindowsAndMessaging",
 ] }
 # The #[implement] macro expands to paths rooted at this crate, so it has to

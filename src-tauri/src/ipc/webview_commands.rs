@@ -13,7 +13,11 @@
 //! calls `MoveFocus` when a drag *starts* (`WM_ENTERSIZEMOVE`) and not when
 //! it ends.
 //!
-//! So this does deliberately what clicking away and back does by accident.
+//! So this does deliberately what clicking away and back does by accident —
+//! both halves of it, because it is not certain which half matters: a real
+//! focus cycle on the focused window, and then the `MoveFocus` call wry makes
+//! in response to one. Doing only the second would be betting on an inference
+//! rather than reproducing the gesture that is known to work.
 //! Two earlier attempts failed because they worked at the wrong level: the
 //! first cycled focus on the hidden textarea, the second nudged the caret's
 //! rectangle. Neither touches the controller, and the controller is what
@@ -28,12 +32,29 @@ pub async fn webview_refocus(window: tauri::WebviewWindow) -> Result<(), String>
     #[cfg(target_os = "windows")]
     {
         use webview2_com::Microsoft::Web::WebView2::Win32::COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC;
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::UI::Input::KeyboardAndMouse::{GetFocus, SetFocus};
+
         window
             .with_webview(|webview| unsafe {
+                // Two halves, because clicking away and back does two things
+                // and it is not certain which one matters.
+                //
+                // First a real focus cycle on this thread's focused window.
+                // That produces WM_KILLFOCUS then WM_SETFOCUS, which is what
+                // the working gesture produces, and it makes the text
+                // services framework re-associate with the window. Nothing
+                // reachable from the page can cause this.
+                let focused: HWND = GetFocus();
+                if !focused.is_invalid() {
+                    let _ = SetFocus(None);
+                    let _ = SetFocus(Some(focused));
+                }
+
+                // Then the call wry itself makes on WM_SETFOCUS. Harmless if
+                // the cycle above already triggered it; the point is not to
+                // depend on which of the two does the work.
                 let controller = webview.controller();
-                // Failure here is not worth surfacing: the worst case is the
-                // candidate window staying where it was, which is the bug we
-                // are already trying to fix rather than a new one.
                 let _ = controller.MoveFocus(COREWEBVIEW2_MOVE_FOCUS_REASON_PROGRAMMATIC);
             })
             .map_err(|e| e.to_string())?;
