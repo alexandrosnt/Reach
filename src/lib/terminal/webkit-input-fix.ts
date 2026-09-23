@@ -36,8 +36,18 @@
  * no modifiers. Nothing is injected and nothing is sent twice — the character
  * went out through xterm's own unmodified handler.
  *
+ * A bare modifier keydown is the same fault one step earlier, and it is worse
+ * while it lasts. Holding Shift sets the flag before the `input` event
+ * carrying the shifted character is delivered, so that character is rejected
+ * and lost every single time, not just when typing quickly. On macOS this
+ * made `:` impossible to type, and with it every shifted symbol, so vim could
+ * not be put into command mode. The flag is therefore cleared after a
+ * modifier-only keydown too. Both cases are one rule: a keydown that emitted
+ * nothing must not gate the text that follows it.
+ *
  * Credit for the diagnosis, the event traces and the shape of this adapter
- * goes to steve3d, who found it and tested it on the affected machine.
+ * goes to steve3d, who found it, tested it on the affected machine, and then
+ * found the modifier case as well.
  *
  * Upstream: xterm.js #5887 (this gate dropping characters) and #6045 (the
  * deferred textarea diff that partly masks it). Both were open when checked,
@@ -50,6 +60,18 @@
  */
 
 import { isWebKit } from '$lib/platform';
+
+/**
+ * Keys that are only a modifier. Pressing one produces no character, ever.
+ *
+ * xterm sets `_keyDownSeen` on these exactly as it does on a real key, so
+ * merely holding Shift blocks the `input` event that follows it — which on
+ * WebKit is the only thing that carries the text. That is why `:` could not
+ * be typed on macOS, and with it every other shifted symbol, so vim could not
+ * be put into command mode. Same root cause as the 229 keydown below: a
+ * keydown that emits nothing has no business gating text that follows.
+ */
+const BARE_MODIFIERS = new Set(['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'AltGraph']);
 
 /** The parts of xterm's internals this adapter needs. */
 interface InputCore {
@@ -66,6 +88,28 @@ interface InputCore {
 interface TerminalLike {
 	textarea?: HTMLTextAreaElement | null;
 	options: { screenReaderMode?: boolean };
+}
+
+/**
+ * Escape hatch, for when a shim built on another library's private API goes
+ * wrong on a machine nobody here can reproduce.
+ *
+ * Setting `reach.webkitInputFix` to `off` in local storage and reloading
+ * leaves xterm completely untouched, which restores the stock behaviour
+ * including its bugs. There is deliberately no setting in the interface:
+ * nobody should be choosing this, it exists so that a bad interaction can be
+ * confirmed or ruled out in one step instead of by downgrading.
+ */
+export const DISABLE_KEY = 'reach.webkitInputFix';
+
+function enabledByDefault(): boolean {
+	try {
+		return globalThis.localStorage?.getItem(DISABLE_KEY) !== 'off';
+	} catch {
+		// Storage can throw outright when site data is blocked. The fix is
+		// worth more than the opt-out, so failure means on.
+		return true;
+	}
 }
 
 export interface WebkitInputFixOptions {
@@ -89,7 +133,7 @@ export interface WebkitInputFixOptions {
 export function installWebkitInputFix(
 	term: TerminalLike,
 	{
-		enabled = () => true,
+		enabled = enabledByDefault,
 		isWebKitEngine = isWebKit,
 		log = () => {},
 		warn = (m) => console.warn(m)
@@ -175,6 +219,11 @@ export function installWebkitInputFix(
 			!event.altKey &&
 			!term.options.screenReaderMode;
 
+		// Captured before the original runs, because the first thing it does is
+		// arm the flag unconditionally.
+		const isBareModifier = enabled() && BARE_MODIFIERS.has(event.key);
+		const seenBeforeKeyDown = this._keyDownSeen;
+
 		clear();
 
 		const result = originalKeyDown.call(this, event);
@@ -185,6 +234,29 @@ export function installWebkitInputFix(
 		if (retire && result === false && !composing()) {
 			this._keyDownSeen = false;
 			log('retired-keydown', { key: event.key, keyCode: event.keyCode });
+			return result;
+		}
+
+		// A modifier held down must not block the text that follows it.
+		//
+		// This restores what the flag was rather than forcing it false, which
+		// is what upstream's own proposed patch does (xterm.js #6054, "Don't
+		// set _keyDownSeen for pure modifier keydowns", still unmerged). The
+		// difference matters: if some other key really is down, the gate is
+		// still doing its job and must keep doing it. All this removes is the
+		// arming that a modifier had no business doing.
+		//
+		// No return value is checked here, unlike above: xterm returns *true*
+		// for a bare modifier, having emitted nothing, because the key reaches
+		// `evaluateKeyboardEvent` and yields no key to send. Nothing was
+		// emitted, so letting the following `input` event through cannot emit
+		// anything twice — and on WebKit that event is the only path a shifted
+		// character has. Chords that do emit from the keydown, Ctrl+C and the
+		// like, are untouched: they carry a real keyCode, which re-arms the
+		// flag on its own keydown, and they fire no `input` event anyway.
+		if (isBareModifier && !composing()) {
+			this._keyDownSeen = seenBeforeKeyDown;
+			log('unarmed-modifier-keydown', { key: event.key, restoredTo: seenBeforeKeyDown });
 		}
 
 		return result;

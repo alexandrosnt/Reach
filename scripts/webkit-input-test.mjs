@@ -35,6 +35,8 @@ const section = (s) => console.log(`\n${s}`);
  *                which is what keyCode 229 does.
  *   _keyUp:      this._keyDownSeen = false; this._keyPressHandled = false;
  */
+const BARE_MODIFIER_KEYS = ['Shift', 'Control', 'Alt', 'Meta', 'CapsLock', 'AltGraph'];
+
 function makeTerminal({ screenReaderMode = false } = {}) {
 	const emitted = [];
 	const core = {
@@ -59,6 +61,10 @@ function makeTerminal({ screenReaderMode = false } = {}) {
 			// CompositionHelper.keydown returns false for keyCode 229, and
 			// _keyDown passes that straight out.
 			if (e.keyCode === 229) return false;
+			// A bare modifier reaches evaluateKeyboardEvent, which yields no
+			// key, so xterm emits nothing and returns true. The flag is still
+			// set, which is the whole problem.
+			if (BARE_MODIFIER_KEYS.includes(e.key)) return true;
 			emitted.push(e.key);
 			return true;
 		},
@@ -134,6 +140,105 @@ section('with the adapter installed');
 	const burst = 'the quick brown fox jumps over the lazy dog 0123456789';
 	type(long, burst);
 	check('a long burst is neither dropped nor duplicated', long.emitted.join('') === burst);
+}
+
+section('a held modifier must not swallow the character it modifies');
+// Shift+; is ":", which is how vim is put into command mode. WebKit delivers
+// the modifier keydown first, then the text, then keydown(229).
+function shiftedKeystroke(term, ch, { release = true } = {}) {
+	term._core._keyDown({ key: 'Shift', keyCode: 16, shiftKey: true, isComposing: false });
+	term._core._inputEvent({ data: ch, inputType: 'insertText', composed: true, isComposing: false });
+	term._core._keyDown({ key: ch, keyCode: 229, shiftKey: true, isComposing: false });
+	if (release) {
+		term._core._keyUp({ key: ch });
+		term.textarea.dispatchEvent(new Event('keyup'));
+		term._core._keyUp({ key: 'Shift' });
+		term.textarea.dispatchEvent(new Event('keyup'));
+	}
+}
+{
+	const bare = makeTerminal();
+	shiftedKeystroke(bare, ':');
+	check(
+		'without the fix the colon is lost every time, not just when typing fast',
+		bare.emitted.join('') === '',
+		`emitted ${JSON.stringify(bare.emitted.join(''))}`
+	);
+
+	const fixed = makeTerminal();
+	installWebkitInputFix(fixed, { isWebKitEngine: webkit });
+	shiftedKeystroke(fixed, ':');
+	check('with the fix it arrives', fixed.emitted.join('') === ':');
+
+	const once = makeTerminal();
+	installWebkitInputFix(once, { isWebKitEngine: webkit });
+	shiftedKeystroke(once, ':');
+	check('and exactly once, not twice', once.emitted.length === 1, JSON.stringify(once.emitted));
+
+	// Shift stays down across a whole capitalised run.
+	const held = makeTerminal();
+	installWebkitInputFix(held, { isWebKitEngine: webkit });
+	held._core._keyDown({ key: 'Shift', keyCode: 16, shiftKey: true, isComposing: false });
+	for (const ch of 'ABC') {
+		held._core._inputEvent({ data: ch, inputType: 'insertText', composed: true, isComposing: false });
+		held._core._keyDown({ key: ch, keyCode: 229, shiftKey: true, isComposing: false });
+	}
+	check('a held Shift passes a whole run through', held.emitted.join('') === 'ABC',
+		`emitted ${JSON.stringify(held.emitted.join(''))}`);
+
+	for (const key of ['Control', 'Alt', 'Meta', 'CapsLock', 'AltGraph']) {
+		const t = makeTerminal();
+		installWebkitInputFix(t, { isWebKitEngine: webkit });
+		t._core._keyDown({ key, keyCode: 17, isComposing: false });
+		check(`holding ${key} does not gate the text after it`, t._core._keyDownSeen === false);
+	}
+}
+
+section('the modifier is unarmed, not forced open');
+// Upstream's shape (xterm.js #6054): a modifier must not ARM the gate, but if
+// another key genuinely is down the gate still has a job to do.
+{
+	const held = makeTerminal();
+	installWebkitInputFix(held, { isWebKitEngine: webkit });
+	// A real key is down and has not been accounted for.
+	held._core._keyDown({ key: 'a', keyCode: 65, isComposing: false });
+	check('precondition: a real keydown armed the gate', held._core._keyDownSeen === true);
+	held._core._keyDown({ key: 'Shift', keyCode: 16, shiftKey: true, isComposing: false });
+	check(
+		'a modifier pressed on top of it leaves the gate armed',
+		held._core._keyDownSeen === true
+	);
+
+	const clean = makeTerminal();
+	installWebkitInputFix(clean, { isWebKitEngine: webkit });
+	clean._core._keyDown({ key: 'Shift', keyCode: 16, shiftKey: true, isComposing: false });
+	check('a modifier on its own leaves the gate closed', clean._core._keyDownSeen === false);
+}
+
+section('chords that emit from the keydown are still emitted once');
+// These carry a real keyCode and fire no input event, so clearing the flag
+// cannot produce a second delivery. Proving it, rather than asserting it.
+{
+	const ctrlC = makeTerminal();
+	installWebkitInputFix(ctrlC, { isWebKitEngine: webkit });
+	ctrlC._core._keyDown({ key: 'Control', keyCode: 17, ctrlKey: true, isComposing: false });
+	ctrlC._core._keyDown({ key: 'c', keyCode: 67, ctrlKey: true, isComposing: false });
+	check('Ctrl+C emits exactly once', ctrlC.emitted.length === 1, JSON.stringify(ctrlC.emitted));
+
+	const arrow = makeTerminal();
+	installWebkitInputFix(arrow, { isWebKitEngine: webkit });
+	arrow._core._keyDown({ key: 'Shift', keyCode: 16, shiftKey: true, isComposing: false });
+	arrow._core._keyDown({ key: 'ArrowLeft', keyCode: 37, shiftKey: true, isComposing: false });
+	check('Shift+Arrow emits exactly once', arrow.emitted.length === 1, JSON.stringify(arrow.emitted));
+}
+
+section('a modifier is never retired mid-composition');
+{
+	const t = makeTerminal();
+	installWebkitInputFix(t, { isWebKitEngine: webkit });
+	t._core._compositionHelper._isComposing = true;
+	t._core._keyDown({ key: 'Shift', keyCode: 16, shiftKey: true, isComposing: false });
+	check('the gate is left alone while an input method is composing', t._core._keyDownSeen === true);
 }
 
 section('engines that do not have the bug are left alone');
