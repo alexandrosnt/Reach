@@ -22,6 +22,18 @@ export default defineConfig({
 			title: 'Reach',
 			description:
 				'Reach is a free, open source SSH client and remote server manager for Windows, macOS, Linux and Android. Terminals, SFTP, tunnels, secrets and automation in one app.',
+			// Browsers request /favicon.ico whether or not the markup asks them
+			// to, so it exists regardless; this points the link tag at it too.
+			// Built by scripts/make-favicons.mjs from the application's own icon,
+			// so the browser tab and the taskbar show the same artwork.
+			favicon: '/favicon.ico',
+			head: [
+				{
+					tag: 'link',
+					attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
+				},
+				{ tag: 'link', attrs: { rel: 'manifest', href: '/site.webmanifest' } },
+			],
 			customCss: ['./src/styles/custom.css'],
 			components: {
 				Head: './src/components/Head.astro',
