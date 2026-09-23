@@ -1,3 +1,4 @@
+pub mod dragout_commands;
 pub mod ai_commands;
 pub mod plugin_commands;
 pub mod marketplace_commands;

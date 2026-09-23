@@ -377,3 +377,88 @@ pub async fn upload_file(
 fn shell_escape(s: &str) -> String {
     format!("'{}'", s.replace('\'', "'\\''"))
 }
+
+/// Read a remote file straight into a channel, without touching local disk.
+///
+/// Used by the promise drag: the drop target pulls bytes through an `IStream`
+/// and writes them wherever the user dropped, so there is no local copy to
+/// make and nothing should exist until the drop happens.
+///
+/// The channel is bounded, which is what applies back-pressure: if the
+/// receiver stops reading, this stops reading from the network rather than
+/// buffering a whole file in memory. Sending fails once the receiver is gone,
+/// which is how a cancelled drop stops the transfer.
+pub async fn stream_file(
+    handle: &SharedHandle,
+    remote_path: &str,
+    sink: std::sync::mpsc::SyncSender<Vec<u8>>,
+) -> Result<u64, TransferError> {
+    use russh::ChannelMsg;
+
+    let mut channel = {
+        let guard = handle.lock().await;
+        guard
+            .channel_open_session()
+            .await
+            .map_err(|e| TransferError::SshError(crate::ssh::client::SshError::ChannelError(format!("{}", e))))?
+    };
+    channel
+        .exec(true, format!("base64 {}", shell_escape(remote_path)))
+        .await
+        .map_err(|e| TransferError::SshError(crate::ssh::client::SshError::ChannelError(format!("{}", e))))?;
+
+    let mut b64 = String::new();
+    let mut sent: u64 = 0;
+    let mut got_eof = false;
+    let mut got_exit = false;
+
+    let mut emit = |bytes: Vec<u8>| -> Result<(), TransferError> {
+        sent += bytes.len() as u64;
+        sink.send(bytes)
+            .map_err(|_| TransferError::IoError("drop cancelled".into()))
+    };
+
+    loop {
+        let msg = tokio::time::timeout(std::time::Duration::from_secs(30), channel.wait()).await;
+        match msg {
+            Ok(Some(ChannelMsg::Data { ref data })) => {
+                b64.push_str(&String::from_utf8_lossy(data));
+                while let Some(nl) = b64.find('\n') {
+                    let line: String = b64[..nl].chars().filter(|c| !c.is_whitespace()).collect();
+                    b64 = b64[nl + 1..].to_string();
+                    if line.is_empty() {
+                        continue;
+                    }
+                    let decoded = base64::engine::general_purpose::STANDARD
+                        .decode(&line)
+                        .map_err(|e| TransferError::IoError(format!("Base64 decode error: {}", e)))?;
+                    emit(decoded)?;
+                }
+            }
+            Ok(Some(ChannelMsg::Eof)) => {
+                got_eof = true;
+                if got_exit {
+                    break;
+                }
+            }
+            Ok(Some(ChannelMsg::ExitStatus { .. })) => {
+                got_exit = true;
+                if got_eof {
+                    break;
+                }
+            }
+            Ok(None) | Err(_) => break,
+            _ => {}
+        }
+    }
+
+    let tail: String = b64.chars().filter(|c| !c.is_whitespace()).collect();
+    if !tail.is_empty() {
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(&tail)
+            .map_err(|e| TransferError::IoError(format!("Base64 decode error (tail): {}", e)))?;
+        emit(decoded)?;
+    }
+
+    Ok(sent)
+}

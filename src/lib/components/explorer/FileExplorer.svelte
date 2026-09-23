@@ -25,6 +25,8 @@
 		showsProgress
 	} from '$lib/explorer/drag-out';
 	import { startDrag } from '@crabnebula/tauri-plugin-drag';
+	import { dragoutStart } from '$lib/ipc/dragout';
+	import { isWindows } from '$lib/platform';
 	import { tempDir, join } from '@tauri-apps/api/path';
 	import { invoke } from '@tauri-apps/api/core';
 	import { openEditor } from '$lib/state/editor.svelte';
@@ -141,6 +143,9 @@
 	const dragCache = new Map<string, DragEntry>();
 
 	async function prepareForDrag(entry: FileEntry): Promise<void> {
+		// On Windows nothing is fetched to drag: the drop target pulls the
+		// bytes after the drop. Pressing a row must therefore cost nothing.
+		if (isWindows()) return;
 		if (!connectionId || !isDraggable(entry)) return;
 		const conn = connectionId;
 		const key = cacheKey(conn, entry.path);
@@ -226,6 +231,20 @@
 	/** Returns true when the native drag took over from the webview's own. */
 	function beginDragOut(entry: FileEntry): boolean {
 		if (!connectionId) return false;
+
+		// Windows can be handed a promise: the file is described now and its
+		// contents are asked for only if the drop happens, so a drag costs
+		// nothing and a cancelled one costs nothing either. There is no size
+		// limit because nothing is being fetched here, and no folder support
+		// because a directory is not one stream of bytes.
+		if (isWindows()) {
+			if (entry.isDirectory) return false;
+			void dragoutStart(connectionId, [
+				{ name: entry.name, path: entry.path, size: entry.size }
+			]).catch((err) => addToast(String(err), 'error'));
+			return true;
+		}
+
 		const key = cacheKey(connectionId, entry.path);
 		const cached = dragCache.get(key);
 		const action = dragAction(cached?.state ?? 'idle', entry);

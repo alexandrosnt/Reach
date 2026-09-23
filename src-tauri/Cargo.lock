@@ -4957,6 +4957,8 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "which 7.0.3",
+ "windows 0.61.3",
+ "windows-core 0.61.2",
  "x25519-dalek",
  "zeroize",
  "zip 2.4.2",

@@ -5,6 +5,7 @@ pub mod mcp;
 pub mod monitoring;
 #[cfg(desktop)]
 pub mod pty;
+pub mod dragout;
 pub mod recipe;
 pub mod share;
 #[cfg(desktop)]
@@ -39,6 +40,7 @@ use ipc::pty_commands::*;
 use ipc::serial_commands::*;
 use ipc::session_commands::*;
 use ipc::sftp_commands::*;
+use ipc::dragout_commands::*;
 use ipc::ssh_commands::*;
 use ipc::sshconfig_commands::*;
 use ipc::sshkey_commands::*;
@@ -240,6 +242,7 @@ pub fn run() {
             sftp_archive_extract,
             sftp_archive_cancel,
             drag_preview_icon,
+            dragout_start,
             // Session commands
             session_list,
             session_get,
@@ -511,6 +514,7 @@ pub fn run() {
             sftp_archive_extract,
             sftp_archive_cancel,
             drag_preview_icon,
+            dragout_start,
             // Session commands
             session_list,
             session_get,

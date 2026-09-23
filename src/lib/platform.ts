@@ -22,3 +22,15 @@ export function isWebKit(): boolean {
 	const ua = navigator.userAgent;
 	return /AppleWebKit/.test(ua) && !/Chrome|Chromium|Edg\//.test(ua);
 }
+
+/**
+ * True on Windows, where a file can be dragged out without being fetched
+ * first: the drop target pulls the bytes through a stream after the drop.
+ * Everywhere else the file has to exist locally before the gesture begins.
+ */
+export function isWindows(): boolean {
+	if (typeof navigator === 'undefined') return false;
+	const data = (navigator as { userAgentData?: { platform?: string } }).userAgentData;
+	if (data?.platform) return data.platform === 'Windows';
+	return /Win/.test(navigator.platform);
+}
