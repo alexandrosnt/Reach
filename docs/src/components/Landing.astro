@@ -16,6 +16,7 @@ import Downloads from './Downloads.astro';
 import logo from '../assets/reach-logo.png';
 import { latestRelease, RELEASES_URL, resolve } from '../lib/release';
 import AppDemo from './AppDemo.astro';
+import Community from './Community.astro';
 
 /**
  * The left column of the banner. Each keeps the banner's own colour, because
@@ -266,6 +267,7 @@ const CHIPS = [
 		<p class="eyebrow">Downloads</p>
 		<h2 class="block-title">Get Reach</h2>
 		<Downloads />
+		<Community />
 	</section>
 
 	<section class="chips" data-reveal>

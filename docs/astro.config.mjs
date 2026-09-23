@@ -41,7 +41,10 @@ export default defineConfig({
 			logo: {
 				src: './src/assets/reach-logo.png',
 			},
-			social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/alexandrosnt/Reach' }],
+			social: [
+				{ icon: 'github', label: 'GitHub', href: 'https://github.com/alexandrosnt/Reach' },
+				{ icon: 'discord', label: 'Discord', href: 'https://discord.gg/CSbEybvDVV' },
+			],
 			sidebar: [
 				{
 					label: 'Getting Started',

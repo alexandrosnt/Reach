@@ -1,0 +1,237 @@
+---
+/**
+ * The Discord server, stated plainly and counted honestly.
+ *
+ * The link was previously one entry in a row of footer links, which is where
+ * community links go to be ignored. It gets a section here, next to the
+ * downloads, because the moment someone has just installed a thing is the
+ * moment they might want to ask about it.
+ *
+ * The counts are real and fetched, not written down — see lib/discord.ts.
+ * Twelve members is a small number, and saying so is better than hiding it:
+ * "7 online" tells a visitor there are people there right now, which is the
+ * thing they actually want to know.
+ */
+import { DISCORD_URL, discordServer } from '../lib/discord';
+import { DISCORD_INVITE_CODE } from '../lib/discord';
+
+const server = await discordServer();
+---
+
+<section class="community" data-community data-invite={DISCORD_INVITE_CODE}>
+	<span class="logo" aria-hidden="true">
+		<svg viewBox="0 0 127 96" fill="currentColor">
+			<path
+				d="M107.7 8.07A105.15 105.15 0 0 0 81.47 0a72.06 72.06 0 0 0-3.36 6.83 97.68 97.68 0 0 0-29.11 0A72.37 72.37 0 0 0 45.64 0a105.89 105.89 0 0 0-26.25 8.09C2.79 32.65-1.71 56.6.54 80.21a105.73 105.73 0 0 0 32.17 16.15 77.7 77.7 0 0 0 6.89-11.11 68.42 68.42 0 0 1-10.85-5.18c.91-.66 1.8-1.34 2.66-2a75.57 75.57 0 0 0 64.32 0c.87.71 1.76 1.39 2.66 2a68.68 68.68 0 0 1-10.87 5.19 77 77 0 0 0 6.89 11.1 105.25 105.25 0 0 0 32.19-16.14c2.64-27.38-4.51-51.11-18.9-72.15ZM42.45 65.69C36.18 65.69 31 60 31 53s5-12.74 11.43-12.74S54 46 53.89 53s-5.05 12.69-11.44 12.69Zm42.24 0C78.41 65.69 73.25 60 73.25 53s5-12.74 11.44-12.74S96.23 46 96.12 53s-5.04 12.69-11.43 12.69Z"
+			/>
+		</svg>
+	</span>
+
+	<div class="words">
+		<h2>Questions, or just want to watch it being built?</h2>
+		<p>
+			The Discord is where bugs get triaged, features get argued about, and new
+			releases land first. Everyone is welcome, including people who have never
+			opened a terminal in anger.
+		</p>
+		<p class="counts">
+			{
+				server.online !== null && (
+					<span class="live" data-online-wrap>
+						<i aria-hidden="true" />
+						<b data-online>{server.online}</b> online
+					</span>
+				)
+			}
+			{
+				server.members !== null && (
+					<span class="total">
+						<b data-members>{server.members}</b> members
+					</span>
+				)
+			}
+		</p>
+	</div>
+
+	<a class="join" href={DISCORD_URL} rel="noopener">
+		Join the Discord
+		<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+			<path d="M5 12h14M13 6l6 6-6 6" />
+		</svg>
+	</a>
+</section>
+
+<script>
+	// The build wrote correct numbers; this makes them current. Discord sends
+	// access-control-allow-origin for this site, so the call is allowed from
+	// the page — and if it is ever not, the baked figures simply stand.
+	const section = document.querySelector<HTMLElement>('[data-community]');
+	const code = section?.dataset.invite;
+
+	if (section && code) {
+		fetch(`https://discord.com/api/v10/invites/${code}?with_counts=true`, {
+			headers: { Accept: 'application/json' },
+		})
+			.then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+			.then((invite: { approximate_member_count?: number; approximate_presence_count?: number }) => {
+				const set = (selector: string, value: number | undefined) => {
+					const el = section.querySelector(selector);
+					if (el && typeof value === 'number') el.textContent = String(value);
+				};
+				set('[data-online]', invite.approximate_presence_count);
+				set('[data-members]', invite.approximate_member_count);
+			})
+			.catch(() => {
+				/* Offline, blocked, or rate limited: the built-in numbers stand. */
+			});
+	}
+</script>
+
+<style>
+	.community {
+		display: grid;
+		grid-template-columns: auto 1fr auto;
+		align-items: center;
+		gap: 1.5rem;
+		margin: 3rem 0 0;
+		padding: 1.75rem 1.9rem;
+		border-radius: 16px;
+		/* Discord's own blurple, dialled down to sit inside the page rather than
+		   shout over it. */
+		border: 1px solid hsl(235 86% 65% / 0.3);
+		background:
+			radial-gradient(40rem 12rem at 0% 0%, hsl(235 86% 65% / 0.16), transparent 70%),
+			linear-gradient(180deg, hsl(215 22% 13% / 0.6), hsl(215 25% 10% / 0.6));
+	}
+
+	:global(:root[data-theme='light']) .community {
+		background:
+			radial-gradient(40rem 12rem at 0% 0%, hsl(235 86% 65% / 0.1), transparent 70%),
+			linear-gradient(180deg, hsl(0 0% 100%), hsl(235 40% 99%));
+	}
+
+	.logo {
+		display: grid;
+		place-items: center;
+		width: 56px;
+		height: 56px;
+		border-radius: 14px;
+		color: hsl(235 86% 72%);
+		border: 1px solid hsl(235 86% 65% / 0.32);
+		background: hsl(235 86% 65% / 0.14);
+	}
+
+	.logo svg {
+		width: 28px;
+		height: 28px;
+	}
+
+	.words h2 {
+		margin: 0 0 0.35rem;
+		font-size: 1.15rem;
+		font-weight: 640;
+		letter-spacing: -0.02em;
+		color: var(--sl-color-white);
+	}
+
+	.words p {
+		margin: 0;
+		font-size: 0.92rem;
+		line-height: 1.6;
+		color: var(--sl-color-gray-3);
+		max-width: 58ch;
+	}
+
+	.counts {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.35rem 1.1rem;
+		margin-top: 0.7rem !important;
+		font-size: 0.85rem;
+		font-variant-numeric: tabular-nums;
+	}
+
+	.counts b {
+		color: var(--sl-color-white);
+		font-weight: 640;
+	}
+
+	.live {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.45rem;
+	}
+
+	/* The dot is the whole point of showing "online" rather than only a total:
+	   it says people are there now. */
+	.live i {
+		width: 8px;
+		height: 8px;
+		border-radius: 50%;
+		background: hsl(139 47% 54%);
+		box-shadow: 0 0 0 0 hsl(139 47% 54% / 0.7);
+		animation: pulse 2.6s ease-out infinite;
+	}
+
+	.join {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.8rem 1.5rem;
+		border-radius: 999px;
+		font-weight: 620;
+		white-space: nowrap;
+		text-decoration: none;
+		color: hsl(0 0% 100%);
+		background: hsl(235 86% 65%);
+		box-shadow: 0 12px 30px -12px hsl(235 86% 65%);
+		transition:
+			transform 0.16s ease,
+			background 0.16s ease,
+			box-shadow 0.16s ease;
+	}
+
+	.join svg {
+		width: 16px;
+		height: 16px;
+	}
+
+	.join:hover {
+		transform: translateY(-2px);
+		background: hsl(235 86% 70%);
+		box-shadow: 0 18px 38px -12px hsl(235 86% 65%);
+	}
+
+	@keyframes pulse {
+		0% {
+			box-shadow: 0 0 0 0 hsl(139 47% 54% / 0.65);
+		}
+		70%,
+		100% {
+			box-shadow: 0 0 0 8px hsl(139 47% 54% / 0);
+		}
+	}
+
+	/* Stacked on a phone, with the button full width where a thumb expects it. */
+	@media (max-width: 46rem) {
+		.community {
+			grid-template-columns: auto 1fr;
+			gap: 1rem 1.1rem;
+		}
+
+		.join {
+			grid-column: 1 / -1;
+			justify-content: center;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.live i {
+			animation: none;
+		}
+
+		.join:hover {
+			transform: none;
+		}
+	}
+</style>
