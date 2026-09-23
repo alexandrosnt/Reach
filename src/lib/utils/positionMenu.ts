@@ -38,11 +38,24 @@ export function positionMenu(node: HTMLElement, pos: MenuPos) {
 		node.style.top = `${top}px`;
 	}
 
-	place(pos);
+	let current = pos;
+	place(current);
+
+	// A menu can change height after it opens — a group that expands, an item
+	// that appears once something has loaded. Placement is computed from the
+	// height, so without re-running it the extra rows are laid out below the
+	// bottom of the screen: the menu looks like it did nothing at all.
+	const observer =
+		typeof ResizeObserver === 'undefined' ? undefined : new ResizeObserver(() => place(current));
+	observer?.observe(node);
 
 	return {
 		update(next: MenuPos) {
-			place(next);
+			current = next;
+			place(current);
+		},
+		destroy() {
+			observer?.disconnect();
 		}
 	};
 }

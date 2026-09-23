@@ -6,9 +6,11 @@
 		onclick: () => void;
 		oncontextmenu?: (e: MouseEvent) => void;
 		ondownload?: () => void;
+		/** The row the open context menu is acting on. */
+		active?: boolean;
 	}
 
-	let { entry, onclick, oncontextmenu, ondownload }: Props = $props();
+	let { entry, onclick, oncontextmenu, ondownload, active = false }: Props = $props();
 
 	let sizeText = $derived.by(() => {
 		if (entry.isDirectory) return '';
@@ -20,7 +22,7 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="file-node" onclick={onclick} oncontextmenu={oncontextmenu} role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter') onclick(); }}>
+<div class="file-node" class:active onclick={onclick} oncontextmenu={oncontextmenu} role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter') onclick(); }}>
 	<span class="file-icon">
 		{#if entry.isDirectory}
 			<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -90,6 +92,15 @@
 		cursor: pointer;
 		text-align: left;
 		transition: background-color var(--duration-default) var(--ease-default);
+	}
+
+	/* The row a context menu is open on. The menu can be tall enough to cover
+	   its neighbours, so without this it is easy to lose track of which file
+	   is about to be compressed or deleted. Stronger than hover, and it stays
+	   put while the pointer moves over the menu. */
+	.file-node.active {
+		background-color: var(--color-bg-hover, rgba(255, 255, 255, 0.08));
+		box-shadow: inset 2px 0 0 var(--color-accent, #3b82f6);
 	}
 
 	.file-node:hover {

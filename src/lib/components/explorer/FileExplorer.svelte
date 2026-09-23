@@ -919,7 +919,7 @@
 							/>
 						</div>
 					{:else}
-						<FileNode {entry} onclick={() => handleNodeClick(entry)} oncontextmenu={(e) => openContextMenu(e, entry)} ondownload={!entry.isDirectory ? () => handleQuickDownload(entry) : undefined} />
+						<FileNode {entry} active={contextMenu?.entry?.path === entry.path} onclick={() => handleNodeClick(entry)} oncontextmenu={(e) => openContextMenu(e, entry)} ondownload={!entry.isDirectory ? () => handleQuickDownload(entry) : undefined} />
 					{/if}
 				{/each}
 			{/if}
@@ -1005,7 +1005,13 @@
 			{#if creatableFormats(tools).length > 0 || isExtractable(contextMenu.entry.name, tools)}
 				<button
 					class="context-item"
-					onclick={() => (archiveOpen = !archiveOpen)}
+					onclick={(e) => {
+						// The explorer root closes the menu on any click inside it,
+						// which is right for every item that acts and dismisses. This
+						// one only expands a group, so the click must stop here.
+						e.stopPropagation();
+						archiveOpen = !archiveOpen;
+					}}
 					type="button"
 					aria-expanded={archiveOpen}
 				>
