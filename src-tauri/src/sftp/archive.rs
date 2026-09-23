@@ -30,8 +30,9 @@ use crate::recipe::invoke::shell_quote;
 use serde::{Deserialize, Serialize};
 
 /// Everything worth probing for. Ordered roughly by how likely it is present.
-pub const PROBED_TOOLS: [&str; 12] = [
+pub const PROBED_TOOLS: [&str; 13] = [
     "tar", "gzip", "bzip2", "xz", "zstd", "zip", "unzip", "bsdtar", "7z", "7za", "7zz", "python3",
+    "stdbuf",
 ];
 
 /// One command that reports which of the tools above exist.
@@ -121,6 +122,34 @@ pub struct Plan {
     pub tool: String,
 }
 
+/// Force the tool to flush each line as it produces it.
+///
+/// Over an SSH channel the tool's output is a pipe, not a terminal, so its C
+/// library switches from line buffering to block buffering and holds several
+/// kilobytes back. For a progress bar that is fatal: a zip of a few thousand
+/// files reports nothing at all and then every line at once at the end, so the
+/// bar sits at zero and jumps straight to done.
+///
+/// `stdbuf` is part of coreutils and present on essentially every Linux. It is
+/// absent on macOS, where the bar degrades to indeterminate rather than
+/// showing a number that is stuck — see `measurable`.
+fn line_buffered(tools: &ArchiveTools, command: String) -> String {
+    if tools.has("stdbuf") {
+        format!("stdbuf -oL -eL {command}")
+    } else {
+        command
+    }
+}
+
+/// Whether progress can honestly be reported for this run.
+///
+/// Needs both a tool that names each file and a way to stop its output being
+/// held in a buffer. Without both, a count would be a lie told slowly.
+pub fn is_measurable(tools: &ArchiveTools, tool: &str) -> bool {
+    let names_files = matches!(tool, "tar" | "bsdtar" | "zip" | "unzip" | "7z" | "7za" | "7zz");
+    names_files && tools.has("stdbuf")
+}
+
 /// Written `./name` so that a file called `-rf` is an operand, never a flag.
 fn operand(name: &str) -> String {
     shell_quote(&format!("./{}", name.trim_start_matches("./")))
@@ -183,7 +212,7 @@ pub fn create_command(
         // bsdtar understands the same short flags, and is `tar` on macOS.
         let tar = tools.first(&["tar", "bsdtar"])?;
         return Some(Plan {
-            command: in_dir(dir, &format!("{tar} {flag} -cf {out} {joined}")),
+            command: in_dir(dir, &line_buffered(tools, format!("{tar} {flag} -cvf {out} {joined}"))),
             tool: tar,
         });
     }
@@ -191,19 +220,19 @@ pub fn create_command(
     // Zip, in descending order of how well each does the job.
     if tools.has("zip") {
         return Some(Plan {
-            command: in_dir(dir, &format!("zip -r -q {out} {joined}")),
+            command: in_dir(dir, &line_buffered(tools, format!("zip -r {out} {joined}"))),
             tool: "zip".into(),
         });
     }
     if tools.has("bsdtar") {
         return Some(Plan {
-            command: in_dir(dir, &format!("bsdtar -a -cf {out} {joined}")),
+            command: in_dir(dir, &line_buffered(tools, format!("bsdtar -a -cvf {out} {joined}"))),
             tool: "bsdtar".into(),
         });
     }
     if let Some(sz) = tools.seven_zip() {
         return Some(Plan {
-            command: in_dir(dir, &format!("{sz} a -bso0 -bsp0 -tzip {out} {joined}")),
+            command: in_dir(dir, &line_buffered(tools, format!("{sz} a -bb1 -bsp0 -tzip {out} {joined}"))),
             tool: sz,
         });
     }
@@ -214,6 +243,52 @@ pub fn create_command(
         });
     }
     None
+}
+
+/// How many files an operation will touch, so progress has a denominator.
+///
+/// Counting is a separate, cheap command rather than something parsed out of
+/// the work itself, because none of these tools will tell you the total up
+/// front. It is allowed to fail: without a total the progress bar simply runs
+/// indeterminate, which is better than blocking the operation on a count.
+pub fn count_to_create(dir: &str, entries: &[String]) -> Option<String> {
+    if entries.is_empty() {
+        return None;
+    }
+    let names: Vec<String> = entries.iter().map(|e| operand(e)).collect();
+    Some(in_dir(
+        dir,
+        &format!("find {} -type f 2>/dev/null | wc -l", names.join(" ")),
+    ))
+}
+
+/// How many members an archive holds.
+pub fn count_to_extract(tools: &ArchiveTools, dir: &str, archive: &str) -> Option<String> {
+    let kind = kind_of(archive)?;
+    let src = operand(archive);
+    let listing = match kind {
+        ArchiveKind::Tar => {
+            let tar = tools.first(&["tar", "bsdtar"])?;
+            format!("{tar} -tf {src}")
+        }
+        ArchiveKind::Zip => {
+            if tools.has("unzip") {
+                format!("unzip -Z1 {src}")
+            } else if tools.has("bsdtar") {
+                format!("bsdtar -tf {src}")
+            } else if let Some(sz) = tools.seven_zip() {
+                format!("{sz} l -ba -slt {src} | grep -c '^Path = '")
+            } else {
+                return None;
+            }
+        }
+    };
+    // 7-Zip already counts; everything else is one line per member.
+    if listing.contains("grep -c") {
+        Some(in_dir(dir, &listing))
+    } else {
+        Some(in_dir(dir, &format!("{listing} 2>/dev/null | wc -l")))
+    }
 }
 
 /// The archive families we can open.
@@ -285,7 +360,7 @@ pub fn extract_command(
             Some(Plan {
                 command: in_dir(
                     dir,
-                    &format!("{mkdir} && {tar} -xf {src} --no-same-owner -C {out}"),
+                    &format!("{mkdir} && {}", line_buffered(tools, format!("{tar} -xvf {src} --no-same-owner -C {out}"))),
                 ),
                 tool: tar,
             })
@@ -293,13 +368,13 @@ pub fn extract_command(
         ArchiveKind::Zip => {
             if tools.has("unzip") {
                 return Some(Plan {
-                    command: in_dir(dir, &format!("{mkdir} && unzip -o -q {src} -d {out}")),
+                    command: in_dir(dir, &format!("{mkdir} && {}", line_buffered(tools, format!("unzip -o {src} -d {out}")))),
                     tool: "unzip".into(),
                 });
             }
             if tools.has("bsdtar") {
                 return Some(Plan {
-                    command: in_dir(dir, &format!("{mkdir} && bsdtar -xf {src} -C {out}")),
+                    command: in_dir(dir, &format!("{mkdir} && {}", line_buffered(tools, format!("bsdtar -xvf {src} -C {out}")))),
                     tool: "bsdtar".into(),
                 });
             }
@@ -308,7 +383,7 @@ pub fn extract_command(
                 return Some(Plan {
                     command: in_dir(
                         dir,
-                        &format!("{mkdir} && {sz} x -y -bso0 -bsp0 -o{out} {src}"),
+                        &format!("{mkdir} && {}", line_buffered(tools, format!("{sz} x -y -bb1 -bsp0 -o{out} {src}"))),
                     ),
                     tool: sz,
                 });
@@ -366,7 +441,7 @@ mod tests {
             .expect("tar.gz must always be possible");
         assert_eq!(
             plan.command,
-            "cd -- '/srv' && tar -z -cf './data.tar.gz' './data'"
+            "cd -- '/srv' && tar -z -cvf './data.tar.gz' './data'"
         );
     }
 
@@ -525,7 +600,7 @@ mod tests {
         // not branch per compression on the way out.
         for archive in ["x.tar.gz", "x.tar.xz", "x.tar.zst", "x.tar"] {
             let plan = extract_command(&t, "/srv", archive, "x").unwrap();
-            assert!(plan.command.contains("tar -xf"), "{archive}: {}", plan.command);
+            assert!(plan.command.contains("tar -xvf"), "{archive}: {}", plan.command);
             assert!(plan.command.contains("--no-same-owner"), "{archive}");
         }
     }
@@ -552,6 +627,81 @@ mod tests {
         let plan = extract_command(&t, "/srv", "a.zip", "a").unwrap();
         assert!(plan.command.contains("-o'./a'"), "{}", plan.command);
         assert!(!plan.command.contains("-o './a'"), "{}", plan.command);
+    }
+
+    // The bug this exists for: over a pipe, zip held every one of 3532 lines
+    // until the end, so the bar read "0 of 3532" for the whole operation.
+    #[test]
+    fn output_is_line_buffered_when_the_machine_can() {
+        let t = tools(&["tar", "gzip", "zip", "unzip", "stdbuf"]);
+        let create = create_command(&t, ArchiveFormat::Zip, "/srv", &one("d"), "d.zip").unwrap();
+        assert!(create.command.contains("stdbuf -oL -eL zip"), "{}", create.command);
+        let tar = create_command(&t, ArchiveFormat::TarGz, "/srv", &one("d"), "d.tar.gz").unwrap();
+        assert!(tar.command.contains("stdbuf -oL -eL tar"), "{}", tar.command);
+        let unzip = extract_command(&t, "/srv", "a.zip", "a").unwrap();
+        assert!(unzip.command.contains("stdbuf -oL -eL unzip"), "{}", unzip.command);
+        // The directory is made by the shell, not the tool, so it stays bare.
+        assert!(unzip.command.contains("mkdir -p -- './a' && stdbuf"), "{}", unzip.command);
+    }
+
+    #[test]
+    fn without_stdbuf_the_command_still_works_and_admits_it_cannot_be_measured() {
+        let t = tools(&["tar", "gzip", "zip"]);
+        let plan = create_command(&t, ArchiveFormat::Zip, "/srv", &one("d"), "d.zip").unwrap();
+        assert!(!plan.command.contains("stdbuf"), "{}", plan.command);
+        assert!(plan.command.contains("zip -r"), "{}", plan.command);
+        assert!(!is_measurable(&t, "zip"), "a buffered tool must not claim progress");
+    }
+
+    #[test]
+    fn measurable_needs_both_a_talkative_tool_and_a_flushed_pipe() {
+        let full = tools(&PROBED_TOOLS);
+        for tool in ["tar", "bsdtar", "zip", "unzip", "7z"] {
+            assert!(is_measurable(&full, tool), "{tool} should be measurable");
+        }
+        // python3 never names a file, whatever the buffering.
+        assert!(!is_measurable(&full, "python3"));
+    }
+
+    #[test]
+    fn counting_quotes_its_operands_too() {
+        let cmd = count_to_create("/srv", &one("a; rm -rf ~")).unwrap();
+        assert!(cmd.contains(&shell_quote("./a; rm -rf ~")), "{cmd}");
+        assert!(cmd.contains("wc -l"), "{cmd}");
+        assert!(count_to_create("/srv", &[]).is_none());
+    }
+
+    #[test]
+    fn counting_members_follows_the_same_chain_as_extracting() {
+        for (have, expect) in [
+            (vec!["tar"], "tar -tf"),
+            (vec!["unzip"], "unzip -Z1"),
+            (vec!["bsdtar"], "bsdtar -tf"),
+            (vec!["7z"], "grep -c"),
+        ] {
+            let t = tools(&have);
+            let archive = if have[0] == "tar" { "x.tar.gz" } else { "x.zip" };
+            let cmd = count_to_extract(&t, "/srv", archive)
+                .unwrap_or_else(|| panic!("no count with {have:?}"));
+            assert!(cmd.contains(expect), "{have:?}: {cmd}");
+        }
+        // Nothing that can open it means nothing to count.
+        assert!(count_to_extract(&tools(&["tar"]), "/srv", "x.zip").is_none());
+        assert!(count_to_extract(&tools(&["tar"]), "/srv", "notes.txt").is_none());
+    }
+
+    #[test]
+    fn every_command_says_what_it_is_doing_so_progress_can_be_counted() {
+        let t = tools(&PROBED_TOOLS);
+        // A quiet tool cannot be measured, so none of these may be quiet.
+        let create = create_command(&t, ArchiveFormat::TarGz, "/srv", &one("d"), "d.tar.gz").unwrap();
+        assert!(create.command.contains("-cvf"), "{}", create.command);
+        let zip = create_command(&tools(&["zip"]), ArchiveFormat::Zip, "/srv", &one("d"), "d.zip").unwrap();
+        assert!(!zip.command.contains(" -q"), "{}", zip.command);
+        let untar = extract_command(&t, "/srv", "x.tar.gz", "x").unwrap();
+        assert!(untar.command.contains("-xvf"), "{}", untar.command);
+        let unzip = extract_command(&tools(&["unzip"]), "/srv", "x.zip", "x").unwrap();
+        assert!(!unzip.command.contains(" -q"), "{}", unzip.command);
     }
 
     #[test]

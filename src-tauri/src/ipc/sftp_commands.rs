@@ -245,29 +245,47 @@ pub struct ArchiveOutcome {
     pub produced: String,
 }
 
-/// Turn a failed command into something worth reading.
+/// How many files an operation is about to touch.
 ///
-/// A bare exit code tells the user nothing. The last line of stderr is almost
-/// always the real reason — "No space left on device" and the like.
-fn failure(tool: &str, stderr: &str, code: i32) -> String {
-    let detail = stderr
-        .lines()
-        .map(str::trim)
-        .filter(|l| !l.is_empty())
-        .next_back()
-        .unwrap_or("no output");
-    format!("{tool} failed (exit {code}): {detail}")
+/// Emitted before the work starts so the progress bar has a denominator. Zero
+/// means the count failed or is not knowable, and the bar runs indeterminate
+/// rather than the operation being held up for it.
+#[derive(Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ArchiveTotal {
+    pub operation_id: String,
+    pub total: u64,
+    pub tool: String,
+    /// False when the tool says nothing, or when its output cannot be
+    /// unbuffered — in which case a count would be stuck at zero and then
+    /// jump, which is worse than showing no number at all.
+    pub measurable: bool,
+}
+
+/// Ask the machine how many files are involved. Never fatal.
+async fn count_files(handle: &crate::ssh::client::SharedHandle, command: Option<String>) -> u64 {
+    let Some(cmd) = command else { return 0 };
+    match crate::ssh::client::exec_on_connection_with_exit_code(handle, &cmd).await {
+        Ok((out, _, 0)) => out.trim().parse().unwrap_or(0),
+        _ => 0,
+    }
 }
 
 /// Compress `entries` inside `directory` into a new archive.
+///
+/// Streams the tool's output as it goes, under `archive-output-<operationId>`,
+/// so the caller can count files as they are written. That is why the commands
+/// are built verbose: a quiet tool cannot be measured.
 #[tauri::command]
 pub async fn sftp_archive_create(
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     connection_id: String,
     directory: String,
     entries: Vec<String>,
     archive_name: String,
     format: ArchiveFormat,
+    operation_id: String,
 ) -> Result<ArchiveOutcome, String> {
     let handle = {
         let manager = state.ssh_manager.lock().await;
@@ -291,12 +309,28 @@ pub async fn sftp_archive_create(
             )
         })?;
 
-    let (_out, stderr, code) =
-        crate::ssh::client::exec_on_connection_with_exit_code(&handle, &plan.command)
-            .await
-            .map_err(|e| e.to_string())?;
+    let total = count_files(&handle, archive::count_to_create(&directory, &entries)).await;
+    let _ = app.emit(
+        &format!("archive-total-{}", operation_id),
+        ArchiveTotal {
+            operation_id: operation_id.clone(),
+            total,
+            tool: plan.tool.clone(),
+            measurable: archive::is_measurable(&tools, &plan.tool),
+        },
+    );
+
+    let code = crate::ssh::client::exec_on_connection_streaming(
+        &handle,
+        &plan.command,
+        &operation_id,
+        "archive-output",
+        &app,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
     if code != 0 {
-        return Err(failure(&plan.tool, &stderr, code));
+        return Err(format!("{} failed (exit {})", plan.tool, code));
     }
     Ok(ArchiveOutcome {
         tool: plan.tool,
@@ -312,10 +346,12 @@ pub async fn sftp_archive_create(
 /// quietly replace a neighbour.
 #[tauri::command]
 pub async fn sftp_archive_extract(
+    app: tauri::AppHandle,
     state: tauri::State<'_, AppState>,
     connection_id: String,
     directory: String,
     archive_name: String,
+    operation_id: String,
 ) -> Result<ArchiveOutcome, String> {
     let handle = {
         let manager = state.ssh_manager.lock().await;
@@ -335,12 +371,32 @@ pub async fn sftp_archive_extract(
     let plan = archive::extract_command(&tools, &directory, &archive_name, &dest)
         .ok_or_else(|| "This machine has no tool that can open that archive.".to_string())?;
 
-    let (_out, stderr, code) =
-        crate::ssh::client::exec_on_connection_with_exit_code(&handle, &plan.command)
-            .await
-            .map_err(|e| e.to_string())?;
+    let total = count_files(
+        &handle,
+        archive::count_to_extract(&tools, &directory, &archive_name),
+    )
+    .await;
+    let _ = app.emit(
+        &format!("archive-total-{}", operation_id),
+        ArchiveTotal {
+            operation_id: operation_id.clone(),
+            total,
+            tool: plan.tool.clone(),
+            measurable: archive::is_measurable(&tools, &plan.tool),
+        },
+    );
+
+    let code = crate::ssh::client::exec_on_connection_streaming(
+        &handle,
+        &plan.command,
+        &operation_id,
+        "archive-output",
+        &app,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
     if code != 0 {
-        return Err(failure(&plan.tool, &stderr, code));
+        return Err(format!("{} failed (exit {})", plan.tool, code));
     }
     Ok(ArchiveOutcome {
         tool: plan.tool,

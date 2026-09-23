@@ -1317,5 +1317,6 @@
   "explorer.archive_busy": "In corso…",
   "explorer.archive_created": "{{name}} creato con {{tool}}",
   "explorer.archive_extracted": "Estratto in {{name}} con {{tool}}",
-  "explorer.archive_none": "Questa macchina non ha strumenti per farlo"
+  "explorer.archive_none": "Questa macchina non ha strumenti per farlo",
+  "explorer.archive_files_progress": "{{done}} di {{total}} file"
 }

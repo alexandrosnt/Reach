@@ -1317,5 +1317,6 @@
   "explorer.archive_busy": "Выполняется…",
   "explorer.archive_created": "{{name}} создан с помощью {{tool}}",
   "explorer.archive_extracted": "Распаковано в {{name}} с помощью {{tool}}",
-  "explorer.archive_none": "На этой машине нет подходящего инструмента"
+  "explorer.archive_none": "На этой машине нет подходящего инструмента",
+  "explorer.archive_files_progress": "{{done}} из {{total}} файлов"
 }

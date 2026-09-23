@@ -21,6 +21,7 @@
     "ime:test": "node scripts/ime-test.mjs",
     "webkit:test": "node --import ./scripts/resolve-lib.mjs scripts/webkit-input-test.mjs",
     "webkit:live": "node scripts/webkit-live-test.mjs",
+    "archive:test": "node --import ./scripts/resolve-lib.mjs scripts/archive-progress-test.mjs",
     "tofu:test": "node scripts/tofu-json-test.mjs",
     "ansible:test": "node scripts/ansible-recap-test.mjs && node scripts/ansible-sessions-test.mjs"
   },

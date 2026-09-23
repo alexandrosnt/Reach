@@ -4,7 +4,7 @@ export interface Transfer {
 	bytesTransferred: number;
 	totalBytes: number;
 	percent: number;
-	status: 'uploading' | 'downloading' | 'completed' | 'error';
+	status: 'uploading' | 'downloading' | 'archiving' | 'completed' | 'error';
 	error?: string;
 }
 
@@ -12,8 +12,8 @@ let transfers = $state<Record<string, Transfer>>({});
 
 export function getTransfers(): Transfer[] {
 	return Object.values(transfers).sort((a, b) => {
-		const aActive = a.status === 'uploading' || a.status === 'downloading';
-		const bActive = b.status === 'uploading' || b.status === 'downloading';
+		const aActive = a.status === 'uploading' || a.status === 'downloading' || a.status === 'archiving';
+		const bActive = b.status === 'uploading' || b.status === 'downloading' || b.status === 'archiving';
 		if (aActive && !bActive) return -1;
 		if (!aActive && bActive) return 1;
 		return 0;
@@ -24,7 +24,7 @@ export function addTransfer(
 	id: string,
 	filename: string,
 	totalBytes: number,
-	status: 'uploading' | 'downloading' = 'uploading'
+	status: 'uploading' | 'downloading' | 'archiving' = 'uploading'
 ): void {
 	transfers[id] = {
 		id,

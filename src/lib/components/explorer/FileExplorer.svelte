@@ -15,6 +15,7 @@
 		type ArchiveTools,
 		type ArchiveFormat
 	} from '$lib/ipc/archive';
+	import { createProgressCounter, percentOf } from '$lib/explorer/archive-progress';
 	import { openEditor } from '$lib/state/editor.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { positionMenu } from '$lib/utils/positionMenu';
@@ -55,7 +56,7 @@
 
 	let currentPath = $derived(connectionId ? getCurrentPath(connectionId) : '/');
 	let entries = $derived(connectionId ? getEntries(connectionId) : []);
-	let activeTransfers = $derived(getTransfers().filter((t: Transfer) => t.status === 'uploading' || t.status === 'downloading'));
+	let activeTransfers = $derived(getTransfers().filter((t: Transfer) => t.status === 'uploading' || t.status === 'downloading' || t.status === 'archiving'));
 
 	let pathSegments = $derived.by(() => {
 		const parts = currentPath.split('/').filter(Boolean);
@@ -131,18 +132,63 @@
 		}
 	}
 
-	async function runArchive(work: () => Promise<{ tool: string; produced: string }>, messageKey: string): Promise<void> {
+	/**
+	 * Run an archive operation with a progress bar in the transfer panel.
+	 *
+	 * The backend reports the file count up front, then streams the tool's
+	 * output; each file it names moves the bar. A tool that reports nothing
+	 * leaves the bar indeterminate rather than inventing a number, which is
+	 * why the counter is built from the tool name the backend sends back.
+	 */
+	async function runArchive(
+		label: string,
+		start: (operationId: string) => Promise<{ tool: string; produced: string }>,
+		messageKey: string
+	): Promise<void> {
 		if (archiveBusy) return;
 		archiveBusy = true;
 		closeContextMenu();
-		addToast(t('explorer.archive_busy'), 'info');
+
+		const operationId = `archive-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+		addTransfer(operationId, label, 0, 'archiving');
+
+		let counter: ReturnType<typeof createProgressCounter> | undefined;
+		let total = 0;
+		let unlistenTotal: UnlistenFn | undefined;
+		let unlistenOutput: UnlistenFn | undefined;
+
 		try {
-			const outcome = await work();
+			unlistenTotal = await listen<{ total: number; tool: string; measurable: boolean }>(
+				`archive-total-${operationId}`,
+				(event) => {
+					// A tool whose output cannot be unbuffered would report
+					// nothing and then everything at the end, so it shows no
+					// number at all rather than one stuck at zero that jumps.
+					if (!event.payload.measurable) return;
+					total = event.payload.total;
+					counter = createProgressCounter(event.payload.tool);
+					updateTransferProgress(operationId, 0, total, 0);
+				}
+			);
+			unlistenOutput = await listen<{ data: string }>(
+				`archive-output-${operationId}`,
+				(event) => {
+					if (!counter) return;
+					const done = counter.push(event.payload.data);
+					updateTransferProgress(operationId, done, total, percentOf(done, total) ?? 0);
+				}
+			);
+
+			const outcome = await start(operationId);
+			completeTransfer(operationId);
 			addToast(t(messageKey, { name: outcome.produced, tool: outcome.tool }), 'success');
 			await refresh();
 		} catch (err) {
+			failTransfer(operationId, String(err));
 			addToast(String(err), 'error');
 		} finally {
+			unlistenTotal?.();
+			unlistenOutput?.();
 			archiveBusy = false;
 		}
 	}
@@ -153,7 +199,8 @@
 		const dir = getCurrentPath(connectionId);
 		const name = `${entry.name}.${FORMAT_EXTENSION[format]}`;
 		void runArchive(
-			() => archiveCreate(connectionId, dir, [entry.name], name, format),
+			name,
+			(operationId) => archiveCreate(connectionId, dir, [entry.name], name, format, operationId),
 			'explorer.archive_created'
 		);
 	}
@@ -163,7 +210,8 @@
 		if (!entry || !connectionId) return;
 		const dir = getCurrentPath(connectionId);
 		void runArchive(
-			() => archiveExtract(connectionId, dir, entry.name),
+			entry.name,
+			(operationId) => archiveExtract(connectionId, dir, entry.name, operationId),
 			'explorer.archive_extracted'
 		);
 	}
@@ -655,6 +703,18 @@
 	});
 
 	function formatTransferProgress(transfer: Transfer): string {
+		// Archive progress counts files, not bytes: the tools name each file
+		// as they reach it and never report a size. Showing megabytes here
+		// would be a number we do not have.
+		if (transfer.status === 'archiving') {
+			if (transfer.totalBytes > 0) {
+				return t('explorer.archive_files_progress', {
+					done: transfer.bytesTransferred,
+					total: transfer.totalBytes
+				});
+			}
+			return t('explorer.archive_busy');
+		}
 		if (transfer.totalBytes > 0) {
 			const mbTransferred = (transfer.bytesTransferred / (1024 * 1024)).toFixed(1);
 			const mbTotal = (transfer.totalBytes / (1024 * 1024)).toFixed(1);
@@ -823,7 +883,12 @@
 					{#each activeTransfers as transfer (transfer.id)}
 						<div class="transfer-item">
 							<div class="transfer-info">
-								{#if transfer.status === 'downloading'}
+								{#if transfer.status === 'archiving'}
+									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="transfer-icon">
+										<rect x="3" y="7" width="18" height="13" rx="2" stroke="currentColor" stroke-width="2"/>
+										<path d="M3 7l2-3h14l2 3" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+									</svg>
+								{:else if transfer.status === 'downloading'}
 									<svg width="12" height="12" viewBox="0 0 24 24" fill="none" class="transfer-icon download">
 										<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 										<polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -1366,8 +1431,18 @@
 		color: rgba(100, 160, 255, 0.8);
 	}
 
+	/* Pinned to the top of the scrolling list rather than scrolling away with
+	   it. A directory of a few hundred entries otherwise carries the progress
+	   of whatever is running off the top of the window, and the one moment you
+	   want it is while you are scrolling around waiting for it. Needs an
+	   opaque background: file rows pass underneath. */
 	.transfer-list {
+		position: sticky;
+		top: 0;
+		z-index: 5;
+		background-color: var(--color-bg-elevated, var(--color-bg));
 		border-bottom: 1px solid var(--color-border);
+		box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
 	}
 
 	.transfer-item {

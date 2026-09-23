@@ -1317,5 +1317,6 @@
   "explorer.archive_busy": "Wird ausgeführt…",
   "explorer.archive_created": "{{name}} mit {{tool}} erstellt",
   "explorer.archive_extracted": "Mit {{tool}} nach {{name}} entpackt",
-  "explorer.archive_none": "Auf diesem Rechner gibt es dafür kein Werkzeug"
+  "explorer.archive_none": "Auf diesem Rechner gibt es dafür kein Werkzeug",
+  "explorer.archive_files_progress": "{{done}} von {{total}} Dateien"
 }

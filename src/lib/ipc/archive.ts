@@ -44,23 +44,26 @@ export async function archiveCreate(
 	directory: string,
 	entries: string[],
 	archiveName: string,
-	format: ArchiveFormat
+	format: ArchiveFormat,
+	operationId: string
 ): Promise<ArchiveOutcome> {
 	return invoke('sftp_archive_create', {
 		connectionId,
 		directory,
 		entries,
 		archiveName,
-		format
+		format,
+		operationId
 	});
 }
 
 export async function archiveExtract(
 	connectionId: string,
 	directory: string,
-	archiveName: string
+	archiveName: string,
+	operationId: string
 ): Promise<ArchiveOutcome> {
-	return invoke('sftp_archive_extract', { connectionId, directory, archiveName });
+	return invoke('sftp_archive_extract', { connectionId, directory, archiveName, operationId });
 }
 
 /**

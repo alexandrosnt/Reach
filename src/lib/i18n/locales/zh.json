@@ -1317,5 +1317,6 @@
   "explorer.archive_busy": "正在处理…",
   "explorer.archive_created": "已使用 {{tool}} 创建 {{name}}",
   "explorer.archive_extracted": "已使用 {{tool}} 解压到 {{name}}",
-  "explorer.archive_none": "此机器没有可用于此操作的工具"
+  "explorer.archive_none": "此机器没有可用于此操作的工具",
+  "explorer.archive_files_progress": "{{total}} 个文件中的 {{done}} 个"
 }
