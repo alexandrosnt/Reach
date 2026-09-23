@@ -156,7 +156,42 @@ const REPLAY = `
   return { colon, fast };
 })()`;
 
-async function runReplay({ install }) {
+/**
+ * The deferred textarea diff, which is the risk this adapter carries
+ * (upstream xterm.js #6045).
+ *
+ * A keydown carrying 229 makes xterm's composition helper snapshot the
+ * textarea and, a macrotask later, emit whatever changed. With the gate
+ * cleared, the next character can be taken by `_inputEvent` *and* still fall
+ * inside that pending comparison, which would send it twice. Reproducing it
+ * needs the textarea's real value to move, because that is what the
+ * comparison reads, so this sets it exactly as the browser would before
+ * firing each input event.
+ */
+const REPLAY_DUPLICATION = `
+(async () => {
+  const ta = window.__term.textarea;
+  const key = (init, code) => {
+    const e = new KeyboardEvent('keydown', { bubbles: true, composed: true, ...init });
+    Object.defineProperty(e, 'keyCode', { get: () => code });
+    ta.dispatchEvent(e);
+  };
+  const text = (data) => {
+    ta.value += data;
+    ta.dispatchEvent(new InputEvent('input', { data, inputType: 'insertText', bubbles: true, composed: true }));
+  };
+
+  window.__data.length = 0;
+  ta.value = '';
+  // Both characters inside one macrotask, so the diff scheduled by the first
+  // keydown is still pending when the second character is accepted.
+  text('a'); key({ key: 'a' }, 229);
+  text('b'); key({ key: 'b' }, 229);
+  await new Promise((r) => setTimeout(r, 80));
+  return window.__data.join('');
+})()`;
+
+async function runReplay({ install, script = REPLAY }) {
 	const browser = await webkit.launch();
 	const page = await browser.newPage();
 	await page.setContent(PAGE);
@@ -169,7 +204,7 @@ async function runReplay({ install }) {
 		});
 	}
 	await page.evaluate(() => window.__term.focus());
-	const result = await page.evaluate(REPLAY);
+	const result = await page.evaluate(script);
 	await browser.close();
 	return result;
 }
@@ -263,6 +298,20 @@ if (rOff.fast === 'ab') {
 	pass('real xterm drops a fast character, and the adapter fixes it');
 } else {
 	fail(`real xterm dropped a character (${JSON.stringify(rOff.fast)}) and the adapter did not fix it`);
+}
+
+console.log('\nthe deferred textarea diff (upstream #6045), the risk this adapter carries');
+const dOff = await runReplay({ install: false, script: REPLAY_DUPLICATION });
+const dOn = await runReplay({ install: true, script: REPLAY_DUPLICATION });
+console.log(pad('two chars in one task', 26) + pad(JSON.stringify(dOff), 22) + JSON.stringify(dOn));
+console.log('');
+
+if (dOn === 'ab') {
+	pass('no duplication: the adapter emits each character exactly once');
+} else if (dOn.length > 2) {
+	fail(`the adapter duplicated a character: emitted ${JSON.stringify(dOn)}`);
+} else {
+	fail(`the adapter lost a character: emitted ${JSON.stringify(dOn)}`);
 }
 
 console.log(failures === 0 ? '\nALL PASS' : `\n${failures} FAILED`);

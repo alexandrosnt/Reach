@@ -49,14 +49,29 @@
  * goes to steve3d, who found it, tested it on the affected machine, and then
  * found the modifier case as well.
  *
- * Upstream: xterm.js #5887 (this gate dropping characters) and #6045 (the
- * deferred textarea diff that partly masks it). Both were open when checked,
- * and the same condition is present in 6.0.0, so upgrading alone is not a fix.
+ * Letting text through is only half the job. On a 229 keydown xterm also runs
+ * a rescue, `_handleAnyTextareaChanges`, which snapshots the textarea and a
+ * macrotask later emits whatever grew — the fallback that made this bug
+ * intermittent rather than total. With the gate cleared, a character can be
+ * taken by `_inputEvent` *and* still land inside that pending comparison, and
+ * then it goes out twice. That is upstream xterm.js #6045, and it is not
+ * theoretical: unguarded, `npm run webkit:live` turns "ab" into "abb" in real
+ * WebKit. So the rescue is suppressed for exactly the keydowns whose text was
+ * already emitted, and left alone everywhere else, because recovering text
+ * nobody accepted is the job it exists to do.
+ *
+ * Upstream: xterm.js #5374 and #5887 (this gate dropping characters), #6045
+ * (the rescue above) and PR #6054, which proposes not arming the flag for
+ * modifier-only keydowns — the shape used here. All open when checked, and
+ * `_keyDownSeen` is byte-identical in 6.0.0 and on master, so upgrading alone
+ * is not a fix.
  *
  * This reaches into xterm's private API. It verifies every internal it needs
- * before touching anything and disables itself with a warning if the shape
- * changes, so an xterm upgrade degrades to today's bug rather than a crash —
- * but `npm run webkit:test` is what should be re-run on any upgrade.
+ * before touching anything and installs nothing, with a warning, if the shape
+ * changes — so an xterm upgrade degrades to today's bug rather than a crash or
+ * a doubled character. `npm run webkit:test` checks the logic anywhere;
+ * `npm run webkit:live` checks it against real xterm in real WebKit on a Mac,
+ * which is what CI runs and what should be believed over the other.
  */
 
 import { isWebKit } from '$lib/platform';
@@ -81,6 +96,7 @@ interface InputCore {
 	_compositionHelper?: {
 		_isComposing: boolean;
 		_isSendingComposition: boolean;
+		_handleAnyTextareaChanges?: () => void;
 	};
 }
 
@@ -160,8 +176,33 @@ export function installWebkitInputFix(
 		return noop;
 	}
 
+	// The deferred textarea diff has to be reachable, because letting a
+	// character through `_inputEvent` without also suppressing this would send
+	// it twice (upstream xterm.js #6045, reproduced in `npm run webkit:live`).
+	// Without it the adapter would trade dropped characters for doubled ones,
+	// so if it is gone, install nothing.
+	const helper = core._compositionHelper;
+	const originalHandleChanges = helper?._handleAnyTextareaChanges;
+	if (!helper || typeof originalHandleChanges !== 'function') {
+		warn('[Terminal] WebKit input fix not installed: cannot reach the deferred textarea diff');
+		return noop;
+	}
+	// Narrowed once here; the closure below is called long after the guard.
+	const runRescue: () => void = originalHandleChanges;
+
 	const originalInput = core._inputEvent;
 	const originalKeyDown = core._keyDown;
+
+	/**
+	 * Set for the duration of a keydown whose character `_inputEvent` already
+	 * emitted, so xterm's own fallback does not emit it a second time.
+	 *
+	 * The fallback exists to rescue text the gate rejected. When the gate did
+	 * not reject anything there is nothing to rescue, and running it anyway is
+	 * what produces the duplicate. It is only ever set across the synchronous
+	 * call into the original handler, so no keystroke can leave it stuck on.
+	 */
+	let alreadyEmitted = false;
 
 	/**
 	 * The single character `_inputEvent` accepted most recently, waiting for
@@ -226,7 +267,15 @@ export function installWebkitInputFix(
 
 		clear();
 
-		const result = originalKeyDown.call(this, event);
+		// Suppress xterm's rescue only across this one synchronous call, and
+		// only when there is nothing left to rescue.
+		alreadyEmitted = retire;
+		let result: boolean | undefined;
+		try {
+			result = originalKeyDown.call(this, event);
+		} finally {
+			alreadyEmitted = false;
+		}
 
 		// `false` is what xterm returns once its composition helper has taken
 		// the key, which is the 229 path and the only one worth retiring. A
@@ -262,8 +311,14 @@ export function installWebkitInputFix(
 		return result;
 	}
 
+	function patchedHandleChanges(this: unknown): void {
+		if (alreadyEmitted) return;
+		runRescue.call(this);
+	}
+
 	core._inputEvent = patchedInput;
 	core._keyDown = patchedKeyDown;
+	helper._handleAnyTextareaChanges = patchedHandleChanges;
 
 	// Anything that ends the keystroke, or hands control to an input method,
 	// invalidates the pending character.
@@ -276,6 +331,9 @@ export function installWebkitInputFix(
 		// Only unwind our own patch. Something else may have wrapped it since.
 		if (core._inputEvent === patchedInput) core._inputEvent = originalInput;
 		if (core._keyDown === patchedKeyDown) core._keyDown = originalKeyDown;
+		if (helper._handleAnyTextareaChanges === patchedHandleChanges) {
+			helper._handleAnyTextareaChanges = originalHandleChanges;
+		}
 		for (const type of resetEvents) {
 			textarea.removeEventListener(type, clear, true);
 		}

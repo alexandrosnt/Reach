@@ -42,7 +42,20 @@ function makeTerminal({ screenReaderMode = false } = {}) {
 	const core = {
 		_keyDownSeen: false,
 		_keyPressHandled: false,
-		_compositionHelper: { _isComposing: false, _isSendingComposition: false },
+		_compositionHelper: {
+			_isComposing: false,
+			_isSendingComposition: false,
+			// xterm's rescue path: snapshots the textarea on a 229 keydown and
+			// emits whatever changed a macrotask later. Modelled here because
+			// the adapter has to suppress it, or a character goes out twice.
+			_handleAnyTextareaChanges() {
+				const before = term.textareaValue;
+				queueMicrotask(() => {
+					const after = term.textareaValue;
+					if (after.length > before.length) emitted.push(after.slice(before.length));
+				});
+			}
+		},
 		_inputEvent(e) {
 			if (
 				e.data &&
@@ -59,8 +72,11 @@ function makeTerminal({ screenReaderMode = false } = {}) {
 		_keyDown(e) {
 			this._keyDownSeen = true;
 			// CompositionHelper.keydown returns false for keyCode 229, and
-			// _keyDown passes that straight out.
-			if (e.keyCode === 229) return false;
+			// _keyDown passes that straight out. It also runs the rescue.
+			if (e.keyCode === 229) {
+				this._compositionHelper._handleAnyTextareaChanges();
+				return false;
+			}
 			// A bare modifier reaches evaluateKeyboardEvent, which yields no
 			// key, so xterm emits nothing and returns true. The flag is still
 			// set, which is the whole problem.
@@ -75,7 +91,7 @@ function makeTerminal({ screenReaderMode = false } = {}) {
 	};
 
 	const textarea = new EventTarget();
-	const term = { _core: core, textarea, options: { screenReaderMode }, emitted };
+	const term = { _core: core, textarea, options: { screenReaderMode }, emitted, textareaValue: '' };
 	return term;
 }
 
@@ -335,6 +351,57 @@ section('an on/off switch that works while installed');
 	term.emitted.length = 0;
 	type(term, 'hello');
 	check('and re-enabling takes effect immediately', term.emitted.join('') === 'hello');
+}
+
+section("xterm's own rescue must not send the character a second time");
+// upstream xterm.js #6045. Reproduced for real in `npm run webkit:live`, where
+// the unguarded adapter turned "ab" into "abb".
+{
+	const term = makeTerminal();
+	installWebkitInputFix(term, { isWebKitEngine: webkit });
+	for (const ch of 'ab') {
+		term.textareaValue += ch;
+		term._core._inputEvent({ data: ch, inputType: 'insertText', composed: true, isComposing: false });
+		term._core._keyDown({ key: ch, keyCode: 229, isComposing: false });
+	}
+	await Promise.resolve();
+	await Promise.resolve();
+	check(
+		'a character taken by _inputEvent is not also emitted by the rescue',
+		term.emitted.join('') === 'ab',
+		`emitted ${JSON.stringify(term.emitted.join(''))}`
+	);
+
+	// The rescue still has to work when the gate really did reject the text,
+	// which is the case it exists for.
+	// The rescue snapshots at the keydown and compares a tick later, so what it
+	// recovers is text that lands *after* the snapshot. That is the case it
+	// exists for, and suppressing it must not reach this one.
+	const rejected = makeTerminal();
+	installWebkitInputFix(rejected, { isWebKitEngine: webkit });
+	rejected._core._keyDown({ key: 'q', keyCode: 229, isComposing: false });
+	rejected.textareaValue = 'q';
+	await Promise.resolve();
+	await Promise.resolve();
+	check(
+		'the rescue still fires for text no one accepted',
+		rejected.emitted.join('') === 'q',
+		`emitted ${JSON.stringify(rejected.emitted.join(''))}`
+	);
+}
+
+section('refuse to install when the rescue cannot be reached');
+// Letting text through without being able to suppress the rescue would trade
+// dropped characters for doubled ones, which is a worse trade.
+{
+	const term = makeTerminal();
+	delete term._core._compositionHelper._handleAnyTextareaChanges;
+	const before = term._core._inputEvent;
+	let warned = '';
+	const dispose = installWebkitInputFix(term, { isWebKitEngine: webkit, warn: (m) => (warned = m) });
+	check('it warns', warned.includes('deferred textarea diff'), warned);
+	check('and patches nothing at all', term._core._inputEvent === before);
+	check('and its disposer is safe', (dispose(), true));
 }
 
 section('surviving an xterm upgrade');
