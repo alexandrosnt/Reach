@@ -729,6 +729,18 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             disable_press_and_hold();
 
+            // Files fetched so they could be dragged to the desktop do not
+            // survive a restart: they were copies made for one gesture, and
+            // left alone they would accumulate at up to two gigabytes each.
+            // Failure is ignored — a temp directory we cannot clear is not a
+            // reason to refuse to start.
+            {
+                let stale = std::env::temp_dir().join("reach-drag");
+                if stale.is_dir() {
+                    let _ = std::fs::remove_dir_all(&stale);
+                }
+            }
+
             // Root all storage at a writable data dir, then manage AppState here
             // (not before build) so it picks up that dir.
             //

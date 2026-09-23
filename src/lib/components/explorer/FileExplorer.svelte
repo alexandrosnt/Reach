@@ -17,7 +17,13 @@
 		type ArchiveFormat
 	} from '$lib/ipc/archive';
 	import { createProgressCounter, percentOf } from '$lib/explorer/archive-progress';
-	import { cacheKey, safeLocalName, dragAction, isDraggable } from '$lib/explorer/drag-out';
+	import {
+		cacheKey,
+		safeLocalName,
+		dragAction,
+		isDraggable,
+		showsProgress
+	} from '$lib/explorer/drag-out';
 	import { startDrag } from '@crabnebula/tauri-plugin-drag';
 	import { tempDir, join } from '@tauri-apps/api/path';
 	import { invoke } from '@tauri-apps/api/core';
@@ -136,22 +142,76 @@
 
 	async function prepareForDrag(entry: FileEntry): Promise<void> {
 		if (!connectionId || !isDraggable(entry)) return;
-		const key = cacheKey(connectionId, entry.path);
+		const conn = connectionId;
+		const key = cacheKey(conn, entry.path);
 		if (dragCache.has(key)) return;
 		void previewIcon().catch(() => {});
 
 		dragCache.set(key, { state: 'fetching' });
+
+		// Anything big enough to be worth waiting for gets a row in the
+		// transfer panel, with real byte progress and a cancel, rather than
+		// the window appearing to do nothing for a minute.
+		const visible = showsProgress(entry.size);
+		let unlistenProgress: UnlistenFn | undefined;
+		let unlistenDone: UnlistenFn | undefined;
+		let unlistenFailed: UnlistenFn | undefined;
+
 		try {
 			const base = await tempDir();
 			// Its own folder, because the copy must keep the file's real name
 			// and two remote files can share one.
 			const localPath = await join(base, 'reach-drag', key, safeLocalName(entry.name));
-			await sftpDownload(connectionId, entry.path, localPath);
+			const transferId = await sftpDownload(conn, entry.path, localPath);
+
+			if (visible) {
+				addTransfer(transferId, entry.name, entry.size, 'downloading', () => {
+					// Giving up on the fetch gives up on the drag too, so a
+					// half-written file is never left looking ready.
+					dragCache.delete(key);
+					removeTransfer(transferId);
+				});
+				unlistenProgress = await listen<{
+					id: string;
+					bytesTransferred: number;
+					totalBytes: number;
+					percent: number;
+				}>(`transfer-progress-${transferId}`, (event) => {
+					updateTransferProgress(
+						event.payload.id,
+						event.payload.bytesTransferred,
+						event.payload.totalBytes,
+						event.payload.percent
+					);
+				});
+			}
+
+			await new Promise<void>((resolve, reject) => {
+				let settled = false;
+				void listen(`transfer-complete-${transferId}`, () => {
+					if (settled) return;
+					settled = true;
+					resolve();
+				}).then((un) => (unlistenDone = un));
+				void listen<string>(`transfer-error-${transferId}`, (event) => {
+					if (settled) return;
+					settled = true;
+					reject(new Error(String(event.payload ?? 'Download failed')));
+				}).then((un) => (unlistenFailed = un));
+			});
+
+			if (visible) completeTransfer(transferId);
 			dragCache.set(key, { state: 'ready', localPath });
-		} catch {
+			if (visible) addToast(t('explorer.drag_ready', { name: entry.name }), 'success');
+		} catch (err) {
 			// Left as failed rather than deleted, so a broken file is not
 			// re-fetched on every press.
 			dragCache.set(key, { state: 'failed' });
+			if (visible) addToast(String(err), 'error');
+		} finally {
+			unlistenProgress?.();
+			unlistenDone?.();
+			unlistenFailed?.();
 		}
 	}
 

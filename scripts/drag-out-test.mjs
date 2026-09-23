@@ -9,7 +9,9 @@ import {
 	cacheKey,
 	safeLocalName,
 	dragAction,
-	MAX_DRAG_BYTES
+	showsProgress,
+	MAX_DRAG_BYTES,
+	QUIET_PREFETCH_BYTES
 } from '$lib/explorer/drag-out';
 
 let failures = 0;
@@ -34,9 +36,16 @@ check('a file past the limit cannot', isDraggable(file({ size: MAX_DRAG_BYTES + 
 check('a directory cannot', isDraggable(file({ isDirectory: true })) === false);
 check('a nonsense size cannot', isDraggable(file({ size: -1 })) === false);
 
-section('the limit is a real one, not a placeholder');
-check('it is large enough to be useful', MAX_DRAG_BYTES >= 8 * 1024 * 1024);
-check('and small enough to fetch during a gesture', MAX_DRAG_BYTES <= 256 * 1024 * 1024);
+section('the limit only exists to stop a stray press filling the disk');
+check('it is large enough for real files', MAX_DRAG_BYTES >= 1024 * 1024 * 1024);
+
+section('only a wait worth explaining gets a progress bar');
+// A small file lands between pressing and dragging, so a row for it would
+// appear and vanish, which is noise rather than information.
+check('a tiny file is fetched quietly', showsProgress(1024) === false);
+check('one at the quiet limit is still quiet', showsProgress(QUIET_PREFETCH_BYTES) === false);
+check('a large one is shown', showsProgress(QUIET_PREFETCH_BYTES + 1) === true);
+check('the quiet limit is smaller than the hard one', QUIET_PREFETCH_BYTES < MAX_DRAG_BYTES);
 
 section('each remote file gets its own place to land');
 {
