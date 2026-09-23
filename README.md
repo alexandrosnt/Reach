@@ -128,33 +128,12 @@ Not in a position to give money? A bug report with a reproduction, a translation
 
 ## Contributors
 
-Thanks to those who have contributed to Reach:
+<a href="https://github.com/alexandrosnt/Reach/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=alexandrosnt/Reach" alt="Contributors to Reach" />
+</a>
 
-<table>
-  <tr>
-    <td align="center">
-      <a href="https://github.com/ddwnbot">
-        <img src="https://github.com/ddwnbot.png" width="60" style="border-radius: 50%;" alt="ddwnbot" /><br />
-        <sub><b>ddwnbot</b></sub>
-      </a><br />
-      <sub>SSH host key verification (TOFU)</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/alien-ye">
-        <img src="https://github.com/alien-ye.png" width="60" style="border-radius: 50%;" alt="alien-ye" /><br />
-        <sub><b>alien-ye</b></sub>
-      </a><br />
-      <sub>Click-to-copy terminal selection</sub>
-    </td>
-    <td align="center">
-      <a href="https://github.com/CarlosTohe">
-        <img src="https://github.com/CarlosTohe.png" width="60" style="border-radius: 50%;" alt="CarlosTohe" /><br />
-        <sub><b>CarlosTohe</b></sub>
-      </a><br />
-      <sub>Spanish translation</sub>
-    </td>
-  </tr>
-</table>
+Generated from the repository, so it is right without anyone remembering to
+update it. Names link through to what each person actually changed.
 
 ## Contributing
 
