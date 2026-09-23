@@ -41,6 +41,8 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 
 - **SSH Terminal** · Full interactive shell with WebGL rendering. Tabs, split views, and resize that actually works.
 - **SFTP File Explorer** · Browse remote filesystems, drag-and-drop transfers, inline editing. Feels like a local file manager.
+- **Compress and extract in place** · Right-click to make a `.tar.gz`, `.zip` and the rest, or unpack one, with the work done on the remote machine. Falls back through whatever archiver it actually has, so it still works on a stripped container.
+- **Drag a file out to your desktop** · On Windows nothing is downloaded until you drop it, and the bytes land where you dropped them.
 - **Session Manager** · Save connections with folders and tags. Credentials are encrypted at rest, not stored in plaintext configs.
 - **Jump Host (ProxyJump)** · Connect through bastion servers with multi-hop SSH tunneling. Import hosts directly from `~/.ssh/config`.
 
@@ -85,7 +87,7 @@ Reach is a [Tauri v2](https://v2.tauri.app) app with a Rust backend and Svelte 5
 
 ## Getting started
 
-Grab the latest release from the [Releases page](https://github.com/alexandrosnt/Reach/releases). Installers are available for Windows (NSIS), macOS (.dmg), Linux (.deb, .AppImage, .rpm), and Android (.apk).
+Head to the [download page](https://alexandrosnt.github.io/Reach/download/), which always points at the current release: Windows (`.exe`, `.msi`), macOS (`.dmg`, Apple silicon and Intel), Linux (`.AppImage`, `.deb`, `.rpm`) and Android (`.apk`). Every build is on the [Releases page](https://github.com/alexandrosnt/Reach/releases) too, and Reach updates itself once installed.
 
 ## Building from source
 
@@ -102,54 +104,6 @@ For a production build:
 
 ```bash
 npm run tauri build
-```
-
-## Project structure
-
-```mermaid
-graph LR
-  root["🗂 Reach"]
-
-  root --> src["📁 src · Svelte frontend"]
-  root --> tauri["📁 src-tauri · Rust backend"]
-  root --> gh["📁 .github/workflows · CI/CD"]
-
-  src --> routes["📄 routes"]
-  src --> lib["📁 lib"]
-
-  lib --> components["📁 components"]
-  lib --> state["📄 state · Reactive .svelte.ts modules"]
-  lib --> ipc["📄 ipc · Tauri command wrappers"]
-  lib --> i18n["📄 i18n · Internationalization"]
-
-  components --> layout["📄 layout · AppShell, TitleBar, Sidebar"]
-  components --> terminal["📄 terminal · SSH terminal, multi-exec"]
-  components --> explorer["📄 explorer · SFTP file browser"]
-  components --> sessions["📄 sessions · Connection manager"]
-  components --> tunnel["📄 tunnel · Port forwarding UI"]
-  components --> vault["📄 vault · Encrypted secrets"]
-  components --> ai["📄 ai · AI assistant panel"]
-  components --> ansible["📄 ansible · Ansible automation"]
-  components --> tofu["📄 tofu · OpenTofu IaC"]
-  components --> recipes["📄 recipes · Recipe panel, editor, run dialog"]
-  components --> share["📄 share · Session sharing panes"]
-  components --> settings["📄 settings · App preferences"]
-  components --> shared["📄 shared · Button, Modal, Toast"]
-
-  tauri --> taurisrc["📁 src"]
-  taurisrc --> ssh["📄 ssh · SSH client via russh"]
-  taurisrc --> sftp["📄 sftp · File transfers"]
-  taurisrc --> tvault["📄 vault · Encrypted storage, crypto"]
-  taurisrc --> ttunnel["📄 tunnel · Port forwarding engine"]
-  taurisrc --> pty["📄 pty · Local terminal (desktop)"]
-  taurisrc --> serial["📄 serial · Serial port (desktop)"]
-  taurisrc --> monitoring["📄 monitoring · Remote system stats"]
-  taurisrc --> ansible["📄 ansible · Ansible project & runner"]
-  taurisrc --> tofu["📄 tofu · OpenTofu project & runner"]
-  taurisrc --> mcp["📄 mcp · MCP server, agents, guard"]
-  taurisrc --> recipe["📄 recipe · Schema, risk analysis, registry"]
-  taurisrc --> tshare["📄 share · Sharing config, ICE servers"]
-  taurisrc --> tipc["📄 ipc · Tauri command handlers"]
 ```
 
 ## Changelog
