@@ -1228,11 +1228,50 @@ pub async fn exec_on_connection_streaming(
     event_prefix: &str,
     app_handle: &tauri::AppHandle,
 ) -> Result<i32, SshError> {
+    exec_streaming_inner(handle, command, run_id, event_prefix, app_handle, false).await
+}
+
+/// Same, but with a pseudo-terminal attached.
+///
+/// A program writing to a pipe switches its C library to block buffering and
+/// holds several kilobytes back, so output that is being counted for progress
+/// arrives all at once at the end and the bar never moves. Writing to a
+/// terminal makes it line-buffer instead, which is what we want, and unlike
+/// `stdbuf` it needs nothing installed on the far end.
+///
+/// The cost is that stderr is folded into stdout and lines end with CRLF, so
+/// anything parsing this has to tolerate both.
+pub async fn exec_on_connection_streaming_pty(
+    handle: &SharedHandle,
+    command: &str,
+    run_id: &str,
+    event_prefix: &str,
+    app_handle: &tauri::AppHandle,
+) -> Result<i32, SshError> {
+    exec_streaming_inner(handle, command, run_id, event_prefix, app_handle, true).await
+}
+
+async fn exec_streaming_inner(
+    handle: &SharedHandle,
+    command: &str,
+    run_id: &str,
+    event_prefix: &str,
+    app_handle: &tauri::AppHandle,
+    want_pty: bool,
+) -> Result<i32, SshError> {
     let mut channel = {
         let guard = handle.lock().await;
         guard.channel_open_session().await
             .map_err(|e| SshError::ChannelError(format!("{}", e)))?
     };
+    if want_pty {
+        // "dumb" so nothing decides to emit colour or cursor movement into
+        // output we are counting lines in.
+        channel
+            .request_pty(false, "dumb", 200, 50, 0, 0, &[])
+            .await
+            .map_err(|e| SshError::ChannelError(format!("{}", e)))?;
+    }
     channel.exec(true, command).await
         .map_err(|e| SshError::ChannelError(format!("{}", e)))?;
 

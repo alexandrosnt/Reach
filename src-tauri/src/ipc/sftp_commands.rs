@@ -344,7 +344,7 @@ pub async fn sftp_archive_create(
         },
     );
 
-    let code = crate::ssh::client::exec_on_connection_streaming(
+    let code = crate::ssh::client::exec_on_connection_streaming_pty(
         &handle,
         &archive::make_cancellable(&plan.command, &operation_id),
         &operation_id,
@@ -411,7 +411,7 @@ pub async fn sftp_archive_extract(
         },
     );
 
-    let code = crate::ssh::client::exec_on_connection_streaming(
+    let code = crate::ssh::client::exec_on_connection_streaming_pty(
         &handle,
         &archive::make_cancellable(&plan.command, &operation_id),
         &operation_id,

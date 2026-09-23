@@ -30,8 +30,9 @@ const MATCHERS: Record<string, LineMatcher> = {
 	'7z': (l) => /^[+\-UT.] /.test(l),
 	'7za': (l) => /^[+\-UT.] /.test(l),
 	'7zz': (l) => /^[+\-UT.] /.test(l),
-	// Python's zipfile module is silent. Nothing to count.
-	python3: null
+	// Not the stdlib CLI, which says nothing: the backend runs a small script
+	// that prints each path as it stores or extracts it.
+	python3: (l) => l.length > 0
 };
 
 /** Whether this tool can be measured at all. */

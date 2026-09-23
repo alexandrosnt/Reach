@@ -73,12 +73,20 @@ section('carriage returns from a remote shell do not break matching');
 	check('CRLF is handled', c.count() === 2, `got ${c.count()}`);
 }
 
-section('a tool that says nothing is honest about it');
+section('the python fallback reports too');
+// It replaced the stdlib CLI precisely because that one was silent, which left
+// a machine with no zip and no 7-Zip unable to show any progress at all.
 {
-	check('python3 is not measurable', isMeasurable('python3') === false);
+	check('python3 is measurable', isMeasurable('python3') === true);
+	const c = createProgressCounter('python3');
+	check('and each printed path counts', c.push('a/one.txt\na/two.txt\n') === 2);
+}
+
+section('a tool nobody recognises is honest about it');
+{
 	check('an unknown tool is not measurable', isMeasurable('something-new') === false);
 	check('tar is', isMeasurable('tar') === true);
-	const c = createProgressCounter('python3');
+	const c = createProgressCounter('something-new');
 	check('and counting it yields nothing rather than noise', c.push('lots\nof\nlines\n') === 0);
 }
 

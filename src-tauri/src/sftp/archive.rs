@@ -122,6 +122,37 @@ pub struct Plan {
     pub tool: String,
 }
 
+/// A zip writer that reports what it is doing.
+///
+/// `python3 -m zipfile -c` works but is completely silent, which on a machine
+/// with no `zip`, no `bsdtar` and no 7-Zip left the progress bar with nothing
+/// to count. This does the same job and names each file as it stores it.
+/// `flush=True` matters: without it the output is buffered and arrives at the
+/// end, which is the whole problem being solved.
+const PY_ZIP: &str = "import sys,zipfile,os
+z=zipfile.ZipFile(sys.argv[1],\"w\",zipfile.ZIP_DEFLATED)
+for a in sys.argv[2:]:
+    if os.path.isdir(a):
+        for r,_,fs in os.walk(a):
+            for f in fs:
+                p=os.path.join(r,f)
+                z.write(p)
+                print(p,flush=True)
+    else:
+        z.write(a)
+        print(a,flush=True)
+z.close()
+";
+
+/// The same for extraction.
+const PY_UNZIP: &str = "import sys,zipfile
+z=zipfile.ZipFile(sys.argv[1])
+for n in z.namelist():
+    z.extract(n,sys.argv[2])
+    print(n,flush=True)
+z.close()
+";
+
 /// Force the tool to flush each line as it produces it.
 ///
 /// Over an SSH channel the tool's output is a pipe, not a terminal, so its C
@@ -145,9 +176,15 @@ fn line_buffered(tools: &ArchiveTools, command: String) -> String {
 ///
 /// Needs both a tool that names each file and a way to stop its output being
 /// held in a buffer. Without both, a count would be a lie told slowly.
-pub fn is_measurable(tools: &ArchiveTools, tool: &str) -> bool {
-    let names_files = matches!(tool, "tar" | "bsdtar" | "zip" | "unzip" | "7z" | "7za" | "7zz");
-    names_files && tools.has("stdbuf")
+pub fn is_measurable(_tools: &ArchiveTools, tool: &str) -> bool {
+    // Every one of these names each file as it reaches it. python3 is on the
+    // list because the scripts above print; the stdlib CLI it replaced did
+    // not. Buffering is handled by running under a pseudo-terminal, so no
+    // extra program has to be installed for a number to be honest.
+    matches!(
+        tool,
+        "tar" | "bsdtar" | "zip" | "unzip" | "7z" | "7za" | "7zz" | "python3"
+    )
 }
 
 /// Written `./name` so that a file called `-rf` is an operand, never a flag.
@@ -238,7 +275,10 @@ pub fn create_command(
     }
     if tools.has("python3") {
         return Some(Plan {
-            command: in_dir(dir, &format!("python3 -m zipfile -c {out} {joined}")),
+            command: in_dir(
+                dir,
+                &format!("python3 -c {} {out} {joined}", shell_quote(PY_ZIP)),
+            ),
             tool: "python3".into(),
         });
     }
@@ -496,7 +536,10 @@ pub fn extract_command(
             }
             if tools.has("python3") {
                 return Some(Plan {
-                    command: in_dir(dir, &format!("{mkdir} && python3 -m zipfile -e {src} {out}")),
+                    command: in_dir(
+                        dir,
+                        &format!("{mkdir} && python3 -c {} {src} {out}", shell_quote(PY_UNZIP)),
+                    ),
                     tool: "python3".into(),
                 });
             }
@@ -751,12 +794,42 @@ mod tests {
     }
 
     #[test]
-    fn without_stdbuf_the_command_still_works_and_admits_it_cannot_be_measured() {
+    fn without_stdbuf_the_command_still_works_and_is_still_measurable() {
+        // Buffering is solved by the pseudo-terminal the command runs under,
+        // so a machine without coreutils still gets a progress bar.
         let t = tools(&["tar", "gzip", "zip"]);
         let plan = create_command(&t, ArchiveFormat::Zip, "/srv", &one("d"), "d.zip").unwrap();
         assert!(!plan.command.contains("stdbuf"), "{}", plan.command);
         assert!(plan.command.contains("zip -r"), "{}", plan.command);
-        assert!(!is_measurable(&t, "zip"), "a buffered tool must not claim progress");
+        assert!(is_measurable(&t, "zip"));
+    }
+
+    // The machine that prompted this: tar, gzip and python3, but no zip, no
+    // bsdtar, no 7-Zip and no stdbuf. Making a .zip there fell through to a
+    // silent tool and the bar never moved.
+    #[test]
+    fn a_machine_with_only_python_still_reports_progress() {
+        let t = tools(&["tar", "gzip", "bzip2", "xz", "zstd", "unzip", "python3"]);
+        let plan = create_command(&t, ArchiveFormat::Zip, "/srv", &one("d"), "d.zip").unwrap();
+        assert_eq!(plan.tool, "python3");
+        assert!(plan.command.contains("print(p,flush=True)"), "{}", plan.command);
+        assert!(!plan.command.contains("-m zipfile"), "the silent CLI must not be used");
+        assert!(is_measurable(&t, "python3"));
+
+        let extract = extract_command(&t, "/srv", "a.zip", "a").unwrap();
+        assert_eq!(extract.tool, "unzip", "unzip is present and preferred");
+    }
+
+    #[test]
+    fn the_python_scripts_survive_being_quoted_into_a_shell() {
+        let t = tools(&["python3"]);
+        let plan = create_command(&t, ArchiveFormat::Zip, "/srv", &one("d"), "d.zip").unwrap();
+        // One single-quoted argument, so newlines and quotes inside it are
+        // inert as far as the shell is concerned.
+        assert!(plan.command.contains("python3 -c '"), "{}", plan.command);
+        assert!(!plan.command.contains("
+
+"), "blank lines would end a python block");
     }
 
     #[test]
@@ -765,8 +838,9 @@ mod tests {
         for tool in ["tar", "bsdtar", "zip", "unzip", "7z"] {
             assert!(is_measurable(&full, tool), "{tool} should be measurable");
         }
-        // python3 never names a file, whatever the buffering.
-        assert!(!is_measurable(&full, "python3"));
+        // python3 counts too now that it prints what it stores.
+        assert!(is_measurable(&full, "python3"));
+        assert!(!is_measurable(&full, "something-else"));
     }
 
     #[test]
