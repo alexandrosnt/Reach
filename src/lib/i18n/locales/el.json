@@ -1318,5 +1318,7 @@
   "explorer.archive_created": "Το {{name}} δημιουργήθηκε με {{tool}}",
   "explorer.archive_extracted": "Έγινε εξαγωγή στο {{name}} με {{tool}}",
   "explorer.archive_none": "Αυτό το μηχάνημα δεν έχει εργαλείο για αυτό",
-  "explorer.archive_files_progress": "{{done}} από {{total}} αρχεία"
+  "explorer.archive_files_progress": "{{done}} από {{total}} αρχεία",
+  "explorer.archive_cancel": "Ακύρωση",
+  "explorer.archive_cancelled": "Ακυρώθηκε, το {{name}} αφαιρέθηκε"
 }

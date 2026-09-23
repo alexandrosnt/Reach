@@ -1318,5 +1318,7 @@
   "explorer.archive_created": "{{name}} создан с помощью {{tool}}",
   "explorer.archive_extracted": "Распаковано в {{name}} с помощью {{tool}}",
   "explorer.archive_none": "На этой машине нет подходящего инструмента",
-  "explorer.archive_files_progress": "{{done}} из {{total}} файлов"
+  "explorer.archive_files_progress": "{{done}} из {{total}} файлов",
+  "explorer.archive_cancel": "Отмена",
+  "explorer.archive_cancelled": "Отменено, {{name}} удалён"
 }

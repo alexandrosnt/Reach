@@ -5,6 +5,8 @@ export interface Transfer {
 	totalBytes: number;
 	percent: number;
 	status: 'uploading' | 'downloading' | 'archiving' | 'completed' | 'error';
+	/** Present while the work can still be called off. */
+	cancel?: () => void;
 	error?: string;
 }
 
@@ -24,7 +26,8 @@ export function addTransfer(
 	id: string,
 	filename: string,
 	totalBytes: number,
-	status: 'uploading' | 'downloading' | 'archiving' = 'uploading'
+	status: 'uploading' | 'downloading' | 'archiving' = 'uploading',
+	cancel?: () => void
 ): void {
 	transfers[id] = {
 		id,
@@ -32,7 +35,8 @@ export function addTransfer(
 		bytesTransferred: 0,
 		totalBytes,
 		percent: 0,
-		status
+		status,
+		cancel
 	};
 }
 

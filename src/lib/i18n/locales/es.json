@@ -1318,5 +1318,7 @@
   "explorer.archive_created": "{{name}} creado con {{tool}}",
   "explorer.archive_extracted": "Extraído en {{name}} con {{tool}}",
   "explorer.archive_none": "Esta máquina no tiene ninguna herramienta para eso",
-  "explorer.archive_files_progress": "{{done}} de {{total}} archivos"
+  "explorer.archive_files_progress": "{{done}} de {{total}} archivos",
+  "explorer.archive_cancel": "Cancelar",
+  "explorer.archive_cancelled": "Cancelado, se eliminó {{name}}"
 }

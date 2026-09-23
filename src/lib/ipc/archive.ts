@@ -111,3 +111,26 @@ export function isExtractable(name: string, tools: ArchiveTools): boolean {
 	}
 	return has('tar') || has('bsdtar');
 }
+
+/**
+ * Stop a running operation and remove what it had produced.
+ *
+ * Safe to delete because the backend resolved the output to a name that did
+ * not exist when the operation started, so whatever is there now was written
+ * by this run.
+ */
+export async function archiveCancel(
+	connectionId: string,
+	operationId: string,
+	directory: string,
+	produced: string,
+	isDirectory: boolean
+): Promise<void> {
+	return invoke('sftp_archive_cancel', {
+		connectionId,
+		operationId,
+		directory,
+		produced,
+		isDirectory
+	});
+}

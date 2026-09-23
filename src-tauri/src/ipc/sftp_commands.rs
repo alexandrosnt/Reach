@@ -260,6 +260,28 @@ pub struct ArchiveTotal {
     /// unbuffered — in which case a count would be stuck at zero and then
     /// jump, which is worse than showing no number at all.
     pub measurable: bool,
+    /// The name actually used, which may carry a suffix if the one asked for
+    /// was taken. Cancelling removes this, so it has to be the real one.
+    pub produced: String,
+}
+
+/// Pick an output name that does not already exist.
+///
+/// Compressing over an existing archive, or extracting into an existing
+/// directory, would destroy or merge with something the user already had —
+/// and would make cancelling unsafe, since the output might not be ours to
+/// delete. Falls back to the plain name if the machine cannot answer, which
+/// is the old behaviour rather than a failure.
+async fn resolve_free_name(
+    handle: &crate::ssh::client::SharedHandle,
+    directory: &str,
+    base: &str,
+) -> String {
+    let cmd = archive::resolve_free_name_command(directory, base);
+    match crate::ssh::client::exec_on_connection_with_exit_code(handle, &cmd).await {
+        Ok((out, _, 0)) if !out.trim().is_empty() => out.trim().to_string(),
+        _ => base.to_string(),
+    }
 }
 
 /// Ask the machine how many files are involved. Never fatal.
@@ -301,6 +323,7 @@ pub async fn sftp_archive_create(
         ArchiveTools::parse(&stdout)
     };
 
+    let archive_name = resolve_free_name(&handle, &directory, &archive_name).await;
     let plan = archive::create_command(&tools, format, &directory, &entries, &archive_name)
         .ok_or_else(|| {
             format!(
@@ -317,12 +340,13 @@ pub async fn sftp_archive_create(
             total,
             tool: plan.tool.clone(),
             measurable: archive::is_measurable(&tools, &plan.tool),
+            produced: archive_name.clone(),
         },
     );
 
     let code = crate::ssh::client::exec_on_connection_streaming(
         &handle,
-        &plan.command,
+        &archive::make_cancellable(&plan.command, &operation_id),
         &operation_id,
         "archive-output",
         &app,
@@ -367,7 +391,7 @@ pub async fn sftp_archive_extract(
         ArchiveTools::parse(&stdout)
     };
 
-    let dest = archive::extract_dir_name(&archive_name);
+    let dest = resolve_free_name(&handle, &directory, &archive::extract_dir_name(&archive_name)).await;
     let plan = archive::extract_command(&tools, &directory, &archive_name, &dest)
         .ok_or_else(|| "This machine has no tool that can open that archive.".to_string())?;
 
@@ -383,12 +407,13 @@ pub async fn sftp_archive_extract(
             total,
             tool: plan.tool.clone(),
             measurable: archive::is_measurable(&tools, &plan.tool),
+            produced: dest.clone(),
         },
     );
 
     let code = crate::ssh::client::exec_on_connection_streaming(
         &handle,
-        &plan.command,
+        &archive::make_cancellable(&plan.command, &operation_id),
         &operation_id,
         "archive-output",
         &app,
@@ -402,4 +427,29 @@ pub async fn sftp_archive_extract(
         tool: plan.tool,
         produced: dest,
     })
+}
+
+/// Stop a running archive operation and remove what it had produced.
+///
+/// Safe to delete the output because the name was resolved to one that did not
+/// exist when the operation started, so whatever is there now was written by
+/// this run. Runs on its own channel, since the one doing the work is busy.
+#[tauri::command]
+pub async fn sftp_archive_cancel(
+    state: tauri::State<'_, AppState>,
+    connection_id: String,
+    operation_id: String,
+    directory: String,
+    produced: String,
+    is_directory: bool,
+) -> Result<(), String> {
+    let handle = {
+        let manager = state.ssh_manager.lock().await;
+        manager.get_handle(&connection_id).map_err(|e| e.to_string())?
+    };
+    let cmd = archive::cancel_command(&directory, &produced, is_directory, &operation_id);
+    info!("sftp_archive_cancel: conn={} op={}", connection_id, operation_id);
+    // The kill may race the process ending on its own, which is not a failure.
+    let _ = crate::ssh::client::exec_on_connection_with_exit_code(&handle, &cmd).await;
+    Ok(())
 }

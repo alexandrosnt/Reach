@@ -234,6 +234,7 @@ pub fn run() {
             sftp_archive_tools,
             sftp_archive_create,
             sftp_archive_extract,
+            sftp_archive_cancel,
             // Session commands
             session_list,
             session_get,
@@ -503,6 +504,7 @@ pub fn run() {
             sftp_archive_tools,
             sftp_archive_create,
             sftp_archive_extract,
+            sftp_archive_cancel,
             // Session commands
             session_list,
             session_get,

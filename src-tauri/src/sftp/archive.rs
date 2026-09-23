@@ -245,6 +245,112 @@ pub fn create_command(
     None
 }
 
+/// Candidate names for an output that must not collide with anything.
+///
+/// Compressing to a name that already exists would overwrite it, and
+/// extracting into a directory that already exists would merge into it. Both
+/// are bad on their own, and both make cancelling unsafe: if the output might
+/// not be ours, we cannot delete it to undo the operation.
+///
+/// The suffix goes before the extension, so `data.tar.gz` becomes
+/// `data-1.tar.gz` rather than `data.tar.gz-1`.
+pub fn candidate_names(base: &str) -> Vec<String> {
+    let (stem, ext) = split_extension(base);
+    let mut out = vec![base.to_string()];
+    for i in 1..=20 {
+        out.push(format!("{stem}-{i}{ext}"));
+    }
+    out
+}
+
+/// Split a name into stem and extension, treating the compound archive
+/// extensions as one unit.
+fn split_extension(name: &str) -> (String, String) {
+    let lower = name.to_ascii_lowercase();
+    const COMPOUND: [&str; 10] = [
+        ".tar.gz", ".tar.bz2", ".tar.xz", ".tar.zst", ".tgz", ".tbz2", ".txz", ".tzst", ".tar",
+        ".zip",
+    ];
+    for ext in COMPOUND {
+        if lower.ends_with(ext) {
+            return (
+                name[..name.len() - ext.len()].to_string(),
+                name[name.len() - ext.len()..].to_string(),
+            );
+        }
+    }
+    (name.to_string(), String::new())
+}
+
+/// A command that prints the first candidate name not already taken.
+///
+/// One round trip rather than one per candidate, and it prints nothing if all
+/// of them are taken, which the caller treats as a refusal.
+pub fn resolve_free_name_command(dir: &str, base: &str) -> String {
+    let list = candidate_names(base)
+        .iter()
+        .map(|c| shell_quote(c))
+        .collect::<Vec<_>>()
+        .join(" ");
+    in_dir(
+        dir,
+        &format!("for c in {list}; do [ -e \"./$c\" ] || {{ printf '%s' \"$c\"; break; }}; done"),
+    )
+}
+
+/// Where a running operation records its process id.
+///
+/// Derived from the operation id so cancelling needs nothing but that id. The
+/// id is sanitised because it reaches a shell: only the characters our own
+/// generator produces are allowed through.
+pub fn pid_file(operation_id: &str) -> String {
+    let safe: String = operation_id
+        .chars()
+        .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+        .take(64)
+        .collect();
+    format!("${{TMPDIR:-/tmp}}/reach-archive-{safe}.pid")
+}
+
+/// Wrap a command so it can be stopped later.
+///
+/// The shell records its own process id and then `exec`s the tool, which
+/// replaces the shell rather than forking, so the recorded id belongs to the
+/// tool itself. Killing it therefore kills the work, not a parent that would
+/// leave the tool running.
+pub fn make_cancellable(command: &str, operation_id: &str) -> String {
+    let pid = pid_file(operation_id);
+    // The pid file path is a shell word containing a parameter expansion, so
+    // it is written unquoted on purpose; the id inside it is sanitised above.
+    match command.split_once(" && ") {
+        Some((head, rest)) => format!("{head} && echo $$ > {pid} && exec {rest}"),
+        None => format!("echo $$ > {pid} && exec {command}"),
+    }
+}
+
+/// Stop a running operation and undo what it produced.
+///
+/// Removing the output is only safe because the name was resolved to something
+/// that did not exist when the operation started, so whatever is there now was
+/// written by us. `produced` must be that resolved name.
+pub fn cancel_command(dir: &str, produced: &str, is_directory: bool, operation_id: &str) -> String {
+    let pid = pid_file(operation_id);
+    let target = operand(produced);
+    let remove = if is_directory {
+        format!("rm -rf -- {target}")
+    } else {
+        format!("rm -f -- {target}")
+    };
+    // Kill the process group as well as the process: tar shells out to gzip,
+    // and killing only tar can leave the compressor running on a pipe.
+    in_dir(
+        dir,
+        &format!(
+            "p=$(cat {pid} 2>/dev/null);              if [ -n \"$p\" ]; then kill -TERM -\"$p\" 2>/dev/null || kill -TERM \"$p\" 2>/dev/null; fi;              sleep 1;              if [ -n \"$p\" ]; then kill -KILL -\"$p\" 2>/dev/null || kill -KILL \"$p\" 2>/dev/null; fi;              rm -f {pid}; {remove}"
+        ),
+    )
+}
+
 /// How many files an operation will touch, so progress has a denominator.
 ///
 /// Counting is a separate, cheap command rather than something parsed out of
@@ -661,6 +767,65 @@ mod tests {
         }
         // python3 never names a file, whatever the buffering.
         assert!(!is_measurable(&full, "python3"));
+    }
+
+    #[test]
+    fn a_suffix_goes_before_the_extension_not_after_it() {
+        let c = candidate_names("data.tar.gz");
+        assert_eq!(c[0], "data.tar.gz");
+        assert_eq!(c[1], "data-1.tar.gz");
+        assert_eq!(c[2], "data-2.tar.gz");
+        assert_eq!(candidate_names("site.zip")[1], "site-1.zip");
+        // A plain directory name has no extension to preserve.
+        assert_eq!(candidate_names("backup")[1], "backup-1");
+        // Dots that are not an archive extension are part of the stem.
+        assert_eq!(candidate_names("a.b.tar.xz")[1], "a.b-1.tar.xz");
+    }
+
+    #[test]
+    fn resolving_a_free_name_quotes_every_candidate() {
+        let cmd = resolve_free_name_command("/srv", "it's mine.zip");
+        assert!(cmd.contains(&shell_quote("it's mine.zip")), "{cmd}");
+        assert!(cmd.contains(&shell_quote("it's mine-1.zip")), "{cmd}");
+        assert!(cmd.contains("[ -e"), "{cmd}");
+    }
+
+    #[test]
+    fn a_cancellable_command_records_the_tool_not_a_parent_shell() {
+        let t = tools(&["tar", "gzip", "stdbuf"]);
+        let plan = create_command(&t, ArchiveFormat::TarGz, "/srv", &one("d"), "d.tar.gz").unwrap();
+        let wrapped = make_cancellable(&plan.command, "archive-1-abc");
+        // exec replaces the shell, so the recorded pid is the tool's own.
+        assert!(wrapped.contains("echo $$ >"), "{wrapped}");
+        assert!(wrapped.contains("&& exec "), "{wrapped}");
+        // The directory change must still happen before anything else.
+        assert!(wrapped.starts_with("cd -- '/srv' &&"), "{wrapped}");
+    }
+
+    #[test]
+    fn an_operation_id_cannot_smuggle_anything_into_the_shell() {
+        let nasty = pid_file("a; rm -rf ~/`id`$(whoami)");
+        for meta in [';', '`', '$', '(', ')', '~', '/', ' '] {
+            let after = nasty.rsplit("reach-archive-").next().unwrap();
+            assert!(!after.contains(meta), "{meta:?} survived into {nasty}");
+        }
+        assert!(pid_file("archive-123-abc").contains("reach-archive-archive-123-abc.pid"));
+    }
+
+    #[test]
+    fn cancelling_kills_the_group_then_removes_only_what_we_made() {
+        let file = cancel_command("/srv", "out.tar.gz", false, "op1");
+        assert!(file.contains("kill -TERM"), "{file}");
+        assert!(file.contains("kill -KILL"), "{file}");
+        assert!(file.contains("rm -f -- './out.tar.gz'"), "{file}");
+        assert!(!file.contains("rm -rf"), "a file must not be removed recursively: {file}");
+
+        let dir = cancel_command("/srv", "out", true, "op1");
+        assert!(dir.contains("rm -rf -- './out'"), "{dir}");
+
+        // A hostile name is still just an operand.
+        let nasty = cancel_command("/srv", "a; rm -rf ~", true, "op1");
+        assert!(nasty.contains(&shell_quote("./a; rm -rf ~")), "{nasty}");
     }
 
     #[test]

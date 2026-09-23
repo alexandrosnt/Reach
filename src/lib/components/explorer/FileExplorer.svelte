@@ -9,6 +9,7 @@
 		archiveTools,
 		archiveCreate,
 		archiveExtract,
+		archiveCancel,
 		creatableFormats,
 		isExtractable,
 		FORMAT_EXTENSION,
@@ -143,14 +144,30 @@
 	async function runArchive(
 		label: string,
 		start: (operationId: string) => Promise<{ tool: string; produced: string }>,
-		messageKey: string
+		messageKey: string,
+		producesDirectory: boolean
 	): Promise<void> {
-		if (archiveBusy) return;
+		if (archiveBusy || !connectionId) return;
+		const conn = connectionId;
 		archiveBusy = true;
 		closeContextMenu();
 
 		const operationId = `archive-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-		addTransfer(operationId, label, 0, 'archiving');
+		const dir = getCurrentPath(conn);
+		// The name the backend settled on, which is what cancelling removes.
+		// Until the first progress event it is the one we asked for.
+		let produced = label;
+		let cancelled = false;
+
+		const cancel = () => {
+			if (cancelled) return;
+			cancelled = true;
+			void archiveCancel(conn, operationId, dir, produced, producesDirectory)
+				.then(() => addToast(t('explorer.archive_cancelled', { name: produced }), 'info'))
+				.catch((err) => addToast(String(err), 'error'));
+		};
+
+		addTransfer(operationId, label, 0, 'archiving', cancel);
 
 		let counter: ReturnType<typeof createProgressCounter> | undefined;
 		let total = 0;
@@ -158,12 +175,18 @@
 		let unlistenOutput: UnlistenFn | undefined;
 
 		try {
-			unlistenTotal = await listen<{ total: number; tool: string; measurable: boolean }>(
+			unlistenTotal = await listen<{
+				total: number;
+				tool: string;
+				measurable: boolean;
+				produced?: string;
+			}>(
 				`archive-total-${operationId}`,
 				(event) => {
 					// A tool whose output cannot be unbuffered would report
 					// nothing and then everything at the end, so it shows no
 					// number at all rather than one stuck at zero that jumps.
+					if (event.payload.produced) produced = event.payload.produced;
 					if (!event.payload.measurable) return;
 					total = event.payload.total;
 					counter = createProgressCounter(event.payload.tool);
@@ -184,8 +207,15 @@
 			addToast(t(messageKey, { name: outcome.produced, tool: outcome.tool }), 'success');
 			await refresh();
 		} catch (err) {
-			failTransfer(operationId, String(err));
-			addToast(String(err), 'error');
+			// A cancelled run ends with the tool being killed, which surfaces
+			// as a non-zero exit. That is the expected outcome, not an error
+			// worth shouting about.
+			if (cancelled) {
+				removeTransfer(operationId);
+			} else {
+				failTransfer(operationId, String(err));
+				addToast(String(err), 'error');
+			}
 		} finally {
 			unlistenTotal?.();
 			unlistenOutput?.();
@@ -201,7 +231,8 @@
 		void runArchive(
 			name,
 			(operationId) => archiveCreate(connectionId, dir, [entry.name], name, format, operationId),
-			'explorer.archive_created'
+			'explorer.archive_created',
+			false
 		);
 	}
 
@@ -212,7 +243,8 @@
 		void runArchive(
 			entry.name,
 			(operationId) => archiveExtract(connectionId, dir, entry.name, operationId),
-			'explorer.archive_extracted'
+			'explorer.archive_extracted',
+			true
 		);
 	}
 
@@ -903,6 +935,20 @@
 								{/if}
 								<span class="transfer-filename">{transfer.filename}</span>
 								<span class="transfer-progress-text">{formatTransferProgress(transfer)}</span>
+								{#if transfer.cancel}
+									<button
+										class="transfer-cancel"
+										onclick={() => transfer.cancel?.()}
+										type="button"
+										title={t('explorer.archive_cancel')}
+										aria-label={t('explorer.archive_cancel')}
+									>
+										<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+											<line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+											<line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+										</svg>
+									</button>
+								{/if}
 							</div>
 							<div class="transfer-bar-track">
 								<div class="transfer-bar-fill" style="width: {transfer.percent}%"></div>
@@ -1436,6 +1482,24 @@
 	   of whatever is running off the top of the window, and the one moment you
 	   want it is while you are scrolling around waiting for it. Needs an
 	   opaque background: file rows pass underneath. */
+	.transfer-cancel {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		margin-left: 6px;
+		padding: 2px;
+		border: none;
+		border-radius: 4px;
+		background: transparent;
+		color: var(--color-text-secondary, #888);
+		cursor: pointer;
+	}
+
+	.transfer-cancel:hover {
+		background-color: rgba(255, 69, 58, 0.18);
+		color: rgb(255, 99, 88);
+	}
+
 	.transfer-list {
 		position: sticky;
 		top: 0;
