@@ -1,5 +1,6 @@
 import type { APIRoute } from 'astro';
 import { getCollection } from 'astro:content';
+import { pageAsMarkdown, toPlainMarkdown } from '../lib/markdown';
 import { PRODUCT } from '../site';
 
 /**
@@ -11,8 +12,9 @@ import { PRODUCT } from '../site';
  *
  * The bodies are the raw markdown, minus the frontmatter Astro has already
  * parsed off and minus the import lines and component tags that only mean
- * something once Starlight has rendered them. Left in, those would be noise
- * in every fetch; the prose around them is what carries the answer.
+ * something once Starlight has rendered them. That cleanup lives in
+ * lib/markdown.ts because the per-page .md routes need exactly the same
+ * thing, and two copies would drift.
  */
 
 /** Sidebar order, so a linear read follows the intended path. */
@@ -22,19 +24,6 @@ const rank = (slug: string) => {
 	const at = ORDER.findIndex((prefix) => slug === prefix || slug.startsWith(`${prefix}/`));
 	return at === -1 ? ORDER.length : at;
 };
-
-/** Strip what only exists for the renderer. */
-function toPlainMarkdown(body: string): string {
-	return (
-		body
-			// `import X from '...'` lines at the top of an .mdx file.
-			.replace(/^import\s+.+?from\s+['"].+?['"];?\s*$/gm, '')
-			// Self-closing component tags, and paired ones, left on their own line.
-			.replace(/^<\/?[A-Z][\w.]*(\s[^>]*)?\/?>\s*$/gm, '')
-			.replace(/\n{3,}/g, '\n\n')
-			.trim()
-	);
-}
 
 /** BASE_URL comes back exactly as configured, which may be '/Reach' with no
  *  trailing slash. Joining paths onto that silently produces '/Reachdownload'. */

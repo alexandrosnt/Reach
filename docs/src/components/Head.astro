@@ -13,12 +13,7 @@
  * listing and reads as keyword stuffing.
  */
 import Default from '@astrojs/starlight/components/Head.astro';
-import type { Props } from '@astrojs/starlight/props';
 import { KEYWORDS, ORG, PRODUCT } from '../site';
-
-// The 404 route renders this with no entry at all, so nothing here may
-// assume one exists.
-const entry = (Astro.props as Props).entry as Props['entry'] | undefined;
 
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site).href : Astro.url.href;
 const origin = Astro.site?.href.replace(/\/$/, '') ?? '';
@@ -28,11 +23,19 @@ const origin = Astro.site?.href.replace(/\/$/, '') ?? '';
 // card they already cached.
 const image = `${origin}${import.meta.env.BASE_URL}og.jpg`.replace(/([^:])\/\//g, '$1/');
 
-// Empty on the index page. Starlight calls this `slug`; Astro 5's content
-// layer calls it `id`, and which one arrives depends on the version, so read
-// whichever is present rather than pinning to one.
-const here = (entry as { slug?: string; id?: string } | undefined)?.slug ?? entry?.id ?? '';
-const isHome = here === '' || here === 'index';
+const basePath = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+
+// Which page this is, taken from the URL rather than from the props.
+// Starlight's entry shape moved between versions — `slug` became `id` under
+// Astro 5's content layer — and reading it defensively produced '' on every
+// page, which silently put the SoftwareApplication graph on all thirty-three
+// of them. The pathname is the one thing that is always right.
+const here = Astro.url.pathname.slice(basePath.length).replace(/\/$/, '');
+const isHome = here === '';
+
+const llmsUrl = `${basePath}llms.txt`;
+// The landing page has no markdown twin — it is a component, not prose.
+const markdownUrl = isHome ? '' : `${basePath}${here}.md`;
 
 const softwareGraph = {
 	'@context': 'https://schema.org',
@@ -118,11 +121,12 @@ const softwareGraph = {
 <meta name="twitter:image" content={image} />
 
 <!--
-	Written for the crawlers that read documentation rather than render it.
-	See /llms.txt for the map and /llms-full.txt for the whole thing as one
-	markdown file.
+	Written for the readers that want the documentation rather than the page
+	around it: /llms.txt is the map, /llms-full.txt is all of it in one fetch,
+	and the link below is this page on its own as markdown.
 -->
-<link rel="alternate" type="text/plain" href={`${import.meta.env.BASE_URL}llms.txt`} title="llms.txt" />
+<link rel="alternate" type="text/plain" href={llmsUrl} title="llms.txt" />
+{!isHome && here && <link rel="alternate" type="text/markdown" href={markdownUrl} title="This page as markdown" />}
 
 {
 	isHome && (
