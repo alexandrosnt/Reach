@@ -26,20 +26,103 @@ Files are sorted with directories first, then alphabetically by name. Click a di
 
 Right-click to get actions. What shows up depends on what you clicked:
 
+The row you right-clicked is highlighted for as long as the menu is open, so
+there is never a doubt about which file an action is about to apply to.
+
 **On a file:**
 - **Edit** — open in the inline editor (text files only, max 5 MB)
 - **Download** — save to your local machine
+- **Archive** — compress it, or extract it if it already is an archive
 - **Rename** — inline rename field appears
 - **Delete** — confirmation bar appears before deleting
 
 **On a directory:**
+- **Archive** — compress the folder and everything in it
 - **Rename** — inline rename
 - **Delete** — recursive delete with confirmation
+
+Select several files first and the menu applies to all of them, which is how
+you get a single archive out of a multiple selection.
 
 **On empty space:**
 - **New File** — creates an empty file (inline naming)
 - **New Folder** — creates a directory (inline naming)
 - **Refresh** — reloads the listing
+
+## Archives
+
+Right-click and choose **Archive** to compress or extract without opening a
+terminal. The work happens on the remote machine, so nothing is transferred to
+your computer and back just to be packed.
+
+### Compressing
+
+Pick a format and Reach builds the archive in the current directory:
+
+| Format | Needs |
+| --- | --- |
+| `.tar.gz`, `.tgz` | `tar` with gzip — present almost everywhere |
+| `.tar.xz`, `.txz` | `xz` |
+| `.tar.bz2`, `.tbz2` | `bzip2` |
+| `.tar.zst`, `.tzst` | `zstd` |
+| `.tar` | `tar` alone |
+| `.zip` | `zip`, or `7z`, or Python |
+
+Only the formats the server can actually produce are offered. Reach probes for
+`tar`, `gzip`, `bzip2`, `xz`, `zstd`, `zip`, `unzip`, `bsdtar`, `7z` and
+`python3` when the menu opens, and hides the rest rather than letting you pick
+something that will fail. Where a tool is missing but installable, it offers to
+install it with the machine's own package manager.
+
+`.zip` has several fallbacks because it is the format people want and the one
+least likely to be installed: `zip` if present, then `7z`, then a small Python
+script. That last one matters on stripped containers — an Alpine image
+typically has Python and no `zip` at all.
+
+### Extracting
+
+Right-click an archive and the same menu offers **Extract**. The contents go
+into a folder named after the archive, so `backup.tar.gz` unpacks into
+`backup/` rather than scattering files across the directory you were in.
+
+### Names never collide
+
+If `backup.tar.gz` already exists, the new one becomes `backup-1.tar.gz`. The
+number goes before the extension, not after it, so the file is still recognised
+as a `.tar.gz` by everything that looks at names.
+
+### Progress, and changing your mind
+
+Compressing a large directory shows a real percentage rather than a spinner,
+counting entries as they are processed. The panel stays in view while it runs —
+you do not have to scroll to find it.
+
+Reach asks the tool to run under a pseudo-terminal so it reports progress line
+by line. Without that, most archivers detect they are writing to a pipe and
+buffer their output in large blocks, which is why a long compression can
+otherwise sit at zero and then jump straight to done.
+
+**Cancel** stops the operation and removes the half-written archive, so a
+cancelled compression leaves the directory exactly as it was.
+
+## Drag a File Out to Your Desktop
+
+Drag a file from the explorer onto your desktop or any folder, and it downloads
+to wherever you dropped it.
+
+Nothing is transferred while you drag. The download starts when you release the
+button, and only then — so dragging a 2 GB file across your screen and changing
+your mind costs nothing.
+
+On Windows this uses delayed rendering, which is the mechanism Explorer itself
+uses: Reach hands over a promise of a file rather than the file, and the bytes
+are streamed straight to the destination you chose when Explorer asks for them.
+The progress bar you see is Explorer's own.
+
+:::note
+Dragging out is currently a Windows feature. On macOS and Linux, use
+**Download** from the context menu.
+:::
 
 ## Inline Editing
 
