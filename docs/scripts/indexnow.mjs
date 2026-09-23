@@ -31,7 +31,22 @@ import { readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 
 const PUBLIC = fileURLToPath(new URL('../public/', import.meta.url));
-const ENDPOINT = 'https://api.indexnow.org/IndexNow';
+/*
+ * Every participant, rather than only the shared endpoint.
+ *
+ * api.indexnow.org is meant to distribute a submission to all of them, but it
+ * is operated by Bing and inherits Bing's refusals: a domain Bing has never
+ * crawled gets 403 UserForbiddedToAccessSite there, and the notification
+ * reaches nobody. Yandex accepts the identical key and payload, which is how
+ * that was diagnosed. So each engine is told directly and one refusal costs
+ * nothing.
+ */
+const ENDPOINTS = [
+	['IndexNow (Bing)', 'https://api.indexnow.org/IndexNow'],
+	['Yandex', 'https://yandex.com/indexnow'],
+	['Seznam', 'https://search.seznam.cz/indexnow'],
+	['Naver', 'https://searchadvisor.naver.com/indexnow'],
+];
 
 const site = (process.env.SITE_URL ?? 'https://reachssh.com').replace(/\/$/, '');
 const host = new URL(site).host;
@@ -69,24 +84,40 @@ if (urlList.length === 0) {
 	process.exit(1);
 }
 
-const response = await fetch(ENDPOINT, {
-	method: 'POST',
-	headers: { 'Content-Type': 'application/json; charset=utf-8' },
-	body: JSON.stringify({
-		host,
-		key,
-		keyLocation: `${site}/${keyFile}`,
-		urlList,
-	}),
+const payload = JSON.stringify({
+	host,
+	key,
+	keyLocation: `${site}/${keyFile}`,
+	urlList,
 });
 
-// 200 accepted, 202 accepted while the key is still being verified. Anything
-// else is worth seeing, but none of it should fail a deploy: the sitemap
-// still works and the pages are already live.
-const body = await response.text().catch(() => '');
-console.log(`IndexNow: ${response.status} ${response.statusText} for ${urlList.length} URLs`);
-if (body.trim()) console.log(body.trim().slice(0, 300));
+let accepted = 0;
 
-if (response.status >= 400) {
-	console.warn('Submission rejected. The pages are live regardless; check the key file.');
+for (const [name, endpoint] of ENDPOINTS) {
+	try {
+		const response = await fetch(endpoint, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json; charset=utf-8' },
+			body: payload,
+		});
+		// 200 accepted, 202 accepted while the key is still being verified.
+		const ok = response.status === 200 || response.status === 202;
+		if (ok) accepted += 1;
+		const body = (await response.text().catch(() => '')).trim().replace(/\s+/g, ' ');
+		console.log(
+			`${name.padEnd(18)} ${response.status} ${response.statusText}` +
+				(body ? ` — ${body.slice(0, 120)}` : ''),
+		);
+	} catch (error) {
+		console.log(`${name.padEnd(18)} unreachable — ${String(error).slice(0, 80)}`);
+	}
+}
+
+console.log(`
+${urlList.length} URLs submitted, ${accepted}/${ENDPOINTS.length} engines accepted.`);
+
+// Never fail a deploy over a notification: the pages are live either way and
+// the sitemap still does its job.
+if (accepted === 0) {
+	console.warn('No engine accepted the submission. Check the key file at ' + `${site}/${keyFile}`);
 }
