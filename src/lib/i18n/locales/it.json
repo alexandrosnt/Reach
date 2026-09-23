@@ -1320,5 +1320,7 @@
   "explorer.archive_none": "Questa macchina non ha strumenti per farlo",
   "explorer.archive_files_progress": "{{done}} di {{total}} file",
   "explorer.archive_cancel": "Annulla",
-  "explorer.archive_cancelled": "Annullato, {{name}} è stato rimosso"
+  "explorer.archive_cancelled": "Annullato, {{name}} è stato rimosso",
+  "explorer.drag_preparing": "Preparazione di {{name}} per il trascinamento…",
+  "explorer.drag_too_large": "Troppo grande da trascinare. Usa Scarica."
 }

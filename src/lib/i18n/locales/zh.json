@@ -1320,5 +1320,7 @@
   "explorer.archive_none": "此机器没有可用于此操作的工具",
   "explorer.archive_files_progress": "{{total}} 个文件中的 {{done}} 个",
   "explorer.archive_cancel": "取消",
-  "explorer.archive_cancelled": "已取消，已删除 {{name}}"
+  "explorer.archive_cancelled": "已取消，已删除 {{name}}",
+  "explorer.drag_preparing": "正在准备拖拽 {{name}}…",
+  "explorer.drag_too_large": "文件过大，无法拖拽。请改用下载。"
 }

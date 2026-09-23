@@ -1320,5 +1320,7 @@
   "explorer.archive_none": "На этой машине нет подходящего инструмента",
   "explorer.archive_files_progress": "{{done}} из {{total}} файлов",
   "explorer.archive_cancel": "Отмена",
-  "explorer.archive_cancelled": "Отменено, {{name}} удалён"
+  "explorer.archive_cancelled": "Отменено, {{name}} удалён",
+  "explorer.drag_preparing": "{{name}} готовится к перетаскиванию…",
+  "explorer.drag_too_large": "Слишком большой для перетаскивания. Используйте Загрузку."
 }

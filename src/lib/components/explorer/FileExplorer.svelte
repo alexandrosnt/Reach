@@ -17,6 +17,10 @@
 		type ArchiveFormat
 	} from '$lib/ipc/archive';
 	import { createProgressCounter, percentOf } from '$lib/explorer/archive-progress';
+	import { cacheKey, safeLocalName, dragAction, isDraggable } from '$lib/explorer/drag-out';
+	import { startDrag } from '@crabnebula/tauri-plugin-drag';
+	import { tempDir, join } from '@tauri-apps/api/path';
+	import { invoke } from '@tauri-apps/api/core';
 	import { openEditor } from '$lib/state/editor.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { positionMenu } from '$lib/utils/positionMenu';
@@ -119,6 +123,71 @@
 	/** Whether the Archive group in the context menu is expanded. */
 	let archiveOpen = $state(false);
 	let archiveBusy = $state(false);
+
+	// --- Dragging a file out to the desktop -------------------------------
+	//
+	// The operating system never says where a drag was dropped, so the file
+	// has to exist locally before the gesture begins and the OS copies it from
+	// there. Pressing a row starts that download; by the time the pointer has
+	// moved far enough to be a drag, a small file is usually ready. See
+	// $lib/explorer/drag-out for why it cannot work any other way.
+	type DragEntry = { state: 'fetching' | 'ready' | 'failed'; localPath?: string };
+	const dragCache = new Map<string, DragEntry>();
+
+	async function prepareForDrag(entry: FileEntry): Promise<void> {
+		if (!connectionId || !isDraggable(entry)) return;
+		const key = cacheKey(connectionId, entry.path);
+		if (dragCache.has(key)) return;
+		void previewIcon().catch(() => {});
+
+		dragCache.set(key, { state: 'fetching' });
+		try {
+			const base = await tempDir();
+			// Its own folder, because the copy must keep the file's real name
+			// and two remote files can share one.
+			const localPath = await join(base, 'reach-drag', key, safeLocalName(entry.name));
+			await sftpDownload(connectionId, entry.path, localPath);
+			dragCache.set(key, { state: 'ready', localPath });
+		} catch {
+			// Left as failed rather than deleted, so a broken file is not
+			// re-fetched on every press.
+			dragCache.set(key, { state: 'failed' });
+		}
+	}
+
+	// The plugin wants a preview image as a path on disk. Fetched once and
+	// kept, since it never changes.
+	let dragIcon: string | undefined;
+	async function previewIcon(): Promise<string> {
+		if (!dragIcon) dragIcon = await invoke<string>('drag_preview_icon');
+		return dragIcon;
+	}
+
+	/** Returns true when the native drag took over from the webview's own. */
+	function beginDragOut(entry: FileEntry): boolean {
+		if (!connectionId) return false;
+		const key = cacheKey(connectionId, entry.path);
+		const cached = dragCache.get(key);
+		const action = dragAction(cached?.state ?? 'idle', entry);
+
+		if (action === 'too-large') {
+			addToast(t('explorer.drag_too_large'), 'info');
+			return true;
+		}
+		if (action === 'not-a-file') return false;
+		if (action !== 'start' || !cached?.localPath) {
+			// Still arriving. Saying so beats a gesture that silently does
+			// nothing, and the next attempt will work.
+			addToast(t('explorer.drag_preparing', { name: entry.name }), 'info');
+			return true;
+		}
+
+		const localPath = cached.localPath;
+		void previewIcon()
+			.then((icon) => startDrag({ item: [localPath], icon }))
+			.catch((err) => addToast(String(err), 'error'));
+		return true;
+	}
 
 	async function ensureTools(): Promise<void> {
 		if (!connectionId || toolsFor === connectionId) return;
@@ -1030,7 +1099,7 @@
 							/>
 						</div>
 					{:else}
-						<FileNode {entry} active={contextMenu?.entry?.path === entry.path} onclick={() => handleNodeClick(entry)} oncontextmenu={(e) => openContextMenu(e, entry)} ondownload={!entry.isDirectory ? () => handleQuickDownload(entry) : undefined} />
+						<FileNode {entry} active={contextMenu?.entry?.path === entry.path} onpressstart={() => void prepareForDrag(entry)} ondragout={() => beginDragOut(entry)} onclick={() => handleNodeClick(entry)} oncontextmenu={(e) => openContextMenu(e, entry)} ondownload={!entry.isDirectory ? () => handleQuickDownload(entry) : undefined} />
 					{/if}
 				{/each}
 			{/if}

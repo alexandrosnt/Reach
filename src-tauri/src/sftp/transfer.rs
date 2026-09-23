@@ -92,7 +92,17 @@ pub async fn download_file(
     channel.exec(true, format!("base64 {}", shell_escape(remote_path))).await
         .map_err(|e| SshError::ChannelError(format!("{}", e)))?;
 
-    // Create/truncate the local file
+    // Create/truncate the local file. The parent has to exist first: a
+    // download aimed at a path that has not been made yet would otherwise
+    // fail with a bare "No such file or directory", which says nothing about
+    // which part was missing.
+    if let Some(parent) = std::path::Path::new(local_path).parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                TransferError::IoError(format!("Failed to create {}: {}", parent.display(), e))
+            })?;
+        }
+    }
     let mut file = std::fs::File::create(local_path)
         .map_err(|e| TransferError::IoError(format!("Failed to create local file: {}", e)))?;
 

@@ -1320,5 +1320,7 @@
   "explorer.archive_none": "Esta máquina no tiene ninguna herramienta para eso",
   "explorer.archive_files_progress": "{{done}} de {{total}} archivos",
   "explorer.archive_cancel": "Cancelar",
-  "explorer.archive_cancelled": "Cancelado, se eliminó {{name}}"
+  "explorer.archive_cancelled": "Cancelado, se eliminó {{name}}",
+  "explorer.drag_preparing": "Preparando {{name}} para arrastrar…",
+  "explorer.drag_too_large": "Demasiado grande para arrastrar. Usa Descargar."
 }

@@ -8,9 +8,21 @@
 		ondownload?: () => void;
 		/** The row the open context menu is acting on. */
 		active?: boolean;
+		/** Pressing a row begins fetching it, so a drag has something to carry. */
+		onpressstart?: () => void;
+		/** Returns true if it handled the drag natively; false leaves it alone. */
+		ondragout?: () => boolean;
 	}
 
-	let { entry, onclick, oncontextmenu, ondownload, active = false }: Props = $props();
+	let {
+		entry,
+		onclick,
+		oncontextmenu,
+		ondownload,
+		active = false,
+		onpressstart,
+		ondragout
+	}: Props = $props();
 
 	let sizeText = $derived.by(() => {
 		if (entry.isDirectory) return '';
@@ -22,7 +34,24 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="file-node" class:active onclick={onclick} oncontextmenu={oncontextmenu} role="button" tabindex="0" onkeydown={(e) => { if (e.key === 'Enter') onclick(); }}>
+<!-- draggable so the browser raises dragstart; the drag itself is handed to
+     the OS natively, because an HTML5 drag cannot deliver a file to the desktop. -->
+<div
+	class="file-node"
+	class:active
+	draggable={!entry.isDirectory}
+	onmousedown={() => onpressstart?.()}
+	ondragstart={(e) => {
+		// preventDefault stops the webview running its own drag alongside the
+		// native one, which would show two drag images and drop nothing.
+		if (ondragout?.()) e.preventDefault();
+	}}
+	onclick={onclick}
+	oncontextmenu={oncontextmenu}
+	role="button"
+	tabindex="0"
+	onkeydown={(e) => { if (e.key === 'Enter') onclick(); }}
+>
 	<span class="file-icon">
 		{#if entry.isDirectory}
 			<svg width="16" height="16" viewBox="0 0 24 24" fill="none">

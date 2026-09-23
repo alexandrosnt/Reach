@@ -181,7 +181,11 @@ pub fn run() {
             .plugin(tauri_plugin_autostart::init(
                 tauri_plugin_autostart::MacosLauncher::LaunchAgent,
                 None,
-            ));
+            ))
+            // Dragging a file out of the window onto the desktop. The OS never
+            // reports where a drag was dropped, so this can only hand it a
+            // file that already exists locally — see src/lib/explorer/drag-out.
+            .plugin(tauri_plugin_drag::init());
     }
 
     #[cfg(desktop)]
@@ -235,6 +239,7 @@ pub fn run() {
             sftp_archive_create,
             sftp_archive_extract,
             sftp_archive_cancel,
+            drag_preview_icon,
             // Session commands
             session_list,
             session_get,
@@ -505,6 +510,7 @@ pub fn run() {
             sftp_archive_create,
             sftp_archive_extract,
             sftp_archive_cancel,
+            drag_preview_icon,
             // Session commands
             session_list,
             session_get,

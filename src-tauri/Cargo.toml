@@ -88,13 +88,17 @@ flate2 = "1"
 tar = "0.4"
 tauri-plugin-process = "2.3.1"
 
-# PTY, Serial, Autostart, Updater (desktop only)
+# PTY, Serial, Autostart, Updater, native drag-out (desktop only)
 [target.'cfg(not(target_os = "android"))'.dependencies]
 portable-pty = "0.8"
 serialport = "4"
 tauri-plugin-autostart = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-single-instance = "2"
+# Dragging a file out of the window to the desktop. Tauri has no API for this
+# and there is no other maintained option; see src/lib/explorer/drag-out.ts
+# for what it can and cannot do.
+tauri-plugin-drag = "2"
 
 # libgit2-sys links OpenSSL on Linux. It reaches us through ssh2-config's
 # build-dependency on git2, so the feature has to be unified in *both* the

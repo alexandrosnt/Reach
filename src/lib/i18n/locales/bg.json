@@ -1320,5 +1320,7 @@
   "explorer.archive_none": "Тази машина няма инструмент за това",
   "explorer.archive_files_progress": "{{done}} от {{total}} файла",
   "explorer.archive_cancel": "Отказ",
-  "explorer.archive_cancelled": "Отменено, {{name}} беше премахнат"
+  "explorer.archive_cancelled": "Отменено, {{name}} беше премахнат",
+  "explorer.drag_preparing": "Подготовка на {{name}} за плъзгане…",
+  "explorer.drag_too_large": "Твърде голям за плъзгане. Използвай Изтегляне."
 }

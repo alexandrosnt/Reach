@@ -1320,5 +1320,7 @@
   "explorer.archive_none": "Auf diesem Rechner gibt es dafür kein Werkzeug",
   "explorer.archive_files_progress": "{{done}} von {{total}} Dateien",
   "explorer.archive_cancel": "Abbrechen",
-  "explorer.archive_cancelled": "Abgebrochen, {{name}} wurde entfernt"
+  "explorer.archive_cancelled": "Abgebrochen, {{name}} wurde entfernt",
+  "explorer.drag_preparing": "{{name}} wird zum Ziehen vorbereitet…",
+  "explorer.drag_too_large": "Zu groß zum Ziehen. Nutze stattdessen Herunterladen."
 }

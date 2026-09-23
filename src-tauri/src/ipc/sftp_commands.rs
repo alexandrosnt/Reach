@@ -453,3 +453,27 @@ pub async fn sftp_archive_cancel(
     let _ = crate::ssh::client::exec_on_connection_with_exit_code(&handle, &cmd).await;
     Ok(())
 }
+
+/// Where to find a small image to show under the cursor while dragging.
+///
+/// The drag plugin needs a preview image as a path on disk, and there is no
+/// filesystem plugin on the JavaScript side to write one. So the app icon is
+/// embedded at compile time and materialised once into the cache directory.
+///
+/// Returns the path. Written only if missing, so repeated drags cost nothing.
+#[tauri::command]
+pub async fn drag_preview_icon(app: tauri::AppHandle) -> Result<String, String> {
+    use tauri::Manager;
+    const ICON: &[u8] = include_bytes!("../../icons/32x32.png");
+
+    let dir = app
+        .path()
+        .app_cache_dir()
+        .map_err(|e| format!("No cache directory: {}", e))?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    let path = dir.join("drag-preview.png");
+    if !path.exists() {
+        std::fs::write(&path, ICON).map_err(|e| e.to_string())?;
+    }
+    Ok(path.to_string_lossy().into_owned())
+}

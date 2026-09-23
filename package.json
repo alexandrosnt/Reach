@@ -22,6 +22,7 @@
     "webkit:test": "node --import ./scripts/resolve-lib.mjs scripts/webkit-input-test.mjs",
     "webkit:live": "node scripts/webkit-live-test.mjs",
     "archive:test": "node --import ./scripts/resolve-lib.mjs scripts/archive-progress-test.mjs",
+    "drag:test": "node --import ./scripts/resolve-lib.mjs scripts/drag-out-test.mjs",
     "tofu:test": "node scripts/tofu-json-test.mjs",
     "ansible:test": "node scripts/ansible-recap-test.mjs && node scripts/ansible-sessions-test.mjs"
   },
@@ -36,6 +37,7 @@
     "@codemirror/state": "^6.5.0",
     "@codemirror/theme-one-dark": "^6.1.3",
     "@codemirror/view": "^6.35.0",
+    "@crabnebula/tauri-plugin-drag": "^2.1.0",
     "@fortawesome/free-solid-svg-icons": "^7.3.1",
     "@tauri-apps/api": "^2.2.0",
     "@tauri-apps/plugin-autostart": "^2.5.1",

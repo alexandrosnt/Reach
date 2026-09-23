@@ -1320,5 +1320,7 @@
   "explorer.archive_none": "Αυτό το μηχάνημα δεν έχει εργαλείο για αυτό",
   "explorer.archive_files_progress": "{{done}} από {{total}} αρχεία",
   "explorer.archive_cancel": "Ακύρωση",
-  "explorer.archive_cancelled": "Ακυρώθηκε, το {{name}} αφαιρέθηκε"
+  "explorer.archive_cancelled": "Ακυρώθηκε, το {{name}} αφαιρέθηκε",
+  "explorer.drag_preparing": "Προετοιμασία του {{name}} για μεταφορά…",
+  "explorer.drag_too_large": "Πολύ μεγάλο για μεταφορά. Χρησιμοποίησε τη Λήψη."
 }
