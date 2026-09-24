@@ -415,11 +415,28 @@ async fn try_agent_auth(
             Ok(agent) => try_agent_auth_inner(handle, username, agent).await,
             Err(e) => {
                 tracing::debug!("OpenSSH Windows agent named pipe unavailable: {}", e);
+                // The pageant transport unwraps the window lookup inside a
+                // spawned task: with no Pageant running, that task panics
+                // and the stream reads as an early EOF. Look for the window
+                // first, so the panic never happens.
+                if !pageant_is_running() {
+                    return Err("no SSH agent running (OpenSSH agent or Pageant)".into());
+                }
                 let pageant = russh_keys::agent::client::AgentClient::connect_pageant().await;
                 try_agent_auth_inner(handle, username, pageant).await
             }
         }
     }
+}
+
+/// Pageant announces itself with a hidden window of class and title
+/// "Pageant"; that window is how every client finds it.
+#[cfg(windows)]
+fn pageant_is_running() -> bool {
+    use windows::core::w;
+    use windows::Win32::UI::WindowsAndMessaging::FindWindowW;
+    // SAFETY: two valid, NUL-terminated wide strings; no other state involved.
+    unsafe { FindWindowW(w!("Pageant"), w!("Pageant")).is_ok() }
 }
 
 async fn try_agent_auth_inner<S>(
