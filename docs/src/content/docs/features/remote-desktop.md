@@ -28,9 +28,18 @@ The server sends what changed, as tiles. Reach keeps its own copy of the framebu
 
 Frames are paced by acknowledgement. The webview says when it has painted, and the next frame goes out only then, so a busy screen costs the interface exactly as many frames as it can draw and no queue ever builds up.
 
-## Not yet
+## Sound and a shared folder
 
-- **Sound and drive redirection.** Each pulls a native backend into the build; neither is needed to see a desktop and drive it.
-- **Certificate pinning.** The server's certificate is accepted on connect. The same trust-on-first-use prompt the SSH side has is the next thing to add here.
-- **H.264 video.** Windows offers it and IronRDP can decode it, but the client we build on does not yet let a decoder be plugged in. Until then video is delivered as tiles, which is fine on a LAN and heavier over a slow link.
-- **Telling Windows from xrdp.** RDP carries an OS field, but xrdp fills it in as Windows to keep clients happy, so a saved RDP session is shown as Windows.
+Remote audio plays through your default output device on Windows, Linux and macOS. A saved RDP session can name one local folder, which appears inside the desktop as a drive named after the folder; IronRDP's native filesystem backends serve it. Android has neither, and says so in the editor.
+
+## The server's certificate
+
+The certificate is checked strictly first, so one the platform trusts passes without a word. Anything else, which is nearly every RDP server since they self-sign, goes through the same trust-on-first-use dialog and known-hosts file as an SSH host key: accept once, silent thereafter, and a loud stop if it ever changes.
+
+## Video
+
+With OpenH264 compiled in, Reach advertises AVC420 through the graphics pipeline and a Windows server sends video as video rather than as tiles. That is what makes a moving picture bearable over a slow link. The tile path remains for servers that do not offer it.
+
+## Windows or Linux
+
+RDP cannot say what the machine is: xrdp fills in the OS field as Windows to keep clients happy. So the session editor asks, Windows unless told otherwise, and the icon in the session list follows.

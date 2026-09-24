@@ -1,0 +1,129 @@
+# Vendored from IronRDP at rev 9b151c4c2e47c6014e1e8e55909d4180aa8bdb99 with one change: ConfigBuilder::with_h264_decoder_factory,
+# which hands an H.264 decoder to the graphics pipeline. Upstream builds the
+# pipeline with none. Path dependencies were rewritten to the same git rev.
+[package]
+name = "ironrdp-client"
+version = "0.1.0"
+readme = "README.md"
+description = "Portable RDP client engine without GPU acceleration"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/Devolutions/IronRDP"
+repository = "https://github.com/Devolutions/IronRDP"
+authors = ["Devolutions Inc. <infos@devolutions.net>", "Teleport <goteleport.com>"]
+keywords = ["rdp", "remote-desktop", "network", "client", "protocol"]
+categories = ["network-programming"]
+
+[lib]
+doctest = false
+test = false
+
+[features]
+default = []
+
+rustls = [
+    "ironrdp-tls/rustls",
+    "tokio-tungstenite/rustls-tls-native-roots",
+    "ironrdp-mstsgu?/rustls",
+]
+
+native-tls = [
+    "ironrdp-tls/native-tls",
+    "tokio-tungstenite/native-tls",
+    "ironrdp-mstsgu?/native-tls",
+]
+
+sound = [
+    "dep:ironrdp-rdpsnd",
+    "dep:ironrdp-rdpsnd-native",
+    "ironrdp-rdpsnd-native/capture",
+    "dep:ironrdp-rdpeai",
+]
+clipboard = ["dep:ironrdp-cliprdr", "dep:ironrdp-cliprdr-native"]
+rdpdr = ["dep:ironrdp-rdpdr", "dep:ironrdp-rdpsnd"]
+smartcard = ["rdpdr"]
+gateway = ["dep:ironrdp-mstsgu"]
+qoi = ["ironrdp-connector/qoi", "ironrdp-session/qoi"]
+qoiz = ["ironrdp-connector/qoiz", "ironrdp-session/qoiz"]
+dvc-pipe-proxy = ["dep:ironrdp-dvc-pipe-proxy"]
+dvc-com-plugin = ["dep:ironrdp-dvc-com-plugin"]
+# Prefer System32\webauthn.dll via the DVC COM plugin host (MSTSC parity / hash-only hosts).
+# Keep the pure-Rust RDPEWA path as a fallback when the COM plugin is unavailable.
+webauthn = ["dep:ironrdp-rdpewa", "dep:ironrdp-rdpewa-native", "dvc-com-plugin"]
+vmconnect = ["dep:ironrdp-vmconnect"]
+location = ["dep:ironrdp-rdpel"]
+udp = [
+    "dep:ironrdp-rdpeudp",
+    "dep:ironrdp-rdpeudp-tokio",
+    "ironrdp-rdpeudp-tokio/rustls-aws-lc-rs",
+]
+
+all = [
+    "sound",
+    "clipboard",
+    "rdpdr",
+    "smartcard",
+    "gateway",
+    "dvc-pipe-proxy",
+    "dvc-com-plugin",
+    "webauthn",
+    "vmconnect",
+    "location",
+    "udp",
+]
+
+[dependencies]
+# Protocols (core features always on)
+ironrdp-core = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.2", features = ["alloc"] }
+ironrdp-pdu = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.9" } # public
+ironrdp-svc = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.8" } # public
+ironrdp-dvc = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.8" } # public
+ironrdp-connector = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.10" } # public
+ironrdp-session = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.11" } # public
+ironrdp-graphics = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.9" } # public
+ironrdp-displaycontrol = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.8" }
+ironrdp-echo = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.4" }
+ironrdp-egfx = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.3" }
+ironrdp-rdpei = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.1" }
+ironrdp-rdpeudp = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.1", optional = true }
+ironrdp-rdpeudp-tokio = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.1", optional = true }
+ironrdp-tls = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.2" } # public
+ironrdp-tokio = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.10", features = ["reqwest"] }
+ironrdp-rdcleanpath = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.2" }
+ironrdp-vmconnect = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.1", optional = true }
+ironrdp-cfg = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.1" }
+ironrdp-propertyset = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.1" } # public
+ironrdp-rail = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.1" }
+
+# Optional protocol crates (activated by features above)
+ironrdp-cliprdr = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.7", optional = true } # public
+ironrdp-rdpdr = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.7", optional = true } # public
+ironrdp-rdpsnd = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.9", optional = true }
+ironrdp-rdpeai = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.1", optional = true }
+ironrdp-rdpel = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.0.0", optional = true }
+
+# Optional backend crates (activated by features above)
+ironrdp-rdpsnd-native = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.7", optional = true }
+ironrdp-cliprdr-native = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.7", optional = true }
+ironrdp-mstsgu = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.0.1", optional = true }
+ironrdp-dvc-pipe-proxy = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.5", optional = true }
+
+# Logging
+tracing = { version = "0.1", features = ["log"] }
+
+# Async, futures
+tokio = { version = "1", features = ["macros", "net", "io-util", "sync", "rt", "time"] }
+tokio-tungstenite = "0.29"
+futures-util = { version = "0.3", features = ["sink"] }
+
+# Utils
+anyhow = "1"
+smallvec = "1.15"
+url = "2"
+x509-cert = { version = "0.3", default-features = false, features = ["std"] }
+
+[target.'cfg(windows)'.dependencies]
+ironrdp-dvc-com-plugin = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.1", optional = true }
+ironrdp-rdpewa = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.1", optional = true }
+ironrdp-rdpewa-native = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", version = "0.1", optional = true }
+

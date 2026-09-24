@@ -283,6 +283,8 @@ impl RdpManager {
             }
         }
 
+
+
         // See `Open` for why this is a thread and not a task.
         let thread_name = format!("rdp-{id}");
         let session = std::thread::Builder::new()
@@ -509,6 +511,17 @@ fn build_config(p: &RdpConnectParams, app: AppHandle) -> Result<ironrdp_client::
         // Our own backend, handed to the client in `connect`.
         .with_clipboard(ClipboardType::Enable)
         .with_rdpdr(p.share_path.as_deref().is_some_and(|s| !s.trim().is_empty()))
+        // H.264 for the graphics pipeline, one decoder per connection. With
+        // it the client advertises AVC420 and a Windows server sends video as
+        // video rather than as tiles. Made here rather than once, because a
+        // reconnect builds the pipeline again.
+        .with_h264_decoder_factory(Arc::new(|| match ironrdp_egfx::decode::OpenH264Decoder::new() {
+            Ok(decoder) => Some(Box::new(decoder) as Box<dyn ironrdp_egfx::decode::H264Decoder>),
+            Err(e) => {
+                tracing::warn!("RDP: no H.264 decoder, video will come as tiles: {e}");
+                None
+            }
+        }))
         .with_certificate_validation(ironrdp_tls::CertificateValidation::Strict)
         .with_certificate_validation_callback(verify);
 
