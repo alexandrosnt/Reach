@@ -637,7 +637,9 @@ struct TimedResizeRequest {
 // Reach: 3 s upstream. A Windows 11 host was seen to take longer than that to
 // reactivate after a display-control resize, and the fallback is a full
 // reconnect, which also restarts every dynamic channel the server had opened.
-const DISPLAY_CONTROL_READY_TIMEOUT: Duration = Duration::from_secs(15);
+// Not longer than this, though: when the host never answers, the fallback is
+// what puts the picture right, and waiting 15 s for it was worse than 3.
+const DISPLAY_CONTROL_READY_TIMEOUT: Duration = Duration::from_secs(6);
 
 #[derive(Default)]
 struct ResizeQueue {
