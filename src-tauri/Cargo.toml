@@ -103,6 +103,7 @@ tauri-plugin-process = "2.3.1"
 # agree. Move back to versions when the next release carries this.
 ironrdp-client = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", default-features = false, features = ["rustls", "clipboard"] }
 ironrdp-cliprdr = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99" }
+ironrdp-tls = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", default-features = false, features = ["rustls"] }
 ironrdp-pdu = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99" }
 ironrdp-graphics = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99" }
 smallvec = "1"

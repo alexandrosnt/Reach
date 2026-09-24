@@ -38,10 +38,9 @@
 //! The clipboard is in — text and files, both ways — with a backend of our
 //! own in [`clipboard`]. Not in this version, on purpose: sound and drive
 //! redirection. Each pulls a native backend into the build, and neither is
-//! needed to see a desktop and drive it. Certificate validation is IronRDP's default,
-//! which accepts any certificate. That is the same trust-on-first-use gap the
-//! SSH side closed with a fingerprint prompt, and it is the next thing to do
-//! here; it is written down rather than quietly left.
+//! needed to see a desktop and drive it. The server's certificate goes
+//! through the same trust-on-first-use prompt and known-hosts file as an SSH
+//! host key; see `build_config`.
 
 pub mod clipboard;
 
@@ -252,7 +251,7 @@ impl RdpManager {
             "RDP {id}: connecting to {}:{} as {} at {}x{}",
             params.host, params.port, params.username, params.width, params.height
         );
-        let config = build_config(&params).map_err(|e| {
+        let config = build_config(&params, app.clone()).map_err(|e| {
             tracing::warn!("RDP {id}: configuration rejected: {e}");
             e
         })?;
@@ -421,8 +420,35 @@ pub fn mouse_pdu(x: u16, y: u16, action: &str, button: u8, delta: i16) -> Result
     })
 }
 
-fn build_config(p: &RdpConnectParams) -> Result<ironrdp_client::config::Config, String> {
+fn build_config(p: &RdpConnectParams, app: AppHandle) -> Result<ironrdp_client::config::Config, String> {
     let destination = Destination::new(format!("{}:{}", p.host, p.port)).map_err(|e| e.to_string())?;
+
+    // Certificates are checked strictly first; one the platform trusts passes
+    // without a word. Anything else — which is nearly every RDP server, since
+    // they self-sign — goes through the same trust-on-first-use prompt and
+    // known-hosts file as an SSH host key. The callback is synchronous and
+    // runs on the session thread, so the prompt is run on the app's runtime
+    // and waited for here; the session has nothing else to do meanwhile.
+    let (host, port) = (p.host.clone(), p.port);
+    let verify: ironrdp_tls::CertificateValidationCallback = Arc::new(move |der: &[u8], _name: &str, reason: &str| {
+        use base64::Engine as _;
+        use sha2::Digest as _;
+        tracing::info!("RDP {host}:{port}: certificate not trusted by the platform ({reason}); asking");
+        let fingerprint = format!(
+            "SHA256:{}",
+            base64::engine::general_purpose::STANDARD_NO_PAD.encode(sha2::Sha256::digest(der))
+        );
+        let (tx, rx) = std::sync::mpsc::channel();
+        let (app, host) = (app.clone(), host.clone());
+        tauri::async_runtime::spawn(async move {
+            let host_id = format!("rdp:{host}:{port}");
+            let ok = crate::ssh::client::verify_host_identity(Some(app), &host, port, &host_id, &fingerprint, "x509 certificate").await;
+            let _ = tx.send(ok);
+        });
+        // The prompt itself times out at 120 s; this only guards against
+        // the task never reporting back.
+        rx.recv_timeout(Duration::from_secs(130)).unwrap_or(false)
+    });
     let (width, height) = clamp_desktop(p.width, p.height);
 
     // Three fields the builder insists on and the docs do not mention. The
@@ -465,7 +491,9 @@ fn build_config(p: &RdpConnectParams) -> Result<ironrdp_client::config::Config, 
         .with_server_pointer(true)
         .with_pointer_software_rendering(false)
         // Our own backend, handed to the client in `connect`.
-        .with_clipboard(ClipboardType::Enable);
+        .with_clipboard(ClipboardType::Enable)
+        .with_certificate_validation(ironrdp_tls::CertificateValidation::Strict)
+        .with_certificate_validation_callback(verify);
 
     if !p.domain.is_empty() {
         builder = builder.with_domain(&p.domain);

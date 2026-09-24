@@ -1470,53 +1470,65 @@ impl russh::client::Handler for SshClientHandler {
         let fingerprint = server_public_key.fingerprint().to_string();
         let key_type = server_public_key.name().to_string();
 
-        let path = Self::known_hosts_path();
-        if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
-        }
-
-        let mut known: KnownHosts = match std::fs::read_to_string(&path) {
-            Ok(raw) => serde_json::from_str(&raw).unwrap_or_default(),
-            Err(_) => KnownHosts::default(),
-        };
-
-        // Known host with a matching fingerprint — trusted, connect silently.
-        if known.entries.get(&host_id) == Some(&fingerprint) {
-            return Ok(true);
-        }
-
-        // Unknown host (TOFU) or — worse — a CHANGED key (possible MITM): ask
-        // the user before trusting it. No silent accept.
-        let (changed, old_fingerprint) = match known.entries.get(&host_id) {
-            Some(existing) => {
-                tracing::warn!(
-                    "SSH host key CHANGED for {} (possible MITM). Old: {}, New: {}",
-                    host_id, existing, fingerprint
-                );
-                (true, Some(existing.clone()))
-            }
-            None => {
-                tracing::info!("SSH host key unknown for {} — prompting (TOFU)", host_id);
-                (false, None)
-            }
-        };
-
-        let accepted = self
-            .prompt_hostkey(&fingerprint, &key_type, changed, old_fingerprint)
-            .await;
-
-        if accepted {
-            known.entries.insert(host_id.clone(), fingerprint);
-            if let Ok(raw) = serde_json::to_string_pretty(&known) {
-                let _ = std::fs::write(&path, raw);
-            }
-            tracing::info!("SSH host key accepted by user for {}", host_id);
-            Ok(true)
-        } else {
-            tracing::warn!("SSH host key rejected for {} — aborting connect", host_id);
-            Ok(false)
-        }
+        Ok(verify_host_identity(self.app_handle.clone(), &self.host, self.port, &host_id, &fingerprint, &key_type).await)
     }
+}
+
+/// Trust on first use, shared by SSH and RDP. The identity is remembered
+/// under `host_id` in known_hosts.json; a new one is put to the user through
+/// the host-key dialog, and a changed one is put to them loudly. Returns
+/// whether to proceed.
+pub(crate) async fn verify_host_identity(
+    app_handle: Option<tauri::AppHandle>,
+    host: &str,
+    port: u16,
+    host_id: &str,
+    fingerprint: &str,
+    key_type: &str,
+) -> bool {
+    let path = SshClientHandler::known_hosts_path();
+    if let Some(parent) = path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+
+    let mut known: KnownHosts = match std::fs::read_to_string(&path) {
+        Ok(raw) => serde_json::from_str(&raw).unwrap_or_default(),
+        Err(_) => KnownHosts::default(),
+    };
+
+    if known.entries.get(host_id).map(String::as_str) == Some(fingerprint) {
+        return true;
+    }
+
+    let (changed, old_fingerprint) = match known.entries.get(host_id) {
+        Some(existing) => {
+            tracing::warn!(
+                "Host identity CHANGED for {} (possible MITM). Old: {}, New: {}",
+                host_id, existing, fingerprint
+            );
+            (true, Some(existing.clone()))
+        }
+        None => {
+            tracing::info!("Host identity unknown for {} — prompting (TOFU)", host_id);
+            (false, None)
+        }
+    };
+
+    let handler = SshClientHandler::new(host, port, app_handle);
+    let accepted = handler
+        .prompt_hostkey(fingerprint, key_type, changed, old_fingerprint)
+        .await;
+
+    if accepted {
+        known.entries.insert(host_id.to_string(), fingerprint.to_string());
+        if let Ok(raw) = serde_json::to_string_pretty(&known) {
+            let _ = std::fs::write(&path, raw);
+        }
+        tracing::info!("Host identity accepted by user for {}", host_id);
+    } else {
+        tracing::warn!("Host identity rejected for {} — aborting connect", host_id);
+    }
+    accepted
 }
 
 /// Finish a connection once the channel is open: inject shell color/prompt init

@@ -6250,6 +6250,7 @@ dependencies = [
  "ironrdp-cliprdr",
  "ironrdp-graphics",
  "ironrdp-pdu",
+ "ironrdp-tls",
  "keyring",
  "libsql",
  "mlua",
