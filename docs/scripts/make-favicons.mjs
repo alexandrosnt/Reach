@@ -83,6 +83,18 @@ const icoImages = await Promise.all(
 );
 await writeFile(new URL('favicon.ico', `file://${PUBLIC}`), ico(icoImages));
 
+/*
+ * Search engines want a larger square than a .ico carries.
+ *
+ * Google asks for a square that is a multiple of 48px and downscales it
+ * itself; 48 is the smallest that qualifies and it has nothing to work with.
+ * These are transparent rather than flattened, because a result row can be
+ * light or dark and a baked-in background shows as a tile on one of them.
+ */
+await writeFile(new URL('icon-48.png', `file://${PUBLIC}`), await png(48));
+await writeFile(new URL('icon-96.png', `file://${PUBLIC}`), await png(96));
+await writeFile(new URL('icon-144.png', `file://${PUBLIC}`), await png(144));
+
 await writeFile(new URL('apple-touch-icon.png', `file://${PUBLIC}`), await png(180, true));
 await writeFile(new URL('icon-192.png', `file://${PUBLIC}`), await png(192, true));
 await writeFile(new URL('icon-512.png', `file://${PUBLIC}`), await png(512, true));
@@ -107,5 +119,6 @@ await writeFile(
 );
 
 console.log(
-	`favicon.ico (${icoSizes.join('/')}), apple-touch-icon.png, icon-192, icon-512, site.webmanifest`,
+	`favicon.ico (${icoSizes.join('/')}), icon-48/96/144, apple-touch-icon.png, ` +
+		'icon-192, icon-512, site.webmanifest',
 );

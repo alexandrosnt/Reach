@@ -28,6 +28,14 @@ export default defineConfig({
 			// so the browser tab and the taskbar show the same artwork.
 			favicon: '/favicon.ico',
 			head: [
+				// Search engines want a square that is a multiple of 48px and
+				// downscale it themselves. The .ico tops out at 48, which is the
+				// smallest that qualifies and gives them nothing to work with, so
+				// the larger PNGs are declared alongside it. Browsers keep using
+				// the .ico; Google picks the size it wants.
+				{ tag: 'link', attrs: { rel: 'icon', type: 'image/png', sizes: '48x48', href: '/icon-48.png' } },
+				{ tag: 'link', attrs: { rel: 'icon', type: 'image/png', sizes: '96x96', href: '/icon-96.png' } },
+				{ tag: 'link', attrs: { rel: 'icon', type: 'image/png', sizes: '144x144', href: '/icon-144.png' } },
 				{
 					tag: 'link',
 					attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
