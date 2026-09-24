@@ -101,8 +101,9 @@ tauri-plugin-process = "2.3.1"
 # difference between a cursor blink costing a few hundred bytes and costing
 # eight megabytes. All three crates come from the same revision so their types
 # agree. Move back to versions when the next release carries this.
-ironrdp-client = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", default-features = false, features = ["rustls", "clipboard"] }
+ironrdp-client = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", default-features = false, features = ["rustls", "clipboard", "rdpdr"] }
 ironrdp-cliprdr = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99" }
+ironrdp-rdpdr = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99" }
 ironrdp-tls = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", default-features = false, features = ["rustls"] }
 ironrdp-pdu = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99" }
 ironrdp-graphics = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99" }
@@ -112,6 +113,8 @@ smallvec = "1"
 [target.'cfg(not(target_os = "android"))'.dependencies]
 # The local clipboard for RDP: text and file lists. Android has no file clipboard and uses the plugin.
 arboard = { version = "3.6", default-features = false }
+# Drive redirection for RDP: the native filesystem backends (Windows, macOS, Linux).
+ironrdp-rdpdr-native = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99" }
 portable-pty = "0.8"
 serialport = "4"
 tauri-plugin-autostart = "2"

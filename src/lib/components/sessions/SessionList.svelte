@@ -390,6 +390,7 @@
 			username: session.username,
 			password,
 			domain: session.domain ?? undefined,
+			sharePath: session.share_path ?? undefined,
 			width: 0,
 			height: 0,
 		};

@@ -38,6 +38,8 @@ export interface SessionConfig {
   kind?: SessionKind;
   /** Windows logon domain, RDP only. */
   domain?: string | null;
+  /** A local folder shown inside the remote desktop as a drive, RDP only. */
+  share_path?: string | null;
 }
 
 export type SessionKind = 'ssh' | 'rdp';
@@ -85,6 +87,7 @@ export async function sessionCreate(params: {
   domain?: string | null;
   /** For RDP: what the machine is, since the protocol cannot say. */
   detectedOs?: string | null;
+  sharePath?: string | null;
 }): Promise<SessionConfig> {
   return invoke<SessionConfig>('session_create', {
     name: params.name,
@@ -101,6 +104,7 @@ export async function sessionCreate(params: {
     kind: params.kind ?? 'ssh',
     domain: params.domain?.trim() ? params.domain.trim() : null,
     detectedOs: params.detectedOs ?? null,
+    sharePath: params.sharePath?.trim() ? params.sharePath.trim() : null,
   });
 }
 

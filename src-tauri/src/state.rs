@@ -62,6 +62,9 @@ pub struct SessionConfig {
     /// Windows logon domain, RDP only.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub domain: Option<String>,
+    /// A local folder shown inside the remote desktop as a drive, RDP only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub share_path: Option<String>,
     pub folder_id: Option<String>,
     pub tags: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

@@ -76,6 +76,9 @@ pub struct RdpConnectParams {
     pub password: String,
     #[serde(default)]
     pub domain: String,
+    /// A local folder to show inside the desktop as a drive.
+    #[serde(default)]
+    pub share_path: Option<String>,
     /// The size the panel can show, so the server renders at the size it is
     /// seen at rather than being scaled after the fact.
     pub width: u16,
@@ -265,7 +268,20 @@ impl RdpManager {
         // The clipboard has a thread of its own; see the clipboard module.
         let (clipboard, clip_factory) = clipboard::spawn(&id, input.clone(), app.clone())
             .map_err(|e| format!("could not start the RDP clipboard thread: {e}"))?;
-        let client = client.with_cliprdr_backend_factory(Box::new(clip_factory));
+        let mut client = client.with_cliprdr_backend_factory(Box::new(clip_factory));
+
+        // A shared folder rides the device channel as one drive. The native
+        // backends serve it: IronRDP's own on Windows, its Unix one on the
+        // others. Android has no backend for it and says so.
+        if let Some(path) = params.share_path.as_deref().filter(|p| !p.trim().is_empty()) {
+            match drive_factory(path) {
+                Ok(factory) => {
+                    tracing::info!("RDP {id}: sharing {path} as a drive");
+                    client = client.with_rdpdr_backend_factory(factory);
+                }
+                Err(e) => tracing::warn!("RDP {id}: not sharing {path}: {e}"),
+            }
+        }
 
         // See `Open` for why this is a thread and not a task.
         let thread_name = format!("rdp-{id}");
@@ -492,6 +508,7 @@ fn build_config(p: &RdpConnectParams, app: AppHandle) -> Result<ironrdp_client::
         .with_pointer_software_rendering(false)
         // Our own backend, handed to the client in `connect`.
         .with_clipboard(ClipboardType::Enable)
+        .with_rdpdr(p.share_path.as_deref().is_some_and(|s| !s.trim().is_empty()))
         .with_certificate_validation(ironrdp_tls::CertificateValidation::Strict)
         .with_certificate_validation_callback(verify);
 
@@ -500,6 +517,51 @@ fn build_config(p: &RdpConnectParams, app: AppHandle) -> Result<ironrdp_client::
     }
 
     builder.build().map_err(|e| e.to_string())
+}
+
+/// The drive backend for one shared folder, named after the folder.
+#[cfg(windows)]
+fn drive_factory(path: &str) -> Result<Box<dyn ironrdp_rdpdr::backend::RdpdrBackendFactory + Send>, String> {
+    use ironrdp_rdpdr_native::{RedirectedDrive, WindowsRdpdrBackendFactory};
+    let drive = RedirectedDrive::new(1, drive_name(path), path, false).map_err(|e| e.to_string())?;
+    Ok(Box::new(WindowsRdpdrBackendFactory::new(drive)))
+}
+
+#[cfg(any(target_os = "macos", target_os = "linux"))]
+fn drive_factory(path: &str) -> Result<Box<dyn ironrdp_rdpdr::backend::RdpdrBackendFactory + Send>, String> {
+    struct Factory {
+        path: String,
+        name: String,
+    }
+    impl ironrdp_rdpdr::backend::RdpdrBackendFactory for Factory {
+        fn build_rdpdr_backend(&self) -> ironrdp_rdpdr::backend::RdpdrBackendFactoryResult<ironrdp_rdpdr::backend::RdpdrBackendProduct> {
+            let backend = ironrdp_rdpdr_native::backend::NixRdpdrBackend::new(self.path.clone());
+            Ok(ironrdp_rdpdr::backend::RdpdrBackendProduct::new(
+                Box::new(backend),
+                vec![ironrdp_rdpdr::backend::RdpdrDrive::new(1, self.name.clone())],
+            ))
+        }
+    }
+    if !std::path::Path::new(path).is_dir() {
+        return Err("not a directory".into());
+    }
+    Ok(Box::new(Factory { path: path.to_string(), name: drive_name(path) }))
+}
+
+#[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
+fn drive_factory(_path: &str) -> Result<Box<dyn ironrdp_rdpdr::backend::RdpdrBackendFactory + Send>, String> {
+    Err("drive redirection is not available on this platform".into())
+}
+
+/// What the drive is called on the remote: the folder's own name, or the
+/// whole path when it has none (a volume root).
+fn drive_name(path: &str) -> String {
+    std::path::Path::new(path)
+        .file_name()
+        .and_then(|n| n.to_str())
+        .filter(|n| !n.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| path.trim_end_matches(['\\', '/']).to_string())
 }
 
 /// The build number this client reports about itself: Reach's own version,

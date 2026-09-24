@@ -15,6 +15,8 @@ export interface RdpConnectParams {
 	username: string;
 	password: string;
 	domain?: string;
+	/** A local folder to show inside the desktop as a drive. */
+	sharePath?: string;
 	/** The size the panel can show. The server renders at this size. */
 	width: number;
 	height: number;

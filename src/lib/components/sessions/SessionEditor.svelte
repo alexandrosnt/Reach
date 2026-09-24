@@ -27,6 +27,7 @@
 	let domain = $state('');
 	/** RDP only: the protocol cannot say what the machine is (xrdp claims to be Windows), so the user does. */
 	let os = $state<'windows' | 'linux'>('windows');
+	let sharePath = $state('');
 
 	let name = $state('');
 	let host = $state('');
@@ -71,6 +72,7 @@
 			kind = sessionKind(editSession);
 			domain = editSession.domain ?? '';
 			os = editSession.detected_os === 'linux' ? 'linux' : 'windows';
+			sharePath = editSession.share_path ?? '';
 			name = editSession.name;
 			host = editSession.host;
 			portStr = String(editSession.port);
@@ -112,6 +114,7 @@
 			kind = 'ssh';
 			domain = '';
 			os = 'windows';
+			sharePath = '';
 			name = '';
 			host = '';
 			portStr = '22';
@@ -201,6 +204,7 @@
 					domain: rdp ? (domain.trim() || null) : null,
 					// A session that changed protocol changed machine type too.
 					detected_os: rdp ? os : (kind === sessionKind(editSession) ? editSession.detected_os : null),
+					share_path: rdp ? (sharePath.trim() || null) : null,
 				});
 			} else {
 				await sessionCreate({
@@ -218,6 +222,7 @@
 					kind,
 					domain: rdp ? domain : null,
 					detectedOs: rdp ? os : null,
+					sharePath: rdp ? sharePath : null,
 				});
 			}
 			onsave?.();
@@ -241,6 +246,15 @@
 				],
 			});
 			if (typeof selected === 'string') setter(selected);
+		} catch {
+			// User cancelled the dialog
+		}
+	}
+
+	async function browseFolder(): Promise<void> {
+		try {
+			const selected = await openDialog({ multiple: false, directory: true, title: t('session.rdp_share_folder') });
+			if (typeof selected === 'string') sharePath = selected;
 		} catch {
 			// User cancelled the dialog
 		}
@@ -302,6 +316,17 @@
 					<button type="button" class="auth-btn" class:active={os === 'windows'} disabled={saving} onclick={() => (os = 'windows')}>{t('session.os_windows')}</button>
 					<button type="button" class="auth-btn" class:active={os === 'linux'} disabled={saving} onclick={() => (os = 'linux')}>{t('session.os_linux')}</button>
 				</div>
+			</div>
+			<div class="shell-field">
+				<div class="key-path-row">
+					<div class="key-path-input">
+						<Input label={t('session.rdp_share_folder')} bind:value={sharePath} placeholder="C:\Users\me\Documents" disabled={saving} />
+					</div>
+					<Button variant="secondary" size="sm" onclick={browseFolder} disabled={saving}>
+						{t('session.rdp_share_browse')}
+					</Button>
+				</div>
+				<p class="shell-hint">{t('session.rdp_share_hint')}</p>
 			</div>
 		{:else}
 		<div class="auth-section">
