@@ -81,6 +81,7 @@ export default defineConfig({
 						{ label: 'Port Tunneling', slug: 'features/tunnels' },
 						{ label: 'System Monitoring', slug: 'features/monitoring' },
 						{ label: 'Serial Console', slug: 'features/serial' },
+						{ label: 'Remote Desktop (RDP)', slug: 'features/remote-desktop' },
 						{ label: 'Jump Hosts & SSH Config', slug: 'features/jump-hosts' },
 						{ label: 'Ansible', slug: 'features/ansible' },
 						{ label: 'OpenTofu', slug: 'features/opentofu' },

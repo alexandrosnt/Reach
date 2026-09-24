@@ -68,6 +68,7 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 ### Extras
 
 - **Serial Console** · Talk to routers, switches, and embedded devices over COM/TTY.
+- **Remote Desktop (RDP)** · A Windows desktop in a tab, on every platform Reach runs on, with no native RDP library. Clipboard and files go both ways, the cursor is drawn locally, and frames are painted whole.
 - **AI Assistant** · Optional AI integration for command suggestions and troubleshooting (bring your own API key).
 - **Host Key Verification** · Trust on first use, and a loud stop when a known key changes. Never accepts one silently, and refuses rather than connecting if it cannot ask.
 - **Themes** · Colour tokens the whole app reads, not just the terminal. Install more from a registry, pinned by SHA-256.
