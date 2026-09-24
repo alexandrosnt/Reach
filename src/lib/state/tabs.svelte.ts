@@ -1,6 +1,7 @@
 import type { SshConnectParams } from '$lib/ipc/ssh';
+import type { RdpConnectParams } from '$lib/ipc/rdp';
 
-export type TabType = 'local' | 'ssh';
+export type TabType = 'local' | 'ssh' | 'rdp';
 
 export interface Tab {
 	id: string;
@@ -14,6 +15,8 @@ export interface Tab {
 	detectedOs?: string | null;
 	/** SSH connect params for reconnection */
 	sshConnectParams?: SshConnectParams;
+	/** What an RDP tab connects to; the panel connects itself once it knows its size. */
+	rdpConnectParams?: RdpConnectParams;
 }
 
 let tabs = $state<Tab[]>([]);
@@ -38,7 +41,7 @@ export function createTab(type: TabType, title?: string, connectionId?: string, 
 
 	const tab: Tab = {
 		id,
-		title: title ?? (type === 'local' ? 'Local' : 'SSH'),
+		title: title ?? (type === 'local' ? 'Local' : type === 'rdp' ? 'RDP' : 'SSH'),
 		type,
 		connectionId,
 		active: true,

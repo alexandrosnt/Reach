@@ -5,6 +5,7 @@ pub mod mcp;
 pub mod monitoring;
 #[cfg(desktop)]
 pub mod pty;
+pub mod rdp;
 pub mod dragout;
 pub mod recipe;
 pub mod share;
@@ -33,6 +34,7 @@ use ipc::marketplace_commands::*;
 use ipc::credential_commands::*;
 use ipc::settings_commands::*;
 use ipc::mcp_commands::*;
+use ipc::rdp_commands::*;
 use ipc::monitoring_commands::*;
 #[cfg(desktop)]
 use ipc::pty_commands::*;
@@ -197,6 +199,15 @@ pub fn run() {
             // MCP server. Off until the user enables it; nothing here starts
             // a listener or shares a session on its own.
             mcp_start,
+            rdp_connect,
+            rdp_disconnect,
+            rdp_mouse,
+            rdp_key,
+            rdp_unicode,
+            rdp_resize,
+            rdp_ack,
+            rdp_disconnect_all,
+            rdp_clipboard_sync,
             mcp_stop,
             mcp_status,
             mcp_restore,
@@ -470,6 +481,15 @@ pub fn run() {
             // MCP server. Off until the user enables it; nothing here starts
             // a listener or shares a session on its own.
             mcp_start,
+            rdp_connect,
+            rdp_disconnect,
+            rdp_mouse,
+            rdp_key,
+            rdp_unicode,
+            rdp_resize,
+            rdp_ack,
+            rdp_disconnect_all,
+            rdp_clipboard_sync,
             mcp_stop,
             mcp_status,
             mcp_restore,

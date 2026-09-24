@@ -12,6 +12,7 @@ use crate::monitoring::collector::MonitoringCollector;
 use crate::pty::manager::PtyManager;
 #[cfg(desktop)]
 use crate::serial::port::SerialManager;
+use crate::rdp::RdpManager;
 use crate::ssh::client::SshManager;
 use crate::ansible::project::AnsibleProjectManager;
 use crate::tofu::project::TofuProjectManager;
@@ -29,6 +30,22 @@ pub struct JumpHostConfig {
     pub auth_method: AuthMethod,
 }
 
+/// What a saved session connects with. Sessions saved before this existed
+/// have no `kind` on disk and read back as SSH, which is what they were.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum SessionKind {
+    #[default]
+    Ssh,
+    Rdp,
+}
+
+impl SessionKind {
+    fn is_ssh(&self) -> bool {
+        *self == SessionKind::Ssh
+    }
+}
+
 /// Configuration for a saved session.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionConfig {
@@ -38,6 +55,13 @@ pub struct SessionConfig {
     pub port: u16,
     pub username: String,
     pub auth_method: AuthMethod,
+    /// SSH unless said otherwise; omitted from disk when it is SSH so the
+    /// file stays readable by older builds.
+    #[serde(default, skip_serializing_if = "SessionKind::is_ssh")]
+    pub kind: SessionKind,
+    /// Windows logon domain, RDP only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
     pub folder_id: Option<String>,
     pub tags: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -178,6 +202,7 @@ pub struct AppState {
     pub tunnel_manager: Arc<tokio::sync::Mutex<TunnelManager>>,
     #[cfg(desktop)]
     pub serial_manager: Arc<tokio::sync::Mutex<SerialManager>>,
+    pub rdp_manager: Arc<tokio::sync::Mutex<RdpManager>>,
     pub vault_manager: Arc<tokio::sync::Mutex<VaultManager>>,
     pub plugin_manager: Arc<tokio::sync::Mutex<PluginManager>>,
     /// URL of the marketplace registry JSON file.
@@ -214,6 +239,7 @@ impl AppState {
             tunnel_manager: Arc::new(tokio::sync::Mutex::new(TunnelManager::new())),
             #[cfg(desktop)]
             serial_manager: Arc::new(tokio::sync::Mutex::new(SerialManager::new())),
+            rdp_manager: Arc::new(tokio::sync::Mutex::new(RdpManager::new())),
             vault_manager: Arc::new(tokio::sync::Mutex::new(VaultManager::new(app_dir.clone()))),
             plugin_manager: Arc::new(tokio::sync::Mutex::new(PluginManager::new(app_dir.join("plugins")))),
             marketplace_index_url: Arc::new(RwLock::new(

@@ -137,8 +137,11 @@ pub async fn session_create(
     jump_chain: Option<Vec<JumpHostConfig>>,
     proxy: Option<crate::state::ProxyConfig>,
     shell: Option<String>,
+    kind: Option<crate::state::SessionKind>,
+    domain: Option<String>,
 ) -> Result<SessionConfig, String> {
     let mut manager = state.vault_manager.lock().await;
+    let kind = kind.unwrap_or_default();
 
     if manager.is_locked() {
         return Err("Vault is locked. Set a master password first.".to_string());
@@ -166,9 +169,13 @@ pub async fn session_create(
         port,
         username,
         auth_method,
+        kind,
+        domain: domain.filter(|d| !d.trim().is_empty()),
         folder_id,
         tags,
-        detected_os: None,
+        // An RDP host is a Windows machine until something says otherwise;
+        // SSH sessions find out on first connect.
+        detected_os: (kind == crate::state::SessionKind::Rdp).then(|| "windows".to_string()),
         vault_id: if storage_vault_id != ensure_sessions_vault(&mut manager).await.unwrap_or_default() {
             Some(storage_vault_id.clone())
         } else {

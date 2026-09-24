@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { rdpDisconnectAll } from '$lib/ipc/rdp';
 	import type { Snippet } from 'svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -39,17 +40,25 @@
 	let updateOpen = $state(false);
 	let updateCount = $state(0);
 
-	/** Count live SSH connections (backend truth; falls back to connected tabs). */
+	/** Count live SSH connections (backend truth; falls back to connected tabs), plus open desktops. */
 	async function countActiveConnections(): Promise<number> {
+		const desktops = getTabs().filter((tab) => tab.type === 'rdp').length;
 		try {
-			return (await sshListConnections()).length;
+			return (await sshListConnections()).length + desktops;
 		} catch {
-			return getTabs().filter((tab) => tab.type === 'ssh' && !!tab.connectionId).length;
+			return getTabs().filter((tab) => tab.type === 'ssh' && !!tab.connectionId).length + desktops;
 		}
 	}
 
 	/** Actually leave: quit the whole app (tray Quit) or just close the window. */
 	async function doExit(mode: 'window' | 'quit'): Promise<void> {
+		// Desktops first, so each server gets a disconnect rather than a
+		// dropped socket, and no session thread outlives the window.
+		try {
+			await rdpDisconnectAll();
+		} catch {
+			// Nothing open, or the backend is already gone: leave anyway.
+		}
 		try {
 			if (mode === 'quit') {
 				await invoke('quit_app');
@@ -155,7 +164,13 @@
 		<main class="main-content">
 			{@render children()}
 		</main>
-		<AIPanel connectionId={activeConnectionId} activeTabId={activeTab?.id} activeTabType={activeTab?.type} />
+		<!-- The assistant works on terminals. A desktop tab has no shell for it
+		     to read or type into, so it is told there is no tab. -->
+		<AIPanel
+			connectionId={activeConnectionId}
+			activeTabId={activeTab?.type === 'rdp' ? undefined : activeTab?.id}
+			activeTabType={activeTab?.type === 'rdp' ? undefined : activeTab?.type}
+		/>
 	</div>
 
 	<StatusBar />

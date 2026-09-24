@@ -7,6 +7,7 @@
 	import { monitoringStart, monitoringStop, monitoringGetStats } from '$lib/ipc/monitoring';
 	import { updateStats, removeStats } from '$lib/state/monitoring.svelte';
 	import Terminal from '$lib/components/terminal/Terminal.svelte';
+	import RdpPanel from '$lib/components/rdp/RdpPanel.svelte';
 	import MonitoringBar from '$lib/components/terminal/MonitoringBar.svelte';
 	import RemoteTerminal from '$lib/components/share/RemoteTerminal.svelte';
 	import * as share from '$lib/state/share.svelte';
@@ -177,15 +178,19 @@
 				<div class="terminal-area">
 					{#each tabs as tab (tab.id)}
 						<div class="terminal-wrapper" class:active={tab.id === activeTab?.id}>
-							<Terminal
-								ptyId={tab.id}
-								type={tab.type}
-								connectionId={tab.connectionId}
-								active={tab.id === activeTab?.id}
-								onTitleChange={(title) => handleTerminalTitleChange(tab.id, title)}
-								sshConnectParams={tab.sshConnectParams}
-								onReconnected={(newId) => updateTabConnection(tab.id, newId)}
-							/>
+							{#if tab.type === 'rdp' && tab.rdpConnectParams}
+								<RdpPanel id={tab.id} params={tab.rdpConnectParams} active={tab.id === activeTab?.id} />
+							{:else if tab.type !== 'rdp'}
+								<Terminal
+									ptyId={tab.id}
+									type={tab.type}
+									connectionId={tab.connectionId}
+									active={tab.id === activeTab?.id}
+									onTitleChange={(title) => handleTerminalTitleChange(tab.id, title)}
+									sshConnectParams={tab.sshConnectParams}
+									onReconnected={(newId) => updateTabConnection(tab.id, newId)}
+								/>
+							{/if}
 						</div>
 					{/each}
 				</div>
