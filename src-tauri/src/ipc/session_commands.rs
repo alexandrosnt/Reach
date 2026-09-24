@@ -139,6 +139,7 @@ pub async fn session_create(
     shell: Option<String>,
     kind: Option<crate::state::SessionKind>,
     domain: Option<String>,
+    detected_os: Option<String>,
 ) -> Result<SessionConfig, String> {
     let mut manager = state.vault_manager.lock().await;
     let kind = kind.unwrap_or_default();
@@ -173,9 +174,12 @@ pub async fn session_create(
         domain: domain.filter(|d| !d.trim().is_empty()),
         folder_id,
         tags,
-        // An RDP host is a Windows machine until something says otherwise;
-        // SSH sessions find out on first connect.
-        detected_os: (kind == crate::state::SessionKind::Rdp).then(|| "windows".to_string()),
+        // RDP cannot say what the machine is (xrdp claims to be Windows), so
+        // the user says, Windows unless told otherwise; SSH sessions find
+        // out on first connect.
+        detected_os: detected_os
+            .filter(|os| !os.is_empty())
+            .or_else(|| (kind == crate::state::SessionKind::Rdp).then(|| "windows".to_string())),
         vault_id: if storage_vault_id != ensure_sessions_vault(&mut manager).await.unwrap_or_default() {
             Some(storage_vault_id.clone())
         } else {

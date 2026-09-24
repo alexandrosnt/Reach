@@ -83,6 +83,8 @@ export async function sessionCreate(params: {
   shell?: string | null;
   kind?: SessionKind;
   domain?: string | null;
+  /** For RDP: what the machine is, since the protocol cannot say. */
+  detectedOs?: string | null;
 }): Promise<SessionConfig> {
   return invoke<SessionConfig>('session_create', {
     name: params.name,
@@ -98,6 +100,7 @@ export async function sessionCreate(params: {
     shell: params.shell?.trim() ? params.shell.trim() : null,
     kind: params.kind ?? 'ssh',
     domain: params.domain?.trim() ? params.domain.trim() : null,
+    detectedOs: params.detectedOs ?? null,
   });
 }
 

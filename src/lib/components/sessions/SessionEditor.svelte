@@ -25,6 +25,8 @@
 	 */
 	let kind = $state<SessionKind>('ssh');
 	let domain = $state('');
+	/** RDP only: the protocol cannot say what the machine is (xrdp claims to be Windows), so the user does. */
+	let os = $state<'windows' | 'linux'>('windows');
 
 	let name = $state('');
 	let host = $state('');
@@ -68,6 +70,7 @@
 		if (editSession) {
 			kind = sessionKind(editSession);
 			domain = editSession.domain ?? '';
+			os = editSession.detected_os === 'linux' ? 'linux' : 'windows';
 			name = editSession.name;
 			host = editSession.host;
 			portStr = String(editSession.port);
@@ -108,6 +111,7 @@
 		} else {
 			kind = 'ssh';
 			domain = '';
+			os = 'windows';
 			name = '';
 			host = '';
 			portStr = '22';
@@ -196,7 +200,7 @@
 					kind,
 					domain: rdp ? (domain.trim() || null) : null,
 					// A session that changed protocol changed machine type too.
-					detected_os: kind === sessionKind(editSession) ? editSession.detected_os : (rdp ? 'windows' : null),
+					detected_os: rdp ? os : (kind === sessionKind(editSession) ? editSession.detected_os : null),
 				});
 			} else {
 				await sessionCreate({
@@ -213,6 +217,7 @@
 					shell: rdp ? null : (shell.trim() || null),
 					kind,
 					domain: rdp ? domain : null,
+					detectedOs: rdp ? os : null,
 				});
 			}
 			onsave?.();
@@ -291,6 +296,13 @@
 				<p class="shell-hint">{t('session.rdp_password_hint')}</p>
 			</div>
 			<Input label={t('session.rdp_domain')} bind:value={domain} placeholder="CORP" disabled={saving} />
+			<div class="auth-section">
+				<span class="auth-label">{t('session.os')}</span>
+				<div class="auth-toggle">
+					<button type="button" class="auth-btn" class:active={os === 'windows'} disabled={saving} onclick={() => (os = 'windows')}>{t('session.os_windows')}</button>
+					<button type="button" class="auth-btn" class:active={os === 'linux'} disabled={saving} onclick={() => (os = 'linux')}>{t('session.os_linux')}</button>
+				</div>
+			</div>
 		{:else}
 		<div class="auth-section">
 			<span class="auth-label">{t('session.auth_method')}</span>
