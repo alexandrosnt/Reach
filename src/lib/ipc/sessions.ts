@@ -34,6 +34,16 @@ export interface SessionConfig {
   jump_chain?: JumpHostConfig[] | null; // ProxyJump chain
   proxy?: ProxySessionConfig | null; // Proxy config (SOCKS5/Tor, HTTP)
   shell?: string | null; // Optional per-session login shell (e.g. "fish -l")
+  /** What the session connects with. Absent means SSH: older saves have no kind. */
+  kind?: SessionKind;
+  /** Windows logon domain, RDP only. */
+  domain?: string | null;
+}
+
+export type SessionKind = 'ssh' | 'rdp';
+
+export function sessionKind(session: Pick<SessionConfig, 'kind'>): SessionKind {
+  return session.kind ?? 'ssh';
 }
 
 export interface ProxySessionConfig {
@@ -71,6 +81,8 @@ export async function sessionCreate(params: {
   jumpChain?: JumpHostConfig[] | null;
   proxy?: ProxySessionConfig | null;
   shell?: string | null;
+  kind?: SessionKind;
+  domain?: string | null;
 }): Promise<SessionConfig> {
   return invoke<SessionConfig>('session_create', {
     name: params.name,
@@ -84,6 +96,8 @@ export async function sessionCreate(params: {
     jumpChain: params.jumpChain ?? null,
     proxy: params.proxy ?? null,
     shell: params.shell?.trim() ? params.shell.trim() : null,
+    kind: params.kind ?? 'ssh',
+    domain: params.domain?.trim() ? params.domain.trim() : null,
   });
 }
 

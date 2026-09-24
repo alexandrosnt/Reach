@@ -3,7 +3,7 @@
 	import Button from '$lib/components/shared/Button.svelte';
 	import KeyPicker from './KeyPicker.svelte';
 	import Input from '$lib/components/shared/Input.svelte';
-	import { sessionCreate, sessionUpdate, type SessionConfig, type AuthMethod, type JumpHostConfig, type Folder } from '$lib/ipc/sessions';
+	import { sessionCreate, sessionUpdate, sessionKind, type SessionConfig, type SessionKind, type AuthMethod, type JumpHostConfig, type Folder } from '$lib/ipc/sessions';
 	import { t } from '$lib/state/i18n.svelte';
 	import { open as openDialog } from '@tauri-apps/plugin-dialog';
 
@@ -17,10 +17,29 @@
 
 	let { open = $bindable(), editSession, vaultId = null, folders = [], onsave }: Props = $props();
 
+	/**
+	 * SSH or RDP. The two share a name, a host, a port and a username; RDP has
+	 * a password and a logon domain and nothing else, because keys, agents,
+	 * jump hosts, proxies and login shells are all SSH ideas. Switching moves
+	 * the port between the two defaults only if it still is one.
+	 */
+	let kind = $state<SessionKind>('ssh');
+	let domain = $state('');
+
 	let name = $state('');
 	let host = $state('');
 	let portStr = $state('22');
 	let username = $state('root');
+
+	const DEFAULT_PORT: Record<SessionKind, string> = { ssh: '22', rdp: '3389' };
+
+	function setKind(next: SessionKind): void {
+		if (next === kind) return;
+		if (portStr === DEFAULT_PORT[kind] || portStr.trim() === '') portStr = DEFAULT_PORT[next];
+		if (next === 'rdp' && username === 'root') username = '';
+		if (next === 'ssh' && username === '') username = 'root';
+		kind = next;
+	}
 	let authType = $state<'Password' | 'Key' | 'Agent'>('Password');
 	let password = $state('');
 	let keyPath = $state('');
@@ -47,6 +66,8 @@
 	// Populate fields when editing, reset when creating
 	$effect(() => {
 		if (editSession) {
+			kind = sessionKind(editSession);
+			domain = editSession.domain ?? '';
 			name = editSession.name;
 			host = editSession.host;
 			portStr = String(editSession.port);
@@ -85,6 +106,8 @@
 			proxyEnabled = false;
 		}
 		} else {
+			kind = 'ssh';
+			domain = '';
 			name = '';
 			host = '';
 			portStr = '22';
@@ -114,8 +137,11 @@
 		saving = true;
 		error = undefined;
 
-		const port = parseInt(portStr, 10) || 22;
-		const authMethod: AuthMethod = authType === 'Password'
+		const port = parseInt(portStr, 10) || parseInt(DEFAULT_PORT[kind], 10);
+		const rdp = kind === 'rdp';
+		// RDP is a password logon; the toggle below is SSH-only and its value
+		// is ignored here rather than trusted.
+		const authMethod: AuthMethod = rdp || authType === 'Password'
 			? { type: 'Password', password: password || undefined }
 			: authType === 'Key'
 				? {
@@ -129,7 +155,7 @@
 				: { type: 'Agent' };
 		const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
 
-		const jumpChain: JumpHostConfig[] | undefined = jumpEnabled && jumpHops.length > 0
+		const jumpChain: JumpHostConfig[] | undefined = !rdp && jumpEnabled && jumpHops.length > 0
 			? jumpHops.map(h => {
 				const hopAuth: AuthMethod = h.authType === 'Password'
 					? { type: 'Password', password: h.password || undefined }
@@ -145,7 +171,7 @@
 			})
 			: undefined;
 
-		const proxyConfig = proxyEnabled ? {
+		const proxyConfig = !rdp && proxyEnabled ? {
 			proxy_type: proxyType,
 			host: proxyHost.trim(),
 			port: parseInt(proxyPort, 10) || 9050,
@@ -164,9 +190,13 @@
 					auth_method: authMethod,
 					folder_id: folderIdStr || null,
 					tags,
-					jump_chain: jumpChain ?? editSession.jump_chain ?? null,
+					jump_chain: rdp ? null : (jumpChain ?? editSession.jump_chain ?? null),
 					proxy: proxyConfig,
-					shell: shell.trim() || null,
+					shell: rdp ? null : (shell.trim() || null),
+					kind,
+					domain: rdp ? (domain.trim() || null) : null,
+					// A session that changed protocol changed machine type too.
+					detected_os: kind === sessionKind(editSession) ? editSession.detected_os : (rdp ? 'windows' : null),
 				});
 			} else {
 				await sessionCreate({
@@ -180,7 +210,9 @@
 					vaultId,
 					jumpChain: jumpChain ?? null,
 					proxy: proxyConfig,
-					shell: shell.trim() || null,
+					shell: rdp ? null : (shell.trim() || null),
+					kind,
+					domain: rdp ? domain : null,
 				});
 			}
 			onsave?.();
@@ -226,19 +258,40 @@
 
 <Modal {open} onclose={handleClose} title={isEditing ? t('session.edit_session') : t('session.new')}>
 	<form class="form" onsubmit={(e) => { e.preventDefault(); handleSave(); }}>
-		<Input label={t('session.name')} bind:value={name} placeholder="My Server" disabled={saving} />
+		<!-- Same control as the auth method below: one segmented row, and
+		     everything under it follows the choice. -->
+		<div class="auth-section">
+			<span class="auth-label">{t('session.protocol')}</span>
+			<div class="auth-toggle">
+				<button type="button" class="auth-btn" class:active={kind === 'ssh'} disabled={saving} onclick={() => setKind('ssh')}>
+					{t('session.protocol_ssh')}
+				</button>
+				<button type="button" class="auth-btn" class:active={kind === 'rdp'} disabled={saving} onclick={() => setKind('rdp')}>
+					{t('session.protocol_rdp')}
+				</button>
+			</div>
+		</div>
+
+		<Input label={t('session.name')} bind:value={name} placeholder={kind === 'rdp' ? 'Office PC' : 'My Server'} disabled={saving} />
 
 		<div class="row">
 			<div class="field-host">
 				<Input label={t('session.host')} bind:value={host} placeholder="192.168.1.1" disabled={saving} />
 			</div>
 			<div class="field-port">
-				<Input label={t('session.port')} bind:value={portStr} type="number" placeholder="22" disabled={saving} />
+				<Input label={t('session.port')} bind:value={portStr} type="number" placeholder={DEFAULT_PORT[kind]} disabled={saving} />
 			</div>
 		</div>
 
-		<Input label={t('session.username')} bind:value={username} placeholder="root" disabled={saving} />
+		<Input label={t('session.username')} bind:value={username} placeholder={kind === 'rdp' ? 'Administrator' : 'root'} disabled={saving} />
 
+		{#if kind === 'rdp'}
+			<div class="shell-field">
+				<Input label={t('session.password_optional')} bind:value={password} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
+				<p class="shell-hint">{t('session.rdp_password_hint')}</p>
+			</div>
+			<Input label={t('session.rdp_domain')} bind:value={domain} placeholder="CORP" disabled={saving} />
+		{:else}
 		<div class="auth-section">
 			<span class="auth-label">{t('session.auth_method')}</span>
 			<div class="auth-toggle">
@@ -391,8 +444,9 @@
 				</div>
 			{/if}
 		</div>
+		{/if}
 
-		<Input label={t('session.tags')} bind:value={tagsStr} placeholder="production, web, linux" disabled={saving} />
+		<Input label={t('session.tags')} bind:value={tagsStr} placeholder={kind === 'rdp' ? 'office, windows' : 'production, web, linux'} disabled={saving} />
 
 		{#if folders.length > 0}
 			<div class="folder-section">

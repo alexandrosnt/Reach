@@ -1,9 +1,11 @@
 <script lang="ts">
 	import QuickConnect, { type QuickConnectPrefill } from './QuickConnect.svelte';
+	import RdpQuickConnect from '$lib/components/rdp/RdpQuickConnect.svelte';
 	import FaIcon from '$lib/components/shared/FaIcon.svelte';
 	import {
 		faPlus,
 		faBolt,
+		faDesktop,
 		faServer,
 		faFolderPlus,
 		faFileImport,
@@ -17,7 +19,7 @@
 	import SessionCard from './SessionCard.svelte';
 	import VaultSelector from '$lib/components/vault/VaultSelector.svelte';
 	import ContextMenuBackdrop from '$lib/components/shared/ContextMenuBackdrop.svelte';
-	import { sessionList, sessionDelete, sessionUpdate, sessionListFolders, sessionCreateFolder, sessionDeleteFolder, type SessionConfig, type Folder } from '$lib/ipc/sessions';
+	import { sessionKind, sessionList, sessionDelete, sessionUpdate, sessionListFolders, sessionCreateFolder, sessionDeleteFolder, type SessionConfig, type Folder } from '$lib/ipc/sessions';
 	import { sshConnect, sshDisconnect, sshDetectOs, type JumpHostConnectParams } from '$lib/ipc/ssh';
 	// Passwords are now stored encrypted in vault, not in memory cache
 	import { createTab, updateTabOs } from '$lib/state/tabs.svelte';
@@ -30,6 +32,7 @@
 	import { vaultState, checkState, initIdentity, importIdentity, ALL_VAULTS, loadVaultFilter, type VaultFilter } from '$lib/state/vault.svelte';
 
 	let showQuickConnect = $state(false);
+	let showRdpConnect = $state(false);
 	let showEditor = $state(false);
 	let showImport = $state(false);
 	let editingSession = $state<SessionConfig | undefined>();
@@ -373,9 +376,44 @@
 		}
 	}
 
+	/**
+	 * Open a saved RDP session in a desktop tab. The panel connects once it
+	 * knows its size; nothing to await here. Saving the password is the same
+	 * promise the SSH prompt makes, kept the same way.
+	 */
+	async function openRdp(session: SessionConfig, password: string, remember: boolean): Promise<void> {
+		const tab = createTab('rdp', `${session.username}@${session.host}`, undefined, session.name, session.detected_os ?? 'windows');
+		tab.rdpConnectParams = {
+			id: tab.id,
+			host: session.host,
+			port: session.port,
+			username: session.username,
+			password,
+			domain: session.domain ?? undefined,
+			width: 0,
+			height: 0,
+		};
+		addToast(t('session.connected_toast', { name: session.name }), 'success');
+
+		const stored = session.auth_method.type === 'Password' ? session.auth_method.password : undefined;
+		if (remember && password && password !== stored) {
+			try {
+				await sessionUpdate({ ...session, auth_method: { type: 'Password', password } });
+				await loadSessions();
+			} catch {
+				// The desktop is open either way; the prompt returns next time.
+			}
+		}
+	}
+
 	async function handleConnect(session: SessionConfig): Promise<void> {
 		// Check if credentials are stored in the session (from vault)
 		const storedPassword = session.auth_method.type === 'Password' ? session.auth_method.password : undefined;
+
+		if (sessionKind(session) === 'rdp' && storedPassword) {
+			await openRdp(session, storedPassword, false);
+			return;
+		}
 		const storedPassphrase = session.auth_method.type === 'Key' ? session.auth_method.passphrase : undefined;
 
 		// A key session has everything it needs the moment it names a key:
@@ -428,6 +466,19 @@
 		connectError = undefined;
 
 		const session = connectSession;
+
+		if (sessionKind(session) === 'rdp') {
+			if (!connectPassword) {
+				connectError = t('session.password_required');
+				connecting = false;
+				return;
+			}
+			await openRdp(session, connectPassword, rememberPassword);
+			connectSession = undefined;
+			connecting = false;
+			return;
+		}
+
 		const id = crypto.randomUUID();
 		connectingId = id;
 
@@ -747,6 +798,10 @@
 							<span>{t('session.quick_connect')}</span>
 							<kbd>{shortcutLabel('n', { ctrl: true, shift: true })}</kbd>
 						</button>
+						<button class="menu-item" role="menuitem" onclick={() => fromMenu(() => { showRdpConnect = true; })}>
+							<FaIcon icon={faDesktop} size={12} />
+							<span>{t('session.rdp_connect')}</span>
+						</button>
 						<button class="menu-item" role="menuitem" onclick={() => fromMenu(() => { creatingFolder = true; newFolderName = ''; })}>
 							<FaIcon icon={faFolderPlus} size={12} />
 							<span>{t('session.new_folder')}</span>
@@ -928,6 +983,7 @@
 </div>
 
 <QuickConnect bind:open={showQuickConnect} prefill={quickPrefill} />
+<RdpQuickConnect bind:open={showRdpConnect} />
 <SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={targetVaultId} {folders} onsave={handleEditorSave} />
 <SshConfigImport bind:open={showImport} onsave={handleEditorSave} />
 
