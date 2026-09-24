@@ -41,6 +41,13 @@ export default defineConfig({
 					attrs: { rel: 'apple-touch-icon', sizes: '180x180', href: '/apple-touch-icon.png' },
 				},
 				{ tag: 'link', attrs: { rel: 'manifest', href: '/site.webmanifest' } },
+				// What sits under the icon when someone adds the site to an iOS
+				// home screen. Without it iOS uses the page title, which here is
+				// fifty characters and gets truncated to "Reach — Free Op…".
+				{
+					tag: 'meta',
+					attrs: { name: 'apple-mobile-web-app-title', content: 'Reach' },
+				},
 			],
 			customCss: ['./src/styles/custom.css'],
 			components: {
