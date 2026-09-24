@@ -179,24 +179,44 @@
 			<span class="setting-description">{t('settings.community_desc')}</span>
 		</div>
 		<div class="setting-control">
-			<div class="link-group">
-				<button class="discord-link" title={COMMUNITY.discordInvite} onclick={() => shellOpen(COMMUNITY.discordInvite)}>
-					<DiscordIcon size={14} />
-					<span>{t('settings.open_discord')}</span>
-					<span class="ext"><FaIcon icon={faUpRightFromSquare} size={10} /></span>
-				</button>
-				<button
-					class="discord-link icon-only"
+			<!-- One control, two ways out of it: the body opens the invite, the
+			     glyph on the right copies it. A second button beside the first
+			     read as two half-width controls where every other row has one. -->
+			<button
+				class="discord-link"
+				title={COMMUNITY.discordInvite}
+				onclick={() => shellOpen(COMMUNITY.discordInvite)}
+			>
+				<DiscordIcon size={14} />
+				<span>{t('settings.open_discord')}</span>
+				<span class="ext"><FaIcon icon={faUpRightFromSquare} size={10} /></span>
+				<!-- Nested interactive content is invalid inside a <button>, so the
+				     copy affordance is a span with the keyboard behaviour written
+				     out: Enter and Space, and a tab stop of its own. -->
+				<span
+					class="copy"
+					role="button"
+					tabindex="0"
 					title={t('common.copy')}
 					aria-label={t('common.copy')}
-					onclick={async () => {
+					onclick={async (e) => {
+						// Without this the click reaches the parent and the browser
+						// opens as well as the clipboard being written.
+						e.stopPropagation();
+						await navigator.clipboard.writeText(COMMUNITY.discordInvite);
+						addToast(t('vault.copied_toast'), 'success');
+					}}
+					onkeydown={async (e) => {
+						if (e.key !== 'Enter' && e.key !== ' ') return;
+						e.preventDefault();
+						e.stopPropagation();
 						await navigator.clipboard.writeText(COMMUNITY.discordInvite);
 						addToast(t('vault.copied_toast'), 'success');
 					}}
 				>
-					<FaIcon icon={faCopy} size={13} />
-				</button>
-			</div>
+					<FaIcon icon={faCopy} size={12} />
+				</span>
+			</button>
 		</div>
 	</div>
 
@@ -243,19 +263,8 @@
 	}
 
 
-	/* The link and its copy button share the column: one edge for every control. */
-	.link-group {
-		display: flex;
-		width: 100%;
-		gap: 4px;
-	}
-
-	.link-group .discord-link {
-		flex: 1;
-		min-width: 0;
-	}
-
-	.link-group .discord-link span {
+	/* The label takes the space; the two glyphs sit at the far edge. */
+	.discord-link > span:not(.ext):not(.copy) {
 		overflow: hidden;
 		text-overflow: ellipsis;
 		white-space: nowrap;
@@ -272,10 +281,29 @@
 		color: inherit;
 	}
 
-	.discord-link.icon-only {
-		flex: 0 0 auto;
-		width: 32px;
-		padding: 6px 0;
+	/* Spacing, not a rule. A hairline here drew the eye to the divider rather
+	   than to either glyph, which is the thing it was meant to stop doing. */
+	.copy {
+		display: inline-flex;
+		align-items: center;
+		padding: 3px;
+		margin-left: 6px;
+		border-radius: 3px;
+		color: var(--color-text-tertiary);
+		transition:
+			color 0.15s,
+			background-color 0.15s;
+	}
+
+	/* The hover tint is what separates it now: nothing until you reach for it. */
+	.copy:hover {
+		color: var(--color-text-primary);
+		background: var(--color-surface-hover);
+	}
+
+	.copy:focus-visible {
+		outline: 2px solid var(--color-accent);
+		outline-offset: 1px;
 	}
 
 	/* Full column width, like the fields above: one edge for every control. */
