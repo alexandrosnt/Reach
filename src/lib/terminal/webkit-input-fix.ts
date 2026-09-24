@@ -15,7 +15,28 @@
  *
  * The keydown arrives *after* the text, and carries 229 — the value an engine
  * uses to say "an input method dealt with this key", so no character comes out
- * of the keyboard path. xterm's two handlers then work against each other:
+ * of the keyboard path.
+ *
+ * That order is WebKit's, not xterm's. steve3d later tested a plain textarea
+ * in Safari with no xterm.js and no Reach code on the page at all: 53 of 53
+ * insertText events were followed by a keydown carrying 229 for the same
+ * character, every one browser-generated, with no composition events anywhere
+ * in the log. Switching an IME on produced a separate, explicit composition
+ * sequence, so WebKit does distinguish the two — it simply uses 229 for
+ * ordinary keys as well.
+ *
+ * The specified order is the opposite way round: keydown, then beforeinput,
+ * then input, for events belonging to the same ordinary key.
+ * https://www.w3.org/TR/uievents/#events-keyboard-event-order
+ *
+ * Worth stating what that does and does not prove. Because the keydown
+ * carries 229, the DOM trace alone cannot establish a standards violation —
+ * the spec allows IME text and keyboard events not to correspond one to one.
+ * https://www.w3.org/TR/uievents/#keys-IME
+ * What it does establish is that Safari delivers this order consistently, so
+ * a terminal has to cope with it whatever the right reading of the spec is.
+ *
+ * xterm's two handlers then work against each other:
  *
  *     _inputEvent  accepts text only while  (!ev.composed || !this._keyDownSeen)
  *     _keyDown     sets  this._keyDownSeen = true  on every key
