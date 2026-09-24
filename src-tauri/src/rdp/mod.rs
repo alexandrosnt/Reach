@@ -379,6 +379,7 @@ impl RdpManager {
 
     pub fn resize(&self, id: &str, width: u16, height: u16) -> Result<(), String> {
         let (width, height) = clamp_desktop(width, height);
+        tracing::info!("RDP {id}: resize requested to {width}x{height}");
         self.input(id)?
             .try_send(RdpInputEvent::Resize {
                 width,
@@ -785,9 +786,13 @@ impl Screen {
             | RdpOutputEvent::RailControl(_)
             | RdpOutputEvent::PostLogonDisplayRedraw
             | RdpOutputEvent::MalformedBitmapDisplayRedraw
-            | RdpOutputEvent::DisplayResizeFallback(_)
-            | RdpOutputEvent::AutoReconnecting { .. }
             | RdpOutputEvent::AutoReconnected => {}
+            RdpOutputEvent::DisplayResizeFallback(size) => {
+                tracing::info!("RDP {id}: server has no display control; resize to {size:?} means a reconnect");
+            }
+            RdpOutputEvent::AutoReconnecting { .. } => {
+                tracing::info!("RDP {id}: reconnecting");
+            }
         }
         true
     }
@@ -796,6 +801,7 @@ impl Screen {
     /// and remember that it changed.
     fn apply(&mut self, buffer: &[u32], width: NonZeroU16, height: NonZeroU16, region: InclusiveRectangle) {
         if self.width != width.get() || self.height != height.get() {
+            tracing::info!("RDP: desktop is now {}x{}", width.get(), height.get());
             self.width = width.get();
             self.height = height.get();
             // Opaque black until the server has painted it; the canvas on

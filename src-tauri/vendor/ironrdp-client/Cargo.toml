@@ -1,6 +1,11 @@
 # Vendored from IronRDP at rev 9b151c4c2e47c6014e1e8e55909d4180aa8bdb99 with one change: ConfigBuilder::with_h264_decoder_factory,
 # which hands an H.264 decoder to the graphics pipeline. Upstream builds the
-# pipeline with none. Path dependencies were rewritten to the same git rev.
+# pipeline with none. Also DISPLAY_CONTROL_READY_TIMEOUT raised from 3 s to 15 s
+# (see rdp.rs), the graphics-pipeline flag is advertised (config.rs), and the
+# sound channel is announced initialized and encrypted (RdpsndAnnounced in
+# rdp.rs), and the pipeline is announced as a thin client so the server never
+# uses RemoteFX progressive (EgfxHandler in rdp.rs). Path dependencies were
+# rewritten to the same git rev.
 [package]
 name = "ironrdp-client"
 version = "0.1.0"

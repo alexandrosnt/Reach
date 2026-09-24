@@ -634,7 +634,10 @@ struct TimedResizeRequest {
     deadline: tokio::time::Instant,
 }
 
-const DISPLAY_CONTROL_READY_TIMEOUT: Duration = Duration::from_secs(3);
+// Reach: 3 s upstream. A Windows 11 host was seen to take longer than that to
+// reactivate after a display-control resize, and the fallback is a full
+// reconnect, which also restarts every dynamic channel the server had opened.
+const DISPLAY_CONTROL_READY_TIMEOUT: Duration = Duration::from_secs(15);
 
 #[derive(Default)]
 struct ResizeQueue {
@@ -1484,6 +1487,44 @@ enum RdpsndBackendKind {
 }
 
 #[cfg(any(feature = "sound", feature = "rdpdr"))]
+/// Reach: the `rdpsnd` channel announced with the options mstsc announces it
+/// with. IronRDP's `Rdpsnd` declares none, and a Windows 11 host was seen to
+/// join such a channel and then never send a byte on it — no format list, no
+/// audio — while the same host played through a channel announced as
+/// initialized and encrypted. Everything else is delegated.
+#[cfg(feature = "sound")]
+#[derive(Debug)]
+struct RdpsndAnnounced(ironrdp_rdpsnd::client::Rdpsnd);
+
+#[cfg(feature = "sound")]
+ironrdp_core::impl_as_any!(RdpsndAnnounced);
+
+#[cfg(feature = "sound")]
+impl ironrdp_svc::SvcProcessor for RdpsndAnnounced {
+    fn channel_name(&self) -> ChannelName {
+        self.0.channel_name()
+    }
+
+    fn compression_condition(&self) -> ironrdp_svc::CompressionCondition {
+        self.0.compression_condition()
+    }
+
+    fn channel_options(&self) -> ironrdp_pdu::gcc::ChannelOptions {
+        ironrdp_pdu::gcc::ChannelOptions::INITIALIZED | ironrdp_pdu::gcc::ChannelOptions::ENCRYPT_RDP
+    }
+
+    fn start(&mut self) -> ironrdp_pdu::PduResult<Vec<ironrdp_svc::SvcMessage>> {
+        self.0.start()
+    }
+
+    fn process(&mut self, payload: &[u8]) -> ironrdp_pdu::PduResult<Vec<ironrdp_svc::SvcMessage>> {
+        self.0.process(payload)
+    }
+}
+
+#[cfg(feature = "sound")]
+impl ironrdp_svc::SvcClientProcessor for RdpsndAnnounced {}
+
 fn rdpsnd_backend_kind(audio_playback: bool, rdpdr_attached: bool) -> Option<RdpsndBackendKind> {
     match (audio_playback, rdpdr_attached) {
         #[cfg(feature = "sound")]
@@ -1583,7 +1624,26 @@ fn build_connector(
     // per-command notification callbacks are unused here. Without an H.264 decoder
     // the client advertises only the non-AVC capability sets it can actually decode.
     struct EgfxHandler;
-    impl GraphicsPipelineHandler for EgfxHandler {}
+    impl GraphicsPipelineHandler for EgfxHandler {
+        // Reach: announced as a thin client. That tells the server not to use
+        // the RemoteFX progressive codec, whose decoder in this revision
+        // rejects a Windows 11 host's tiles and takes the session down with
+        // it; what remains is AVC420 for video and ClearCodec, planar and
+        // uncompressed for the rest, all of which decode here.
+        fn capabilities(&self) -> Vec<ironrdp_egfx::pdu::CapabilitySet> {
+            use ironrdp_egfx::pdu::{CapabilitiesV8Flags, CapabilitiesV81Flags, CapabilitySet};
+            vec![
+                CapabilitySet::V8_1 {
+                    flags: CapabilitiesV81Flags::AVC420_ENABLED
+                        | CapabilitiesV81Flags::SMALL_CACHE
+                        | CapabilitiesV81Flags::THIN_CLIENT,
+                },
+                CapabilitySet::V8 {
+                    flags: CapabilitiesV8Flags::SMALL_CACHE | CapabilitiesV8Flags::THIN_CLIENT,
+                },
+            ]
+        }
+    }
 
     let mut drdynvc = ironrdp_dvc::DrdynvcClient::new()
         .with_dynamic_channel(DisplayControlClient::new(|_| Ok(Vec::new())))
@@ -1827,6 +1887,7 @@ fn build_connector(
 
     #[cfg(any(feature = "sound", feature = "rdpdr"))]
     let audio_playback = connector_config.enable_audio_playback;
+    tracing::info!(audio_playback, sound = config.channels.sound, "audio playback decision");
     let rail_client = connector_config.remote_application_mode.then(|| {
         let rail_client = RailClient::new(
             connector_config.client_build,
@@ -1888,10 +1949,11 @@ fn build_connector(
             match kind {
                 #[cfg(feature = "sound")]
                 RdpsndBackendKind::Playback => {
-                    connector = connector.with_static_channel(
+                    tracing::info!("attaching RDPSND playback channel");
+                    connector = connector.with_static_channel(RdpsndAnnounced(
                         ironrdp_rdpsnd::client::Rdpsnd::new(Box::new(cpal::RdpsndBackend::new()))
                             .with_quality_mode(config.audio_quality_mode.into_rdpsnd()),
-                    );
+                    ));
                 }
                 #[cfg(feature = "rdpdr")]
                 RdpsndBackendKind::Noop => {
@@ -3765,6 +3827,11 @@ async fn active_session(
                         let extent = (width, height);
                         if desktop_update_extent != Some(extent) {
                             desktop_update_extent = Some(extent);
+                            // Reach: with the graphics pipeline a resize is answered by a
+                            // graphics reset that changes the framebuffer, not by the
+                            // reactivation sequence below; without this the resize timer
+                            // expires and the session is torn down and reconnected.
+                            resize_queue.completed();
                             let update = pack_desktop_update(
                                 &image,
                                 width,

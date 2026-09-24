@@ -797,6 +797,7 @@ pub struct ConfigBuilder {
     input_send_interval: Option<Duration>,
     input_keepalive_interval: Option<Duration>,
     h264_decoder_factory: Option<std::sync::Arc<dyn Fn() -> Option<Box<dyn ironrdp_egfx::decode::H264Decoder>> + Send + Sync>>,
+    graphics_pipeline: bool,
     fake_events_interval: Option<Duration>,
     channels: ChannelConfig,
     #[cfg(any(feature = "sound", feature = "rdpdr"))]
@@ -1367,6 +1368,14 @@ impl ConfigBuilder {
     /// Unlike [`with_fake_events_interval`](Self::with_fake_events_interval), this does not write the minute-based `ironrdp_fakeeventsinterval` compatibility property.
     /// When both intervals are configured, the shorter interval controls synthetic input.
     #[must_use]
+    /// Reach: advertise the graphics pipeline. Off by default; see the note
+    /// at `support_dyn_vc_gfx_protocol`.
+    #[must_use]
+    pub fn with_graphics_pipeline(mut self, enabled: bool) -> Self {
+        self.graphics_pipeline = enabled;
+        self
+    }
+
     /// Reach: decode AVC420 through decoders from this factory, one per
     /// connection. Without it the pipeline advertises only what it decodes itself.
     pub fn with_h264_decoder_factory(
@@ -1961,7 +1970,11 @@ impl ConfigBuilder {
             request_data: None,
             pointer_software_rendering: self.pointer_software_rendering.unwrap_or(false),
             multitransport_flags: None,
-            support_dyn_vc_gfx_protocol: false,
+            // Reach: advertised only when asked. Without the flag Windows never
+            // opens the pipeline; with it, a host that declines AVC420 sends the
+            // pipeline's other codecs, which cost more on a slow link than the
+            // bitmap path does. See `with_graphics_pipeline`.
+            support_dyn_vc_gfx_protocol: self.graphics_pipeline,
             compression_type,
             performance_flags: self.performance_flags.unwrap_or_default(),
             timezone_info: TimezoneInfo::default(),

@@ -28,9 +28,13 @@ The server sends what changed, as tiles. Reach keeps its own copy of the framebu
 
 Frames are paced by acknowledgement. The webview says when it has painted, and the next frame goes out only then, so a busy screen costs the interface exactly as many frames as it can draw and no queue ever builds up.
 
-## Sound and a shared folder
+## A shared folder
 
-Remote audio plays through your default output device on Windows, Linux and macOS. A saved RDP session can name one local folder, which appears inside the desktop as a drive named after the folder; IronRDP's native filesystem backends serve it. Android has neither, and says so in the editor.
+A saved RDP session can name one local folder, which appears inside the desktop as a drive named after the folder; IronRDP's native filesystem backends serve it on Windows, macOS and Linux. Android has no such backend and says so in the editor.
+
+## Sound
+
+Playback is built in, through IronRDP's audio channel and the default output device, and the channel is announced exactly as Microsoft's client announces it. Against the Windows 11 host it was tested on, the server joins the channel and then never sends a byte on it, and never opens the audio dynamic channel either, so nothing plays yet. The next step is a packet capture of Microsoft's client against the same host to see what it does differently.
 
 ## The server's certificate
 
@@ -38,7 +42,7 @@ The certificate is checked strictly first, so one the platform trusts passes wit
 
 ## Video
 
-With OpenH264 compiled in, Reach advertises AVC420 through the graphics pipeline and a Windows server sends video as video rather than as tiles. That is what makes a moving picture bearable over a slow link. The tile path remains for servers that do not offer it.
+OpenH264 is compiled in and the client can hand it to the graphics pipeline, which is what lets a Windows host send video as AVC420. The pipeline is off by default, though: the host it was tested on opened the pipeline and then declined AVC420, and the pipeline's remaining codecs cost more over a slow link than the plain bitmap path does. It is a one-line switch in the connection config for a host that does offer H.264.
 
 ## Windows or Linux
 
