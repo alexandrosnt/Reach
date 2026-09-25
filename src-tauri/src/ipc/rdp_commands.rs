@@ -94,11 +94,32 @@ pub async fn rdp_clipboard_sync(state: tauri::State<'_, AppState>, id: String) -
 /// The window itself goes full screen (or comes back) for a desktop. Done
 /// here rather than through the web-side window API so it needs no
 /// capability grant and cannot be refused quietly.
+///
+/// A maximized window told to go full screen keeps the work-area size on
+/// Windows — the screen less the taskbar — so it is un-maximized first, and
+/// maximized again on the way back if that is how it was found.
 #[tauri::command]
 pub async fn rdp_window_fullscreen(app_handle: tauri::AppHandle, on: bool) -> Result<(), String> {
+    use std::sync::atomic::{AtomicBool, Ordering};
     use tauri::Manager as _;
+    static WAS_MAXIMIZED: AtomicBool = AtomicBool::new(false);
+
     let window = app_handle.get_webview_window("main").ok_or("no main window")?;
-    window.set_fullscreen(on).map_err(|e| e.to_string())
+    let err = |e: tauri::Error| e.to_string();
+    if on {
+        let maximized = window.is_maximized().map_err(err)?;
+        WAS_MAXIMIZED.store(maximized, Ordering::Relaxed);
+        if maximized {
+            window.unmaximize().map_err(err)?;
+        }
+        window.set_fullscreen(true).map_err(err)
+    } else {
+        window.set_fullscreen(false).map_err(err)?;
+        if WAS_MAXIMIZED.swap(false, Ordering::Relaxed) {
+            window.maximize().map_err(err)?;
+        }
+        Ok(())
+    }
 }
 
 /// The webview painted one frame message. The pump sends the next only once
