@@ -16,7 +16,6 @@
 	 */
 	import { onDestroy, onMount } from 'svelte';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import {
 		FRAME_FULL,
 		FRAME_HEADER,
@@ -34,6 +33,7 @@
 		rdpKey,
 		rdpMouse,
 		rdpResize,
+		rdpWindowFullscreen,
 		rdpUnicode,
 		type RdpConnectParams,
 		type RdpStatus,
@@ -115,10 +115,11 @@
 		fullscreen = on;
 		lift(on);
 		try {
-			await getCurrentWindow().setFullscreen(on);
-		} catch {
-			// A window that cannot go full screen still gets the panel over
-			// everything, which is most of the point.
+			await rdpWindowFullscreen(on);
+		} catch (err) {
+			// The panel is over everything either way, which is most of the
+			// point; the rest is said, not swallowed.
+			console.error('full screen:', err);
 		}
 		if (on) showBar();
 		else if (barTimer) clearTimeout(barTimer);
@@ -517,7 +518,7 @@
 		releaseAll();
 		if (fullscreen) {
 			lift(false);
-			void getCurrentWindow().setFullscreen(false).catch(() => {});
+			void rdpWindowFullscreen(false).catch(() => {});
 		}
 		if (barTimer) clearTimeout(barTimer);
 		// Not a disconnect: the panel is re-created whenever the page it lives

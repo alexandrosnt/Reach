@@ -91,6 +91,16 @@ pub async fn rdp_clipboard_sync(state: tauri::State<'_, AppState>, id: String) -
     state.rdp_manager.lock().await.clipboard_sync(&id)
 }
 
+/// The window itself goes full screen (or comes back) for a desktop. Done
+/// here rather than through the web-side window API so it needs no
+/// capability grant and cannot be refused quietly.
+#[tauri::command]
+pub async fn rdp_window_fullscreen(app_handle: tauri::AppHandle, on: bool) -> Result<(), String> {
+    use tauri::Manager as _;
+    let window = app_handle.get_webview_window("main").ok_or("no main window")?;
+    window.set_fullscreen(on).map_err(|e| e.to_string())
+}
+
 /// The webview painted one frame message. The pump sends the next only once
 /// it hears this, so a busy screen never gets ahead of the canvas.
 #[tauri::command]

@@ -90,6 +90,11 @@ export async function rdpClipboardSync(id: string): Promise<void> {
 	await invoke('rdp_clipboard_sync', { id });
 }
 
+/** The app window goes full screen, or comes back, for a desktop. */
+export async function rdpWindowFullscreen(on: boolean): Promise<void> {
+	await invoke('rdp_window_fullscreen', { on });
+}
+
 /** Close every open desktop; for the way out of the app. */
 export async function rdpDisconnectAll(): Promise<void> {
 	await invoke('rdp_disconnect_all');
