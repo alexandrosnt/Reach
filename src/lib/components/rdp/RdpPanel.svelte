@@ -59,6 +59,15 @@
 	let unlisten: UnlistenFn | null = null;
 	let sizeObserver: ResizeObserver | null = null;
 	let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+	/**
+	 * No resize goes to the server before this. Asked for within the first
+	 * second after login, a resize is accepted but never answered — the
+	 * server's display-control channel is still coming up — and the client
+	 * can only give up on it and reconnect. Holding the request that long
+	 * costs nothing anyone sees; the latest size wins when it fires.
+	 */
+	let resizeNotBefore = 0;
+	const SETTLE_MS = 1500;
 
 	/* --- GPU path ---------------------------------------------------------- */
 
@@ -381,6 +390,7 @@
 			if (s.state === 'connected' || s.state === 'loggedIn') {
 				phase = 'connected';
 				message = '';
+				resizeNotBefore = Date.now() + SETTLE_MS;
 			} else if (s.state === 'closed') {
 				phase = 'closed';
 				message = s.reason;
@@ -405,16 +415,27 @@
 		sizeObserver = new ResizeObserver(() => {
 			if (resizeTimer) clearTimeout(resizeTimer);
 			resizeTimer = setTimeout(() => {
-				if (phase !== 'connected') return;
-				const s = fitSize();
-				// The size the desktop already has is not a resize. Asking for
-				// it anyway leaves a request the server never answers.
-				if (s.width === canvas.width && s.height === canvas.height) return;
-				void rdpResize(id, s.width, s.height);
+				if (Date.now() < resizeNotBefore) {
+					resizeTimer = setTimeout(() => sizeObserver && host && requestResize(), resizeNotBefore - Date.now());
+					return;
+				}
+				requestResize();
 			}, 300);
 		});
 		sizeObserver.observe(host);
 	});
+
+	/** Send the panel's current size, unless the desktop already has it. */
+	function requestResize(): void {
+		{
+			if (phase !== 'connected') return;
+			const s = fitSize();
+			// The size the desktop already has is not a resize. Asking for
+			// it anyway leaves a request the server never answers.
+			if (s.width === canvas.width && s.height === canvas.height) return;
+			void rdpResize(id, s.width, s.height);
+		}
+	}
 
 	onDestroy(() => {
 		unlisten?.();
