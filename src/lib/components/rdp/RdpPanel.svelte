@@ -16,6 +16,7 @@
 	 */
 	import { onDestroy, onMount } from 'svelte';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import {
 		FRAME_FULL,
 		FRAME_HEADER,
@@ -68,6 +69,45 @@
 	 */
 	let resizeNotBefore = 0;
 	const SETTLE_MS = 1500;
+
+
+	/* --- full screen ------------------------------------------------------- */
+
+	/**
+	 * The desktop takes the whole window: the panel goes fixed over
+	 * everything and the window itself goes full screen, so the remote is
+	 * resized to the real screen. A bar at the top edge, shown briefly on
+	 * entry and whenever the mouse touches the edge, is the way back;
+	 * Ctrl+Alt+Enter toggles either way, as in Microsoft's client.
+	 */
+	let fullscreen = $state(false);
+	let barShown = $state(false);
+	let barTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function showBar(): void {
+		barShown = true;
+		if (barTimer) clearTimeout(barTimer);
+		barTimer = setTimeout(() => (barShown = false), 2500);
+	}
+
+	async function setFullscreen(on: boolean): Promise<void> {
+		if (fullscreen === on) return;
+		fullscreen = on;
+		try {
+			await getCurrentWindow().setFullscreen(on);
+		} catch {
+			// A window that cannot go full screen still gets the panel over
+			// everything, which is most of the point.
+		}
+		if (on) showBar();
+		else if (barTimer) clearTimeout(barTimer);
+		// The panel's size just changed; the observer sends the new size.
+		canvas?.focus();
+	}
+
+	function onHostMove(e: MouseEvent): void {
+		if (fullscreen && e.clientY <= 4) showBar();
+	}
 
 	/* --- GPU path ---------------------------------------------------------- */
 
@@ -335,6 +375,11 @@
 	const held = new Set<string>();
 
 	function onKeyDown(e: KeyboardEvent): void {
+		if (e.ctrlKey && e.altKey && e.code === 'Enter') {
+			e.preventDefault();
+			void setFullscreen(!fullscreen);
+			return;
+		}
 		if (phase !== 'connected') return;
 		// The remote repeats a held key itself; forwarding the browser's
 		// repeats as well would double the rate.
@@ -442,6 +487,8 @@
 		sizeObserver?.disconnect();
 		if (resizeTimer) clearTimeout(resizeTimer);
 		releaseAll();
+		if (fullscreen) void getCurrentWindow().setFullscreen(false).catch(() => {});
+		if (barTimer) clearTimeout(barTimer);
 		// Not a disconnect: the panel is re-created whenever the page it lives
 		// on is left and returned to, and the session must outlive that. The
 		// tab closing is what ends the session; see closeTab.
@@ -452,7 +499,8 @@
 	});
 </script>
 
-<div class="rdp" bind:this={host}>
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<div class="rdp" class:fullscreen bind:this={host} onmousemove={onHostMove}>
 	<!-- The canvas is the desktop: it takes focus and every key. The wrapper
 	     only sizes and centres it. -->
 	<canvas
@@ -472,6 +520,20 @@
 		oncontextmenu={(e) => e.preventDefault()}
 		class:dim={phase !== 'connected'}
 	></canvas>
+
+	{#if phase === 'connected' && !fullscreen}
+		<button type="button" class="fs-button" title={t('rdp.fullscreen_hint')} onclick={() => setFullscreen(true)}>
+			<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M2 6V2h4v1.5H3.5V6zm8-4h4v4h-1.5V3.5H10zM2 10h1.5v2.5H6V14H2zm10.5 0H14v4h-4v-1.5h2.5z"/></svg>
+			{t('rdp.fullscreen')}
+		</button>
+	{/if}
+
+	{#if fullscreen}
+		<div class="fs-bar" class:shown={barShown}>
+			<span class="fs-host">{params.username}@{params.host}</span>
+			<button type="button" class="fs-exit" onclick={() => setFullscreen(false)}>{t('rdp.exit_fullscreen')}</button>
+		</div>
+	{/if}
 
 	{#if phase !== 'connected'}
 		<div class="overlay" class:failed={phase === 'error'}>
@@ -558,5 +620,76 @@
 		to {
 			transform: rotate(360deg);
 		}
+	}
+	/* Full screen: over everything, the whole window, black behind. */
+	.rdp.fullscreen {
+		position: fixed;
+		inset: 0;
+		z-index: 1000;
+		background: #000;
+	}
+
+	.fs-button {
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 5px 10px;
+		font: inherit;
+		font-size: 0.75rem;
+		color: #fff;
+		background: rgba(0, 0, 0, 0.55);
+		border: 1px solid rgba(255, 255, 255, 0.25);
+		border-radius: var(--radius-btn);
+		cursor: pointer;
+		opacity: 0;
+		transition: opacity 150ms ease;
+	}
+
+	.rdp:hover .fs-button,
+	.fs-button:focus-visible {
+		opacity: 1;
+	}
+
+	/* The way back: a bar tucked above the top edge, shown when asked for. */
+	.fs-bar {
+		position: absolute;
+		top: 0;
+		left: 50%;
+		transform: translate(-50%, -100%);
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		padding: 6px 14px;
+		font-size: 0.75rem;
+		color: #fff;
+		background: rgba(0, 0, 0, 0.75);
+		border: 1px solid rgba(255, 255, 255, 0.2);
+		border-top: none;
+		border-radius: 0 0 var(--radius-btn) var(--radius-btn);
+		transition: transform 180ms ease;
+		z-index: 1;
+	}
+
+	.fs-bar.shown,
+	.fs-bar:hover {
+		transform: translate(-50%, 0);
+	}
+
+	.fs-host {
+		opacity: 0.8;
+	}
+
+	.fs-exit {
+		padding: 3px 10px;
+		font: inherit;
+		font-size: 0.75rem;
+		color: #fff;
+		background: var(--color-accent);
+		border: none;
+		border-radius: var(--radius-btn);
+		cursor: pointer;
 	}
 </style>
