@@ -90,9 +90,30 @@
 		barTimer = setTimeout(() => (barShown = false), 2500);
 	}
 
+	/**
+	 * Where the panel sat before it was lifted to the document body. An
+	 * ancestor of the panel clips fixed positioning to its own box — that is
+	 * what `contain` and transforms do — so over-everything means out of
+	 * that ancestor for the duration.
+	 */
+	let placeholder: Comment | null = null;
+
+	function lift(on: boolean): void {
+		if (on && !placeholder) {
+			placeholder = document.createComment('rdp panel');
+			host.parentNode?.insertBefore(placeholder, host);
+			document.body.appendChild(host);
+		} else if (!on && placeholder) {
+			placeholder.parentNode?.insertBefore(host, placeholder);
+			placeholder.remove();
+			placeholder = null;
+		}
+	}
+
 	async function setFullscreen(on: boolean): Promise<void> {
 		if (fullscreen === on) return;
 		fullscreen = on;
+		lift(on);
 		try {
 			await getCurrentWindow().setFullscreen(on);
 		} catch {
@@ -494,7 +515,10 @@
 		sizeObserver?.disconnect();
 		if (resizeTimer) clearTimeout(resizeTimer);
 		releaseAll();
-		if (fullscreen) void getCurrentWindow().setFullscreen(false).catch(() => {});
+		if (fullscreen) {
+			lift(false);
+			void getCurrentWindow().setFullscreen(false).catch(() => {});
+		}
 		if (barTimer) clearTimeout(barTimer);
 		// Not a disconnect: the panel is re-created whenever the page it lives
 		// on is left and returned to, and the session must outlive that. The
