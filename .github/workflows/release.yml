@@ -7,6 +7,8 @@ on:
 
 permissions:
   contents: write
+  # To ask the docs workflow to run once the release is out; see publish-release.
+  actions: write
 
 jobs:
   build-desktop:
@@ -149,6 +151,16 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           draft: false
+
+      # The docs site bakes the download links in at build time, so it has to
+      # rebuild after each release. It listens for "release published", but a
+      # release made with the workflow's own token never raises that event for
+      # other workflows: GitHub's rule against workflows triggering each other.
+      # workflow_dispatch is the one event that rule exempts, so ask directly.
+      - name: Rebuild the docs site with the new download links
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow run docs.yml --ref main
 
   build-android:
     runs-on: ubuntu-latest
