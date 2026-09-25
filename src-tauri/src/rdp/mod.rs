@@ -43,6 +43,8 @@
 //! host key; see `build_config`.
 
 pub mod clipboard;
+#[cfg(windows)]
+mod audio_session;
 
 use std::collections::HashMap;
 use std::num::NonZeroU16;
@@ -334,6 +336,11 @@ impl RdpManager {
                 runtime.block_on(client.run());
             })
             .map_err(|e| format!("could not start the RDP session thread: {e}"))?;
+
+        // The audio session Windows lists in the volume mixer is labelled
+        // with the process icon unless the app says otherwise; say otherwise.
+        #[cfg(windows)]
+        audio_session::label_when_it_appears();
 
         let flow = Arc::new(Flow::new());
         let frames = Arc::new(std::sync::Mutex::new(frames));

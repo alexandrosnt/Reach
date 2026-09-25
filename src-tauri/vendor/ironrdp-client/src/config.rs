@@ -1367,7 +1367,6 @@ impl ConfigBuilder {
     ///
     /// Unlike [`with_fake_events_interval`](Self::with_fake_events_interval), this does not write the minute-based `ironrdp_fakeeventsinterval` compatibility property.
     /// When both intervals are configured, the shorter interval controls synthetic input.
-    #[must_use]
     /// Reach: advertise the graphics pipeline. Off by default; see the note
     /// at `support_dyn_vc_gfx_protocol`.
     #[must_use]

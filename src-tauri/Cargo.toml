@@ -165,6 +165,7 @@ windows = { version = "0.61", features = [
     "Win32_UI_Shell_Common",
     "Win32_UI_Input_KeyboardAndMouse",
     "Win32_UI_WindowsAndMessaging",
+    "Win32_Media_Audio",
 ] }
 # The #[implement] macro expands to paths rooted at this crate, so it has to
 # be a direct dependency even though everything else comes through `windows`.
