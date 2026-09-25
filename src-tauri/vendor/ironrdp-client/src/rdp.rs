@@ -3378,7 +3378,17 @@ async fn active_session(
                             scale_factor,
                             physical_size,
                         };
-                        if resize_queue.in_flight.is_some() || active_stage.display_control_ready() == Some(false) {
+                        // Reach: a request for the size the desktop already has is done
+                        // before it starts. Sent anyway, the server has nothing to
+                        // reactivate for, the request stays in flight, every later one
+                        // queues behind it, and the timer ends in a reconnect.
+                        if resize_queue.in_flight.is_none()
+                            && request.width == image.width()
+                            && request.height == image.height()
+                        {
+                            debug!(width, height, "Resize to the current size: nothing to do");
+                            ActiveSessionIteration::outputs(Vec::new())
+                        } else if resize_queue.in_flight.is_some() || active_stage.display_control_ready() == Some(false) {
                             resize_queue.defer(request);
                             ActiveSessionIteration::outputs(Vec::new())
                         } else if let Some(dvc_batch) = active_stage.prepare_resize(

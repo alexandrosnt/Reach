@@ -340,6 +340,9 @@
 			resizeTimer = setTimeout(() => {
 				if (phase !== 'connected') return;
 				const s = fitSize();
+				// The size the desktop already has is not a resize. Asking for
+				// it anyway leaves a request the server never answers.
+				if (s.width === canvas.width && s.height === canvas.height) return;
 				void rdpResize(id, s.width, s.height);
 			}, 300);
 		});
@@ -351,7 +354,9 @@
 		sizeObserver?.disconnect();
 		if (resizeTimer) clearTimeout(resizeTimer);
 		releaseAll();
-		void rdpDisconnect(id).catch(() => {});
+		// Not a disconnect: the panel is re-created whenever the page it lives
+		// on is left and returned to, and the session must outlive that. The
+		// tab closing is what ends the session; see closeTab.
 	});
 
 	$effect(() => {

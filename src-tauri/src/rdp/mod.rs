@@ -169,6 +169,8 @@ enum Cursor {
 pub struct Flow {
     in_flight: AtomicU32,
     notify: Notify,
+    /// A new canvas is listening: send it the whole picture next.
+    refresh: std::sync::atomic::AtomicBool,
 }
 
 impl Flow {
@@ -176,7 +178,20 @@ impl Flow {
         Self {
             in_flight: AtomicU32::new(0),
             notify: Notify::new(),
+            refresh: std::sync::atomic::AtomicBool::new(false),
         }
+    }
+
+    /// A new webview attached: nothing it has not painted is in flight, and
+    /// it needs the whole picture.
+    fn reattached(&self) {
+        self.in_flight.store(0, Ordering::Release);
+        self.refresh.store(true, Ordering::Release);
+        self.notify.notify_one();
+    }
+
+    fn take_refresh(&self) -> bool {
+        self.refresh.swap(false, Ordering::AcqRel)
     }
 
     fn can_send(&self) -> bool {
@@ -213,6 +228,9 @@ struct Open {
     session: std::thread::JoinHandle<()>,
     pump: tokio::task::JoinHandle<()>,
     flow: Arc<Flow>,
+    /// Where frames go. Replaced when the webview's panel is re-created —
+    /// a page navigation does that — so the session survives it.
+    frames: Arc<std::sync::Mutex<Channel<InvokeResponseBody>>>,
     /// Dropped with the entry, which is what ends the clipboard thread.
     clipboard: clipboard::ClipboardHandle,
 }
@@ -240,8 +258,21 @@ impl RdpManager {
     ) -> Result<(), String> {
         let id = params.id.clone();
 
-        // A second connect for an id that is already open replaces it. The old
-        // session is asked to close rather than being dropped mid-frame.
+        // The panel for an open desktop was re-created — the page it lives on
+        // was left and returned to. The session is still running; give it the
+        // new channel and the whole picture, and say it is connected.
+        if let Some(open) = self.open.get(&id) {
+            if !open.session.is_finished() {
+                tracing::info!("RDP {id}: panel re-attached to the running session");
+                *open.frames.lock().unwrap_or_else(|e| e.into_inner()) = frames;
+                open.flow.reattached();
+                let _ = app.emit(&format!("rdp-status-{id}"), RdpStatus::Connected);
+                return Ok(());
+            }
+        }
+
+        // Otherwise a connect for an id that is already open replaces what is
+        // left of it. The old session is asked to close rather than dropped.
         if let Some(previous) = self.open.remove(&id) {
             // A thread cannot be aborted; the close request ends the session
             // and the thread exits with it. Only the pump is cut short.
@@ -302,9 +333,10 @@ impl RdpManager {
             .map_err(|e| format!("could not start the RDP session thread: {e}"))?;
 
         let flow = Arc::new(Flow::new());
-        let pump = tokio::spawn(pump_output(app, id.clone(), out_rx, frames, Arc::clone(&flow)));
+        let frames = Arc::new(std::sync::Mutex::new(frames));
+        let pump = tokio::spawn(pump_output(app, id.clone(), out_rx, Arc::clone(&frames), Arc::clone(&flow)));
 
-        self.open.insert(id, Open { input, session, pump, flow, clipboard });
+        self.open.insert(id, Open { input, session, pump, flow, frames, clipboard });
         Ok(())
     }
 
@@ -613,7 +645,7 @@ async fn pump_output(
     app: AppHandle,
     id: String,
     mut rx: OutputEventReceiver,
-    frames: Channel<InvokeResponseBody>,
+    frames: Arc<std::sync::Mutex<Channel<InvokeResponseBody>>>,
     flow: Arc<Flow>,
 ) {
     let status = |s: RdpStatus| {
@@ -644,9 +676,18 @@ async fn pump_output(
             _ = tokio::time::sleep_until(deadline), if pending && !settled => {}
         }
 
+        if flow.take_refresh() {
+            screen.replaced = true;
+            screen.touch();
+        }
+
         if screen.pending() && screen.settled() && flow.can_send() {
             flow.sent();
-            if frames.send(InvokeResponseBody::Raw(screen.take())).is_err() {
+            let sent = frames
+                .lock()
+                .unwrap_or_else(|e| e.into_inner())
+                .send(InvokeResponseBody::Raw(screen.take()));
+            if sent.is_err() {
                 // The webview is gone; nothing left to draw for.
                 break;
             }

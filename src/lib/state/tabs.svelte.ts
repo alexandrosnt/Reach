@@ -1,5 +1,5 @@
 import type { SshConnectParams } from '$lib/ipc/ssh';
-import type { RdpConnectParams } from '$lib/ipc/rdp';
+import { rdpDisconnect, type RdpConnectParams } from '$lib/ipc/rdp';
 
 export type TabType = 'local' | 'ssh' | 'rdp';
 
@@ -56,6 +56,12 @@ export function createTab(type: TabType, title?: string, connectionId?: string, 
 export function closeTab(id: string): void {
 	const index = tabs.findIndex((t) => t.id === id);
 	if (index === -1) return;
+
+	// A desktop's session lives in the backend and outlives its panel; the
+	// tab going is what ends it.
+	if (tabs[index].type === 'rdp') {
+		void rdpDisconnect(id).catch(() => {});
+	}
 
 	const wasActive = tabs[index].active;
 
