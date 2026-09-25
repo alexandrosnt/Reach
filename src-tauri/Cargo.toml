@@ -104,6 +104,7 @@ tauri-plugin-process = "2.3.1"
 ironrdp-client = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", default-features = false, features = ["rustls", "clipboard", "rdpdr"] }
 ironrdp-cliprdr = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99" }
 ironrdp-rdpdr = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99" }
+ironrdp-svc = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99" }
 ironrdp-tls = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", default-features = false, features = ["rustls"] }
 # H.264 for the graphics pipeline: OpenH264 compiled in (the user's call; see the changelog).
 ironrdp-egfx = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", features = ["openh264-bundled"] }
@@ -119,8 +120,6 @@ arboard = { version = "3.6", default-features = false }
 # features, so playback (cpal + a bundled Opus) is built for the desktops only.
 # Android would need the NDK C++ toolchain for cpal and has no listener yet.
 ironrdp-client = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99", default-features = false, features = ["sound"] }
-# Drive redirection for RDP: the native filesystem backends (Windows, macOS, Linux).
-ironrdp-rdpdr-native = { git = "https://github.com/Devolutions/IronRDP", rev = "9b151c4c2e47c6014e1e8e55909d4180aa8bdb99" }
 portable-pty = "0.8"
 serialport = "4"
 tauri-plugin-autostart = "2"
@@ -203,3 +202,7 @@ opt-level = 3
 # The client crate with one addition of ours, `with_h264_decoder`; see vendor/ironrdp-client/Cargo.toml.
 [patch."https://github.com/Devolutions/IronRDP"]
 ironrdp-client = { path = "vendor/ironrdp-client" }
+
+# Free space of the volume a shared RDP folder is on.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

@@ -43,6 +43,7 @@
 //! host key; see `build_config`.
 
 pub mod clipboard;
+pub mod drive;
 #[cfg(windows)]
 mod audio_session;
 
@@ -241,8 +242,6 @@ struct Open {
     frames: Arc<std::sync::Mutex<Channel<InvokeResponseBody>>>,
     /// Dropped with the entry, which is what ends the clipboard thread.
     clipboard: clipboard::ClipboardHandle,
-    /// The drive letter lent to a shared folder, given back with the entry.
-    _drive: Option<DriveAlias>,
 }
 
 #[derive(Default)]
@@ -311,16 +310,14 @@ impl RdpManager {
             .map_err(|e| format!("could not start the RDP clipboard thread: {e}"))?;
         let mut client = client.with_cliprdr_backend_factory(Box::new(clip_factory));
 
-        let mut drive: Option<DriveAlias> = None;
         // A shared folder rides the device channel as one drive. The native
         // backends serve it: IronRDP's own on Windows, its Unix one on the
         // others. Android has no backend for it and says so.
         if let Some(path) = params.share_path.as_deref().filter(|p| !p.trim().is_empty()) {
             match drive_factory(path) {
-                Ok((factory, alias)) => {
+                Ok(factory) => {
                     tracing::info!("RDP {id}: sharing {path} as a drive");
                     client = client.with_rdpdr_backend_factory(factory);
-                    drive = alias;
                 }
                 Err(e) => tracing::warn!("RDP {id}: not sharing {path}: {e}"),
             }
@@ -353,7 +350,7 @@ impl RdpManager {
         let frames = Arc::new(std::sync::Mutex::new(frames));
         let pump = tokio::spawn(pump_output(app, id.clone(), out_rx, Arc::clone(&frames), Arc::clone(&flow)));
 
-        self.open.insert(id, Open { input, session, pump, flow, frames, clipboard, _drive: drive });
+        self.open.insert(id, Open { input, session, pump, flow, frames, clipboard });
         Ok(())
     }
 
@@ -594,117 +591,14 @@ fn build_config(p: &RdpConnectParams, app: AppHandle) -> Result<ironrdp_client::
     builder.build().map_err(|e| e.to_string())
 }
 
-/// The drive backend for one shared folder, named after the folder.
-#[cfg(windows)]
-fn drive_factory(path: &str) -> Result<(Box<dyn ironrdp_rdpdr::backend::RdpdrBackendFactory + Send>, Option<DriveAlias>), String> {
-    use ironrdp_rdpdr_native::{RedirectedDrive, WindowsRdpdrBackendFactory};
-    // IronRDP's Windows backend serves a whole logical volume, `X:\`, and
-    // nothing below one. A folder is lent a free drive letter for the life
-    // of the session — what `subst` does — and that root is what is shared.
-    let (root, alias) = match DriveAlias::volume_root(path) {
-        Some(root) => (root, None),
-        None => {
-            let alias = DriveAlias::map(path)?;
-            (alias.root(), Some(alias))
-        }
-    };
-    let drive = RedirectedDrive::new(1, drive_name(path), root, false).map_err(|e| e.to_string())?;
-    Ok((Box::new(WindowsRdpdrBackendFactory::new(drive)), alias))
-}
-
-/// A drive letter standing in for a folder, for one session. Made with the
-/// call `subst` makes, in this user's own DOS device namespace, so no
-/// elevation is involved; removed when dropped.
-#[cfg(windows)]
-struct DriveAlias {
-    device: Vec<u16>,
-    target: Vec<u16>,
-    letter: char,
-}
-
-#[cfg(windows)]
-impl DriveAlias {
-    /// `X:\` as is, when the path already is a volume root.
-    fn volume_root(path: &str) -> Option<String> {
-        let b = path.as_bytes();
-        (b.len() == 3 && b[0].is_ascii_alphabetic() && b[1] == b':' && b[2] == b'\\').then(|| path.to_string())
-    }
-
-    fn map(path: &str) -> Result<Self, String> {
-        use windows::core::PCWSTR;
-        use windows::Win32::Storage::FileSystem::{DefineDosDeviceW, GetLogicalDrives, DDD_NO_BROADCAST_SYSTEM};
-
-        if !std::path::Path::new(path).is_dir() {
-            return Err("not a directory".into());
-        }
-        // SAFETY: no arguments, returns a bitmask.
-        let used = unsafe { GetLogicalDrives() };
-        let letter = (b'D'..=b'Z')
-            .rev()
-            .find(|l| used & (1u32 << (l - b'A')) == 0)
-            .ok_or("no free drive letter to lend the folder")? as char;
-        let device: Vec<u16> = format!("{letter}:").encode_utf16().chain([0]).collect();
-        let target: Vec<u16> = path.trim_end_matches(['\\', '/']).encode_utf16().chain([0]).collect();
-        // SAFETY: both strings are NUL-terminated and outlive the call.
-        unsafe { DefineDosDeviceW(DDD_NO_BROADCAST_SYSTEM, PCWSTR(device.as_ptr()), PCWSTR(target.as_ptr())) }
-            .map_err(|e| format!("could not lend drive letter {letter}: to the folder: {e}"))?;
-        tracing::info!("RDP: {path} is {letter}: for this session");
-        Ok(Self { device, target, letter })
-    }
-
-    fn root(&self) -> String {
-        format!("{}:\\", self.letter)
-    }
-}
-
-#[cfg(windows)]
-impl Drop for DriveAlias {
-    fn drop(&mut self) {
-        use windows::core::PCWSTR;
-        use windows::Win32::Storage::FileSystem::{
-            DefineDosDeviceW, DDD_EXACT_MATCH_ON_REMOVE, DDD_NO_BROADCAST_SYSTEM, DDD_REMOVE_DEFINITION,
-        };
-        // SAFETY: the same strings the mapping was made with.
-        let removed = unsafe {
-            DefineDosDeviceW(
-                DDD_REMOVE_DEFINITION | DDD_EXACT_MATCH_ON_REMOVE | DDD_NO_BROADCAST_SYSTEM,
-                PCWSTR(self.device.as_ptr()),
-                PCWSTR(self.target.as_ptr()),
-            )
-        };
-        if let Err(e) = removed {
-            tracing::warn!("RDP: drive letter {}: not given back: {e}", self.letter);
-        }
-    }
-}
-
-#[cfg(not(windows))]
-struct DriveAlias;
-
-#[cfg(any(target_os = "macos", target_os = "linux"))]
-fn drive_factory(path: &str) -> Result<(Box<dyn ironrdp_rdpdr::backend::RdpdrBackendFactory + Send>, Option<DriveAlias>), String> {
-    struct Factory {
-        path: String,
-        name: String,
-    }
-    impl ironrdp_rdpdr::backend::RdpdrBackendFactory for Factory {
-        fn build_rdpdr_backend(&self) -> ironrdp_rdpdr::backend::RdpdrBackendFactoryResult<ironrdp_rdpdr::backend::RdpdrBackendProduct> {
-            let backend = ironrdp_rdpdr_native::backend::NixRdpdrBackend::new(self.path.clone());
-            Ok(ironrdp_rdpdr::backend::RdpdrBackendProduct::new(
-                Box::new(backend),
-                vec![ironrdp_rdpdr::backend::RdpdrDrive::new(1, self.name.clone())],
-            ))
-        }
-    }
-    if !std::path::Path::new(path).is_dir() {
+/// The drive backend for one shared folder, named after the folder: Reach's
+/// own, on the standard library, the same on every desktop. See [`drive`].
+fn drive_factory(path: &str) -> Result<Box<dyn ironrdp_rdpdr::backend::RdpdrBackendFactory + Send>, String> {
+    let root = std::path::PathBuf::from(path);
+    if !root.is_dir() {
         return Err("not a directory".into());
     }
-    Ok((Box::new(Factory { path: path.to_string(), name: drive_name(path) }), None))
-}
-
-#[cfg(not(any(windows, target_os = "macos", target_os = "linux")))]
-fn drive_factory(_path: &str) -> Result<(Box<dyn ironrdp_rdpdr::backend::RdpdrBackendFactory + Send>, Option<DriveAlias>), String> {
-    Err("drive redirection is not available on this platform".into())
+    Ok(Box::new(drive::FolderDriveFactory::new(root, drive_name(path))))
 }
 
 /// What the drive is called on the remote: the folder's own name, or the
