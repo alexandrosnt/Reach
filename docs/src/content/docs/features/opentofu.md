@@ -3,6 +3,8 @@ title: OpenTofu
 description: Manage infrastructure as code with OpenTofu directly from Reach.
 ---
 
+> Ansible, OpenTofu and Databases are switched on in **Settings → DevOps**. See [DevOps Tools](/settings/devops/).
+
 Reach has a full OpenTofu workspace that covers the entire IaC workflow. You can manage projects, configure providers and resources through a visual UI, run plan/apply/destroy with streaming output, inspect and modify state, visualize dependency graphs, manage workspaces, and generate HCL files — all without touching the command line.
 
 ## Installing OpenTofu

@@ -11,6 +11,7 @@ fn silent_async_command(program: impl AsRef<std::ffi::OsStr>) -> tokio::process:
 }
 
 use crate::ssh::client::exec_on_connection;
+use crate::devops::{self, Tool};
 use crate::state::AppState;
 use crate::tofu::runner;
 use crate::tofu::binary::{self, BinaryStatus};
@@ -30,6 +31,7 @@ use uuid::Uuid;
 /// List all saved tofu projects.
 #[tauri::command]
 pub async fn tofu_list_projects(state: State<'_, AppState>) -> Result<Vec<TofuProject>, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -44,6 +46,7 @@ pub async fn tofu_create_project(
     path: String,
     description: String,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     // Scaffold directory
     crate::tofu::project::TofuProjectManager::scaffold_project(&path, &name)?;
 
@@ -109,6 +112,7 @@ pub async fn tofu_delete_project(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<(), String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -121,6 +125,7 @@ pub async fn tofu_open_project(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -138,6 +143,7 @@ pub async fn tofu_run_command(
     app_handle: tauri::AppHandle,
     request: TofuCommandRequest,
 ) -> Result<String, String> {
+    devops::require(Tool::Tofu)?;
     let run_id = Uuid::new_v4().to_string();
 
     // Get project path, and the encryption passphrase for the run's environment
@@ -228,6 +234,7 @@ pub async fn tofu_read_file(
     project_id: String,
     filename: String,
 ) -> Result<String, String> {
+    devops::require(Tool::Tofu)?;
     let tofu_mgr = state.tofu_project_manager.lock().await;
     let project = tofu_mgr
         .get_project(&project_id)
@@ -246,6 +253,7 @@ pub async fn tofu_write_file(
     filename: String,
     content: String,
 ) -> Result<(), String> {
+    devops::require(Tool::Tofu)?;
     let tofu_mgr = state.tofu_project_manager.lock().await;
     let project = tofu_mgr
         .get_project(&project_id)
@@ -262,6 +270,7 @@ pub async fn tofu_list_files(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<Vec<String>, String> {
+    devops::require(Tool::Tofu)?;
     let tofu_mgr = state.tofu_project_manager.lock().await;
     let project = tofu_mgr
         .get_project(&project_id)
@@ -290,6 +299,7 @@ pub async fn tofu_list_files(
 /// Return the static provider catalog.
 #[tauri::command]
 pub async fn tofu_get_provider_catalog() -> Result<Vec<ProviderCatalogEntry>, String> {
+    devops::require(Tool::Tofu)?;
     Ok(crate::tofu::catalog::get_provider_catalog())
 }
 
@@ -300,6 +310,7 @@ pub async fn tofu_update_providers(
     project_id: String,
     providers: Vec<TofuProviderConfig>,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -321,6 +332,7 @@ pub async fn tofu_update_variables(
     project_id: String,
     variables: Vec<TofuVariable>,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -343,6 +355,7 @@ pub async fn tofu_update_environments(
     environments: Vec<TofuEnvironment>,
     active_environment: Option<String>,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -364,6 +377,7 @@ pub async fn tofu_generate_hcl(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<HclGenerationResult, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -388,6 +402,7 @@ pub async fn tofu_write_generated_files(
     project_id: String,
     files: Vec<GeneratedFile>,
 ) -> Result<(), String> {
+    devops::require(Tool::Tofu)?;
     let tofu_mgr = state.tofu_project_manager.lock().await;
     let project = tofu_mgr
         .get_project(&project_id)
@@ -406,6 +421,7 @@ pub async fn tofu_write_generated_files(
 /// Return the static resource catalog.
 #[tauri::command]
 pub async fn tofu_get_resource_catalog() -> Result<Vec<ResourceCatalogEntry>, String> {
+    devops::require(Tool::Tofu)?;
     Ok(crate::tofu::resource_catalog::get_resource_catalog())
 }
 
@@ -416,6 +432,7 @@ pub async fn tofu_update_resources(
     project_id: String,
     resources: Vec<TofuResourceConfig>,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -437,6 +454,7 @@ pub async fn tofu_state_list_resources(
     project_id: String,
     target: TofuExecutionTarget,
 ) -> Result<Vec<String>, String> {
+    devops::require(Tool::Tofu)?;
     // Get project path
     let project_path = {
         let mut tofu_mgr = state.tofu_project_manager.lock().await;
@@ -504,6 +522,7 @@ pub async fn tofu_update_outputs(
     project_id: String,
     outputs: Vec<TofuOutput>,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -525,6 +544,7 @@ pub async fn tofu_get_output_values(
     project_id: String,
     target: TofuExecutionTarget,
 ) -> Result<Vec<TofuOutputValue>, String> {
+    devops::require(Tool::Tofu)?;
     let project_path = {
         let mut tofu_mgr = state.tofu_project_manager.lock().await;
         let mut vault_mgr = state.vault_manager.lock().await;
@@ -610,6 +630,7 @@ pub async fn tofu_get_dependency_graph(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<DependencyGraph, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -624,6 +645,7 @@ pub async fn tofu_get_dependency_graph(
 /// Return the static project template catalog.
 #[tauri::command]
 pub async fn tofu_get_templates() -> Result<Vec<ProjectTemplate>, String> {
+    devops::require(Tool::Tofu)?;
     Ok(crate::tofu::templates::get_project_templates())
 }
 
@@ -634,6 +656,7 @@ pub async fn tofu_apply_template(
     project_id: String,
     template_id: String,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     let templates = crate::tofu::templates::get_project_templates();
     let template = templates
         .iter()
@@ -674,6 +697,7 @@ pub async fn tofu_update_backend(
     project_id: String,
     backend: Option<TofuBackendConfig>,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -696,6 +720,7 @@ pub async fn tofu_discard_plan(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<bool, String> {
+    devops::require(Tool::Tofu)?;
     let project_path = {
         let mut tofu_mgr = state.tofu_project_manager.lock().await;
         let mut vault_mgr = state.vault_manager.lock().await;
@@ -720,6 +745,7 @@ pub async fn tofu_update_encryption(
     project_id: String,
     encryption: Option<TofuEncryptionConfig>,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -741,6 +767,7 @@ pub async fn tofu_update_data_sources(
     project_id: String,
     data_sources: Vec<TofuDataSource>,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -758,6 +785,7 @@ pub async fn tofu_update_data_sources(
 /// Return the static data source catalog.
 #[tauri::command]
 pub async fn tofu_get_data_source_catalog() -> Result<Vec<DataSourceCatalogEntry>, String> {
+    devops::require(Tool::Tofu)?;
     Ok(crate::tofu::data_catalog::get_data_source_catalog())
 }
 
@@ -768,6 +796,7 @@ pub async fn tofu_update_locals(
     project_id: String,
     locals: Vec<TofuLocal>,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -789,6 +818,7 @@ pub async fn tofu_update_modules(
     project_id: String,
     modules: Vec<TofuModuleConfig>,
 ) -> Result<TofuProject, String> {
+    devops::require(Tool::Tofu)?;
     let mut tofu_mgr = state.tofu_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     tofu_mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -806,6 +836,7 @@ pub async fn tofu_update_modules(
 /// Return the static backend catalog.
 #[tauri::command]
 pub async fn tofu_get_backend_catalog() -> Result<Vec<BackendCatalogEntry>, String> {
+    devops::require(Tool::Tofu)?;
     Ok(crate::tofu::backend_catalog::get_backend_catalog())
 }
 
@@ -816,6 +847,7 @@ pub async fn tofu_workspace_list(
     project_id: String,
     target: TofuExecutionTarget,
 ) -> Result<TofuWorkspaceInfo, String> {
+    devops::require(Tool::Tofu)?;
     let project_path = {
         let mut tofu_mgr = state.tofu_project_manager.lock().await;
         let mut vault_mgr = state.vault_manager.lock().await;
@@ -862,6 +894,7 @@ pub async fn tofu_workspace_new(
     target: TofuExecutionTarget,
     name: String,
 ) -> Result<(), String> {
+    devops::require(Tool::Tofu)?;
     let project_path = {
         let mut tofu_mgr = state.tofu_project_manager.lock().await;
         let mut vault_mgr = state.vault_manager.lock().await;
@@ -884,6 +917,7 @@ pub async fn tofu_workspace_select(
     target: TofuExecutionTarget,
     name: String,
 ) -> Result<(), String> {
+    devops::require(Tool::Tofu)?;
     let project_path = {
         let mut tofu_mgr = state.tofu_project_manager.lock().await;
         let mut vault_mgr = state.vault_manager.lock().await;
@@ -906,6 +940,7 @@ pub async fn tofu_workspace_delete(
     target: TofuExecutionTarget,
     name: String,
 ) -> Result<(), String> {
+    devops::require(Tool::Tofu)?;
     let project_path = {
         let mut tofu_mgr = state.tofu_project_manager.lock().await;
         let mut vault_mgr = state.vault_manager.lock().await;
@@ -934,6 +969,7 @@ pub async fn tofu_fmt(
     target: TofuExecutionTarget,
     check_only: bool,
 ) -> Result<TofuFmtResult, String> {
+    devops::require(Tool::Tofu)?;
     let project_path = {
         let mut tofu_mgr = state.tofu_project_manager.lock().await;
         let mut vault_mgr = state.vault_manager.lock().await;
@@ -980,6 +1016,7 @@ pub async fn tofu_show_plan_json(
     project_id: String,
     target: TofuExecutionTarget,
 ) -> Result<TofuPlanSummary, String> {
+    devops::require(Tool::Tofu)?;
     let project_path = {
         let mut tofu_mgr = state.tofu_project_manager.lock().await;
         let mut vault_mgr = state.vault_manager.lock().await;
@@ -1003,6 +1040,7 @@ pub async fn tofu_fetch_schema(
     project_id: String,
     target: TofuExecutionTarget,
 ) -> Result<Vec<ProviderSchema>, String> {
+    devops::require(Tool::Tofu)?;
     let project_path = {
         let mut tofu_mgr = state.tofu_project_manager.lock().await;
         let mut vault_mgr = state.vault_manager.lock().await;
@@ -1031,6 +1069,7 @@ pub async fn tofu_get_cached_schema(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<Option<Vec<ProviderSchema>>, String> {
+    devops::require(Tool::Tofu)?;
     let cache = state.tofu_schema_cache.lock().await;
     Ok(cache.cache.get(&project_id).cloned())
 }
@@ -1042,6 +1081,7 @@ pub async fn tofu_get_schema_resource_fields(
     project_id: String,
     resource_type: String,
 ) -> Result<Vec<ProviderFieldSchema>, String> {
+    devops::require(Tool::Tofu)?;
     // Try dynamic schema first
     let cache = state.tofu_schema_cache.lock().await;
     if let Some(schemas) = cache.cache.get(&project_id) {
@@ -1212,6 +1252,7 @@ pub async fn tofu_binary_status(
     state: State<'_, AppState>,
     project_id: Option<String>,
 ) -> Result<BinaryStatus, String> {
+    devops::require(Tool::Tofu)?;
     let dir = match project_id {
         Some(id) => {
             let mut tofu_mgr = state.tofu_project_manager.lock().await;
@@ -1231,6 +1272,7 @@ pub async fn tofu_binary_install(
     app_handle: tauri::AppHandle,
     version: Option<String>,
 ) -> Result<String, String> {
+    devops::require(Tool::Tofu)?;
     let h = app_handle.clone();
     let report = move |m: &str| crate::toolchain::install::emit_progress(&h, "tofu", m);
     match binary::install(version, report).await {
@@ -1252,6 +1294,7 @@ pub async fn tofu_binary_pin(
     project_id: String,
     version: Option<String>,
 ) -> Result<BinaryStatus, String> {
+    devops::require(Tool::Tofu)?;
     let dir = {
         let mut tofu_mgr = state.tofu_project_manager.lock().await;
         let mut vault_mgr = state.vault_manager.lock().await;
@@ -1267,5 +1310,6 @@ pub async fn tofu_binary_pin(
 
 #[tauri::command]
 pub async fn tofu_binary_remove(version: String) -> Result<(), String> {
+    devops::require(Tool::Tofu)?;
     binary::remove(&version)
 }

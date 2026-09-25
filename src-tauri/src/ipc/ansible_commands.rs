@@ -7,12 +7,14 @@ use crate::ansible::types::{
     AnsibleCollection, AnsibleCommandRequest, AnsibleExecutionTarget, AnsibleInventoryGroup,
     AnsibleInventoryHost, AnsibleProject, AnsibleRole,
 };
+use crate::devops::{self, Tool};
 use crate::state::AppState;
 
 #[tauri::command]
 pub async fn ansible_list_projects(
     state: State<'_, AppState>,
 ) -> Result<Vec<AnsibleProject>, String> {
+    devops::require(Tool::Ansible)?;
     let mut mgr = state.ansible_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -26,6 +28,7 @@ pub async fn ansible_create_project(
     path: String,
     description: String,
 ) -> Result<AnsibleProject, String> {
+    devops::require(Tool::Ansible)?;
     let id = uuid::Uuid::new_v4().to_string();
     let now = {
         let dur = std::time::SystemTime::now()
@@ -82,6 +85,7 @@ pub async fn ansible_delete_project(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<(), String> {
+    devops::require(Tool::Ansible)?;
     let mut mgr = state.ansible_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -93,6 +97,7 @@ pub async fn ansible_open_project(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<AnsibleProject, String> {
+    devops::require(Tool::Ansible)?;
     let mut mgr = state.ansible_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -109,6 +114,7 @@ pub async fn ansible_update_inventory(
     hosts: Vec<AnsibleInventoryHost>,
     groups: Vec<AnsibleInventoryGroup>,
 ) -> Result<AnsibleProject, String> {
+    devops::require(Tool::Ansible)?;
     let mut mgr = state.ansible_project_manager.lock().await;
     let mut vault_mgr = state.vault_manager.lock().await;
     mgr.ensure_loaded(&mut vault_mgr).await?;
@@ -127,6 +133,7 @@ pub async fn ansible_list_files(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<Vec<String>, String> {
+    devops::require(Tool::Ansible)?;
     let mgr = state.ansible_project_manager.lock().await;
     let project = mgr
         .get_project(&project_id)
@@ -169,6 +176,7 @@ pub async fn ansible_read_file(
     project_id: String,
     filename: String,
 ) -> Result<String, String> {
+    devops::require(Tool::Ansible)?;
     let mgr = state.ansible_project_manager.lock().await;
     let project = mgr
         .get_project(&project_id)
@@ -186,6 +194,7 @@ pub async fn ansible_write_file(
     filename: String,
     content: String,
 ) -> Result<(), String> {
+    devops::require(Tool::Ansible)?;
     let mgr = state.ansible_project_manager.lock().await;
     let project = mgr
         .get_project(&project_id)
@@ -202,6 +211,7 @@ pub async fn ansible_run_command(
     app_handle: tauri::AppHandle,
     request: AnsibleCommandRequest,
 ) -> Result<String, String> {
+    devops::require(Tool::Ansible)?;
     let run_id = uuid::Uuid::new_v4().to_string();
 
     let mgr = state.ansible_project_manager.lock().await;
@@ -329,6 +339,7 @@ pub async fn ansible_run_command(
 /// The engines this machine can offer on its own.
 #[tauri::command]
 pub async fn ansible_engines() -> Result<Vec<engine::EngineInfo>, String> {
+    devops::require(Tool::Ansible)?;
     Ok(tokio::task::spawn_blocking(engine::detect_local_engines)
         .await
         .map_err(|e| e.to_string())?)
@@ -340,6 +351,7 @@ pub async fn ansible_remote_engine(
     state: State<'_, AppState>,
     connection_id: String,
 ) -> Result<engine::EngineInfo, String> {
+    devops::require(Tool::Ansible)?;
     let (handle, label) = {
         let ssh = state.ssh_manager.lock().await;
         let h = ssh.get_handle(&connection_id).map_err(|e| e.to_string())?;
@@ -359,6 +371,7 @@ pub async fn ansible_generate_inventory(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<String, String> {
+    devops::require(Tool::Ansible)?;
     let mgr = state.ansible_project_manager.lock().await;
     let project = mgr
         .get_project(&project_id)
@@ -462,6 +475,7 @@ pub async fn ansible_write_inventory(
     content: String,
     filename: Option<String>,
 ) -> Result<(), String> {
+    devops::require(Tool::Ansible)?;
     let mgr = state.ansible_project_manager.lock().await;
     let project = mgr
         .get_project(&project_id)
@@ -478,6 +492,7 @@ pub async fn ansible_list_roles(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<Vec<AnsibleRole>, String> {
+    devops::require(Tool::Ansible)?;
     let mgr = state.ansible_project_manager.lock().await;
     let project = mgr
         .get_project(&project_id)
@@ -511,6 +526,7 @@ pub async fn ansible_list_collections(
     state: State<'_, AppState>,
     project_id: String,
 ) -> Result<Vec<AnsibleCollection>, String> {
+    devops::require(Tool::Ansible)?;
     let mgr = state.ansible_project_manager.lock().await;
     let project = mgr
         .get_project(&project_id)
@@ -559,6 +575,7 @@ pub async fn ansible_vault_view(
     project_id: String,
     vault_file: String,
 ) -> Result<String, String> {
+    devops::require(Tool::Ansible)?;
     let mgr = state.ansible_project_manager.lock().await;
     let project = mgr
         .get_project(&project_id)

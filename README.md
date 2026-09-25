@@ -54,8 +54,11 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 - **Snippets** · Save the commands you keep retyping and complete them with Tab. Prefix-matched, so a hundred of them feel like three.
 - **System Monitoring** · Live CPU, memory, and disk stats from connected hosts without installing agents.
 
-### Infrastructure as Code
+### DevOps — switch on what you use
 
+> **Where are Ansible, OpenTofu and Databases?** They are switched on in **Settings → DevOps**, one switch per tool. On a fresh install all three are off, so Reach opens as a plain remote-access app. If you are updating from 0.6.7 or earlier, Ansible and OpenTofu stay on exactly as before; Databases is new and waits for you to switch it on. A tool that is off disappears from the tab bar and its commands are refused, and nothing it saved is deleted — switch it back on and everything is where you left it.
+
+- **Databases** · PostgreSQL, MySQL, MariaDB, SQL Server, SQLite and Redis in one workspace. Browse databases and tables, edit rows in a grid, write SQL with autocomplete from the live schema, and design tables the way Navicat does — fields, indexes, foreign keys, checks and triggers, with the exact `ALTER` shown before it runs. Connect directly or **through an SSH session you already have**, and let Reach **find the databases running on a server you have a terminal open to**. Every change goes through a review: statements that drop, truncate or touch every row ask first, and a connection marked *production* asks before any change at all; *read-only* connections refuse writes outright. Backup and restore to plain SQL, CSV import and export, a server monitor with cancel and end-session, and for Redis a key browser, value editors and a console.
 - **Ansible** · Run one command across a whole inventory, or a full playbook. Manage playbooks, inventories, roles, and collections. Run playbooks and ad-hoc commands with streaming output. Encrypts/decrypts files with ansible-vault. On Windows, automatically runs through WSL.
 - **OpenTofu** · Plan, apply, and destroy infrastructure. Browse state, manage providers and modules. Full workspace with file editor and streaming command output.
 

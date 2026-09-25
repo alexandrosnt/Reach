@@ -85,6 +85,7 @@ export default defineConfig({
 						{ label: 'Jump Hosts & SSH Config', slug: 'features/jump-hosts' },
 						{ label: 'Ansible', slug: 'features/ansible' },
 						{ label: 'OpenTofu', slug: 'features/opentofu' },
+						{ label: 'Databases', slug: 'features/databases' },
 						{ label: 'Plugins', slug: 'features/plugins' },
 						{ label: 'Themes', slug: 'features/themes' },
 						{ label: 'Marketplace', slug: 'features/marketplace' },
@@ -116,6 +117,7 @@ export default defineConfig({
 					label: 'Settings & Customization',
 					items: [
 						{ label: 'General Settings', slug: 'settings/general' },
+						{ label: 'DevOps Tools', slug: 'settings/devops' },
 						{ label: 'Keyboard Shortcuts', slug: 'settings/shortcuts' },
 						{ label: 'Auto-Updates', slug: 'settings/updates' },
 					],

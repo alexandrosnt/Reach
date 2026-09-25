@@ -32,12 +32,13 @@ pub const TOFU_PROJECTS_VAULT: &str = "__tofu_projects__";
 pub const ANSIBLE_PROJECTS_VAULT: &str = "__ansible_projects__";
 pub const SNIPPETS_VAULT: &str = "__snippets__";
 pub const SSH_KEYS_VAULT: &str = "__ssh_keys__";
+pub const DATABASES_VAULT: &str = "__databases__";
 
 /// Every vault Reach keeps for itself. They are opened together, migrate
 /// together and map together onto the unified vault when personal sync is on,
 /// so the list lives in one place — a vault missing from one of those sites is
 /// a vault whose data silently stops syncing.
-pub const INTERNAL_VAULTS: [&str; 9] = [
+pub const INTERNAL_VAULTS: [&str; 10] = [
     SESSIONS_VAULT,
     CREDENTIALS_VAULT,
     FOLDERS_VAULT,
@@ -47,6 +48,7 @@ pub const INTERNAL_VAULTS: [&str; 9] = [
     ANSIBLE_PROJECTS_VAULT,
     SNIPPETS_VAULT,
     SSH_KEYS_VAULT,
+    DATABASES_VAULT,
 ];
 
 /// How long a remote connection may sit unused before Reach stops trusting

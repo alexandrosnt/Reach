@@ -6,6 +6,8 @@ pub mod monitoring;
 #[cfg(desktop)]
 pub mod pty;
 pub mod rdp;
+pub mod db;
+pub mod devops;
 pub mod dragout;
 pub mod recipe;
 pub mod share;
@@ -28,6 +30,7 @@ use state::AppState;
 use tracing_subscriber::EnvFilter;
 
 use ipc::ansible_commands::*;
+use ipc::db_commands::*;
 use ipc::ai_commands::*;
 use ipc::plugin_commands::*;
 use ipc::marketplace_commands::*;
@@ -469,6 +472,45 @@ pub fn run() {
             share_set_ice_servers,
             share_reset_ice_servers,
             share_load,
+            devops::devops_set_enabled,
+            // Databases
+            db_list_connections,
+            db_save_connection,
+            db_delete_connection,
+            db_test_connection,
+            db_connect,
+            db_disconnect,
+            db_databases,
+            db_schemas,
+            db_objects,
+            db_completion,
+            db_definition,
+            db_analyze,
+            db_execute,
+            db_cancel,
+            db_close_session,
+            db_table_rows,
+            db_table_design,
+            db_preview_edits,
+            db_apply_edits,
+            db_preview_design,
+            db_apply_design,
+            db_server_info,
+            db_sessions,
+            db_kill,
+            db_cancel_job,
+            db_backup,
+            db_restore,
+            db_csv_preview,
+            db_import_csv,
+            db_export,
+            db_detect,
+            db_redis_databases,
+            db_redis_scan,
+            db_redis_get,
+            db_redis_command,
+            db_redis_info,
+            db_redis_clients,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,
@@ -742,6 +784,45 @@ pub fn run() {
             share_set_ice_servers,
             share_reset_ice_servers,
             share_load,
+            devops::devops_set_enabled,
+            // Databases
+            db_list_connections,
+            db_save_connection,
+            db_delete_connection,
+            db_test_connection,
+            db_connect,
+            db_disconnect,
+            db_databases,
+            db_schemas,
+            db_objects,
+            db_completion,
+            db_definition,
+            db_analyze,
+            db_execute,
+            db_cancel,
+            db_close_session,
+            db_table_rows,
+            db_table_design,
+            db_preview_edits,
+            db_apply_edits,
+            db_preview_design,
+            db_apply_design,
+            db_server_info,
+            db_sessions,
+            db_kill,
+            db_cancel_job,
+            db_backup,
+            db_restore,
+            db_csv_preview,
+            db_import_csv,
+            db_export,
+            db_detect,
+            db_redis_databases,
+            db_redis_scan,
+            db_redis_get,
+            db_redis_command,
+            db_redis_info,
+            db_redis_clients,
             // Tray commands
             set_close_to_tray,
             get_close_to_tray,

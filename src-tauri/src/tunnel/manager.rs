@@ -222,7 +222,7 @@ impl Default for TunnelManager {
 /// Uses a single task with `tokio::select!` since russh::Channel is not Clone.
 /// The TCP stream is split into read/write halves; the SSH channel is driven
 /// from a single owner using select over both directions.
-async fn relay_connection(
+pub(crate) async fn relay_connection(
     tcp_stream: tokio::net::TcpStream,
     handle: &SharedHandle,
     remote_host: &str,

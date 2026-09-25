@@ -1,4 +1,4 @@
-export type Page = 'terminal' | 'ansible' | 'tofu';
+export type Page = 'terminal' | 'ansible' | 'tofu' | 'databases';
 
 let activePage = $state<Page>('terminal');
 

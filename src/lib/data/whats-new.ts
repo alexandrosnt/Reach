@@ -30,6 +30,7 @@ export interface NewFeature {
 }
 
 export const NEW_FEATURES: NewFeature[] = [
+	{ id: 'devops', since: '0.6.8', surface: { kind: 'settings', tab: 'devops' } },
 	{ id: 'vault', since: '0.5.4', surface: { kind: 'sidebar', section: 'vault' } },
 	{ id: 'recipes', since: '0.5.2', surface: { kind: 'sidebar', section: 'recipes' } },
 	{ id: 'mcp', since: '0.5.2', surface: { kind: 'settings', tab: 'mcp' } },

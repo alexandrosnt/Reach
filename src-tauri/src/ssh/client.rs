@@ -618,6 +618,14 @@ pub(crate) struct ActiveConnection {
     jump_handles: Vec<SharedHandle>,
 }
 
+/// See [`SshManager::open_headless`]. Dropping it closes the connection.
+pub(crate) struct HeadlessConnection {
+    pub handle: SharedHandle,
+    /// Kept alive for as long as `handle`; see `ActiveConnection::jump_handles`.
+    #[allow(dead_code)]
+    jump_handles: Vec<SharedHandle>,
+}
+
 pub struct SshManager {
     connections: HashMap<String, ActiveConnection>,
 }
@@ -660,31 +668,7 @@ impl SshManager {
 
         let timeout_duration = std::time::Duration::from_secs(15);
         let connect_future = async {
-            let config = Arc::new(russh::client::Config::default());
-            let handler = SshClientHandler::new(host, port, Some(app_handle.clone()));
-
-            let mut handle = if let Some(ref proxy) = proxy {
-                tracing::info!("SSH connecting via {} proxy {}:{}", proxy.proxy_type, proxy.host, proxy.port);
-                let stream = Self::connect_via_proxy(proxy, host, port).await?;
-                russh::client::connect_stream(config, stream, handler)
-                    .await
-                    .map_err(|e| SshError::ConnectionFailed(format!("Proxy SSH handshake failed: {}", e)))?
-            } else {
-                russh::client::connect(config, (host, port), handler)
-                    .await
-                    // "No route to host" on a Mac usually means the local
-                    // network permission, not the route (issue #47).
-                    .map_err(|e| SshError::ConnectionFailed(
-                        crate::ssh::netdiag::describe_connect_error(host, &e),
-                    ))?
-            };
-
-            // Authenticate using a cascading strategy: configured key → agent → password.
-            // The first method the server accepts wins. Mirrors OpenSSH's progressive auth.
-            if !cascade_authenticate(&mut handle, username, &auth).await? {
-                return Err(SshError::AuthFailed);
-            }
-
+            let handle = Self::handshake_direct(host, port, username, &auth, proxy.as_ref(), app_handle.clone()).await?;
             tracing::info!("SSH authenticated for {}@{}:{}", username, host, port);
 
             let channel = handle.channel_open_session().await
@@ -709,6 +693,44 @@ impl SshManager {
         };
 
         into_active_connection(channel, handle, info, shell.as_deref(), inject_colors, app_handle, Vec::new()).await
+    }
+
+    /// Connect and authenticate, directly or through a proxy. Opens no channel:
+    /// the terminal asks for a shell on top, a database tunnel only for
+    /// direct-tcpip channels.
+    async fn handshake_direct(
+        host: &str,
+        port: u16,
+        username: &str,
+        auth: &AuthParams,
+        proxy: Option<&ProxyConfig>,
+        app_handle: tauri::AppHandle,
+    ) -> Result<russh::client::Handle<SshClientHandler>, SshError> {
+        let config = Arc::new(russh::client::Config::default());
+        let handler = SshClientHandler::new(host, port, Some(app_handle.clone()));
+
+        let mut handle = if let Some(proxy) = proxy {
+            tracing::info!("SSH connecting via {} proxy {}:{}", proxy.proxy_type, proxy.host, proxy.port);
+            let stream = Self::connect_via_proxy(proxy, host, port).await?;
+            russh::client::connect_stream(config, stream, handler)
+                .await
+                .map_err(|e| SshError::ConnectionFailed(format!("Proxy SSH handshake failed: {}", e)))?
+        } else {
+            russh::client::connect(config, (host, port), handler)
+                .await
+                // "No route to host" on a Mac usually means the local
+                // network permission, not the route (issue #47).
+                .map_err(|e| SshError::ConnectionFailed(
+                    crate::ssh::netdiag::describe_connect_error(host, &e),
+                ))?
+        };
+
+        // Authenticate using a cascading strategy: configured key → agent → password.
+        // The first method the server accepts wins. Mirrors OpenSSH's progressive auth.
+        if !cascade_authenticate(&mut handle, username, auth).await? {
+            return Err(SshError::AuthFailed);
+        }
+        Ok(handle)
     }
 
     /// Connect to a target host through one or more jump hosts (ProxyJump).
@@ -812,178 +834,14 @@ impl SshManager {
         );
 
         let timeout_duration = std::time::Duration::from_secs(30);
-        let connect_future = async {
-            let mut jump_handles: Vec<SharedHandle> = Vec::new();
-
-            // Step 1: Connect to the first jump host directly
-            let first_jump = &jump_chain[0];
-            let config = Arc::new(russh::client::Config::default());
-            let handler = SshClientHandler::new(first_jump.host.as_str(), first_jump.port, Some(app_handle.clone()));
-
-            let mut current_handle = russh::client::connect(
-                config,
-                (first_jump.host.as_str(), first_jump.port),
-                handler,
-            )
-            .await
-            .map_err(|e| {
-                SshError::ConnectionFailed(format!(
-                    "Jump host {} connection failed: {}",
-                    first_jump.host, e
-                ))
-            })?;
-
-            // Authenticate on first jump host
-            Self::authenticate_handle(&mut current_handle, &first_jump.username, &first_jump.auth)
-                .await?;
-
-            tracing::info!("Authenticated on jump host {}", first_jump.host);
-
-            // Step 2: Chain through remaining jump hosts or tunnel to target
-            if jump_chain.len() > 1 {
-                let shared = Arc::new(tokio::sync::Mutex::new(current_handle));
-                jump_handles.push(shared.clone());
-
-                let mut prev_shared = shared;
-
-                for i in 1..jump_chain.len() {
-                    let next_jump = &jump_chain[i];
-
-                    // Open direct-tcpip channel to next hop through current handle
-                    let channel = {
-                        let guard = prev_shared.lock().await;
-                        guard
-                            .channel_open_direct_tcpip(
-                                &next_jump.host,
-                                next_jump.port as u32,
-                                "127.0.0.1",
-                                0,
-                            )
-                            .await
-                            .map_err(|e| {
-                                SshError::ConnectionFailed(format!(
-                                    "Failed to open tunnel to {}: {}",
-                                    next_jump.host, e
-                                ))
-                            })?
-                    };
-
-                    let stream = channel.into_stream();
-                    let config = Arc::new(russh::client::Config::default());
-                    let handler = SshClientHandler::new(next_jump.host.as_str(), next_jump.port, Some(app_handle.clone()));
-
-                    let mut next_handle =
-                        russh::client::connect_stream(config, stream, handler)
-                            .await
-                            .map_err(|e| {
-                                SshError::ConnectionFailed(format!(
-                                    "SSH over tunnel to {} failed: {}",
-                                    next_jump.host, e
-                                ))
-                            })?;
-
-                    Self::authenticate_handle(
-                        &mut next_handle,
-                        &next_jump.username,
-                        &next_jump.auth,
-                    )
-                    .await?;
-
-                    tracing::info!("Authenticated on jump host {}", next_jump.host);
-
-                    let next_shared = Arc::new(tokio::sync::Mutex::new(next_handle));
-                    jump_handles.push(next_shared.clone());
-                    prev_shared = next_shared;
-                }
-
-                // Now open a tunnel from the last jump host to the target
-                let channel = {
-                    let guard = prev_shared.lock().await;
-                    guard
-                        .channel_open_direct_tcpip(
-                            target_host,
-                            target_port as u32,
-                            "127.0.0.1",
-                            0,
-                        )
-                        .await
-                        .map_err(|e| {
-                            SshError::ConnectionFailed(format!(
-                                "Failed to open tunnel to target {}:{}: {}",
-                                target_host, target_port, e
-                            ))
-                        })?
-                };
-
-                let stream = channel.into_stream();
-                let config = Arc::new(russh::client::Config::default());
-                let handler = SshClientHandler::new(target_host, target_port, Some(app_handle.clone()));
-
-                let mut target_handle =
-                    russh::client::connect_stream(config, stream, handler)
-                        .await
-                        .map_err(|e| {
-                            SshError::ConnectionFailed(format!(
-                                "SSH to target {}:{} via jump failed: {}",
-                                target_host, target_port, e
-                            ))
-                        })?;
-
-                Self::authenticate_handle(
-                    &mut target_handle,
-                    target_username,
-                    &target_auth,
-                )
-                .await?;
-
-                Ok((target_handle, jump_handles))
-            } else {
-                // Single jump host: tunnel directly to target
-                let shared = Arc::new(tokio::sync::Mutex::new(current_handle));
-                jump_handles.push(shared.clone());
-
-                let channel = {
-                    let guard = shared.lock().await;
-                    guard
-                        .channel_open_direct_tcpip(
-                            target_host,
-                            target_port as u32,
-                            "127.0.0.1",
-                            0,
-                        )
-                        .await
-                        .map_err(|e| {
-                            SshError::ConnectionFailed(format!(
-                                "Failed to open tunnel to target {}:{}: {}",
-                                target_host, target_port, e
-                            ))
-                        })?
-                };
-
-                let stream = channel.into_stream();
-                let config = Arc::new(russh::client::Config::default());
-                let handler = SshClientHandler::new(target_host, target_port, Some(app_handle.clone()));
-
-                let mut target_handle =
-                    russh::client::connect_stream(config, stream, handler)
-                        .await
-                        .map_err(|e| {
-                            SshError::ConnectionFailed(format!(
-                                "SSH to target {}:{} via jump failed: {}",
-                                target_host, target_port, e
-                            ))
-                        })?;
-
-                Self::authenticate_handle(
-                    &mut target_handle,
-                    target_username,
-                    &target_auth,
-                )
-                .await?;
-
-                Ok((target_handle, jump_handles))
-            }
-        };
+        let connect_future = Self::handshake_via_jump(
+            target_host,
+            target_port,
+            target_username,
+            &target_auth,
+            &jump_chain,
+            app_handle.clone(),
+        );
 
         let (target_handle, jump_handles) =
             tokio::time::timeout(timeout_duration, connect_future)
@@ -1016,6 +874,215 @@ impl SshManager {
         };
 
         into_active_connection(channel, target_handle, info, shell.as_deref(), inject_colors, app_handle, jump_handles).await
+    }
+
+    /// Connect and authenticate on the target through each jump host in turn.
+    /// Returns the target's handle and the hops, which must outlive it.
+    async fn handshake_via_jump(
+        target_host: &str,
+        target_port: u16,
+        target_username: &str,
+        target_auth: &AuthParams,
+        jump_chain: &[JumpHostParams],
+        app_handle: tauri::AppHandle,
+    ) -> Result<(russh::client::Handle<SshClientHandler>, Vec<SharedHandle>), SshError> {
+        let mut jump_handles: Vec<SharedHandle> = Vec::new();
+
+        // Step 1: Connect to the first jump host directly
+        let first_jump = &jump_chain[0];
+        let config = Arc::new(russh::client::Config::default());
+        let handler = SshClientHandler::new(first_jump.host.as_str(), first_jump.port, Some(app_handle.clone()));
+
+        let mut current_handle = russh::client::connect(
+            config,
+            (first_jump.host.as_str(), first_jump.port),
+            handler,
+        )
+        .await
+        .map_err(|e| {
+            SshError::ConnectionFailed(format!(
+                "Jump host {} connection failed: {}",
+                first_jump.host, e
+            ))
+        })?;
+
+        // Authenticate on first jump host
+        Self::authenticate_handle(&mut current_handle, &first_jump.username, &first_jump.auth)
+            .await?;
+
+        tracing::info!("Authenticated on jump host {}", first_jump.host);
+
+        // Step 2: Chain through remaining jump hosts or tunnel to target
+        if jump_chain.len() > 1 {
+            let shared = Arc::new(tokio::sync::Mutex::new(current_handle));
+            jump_handles.push(shared.clone());
+
+            let mut prev_shared = shared;
+
+            for i in 1..jump_chain.len() {
+                let next_jump = &jump_chain[i];
+
+                // Open direct-tcpip channel to next hop through current handle
+                let channel = {
+                    let guard = prev_shared.lock().await;
+                    guard
+                        .channel_open_direct_tcpip(
+                            &next_jump.host,
+                            next_jump.port as u32,
+                            "127.0.0.1",
+                            0,
+                        )
+                        .await
+                        .map_err(|e| {
+                            SshError::ConnectionFailed(format!(
+                                "Failed to open tunnel to {}: {}",
+                                next_jump.host, e
+                            ))
+                        })?
+                };
+
+                let stream = channel.into_stream();
+                let config = Arc::new(russh::client::Config::default());
+                let handler = SshClientHandler::new(next_jump.host.as_str(), next_jump.port, Some(app_handle.clone()));
+
+                let mut next_handle =
+                    russh::client::connect_stream(config, stream, handler)
+                        .await
+                        .map_err(|e| {
+                            SshError::ConnectionFailed(format!(
+                                "SSH over tunnel to {} failed: {}",
+                                next_jump.host, e
+                            ))
+                        })?;
+
+                Self::authenticate_handle(
+                    &mut next_handle,
+                    &next_jump.username,
+                    &next_jump.auth,
+                )
+                .await?;
+
+                tracing::info!("Authenticated on jump host {}", next_jump.host);
+
+                let next_shared = Arc::new(tokio::sync::Mutex::new(next_handle));
+                jump_handles.push(next_shared.clone());
+                prev_shared = next_shared;
+            }
+
+            // Now open a tunnel from the last jump host to the target
+            let channel = {
+                let guard = prev_shared.lock().await;
+                guard
+                    .channel_open_direct_tcpip(
+                        target_host,
+                        target_port as u32,
+                        "127.0.0.1",
+                        0,
+                    )
+                    .await
+                    .map_err(|e| {
+                        SshError::ConnectionFailed(format!(
+                            "Failed to open tunnel to target {}:{}: {}",
+                            target_host, target_port, e
+                        ))
+                    })?
+            };
+
+            let stream = channel.into_stream();
+            let config = Arc::new(russh::client::Config::default());
+            let handler = SshClientHandler::new(target_host, target_port, Some(app_handle.clone()));
+
+            let mut target_handle =
+                russh::client::connect_stream(config, stream, handler)
+                    .await
+                    .map_err(|e| {
+                        SshError::ConnectionFailed(format!(
+                            "SSH to target {}:{} via jump failed: {}",
+                            target_host, target_port, e
+                        ))
+                    })?;
+
+            Self::authenticate_handle(
+                &mut target_handle,
+                target_username,
+                target_auth,
+            )
+            .await?;
+
+            Ok((target_handle, jump_handles))
+        } else {
+            // Single jump host: tunnel directly to target
+            let shared = Arc::new(tokio::sync::Mutex::new(current_handle));
+            jump_handles.push(shared.clone());
+
+            let channel = {
+                let guard = shared.lock().await;
+                guard
+                    .channel_open_direct_tcpip(
+                        target_host,
+                        target_port as u32,
+                        "127.0.0.1",
+                        0,
+                    )
+                    .await
+                    .map_err(|e| {
+                        SshError::ConnectionFailed(format!(
+                            "Failed to open tunnel to target {}:{}: {}",
+                            target_host, target_port, e
+                        ))
+                    })?
+            };
+
+            let stream = channel.into_stream();
+            let config = Arc::new(russh::client::Config::default());
+            let handler = SshClientHandler::new(target_host, target_port, Some(app_handle.clone()));
+
+            let mut target_handle =
+                russh::client::connect_stream(config, stream, handler)
+                    .await
+                    .map_err(|e| {
+                        SshError::ConnectionFailed(format!(
+                            "SSH to target {}:{} via jump failed: {}",
+                            target_host, target_port, e
+                        ))
+                    })?;
+
+            Self::authenticate_handle(
+                &mut target_handle,
+                target_username,
+                target_auth,
+            )
+            .await?;
+
+            Ok((target_handle, jump_handles))
+        }
+    }
+
+    /// An authenticated connection with no shell, for callers that only need
+    /// channels — a database reached through a saved session, for one. Uses
+    /// the same handshake, host-key check and jump chain as the terminal.
+    pub(crate) async fn open_headless(
+        host: &str,
+        port: u16,
+        username: &str,
+        auth: AuthParams,
+        jump_chain: Vec<JumpHostParams>,
+        proxy: Option<ProxyConfig>,
+        app_handle: tauri::AppHandle,
+    ) -> Result<HeadlessConnection, SshError> {
+        let timeout = std::time::Duration::from_secs(if jump_chain.is_empty() { 15 } else { 30 });
+        let connect = async {
+            if jump_chain.is_empty() {
+                let handle = Self::handshake_direct(host, port, username, &auth, proxy.as_ref(), app_handle).await?;
+                Ok::<_, SshError>((handle, Vec::new()))
+            } else {
+                Self::handshake_via_jump(host, port, username, &auth, &jump_chain, app_handle).await
+            }
+        };
+        let (handle, jump_handles) = tokio::time::timeout(timeout, connect)
+            .await
+            .map_err(|_| SshError::ConnectionFailed("Connection timed out".into()))??;
+        Ok(HeadlessConnection { handle: Arc::new(tokio::sync::Mutex::new(handle)), jump_handles })
     }
 
     /// Authenticate on a russh handle by cascading through the configured

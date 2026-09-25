@@ -56,6 +56,19 @@ sha2 = "0.10"
 # NOTE: Not available on Android - needs tauri-plugin-biometric for Android Keystore
 keyring = { version = "3", features = ["windows-native", "apple-native", "linux-native"] }
 
+# Databases workspace. sqlx for PostgreSQL and MySQL/MariaDB, tiberius for SQL
+# Server; SQLite files go through libsql above, because a second bundled SQLite
+# (sqlx's) collides with libsql's at link time (tursodatabase/libsql#541).
+# Pure-Rust TLS on both, with webpki roots, so Android needs no system store.
+sqlx = { version = "0.9", default-features = false, features = ["runtime-tokio", "tls-rustls-ring-webpki", "postgres", "mysql"] }
+tiberius = { version = "0.13", default-features = false, features = ["tds73", "rustls", "chrono"] }
+# SQL Server sends dates as day counts; chrono turns them into readable text.
+chrono = { version = "0.4", default-features = false, features = ["std"] }
+# Redis: keys, not tables, so it has its own module rather than going through sqlx.
+redis = { version = "1.7", default-features = false, features = ["aio", "tokio-comp", "tokio-rustls-comp", "tls-rustls-webpki-roots", "streams"] }
+tokio-util = { version = "0.7", features = ["compat"] }
+futures-util = "0.3"
+
 # Toolchain detection & installation
 which = "7"
 

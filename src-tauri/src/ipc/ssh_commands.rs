@@ -17,7 +17,7 @@ pub struct JumpHostConnectParams {
     pub key_id: Option<String>,
 }
 
-fn build_auth(
+pub(crate) fn build_auth(
     auth_method: &str,
     password: Option<String>,
     key_source: Option<KeySource>,
@@ -52,7 +52,7 @@ fn build_auth(
 /// Work out where a key comes from. An imported key wins over a path: it is
 /// the one the user picked most recently, and it is the one that works on a
 /// machine with no key files.
-async fn resolve_key_source(
+pub(crate) async fn resolve_key_source(
     state: &AppState,
     key_id: Option<String>,
     key_path: Option<String>,

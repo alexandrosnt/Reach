@@ -213,6 +213,8 @@ pub struct AppState {
     pub ansible_project_manager: Arc<tokio::sync::Mutex<AnsibleProjectManager>>,
     pub tofu_project_manager: Arc<tokio::sync::Mutex<TofuProjectManager>>,
     pub tofu_schema_cache: Arc<tokio::sync::Mutex<SchemaCache>>,
+    /// Saved and open database connections.
+    pub db: Arc<tokio::sync::Mutex<crate::db::DbManager>>,
     pub close_to_tray: AtomicBool,
     /// Pending file for the editor window to pick up on mount
     pub pending_editor_file: Arc<tokio::sync::Mutex<Option<serde_json::Value>>>,
@@ -251,6 +253,7 @@ impl AppState {
             ansible_project_manager: Arc::new(tokio::sync::Mutex::new(AnsibleProjectManager::new())),
             tofu_project_manager: Arc::new(tokio::sync::Mutex::new(TofuProjectManager::new())),
             tofu_schema_cache: Arc::new(tokio::sync::Mutex::new(SchemaCache::default())),
+            db: Arc::new(tokio::sync::Mutex::new(crate::db::DbManager::new())),
             close_to_tray: AtomicBool::new(false),
             pending_editor_file: Arc::new(tokio::sync::Mutex::new(None)),
             mcp: Arc::new(McpState::default()),

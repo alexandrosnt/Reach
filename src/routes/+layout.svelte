@@ -5,11 +5,13 @@
 	import AppShell from '$lib/components/layout/AppShell.svelte';
 	import WelcomeScreen from '$lib/components/setup/WelcomeScreen.svelte';
 	import CommunityPrompt from '$lib/components/shared/CommunityPrompt.svelte';
-	import { loadSettings, getSettings, syncTraySettings, recordLaunch } from '$lib/state/settings.svelte';
+	import { loadSettings, getSettings, syncTraySettings, recordLaunch, markFeaturesSeen } from '$lib/state/settings.svelte';
+	import { addToast } from '$lib/state/toasts.svelte';
+	import { syncDevopsTools } from '$lib/state/devops.svelte';
 	import { loadAISettings } from '$lib/state/ai.svelte';
 	import { initShortcuts, cleanupShortcuts } from '$lib/state/shortcuts.svelte';
 	import { startupUpdateCheck, startPeriodicChecks, stopPeriodicChecks } from '$lib/state/updater.svelte';
-	import { changeLocale } from '$lib/state/i18n.svelte';
+	import { changeLocale, t } from '$lib/state/i18n.svelte';
 	import { loadSnippets } from '$lib/state/snippets.svelte';
 	import { vaultState } from '$lib/state/vault.svelte';
 	import * as mcp from '$lib/state/mcp.svelte';
@@ -31,6 +33,14 @@
 		// theme silently fell back to dark/light on every launch.
 		loadInstalledThemes();
 		syncTraySettings();
+		syncDevopsTools();
+		// Someone updating has not met the DevOps switches; say once where
+		// Databases lives. A fresh install is seeded with 'devops' as seen.
+		if (settings.setupComplete && !settings.seenFeatures.includes('devops') && !settings.seenFeatures.includes('devops-notice')) {
+			// After the locale has loaded and the window has painted.
+			setTimeout(() => addToast(t('devops.new_notice'), 'info', 12000), 2500);
+			markFeaturesSeen(['devops-notice']);
+		}
 		loadAISettings();
 		initShortcuts();
 		startupUpdateCheck();

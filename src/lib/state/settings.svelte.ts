@@ -58,6 +58,14 @@ export interface Settings {
 	 * first time should not be told which three corners of it are recent.
 	 */
 	seenFeatures: string[];
+
+	/**
+	 * DevOps workspaces switched on, by id from `$lib/state/devops`.
+	 *
+	 * Per device rather than synced: the tools themselves are installed per
+	 * machine, and a laptop without Ansible has no use for its workspace.
+	 */
+	devopsTools: string[];
 }
 
 /** Secure settings stored encrypted in vault (API keys etc.) */
@@ -90,7 +98,8 @@ const defaults: Settings = {
 	launches: 0,
 	communityPromptDismissed: false,
 	communityPromptLastShown: 0,
-	seenFeatures: []
+	seenFeatures: [],
+	devopsTools: []
 };
 
 let settings = $state<Settings>({ ...defaults });
@@ -153,6 +162,11 @@ export function loadSettings(): void {
 			// Absent for anyone upgrading, which is exactly who should see the
 			// badges — so it stays empty rather than being seeded.
 			settings.seenFeatures = parsed.seenFeatures ?? defaults.seenFeatures;
+			// A fresh install starts with every DevOps tool off, so Reach opens
+			// as a remote-access app. Anyone upgrading has had Ansible and
+			// OpenTofu in the tab bar all along, and an update should not take
+			// them away, so they keep both until they choose otherwise.
+			settings.devopsTools = parsed.devopsTools ?? ['ansible', 'tofu'];
 			// Migration: existing users who already have localStorage data get setupComplete: true
 			settings.setupComplete = parsed.setupComplete ?? true;
 		}

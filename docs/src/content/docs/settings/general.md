@@ -3,7 +3,7 @@ title: General Settings
 description: Configure language, shell, appearance, security, AI, MCP, sync, backups, plugins, and sharing.
 ---
 
-Open Settings with **Ctrl+,** (or **Cmd+,** on Mac). The settings panel has a left sidebar with nine tabs and the content on the right. A tab holding something new since you last looked is highlighted until you open it.
+Open Settings with **Ctrl+,** (or **Cmd+,** on Mac). The settings panel has a left sidebar with ten tabs and the content on the right. A tab holding something new since you last looked is highlighted until you open it. Ansible, OpenTofu and Databases are switched on under **DevOps** — see [DevOps Tools](/settings/devops/).
 
 ## General
 

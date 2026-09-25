@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getTabs, getActiveTab, updateTabTitle, updateTabConnection, createTab } from '$lib/state/tabs.svelte';
 	import { getActivePage } from '$lib/state/navigation.svelte';
+	import { isDevopsEnabled } from '$lib/state/devops.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { ptySpawn, ptyClose } from '$lib/ipc/pty';
 	import { sshDisconnect } from '$lib/ipc/ssh';
@@ -13,6 +14,7 @@
 	import * as share from '$lib/state/share.svelte';
 	import AnsiblePage from '$lib/components/ansible/AnsiblePage.svelte';
 	import TofuPage from '$lib/components/tofu/TofuPage.svelte';
+	import DbPage from '$lib/components/db/DbPage.svelte';
 	import EditorWindow from '$lib/components/editor/EditorWindow.svelte';
 
 	const isEditorWindow = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('editor');
@@ -49,6 +51,11 @@
 	let tabs = $derived(getTabs());
 	let activeTab = $derived(getActiveTab());
 	let activePage = $derived(getActivePage());
+	let dbVisited = $state(false);
+	$effect(() => {
+		if (activePage === 'databases') dbVisited = true;
+	});
+	let dbMounted = $derived(dbVisited && isDevopsEnabled('databases'));
 
 	let spawnedPtys = $state(new Set<string>());
 	let connectedSsh = $state(new Set<string>());
@@ -206,9 +213,17 @@
 			{/if}
 		</div>
 
-		{#if activePage === 'ansible'}
+		<!-- Mounted from the first visit until the tool is switched off, so a
+		     query's text and results survive a trip to the terminal. -->
+		{#if dbMounted}
+			<div class="page-view" class:active={activePage === 'databases'}>
+				<DbPage />
+			</div>
+		{/if}
+
+		{#if activePage === 'ansible' && isDevopsEnabled('ansible')}
 			<AnsiblePage />
-		{:else if activePage === 'tofu'}
+		{:else if activePage === 'tofu' && isDevopsEnabled('tofu')}
 			<TofuPage />
 		{/if}
 	</div>

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { getTabs, getActiveTab, createTab, closeTab, activateTab , type Tab } from '$lib/state/tabs.svelte';
 	import { getActivePage, setActivePage, type Page } from '$lib/state/navigation.svelte';
+	import { getEnabledDevopsTools } from '$lib/state/devops.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import DistroIcon from '$lib/components/sessions/DistroIcon.svelte';
 	import * as mcp from '$lib/state/mcp.svelte';
@@ -50,11 +51,11 @@
 		closeTab(id);
 	}
 
-	const pages: { id: Page; label: () => string }[] = [
+	// The terminal always, then whichever DevOps tools are switched on.
+	let pages = $derived<{ id: Page; label: () => string }[]>([
 		{ id: 'terminal', label: () => t('nav.terminal') },
-		{ id: 'ansible', label: () => t('nav.ansible') },
-		{ id: 'tofu', label: () => t('nav.tofu') },
-	];
+		...getEnabledDevopsTools().map((tool) => ({ id: tool.page, label: tool.label })),
+	]);
 
 	// SVG icon paths
 	const terminalIcon = 'M4 17l6-5-6-5M12 19h8';
