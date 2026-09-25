@@ -6488,7 +6488,7 @@ dependencies = [
 
 [[package]]
 name = "reach"
-version = "0.6.6"
+version = "0.6.7"
 dependencies = [
  "aes-gcm 0.10.3",
  "anyhow",
