@@ -34,15 +34,17 @@ A saved RDP session can name one local folder, which appears inside the desktop 
 
 ## Sound
 
-Playback is built in, through IronRDP's audio channel and the default output device, and the channel is announced exactly as Microsoft's client announces it. Against the Windows 11 host it was tested on, the server joins the channel and then never sends a byte on it, and never opens the audio dynamic channel either, so nothing plays yet. The next step is a packet capture of Microsoft's client against the same host to see what it does differently.
+Remote audio plays through your default output device on Windows, Linux and macOS, and the entry in the Windows volume mixer carries Reach's name and icon. One thing had to be learnt the hard way: Windows starts audio redirection only when the device channel is also present in the connection, so Reach keeps that channel attached whether or not a folder is shared.
 
 ## The server's certificate
 
 The certificate is checked strictly first, so one the platform trusts passes without a word. Anything else, which is nearly every RDP server since they self-sign, goes through the same trust-on-first-use dialog and known-hosts file as an SSH host key: accept once, silent thereafter, and a loud stop if it ever changes.
 
-## Video
+## Video and frame rate
 
-OpenH264 is compiled in and the client can hand it to the graphics pipeline, which is what lets a Windows host send video as AVC420. The pipeline is off by default, though: the host it was tested on opened the pipeline and then declined AVC420, and the pipeline's remaining codecs cost more over a slow link than the plain bitmap path does. It is a one-line switch in the connection config for a host that does offer H.264.
+Reach never holds a frame for more than 16 ms and paints through the GPU when the setting allows, so it can show sixty frames a second. A Windows host sends thirty by default; that ceiling is the host's, set by the `DWMFRAMEINTERVAL` registry value on the remote machine, and no client can raise it from its end.
+
+On the default path the server sends video as bitmap tiles. H.264 would be lighter, and the plumbing for it is built in: OpenH264 is compiled in and a decoder is handed to the graphics pipeline, which is switched on under Settings → Appearance. What stops it today is that Windows 10 and 11 only encode AVC444, never AVC420, and the pipeline client cannot yet recombine AVC444's two streams; so those hosts decline H.264 and use the pipeline's other codecs, which cost more over a slow link than the bitmap path. That decoder is the remaining piece. Leave the switch off unless the host is known to offer AVC420.
 
 ## Windows or Linux
 
