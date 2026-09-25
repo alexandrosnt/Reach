@@ -154,9 +154,10 @@ const QUIET: Duration = Duration::from_millis(2);
 /// The longest a change may be held back while the picture keeps changing.
 /// Something that never goes quiet — a video — is still shown at least this
 /// often, torn if it must be, rather than never. This is also the cap on
-/// sustained motion: 33 ms is thirty frames a second, which is what a
-/// Windows host sends video at on the bitmap path.
-const MAX_HOLD: Duration = Duration::from_millis(33);
+/// sustained motion: 16 ms is sixty frames a second. A Windows host sends
+/// thirty unless DWMFRAMEINTERVAL is set on it, and Reach must not be the
+/// lower of the two.
+const MAX_HOLD: Duration = Duration::from_millis(16);
 
 /// What the cursor should look like, as the server last said.
 enum Cursor {
