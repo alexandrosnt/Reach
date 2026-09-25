@@ -38,6 +38,7 @@
 		type RdpStatus,
 	} from '$lib/ipc/rdp';
 	import { t } from '$lib/state/i18n.svelte';
+	import { getSettings } from '$lib/state/settings.svelte';
 
 	interface Props {
 		id: string;
@@ -59,6 +60,63 @@
 	let sizeObserver: ResizeObserver | null = null;
 	let resizeTimer: ReturnType<typeof setTimeout> | null = null;
 
+	/* --- GPU path ---------------------------------------------------------- */
+
+	/**
+	 * WebGL when the setting allows and the webview can: each region is
+	 * uploaded into one texture the size of the framebuffer, and the texture
+	 * is drawn as a quad once per message. The 2D canvas path below stays as
+	 * the fallback; the two never mix on one canvas, since a canvas gives out
+	 * one kind of context for its lifetime.
+	 */
+	let gl: WebGLRenderingContext | null = null;
+	let glW = 0;
+	let glH = 0;
+
+	function initGl(): void {
+		if (!getSettings().rdpHardwareRendering) return;
+		const g = canvas.getContext('webgl', { alpha: false, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: true, premultipliedAlpha: false });
+		if (!g) return;
+		const compile = (type: number, src: string): WebGLShader | null => {
+			const sh = g.createShader(type);
+			if (!sh) return null;
+			g.shaderSource(sh, src);
+			g.compileShader(sh);
+			return g.getShaderParameter(sh, g.COMPILE_STATUS) ? sh : null;
+		};
+		const vs = compile(g.VERTEX_SHADER, 'attribute vec2 p; varying vec2 t; void main() { t = vec2((p.x + 1.0) * 0.5, (1.0 - p.y) * 0.5); gl_Position = vec4(p, 0.0, 1.0); }');
+		const fs = compile(g.FRAGMENT_SHADER, 'precision mediump float; varying vec2 t; uniform sampler2D s; void main() { gl_FragColor = texture2D(s, t); }');
+		const prog = g.createProgram();
+		if (!vs || !fs || !prog) return;
+		g.attachShader(prog, vs);
+		g.attachShader(prog, fs);
+		g.linkProgram(prog);
+		if (!g.getProgramParameter(prog, g.LINK_STATUS)) return;
+		g.useProgram(prog);
+		const quad = g.createBuffer();
+		g.bindBuffer(g.ARRAY_BUFFER, quad);
+		g.bufferData(g.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), g.STATIC_DRAW);
+		const p = g.getAttribLocation(prog, 'p');
+		g.enableVertexAttribArray(p);
+		g.vertexAttribPointer(p, 2, g.FLOAT, false, 0, 0);
+		const tex = g.createTexture();
+		g.bindTexture(g.TEXTURE_2D, tex);
+		g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.NEAREST);
+		g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.NEAREST);
+		g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE);
+		g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE);
+		g.pixelStorei(g.UNPACK_ALIGNMENT, 1);
+		gl = g;
+	}
+
+	function glSized(w: number, h: number): void {
+		if (!gl) return;
+		gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+		gl.viewport(0, 0, w, h);
+		glW = w;
+		glH = h;
+	}
+
 	/* --- frames ------------------------------------------------------------ */
 
 	/**
@@ -70,6 +128,7 @@
 	function paint(buf: ArrayBuffer): void {
 		const view = new DataView(buf);
 		let at = 0;
+		let painted = false;
 
 		while (at < buf.byteLength) {
 			const kind = view.getUint8(at);
@@ -122,16 +181,23 @@
 			if (canvas.width !== fbW || canvas.height !== fbH) {
 				canvas.width = fbW;
 				canvas.height = fbH;
-				ctx = canvas.getContext('2d', { alpha: false });
+				if (!gl) ctx = canvas.getContext('2d', { alpha: false });
 			}
-			if (!ctx) ctx = canvas.getContext('2d', { alpha: false });
-			if (ctx) {
-				const pixels = new Uint8ClampedArray(buf, at, bytes);
-				ctx.putImageData(new ImageData(pixels, w, h), x, y);
+			if (gl) {
+				if (glW !== fbW || glH !== fbH) glSized(fbW, fbH);
+				gl.texSubImage2D(gl.TEXTURE_2D, 0, x, y, w, h, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(buf, at, bytes));
+				painted = true;
+			} else {
+				if (!ctx) ctx = canvas.getContext('2d', { alpha: false });
+				if (ctx) {
+					const pixels = new Uint8ClampedArray(buf, at, bytes);
+					ctx.putImageData(new ImageData(pixels, w, h), x, y);
+				}
 			}
 			at += bytes;
 		}
 
+		if (gl && painted) gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 		void rdpAck(id).catch(() => {});
 	}
 
@@ -326,7 +392,8 @@
 		});
 
 		try {
-			await rdpConnect({ ...params, ...size }, paint);
+			initGl();
+			await rdpConnect({ ...params, ...size, graphicsPipeline: getSettings().rdpGraphicsPipeline }, paint);
 		} catch (err) {
 			phase = 'error';
 			message = String(err);

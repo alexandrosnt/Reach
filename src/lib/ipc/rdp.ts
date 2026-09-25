@@ -17,6 +17,8 @@ export interface RdpConnectParams {
 	domain?: string;
 	/** A local folder to show inside the desktop as a drive. */
 	sharePath?: string;
+	/** Advertise the graphics pipeline; see the setting. */
+	graphicsPipeline?: boolean;
 	/** The size the panel can show. The server renders at this size. */
 	width: number;
 	height: number;

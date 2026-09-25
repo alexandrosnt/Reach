@@ -366,6 +366,28 @@
 			/>
 		</div>
 	</div>
+
+	<h3 class="section-title">{t('settings.rdp_section')}</h3>
+
+	<div class="setting-row">
+		<div class="setting-info">
+			<span class="setting-label">{t('settings.rdp_hw_render')}</span>
+			<span class="setting-description">{t('settings.rdp_hw_render_desc')}</span>
+		</div>
+		<div class="setting-control">
+			<Toggle hideLabel checked={settings.rdpHardwareRendering} label={t('settings.rdp_hw_render')} onchange={(v) => updateSetting('rdpHardwareRendering', v)} />
+		</div>
+	</div>
+
+	<div class="setting-row">
+		<div class="setting-info">
+			<span class="setting-label">{t('settings.rdp_gfx')}</span>
+			<span class="setting-description">{t('settings.rdp_gfx_desc')}</span>
+		</div>
+		<div class="setting-control">
+			<Toggle hideLabel checked={settings.rdpGraphicsPipeline} label={t('settings.rdp_gfx')} onchange={(v) => updateSetting('rdpGraphicsPipeline', v)} />
+		</div>
+	</div>
 </div>
 
 <style>

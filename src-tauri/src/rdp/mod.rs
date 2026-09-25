@@ -79,6 +79,9 @@ pub struct RdpConnectParams {
     /// A local folder to show inside the desktop as a drive.
     #[serde(default)]
     pub share_path: Option<String>,
+    /// Advertise the graphics pipeline. Off unless the user turned it on.
+    #[serde(default)]
+    pub graphics_pipeline: bool,
     /// The size the panel can show, so the server renders at the size it is
     /// seen at rather than being scaled after the fact.
     pub width: u16,
@@ -544,6 +547,7 @@ fn build_config(p: &RdpConnectParams, app: AppHandle) -> Result<ironrdp_client::
         // Our own backend, handed to the client in `connect`.
         .with_clipboard(ClipboardType::Enable)
         .with_rdpdr(p.share_path.as_deref().is_some_and(|s| !s.trim().is_empty()))
+        .with_graphics_pipeline(p.graphics_pipeline)
         // H.264 for the graphics pipeline, one decoder per connection. With
         // it the client advertises AVC420 and a Windows server sends video as
         // video rather than as tiles. Made here rather than once, because a

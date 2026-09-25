@@ -16,6 +16,10 @@ export interface Settings {
 	minimizeToTray: boolean;
 	startWithSystem: boolean;
 	injectShellColors: boolean;
+	/** Remote desktop: paint through WebGL (the GPU) rather than the 2D canvas. */
+	rdpHardwareRendering: boolean;
+	/** Remote desktop: advertise the graphics pipeline, for hosts that encode H.264. */
+	rdpGraphicsPipeline: boolean;
 
 	/**
 	 * Confirm a multi-line paste before it reaches the shell.
@@ -76,6 +80,8 @@ const defaults: Settings = {
 	minimizeToTray: false,
 	startWithSystem: false,
 	injectShellColors: true,
+	rdpHardwareRendering: true,
+	rdpGraphicsPipeline: false,
 	warnOnMultilinePaste: true,
 	multilinePasteThreshold: DEFAULT_PASTE_THRESHOLD,
 	setupComplete: false,
@@ -135,6 +141,8 @@ export function loadSettings(): void {
 			settings.minimizeToTray = parsed.minimizeToTray ?? defaults.minimizeToTray;
 			settings.startWithSystem = parsed.startWithSystem ?? defaults.startWithSystem;
 			settings.injectShellColors = parsed.injectShellColors ?? defaults.injectShellColors;
+			settings.rdpHardwareRendering = parsed.rdpHardwareRendering ?? defaults.rdpHardwareRendering;
+			settings.rdpGraphicsPipeline = parsed.rdpGraphicsPipeline ?? defaults.rdpGraphicsPipeline;
 			settings.pendingTursoOrg = parsed.pendingTursoOrg ?? defaults.pendingTursoOrg;
 			settings.pendingTursoApiToken = parsed.pendingTursoApiToken ?? defaults.pendingTursoApiToken;
 			settings.launches = parsed.launches ?? defaults.launches;
