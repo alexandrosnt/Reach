@@ -546,7 +546,11 @@ fn build_config(p: &RdpConnectParams, app: AppHandle) -> Result<ironrdp_client::
         .with_pointer_software_rendering(false)
         // Our own backend, handed to the client in `connect`.
         .with_clipboard(ClipboardType::Enable)
-        .with_rdpdr(p.share_path.as_deref().is_some_and(|s| !s.trim().is_empty()))
+        // Always, folder or no folder. Windows starts audio redirection only
+        // when the device channel is present: without it the "Remote Audio"
+        // device never appears and the sound channel stays silent (IronRDP
+        // #1791). With no folder the client attaches its no-op backend.
+        .with_rdpdr(true)
         .with_graphics_pipeline(p.graphics_pipeline)
         // H.264 for the graphics pipeline, one decoder per connection. With
         // it the client advertises AVC420 and a Windows server sends video as
