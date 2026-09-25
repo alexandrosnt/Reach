@@ -160,7 +160,7 @@ jobs:
       - name: Rebuild the docs site with the new download links
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow run docs.yml --ref main
+        run: gh workflow run docs.yml --repo "$GITHUB_REPOSITORY" --ref main
 
   build-android:
     runs-on: ubuntu-latest

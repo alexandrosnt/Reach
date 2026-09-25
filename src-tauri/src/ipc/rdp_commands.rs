@@ -100,6 +100,19 @@ pub async fn rdp_clipboard_sync(state: tauri::State<'_, AppState>, id: String) -
 /// maximized again on the way back if that is how it was found.
 #[tauri::command]
 pub async fn rdp_window_fullscreen(app_handle: tauri::AppHandle, on: bool) -> Result<(), String> {
+    // A mobile window has no maximized or full-screen state to speak of;
+    // the panel over everything is the whole of full screen there.
+    #[cfg(not(desktop))]
+    {
+        let _ = (app_handle, on);
+        return Ok(());
+    }
+    #[cfg(desktop)]
+    desktop_fullscreen(app_handle, on)
+}
+
+#[cfg(desktop)]
+fn desktop_fullscreen(app_handle: tauri::AppHandle, on: bool) -> Result<(), String> {
     use std::sync::atomic::{AtomicBool, Ordering};
     use tauri::Manager as _;
     static WAS_MAXIMIZED: AtomicBool = AtomicBool::new(false);
