@@ -30,7 +30,7 @@ Frames are paced by acknowledgement. The webview says when it has painted, and t
 
 ## A shared folder
 
-A saved RDP session can name one local folder, which appears inside the desktop as a drive named after the folder; IronRDP's native filesystem backends serve it on Windows, macOS and Linux. Android has no such backend and says so in the editor.
+A saved RDP session can name one local folder, which appears inside the desktop as a drive named after the folder, "on Reach". The backend serving it is Reach's own, written on the standard library so a folder is a folder on Windows, macOS and Linux alike; every path the remote asks for is resolved below the shared folder, and one that would climb out is refused. Android has no folder to share and says so in the editor.
 
 ## Sound
 
@@ -45,6 +45,10 @@ The certificate is checked strictly first, so one the platform trusts passes wit
 Reach never holds a frame for more than 16 ms and paints through the GPU when the setting allows, so it can show sixty frames a second. A Windows host sends thirty by default; that ceiling is the host's, set by the `DWMFRAMEINTERVAL` registry value on the remote machine, and no client can raise it from its end.
 
 On the default path the server sends video as bitmap tiles. H.264 would be lighter, and the plumbing for it is built in: OpenH264 is compiled in and a decoder is handed to the graphics pipeline, which is switched on under Settings → Appearance. What stops it today is that Windows 10 and 11 only encode AVC444, never AVC420, and the pipeline client cannot yet recombine AVC444's two streams; so those hosts decline H.264 and use the pipeline's other codecs, which cost more over a slow link than the bitmap path. That decoder is the remaining piece. Leave the switch off unless the host is known to offer AVC420.
+
+## Full screen
+
+Hover the desktop for the **Full screen** button, or press Ctrl+Alt+Enter with the desktop focused. The desktop takes the whole screen and the remote is resized to it, at the screen's own pixels. Move the mouse to the top edge for the bar that brings you back, or press Ctrl+Alt+Enter again.
 
 ## Windows or Linux
 
