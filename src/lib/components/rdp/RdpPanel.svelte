@@ -420,10 +420,17 @@
 
 	/* --- lifecycle --------------------------------------------------------- */
 
-	/** The largest even size the panel can show, for the server to render at. */
+	/**
+	 * The largest even size the panel can show, in device pixels, for the
+	 * server to render at. Device pixels rather than CSS pixels: on a scaled
+	 * display the panel is smaller in CSS pixels than on the screen, and a
+	 * remote rendered at that size is stretched to fit. Rendered at the
+	 * screen's own resolution and scaled down by CSS, it is pixel for pixel.
+	 */
 	function fitSize(): { width: number; height: number } {
 		const r = host.getBoundingClientRect();
-		const even = (v: number) => Math.max(200, Math.floor(v) & ~1);
+		const scale = window.devicePixelRatio || 1;
+		const even = (v: number) => Math.min(8192, Math.max(200, Math.floor(v * scale) & ~1));
 		return { width: even(r.width || 1024), height: even(r.height || 768) };
 	}
 
