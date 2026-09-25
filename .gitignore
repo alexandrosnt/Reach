@@ -40,3 +40,4 @@ npm-debug.log*
 
 # Discord webhook URLs — posting credentials, never commit
 .discord/
+src-tauri/vendor/*/Cargo.lock
