@@ -1408,6 +1408,8 @@ impl core::error::Error for RdpdrBackendBuildError {
 fn build_rdpdr_channel(
     factory: RdpdrFactoryRef<'_>,
     config: &crate::config::RdpdrConfig,
+    // Reach: the name the remote shows the drives under ("test on REACH").
+    computer_name: &str,
     allow_drives: bool,
 ) -> ConnectorResult<Option<ironrdp_rdpdr::Rdpdr>> {
     if !config.enabled {
@@ -1460,7 +1462,7 @@ fn build_rdpdr_channel(
     // Skipping `with_drives` omits CAP_DRIVE_REDIRECT, so later
     // `Rdpdr::add_dynamic_drive` hot-plug is unavailable on that session.
     // Prefer attaching an empty drive list only when drive hot-plug is required.
-    let mut rdpdr_channel = ironrdp_rdpdr::Rdpdr::new(backend, "IronRDP".to_owned());
+    let mut rdpdr_channel = ironrdp_rdpdr::Rdpdr::new(backend, computer_name.to_owned());
     if !initial_drives.is_empty() || drive_hotplug {
         rdpdr_channel = rdpdr_channel.with_drives(Some(initial_drives));
     }
@@ -1925,12 +1927,12 @@ fn build_connector(
 
     #[cfg(feature = "rdpdr")]
     let rdpdr_channel =
-        build_rdpdr_channel(rdpdr_factory, &config.channels.rdpdr, rdpdr_drives_allowed)?.or_else(|| {
+        build_rdpdr_channel(rdpdr_factory, &config.channels.rdpdr, &config.connector.client_name, rdpdr_drives_allowed)?.or_else(|| {
             config
                 .channels
                 .rdpdr
                 .enabled
-                .then(|| ironrdp_rdpdr::Rdpdr::new(Box::new(ironrdp_rdpdr::NoopRdpdrBackend), "IronRDP".to_owned()))
+                .then(|| ironrdp_rdpdr::Rdpdr::new(Box::new(ironrdp_rdpdr::NoopRdpdrBackend), config.connector.client_name.clone()))
         });
     #[cfg(feature = "rdpdr")]
     input_sender.set_rdpdr_drive_hotplug_available(
