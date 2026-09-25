@@ -1891,6 +1891,7 @@ fn build_connector(
 
     #[cfg(any(feature = "sound", feature = "rdpdr"))]
     let audio_playback = connector_config.enable_audio_playback;
+    #[cfg(feature = "sound")]
     tracing::info!(audio_playback, sound = config.channels.sound, "audio playback decision");
     let rail_client = connector_config.remote_application_mode.then(|| {
         let rail_client = RailClient::new(
