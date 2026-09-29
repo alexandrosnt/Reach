@@ -28,7 +28,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 uuid = { version = "1", features = ["v4"] }
 
 # SSH
-russh = { version = "0.46", default-features = false }
+russh = { version = "0.60", default-features = false }
 russh-keys = { version = "0.46", default-features = false }
 # Same version russh-keys already pulls in: used to read what a key says
 # about itself (algorithm, fingerprint, whether it is encrypted) without
