@@ -8,7 +8,7 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && npm run session-folders:test",
     "tauri": "tauri",
     "i18n:check": "node scripts/i18n-check.js",
     "discord:setup": "node scripts/discord/setup.mjs",
@@ -25,7 +25,8 @@
     "archive:test": "node --import ./scripts/resolve-lib.mjs scripts/archive-progress-test.mjs",
     "drag:test": "node --import ./scripts/resolve-lib.mjs scripts/drag-out-test.mjs",
     "tofu:test": "node scripts/tofu-json-test.mjs",
-    "ansible:test": "node scripts/ansible-recap-test.mjs && node scripts/ansible-sessions-test.mjs"
+    "ansible:test": "node scripts/ansible-recap-test.mjs && node scripts/ansible-sessions-test.mjs",
+    "session-folders:test": "node --import ./scripts/resolve-lib.mjs scripts/session-folders-test.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.18.0",

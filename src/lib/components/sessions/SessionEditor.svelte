@@ -5,6 +5,7 @@
 	import Input from '$lib/components/shared/Input.svelte';
 	import { sessionCreate, sessionList, sessionUpdate, sessionKind, type SessionConfig, type SessionKind, type AuthMethod, type JumpHostConfig, type Folder } from '$lib/ipc/sessions';
 	import { t } from '$lib/state/i18n.svelte';
+	import { folderPath } from '$lib/sessions/folder-tree';
 	import { open as openDialog } from '@tauri-apps/plugin-dialog';
 
 	interface Props {
@@ -547,7 +548,7 @@
 				<select class="folder-select" bind:value={folderIdStr} disabled={saving}>
 					<option value="">{t('session.no_folder')}</option>
 					{#each folders as folder (folder.id)}
-						<option value={folder.id}>{folder.name}</option>
+						<option value={folder.id}>{folderPath(folder.id, folders)}</option>
 					{/each}
 				</select>
 			</div>

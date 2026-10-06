@@ -132,6 +132,10 @@ export async function sessionCreateFolder(name: string, parentId: string | null,
   return invoke<Folder>('session_create_folder', { name, parentId, vaultId: vaultId ?? null });
 }
 
+export async function sessionUpdateFolderParent(folderId: string, parentId: string | null): Promise<Folder> {
+  return invoke<Folder>('session_update_folder_parent', { folderId, parentId });
+}
+
 export async function sessionDeleteFolder(folderId: string): Promise<void> {
   return invoke('session_delete_folder', { folderId });
 }

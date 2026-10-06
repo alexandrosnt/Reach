@@ -300,29 +300,7 @@ pub async fn session_list_folders(state: State<'_, AppState>) -> Result<Vec<Fold
         return Ok(Vec::new());
     }
 
-    let vault_id = match get_folders_vault_id_if_exists(&manager) {
-        Some(id) => id,
-        None => return Ok(Vec::new()),
-    };
-
-    let secrets = manager
-        .read_secrets_in(&vault_id, &["folder"])
-        .await
-        .map_err(|e| e.to_string())?;
-
-    let mut folders = Vec::new();
-    for (_, plaintext) in secrets {
-        if let Ok(plaintext) = plaintext {
-            use secrecy::ExposeSecret;
-            if let Ok(json) = String::from_utf8(plaintext.expose_secret().clone()) {
-                if let Ok(folder) = serde_json::from_str::<Folder>(&json) {
-                    folders.push(folder);
-                }
-            }
-        }
-    }
-
-    Ok(folders)
+    read_folders(&manager).await
 }
 
 /// Create a new session folder. O(1) insert.
@@ -341,6 +319,16 @@ pub async fn session_create_folder(
     }
 
     let storage_vault_id = ensure_folders_vault(&mut manager).await?;
+    if let Some(ref parent_id) = parent_id {
+        let parent = read_folders(&manager)
+            .await?
+            .into_iter()
+            .find(|folder| folder.id == *parent_id)
+            .ok_or_else(|| format!("Parent folder not found: {parent_id}"))?;
+        if parent.vault_id != vault_id {
+            return Err("Folders in different vaults cannot be nested".to_string());
+        }
+    }
 
     let folder = Folder {
         id: uuid::Uuid::new_v4().to_string(),
@@ -365,6 +353,65 @@ pub async fn session_create_folder(
         .map_err(|e| e.to_string())?;
 
     tracing::info!("Created folder: {}", folder.id);
+    Ok(folder)
+}
+
+/// Move a folder under another folder, or to the root.
+#[tauri::command]
+#[tracing::instrument(skip(state))]
+pub async fn session_update_folder_parent(
+    state: State<'_, AppState>,
+    folder_id: String,
+    parent_id: Option<String>,
+) -> Result<Folder, String> {
+    let manager = state.vault_manager.lock().await;
+    if manager.is_locked() {
+        return Err("Vault is locked".to_string());
+    }
+
+    let folders = read_folders(&manager).await?;
+    let by_id = folders
+        .iter()
+        .map(|folder| (folder.id.as_str(), folder))
+        .collect::<std::collections::HashMap<_, _>>();
+    let mut folder = by_id
+        .get(folder_id.as_str())
+        .cloned()
+        .cloned()
+        .ok_or_else(|| format!("Folder not found: {folder_id}"))?;
+
+    if let Some(ref target_id) = parent_id {
+        let target = by_id
+            .get(target_id.as_str())
+            .ok_or_else(|| format!("Parent folder not found: {target_id}"))?;
+        if target.vault_id != folder.vault_id {
+            return Err("Folders in different vaults cannot be nested".to_string());
+        }
+
+        let mut current = Some(target_id.as_str());
+        let mut seen = std::collections::HashSet::new();
+        while let Some(id) = current {
+            if id == folder_id {
+                return Err("A folder cannot be moved into itself or its descendant".to_string());
+            }
+            if !seen.insert(id) {
+                return Err("Folder hierarchy contains a cycle".to_string());
+            }
+            current = by_id.get(id).and_then(|item| item.parent_id.as_deref());
+        }
+    }
+
+    folder.parent_id = parent_id;
+    let json = serde_json::to_string(&folder).map_err(|e| e.to_string())?;
+    let plaintext = SecretBox::new(Box::new(json.into_bytes()));
+    let vault_id = get_folders_vault_id_if_exists(&manager)
+        .ok_or_else(|| "Folders vault not found".to_string())?;
+    manager
+        .update_secret(&vault_id, &folder.id, plaintext)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    tracing::info!("Moved folder: {} under {:?}", folder.id, folder.parent_id);
     Ok(folder)
 }
 
@@ -394,6 +441,29 @@ pub async fn session_delete_folder(
 
     tracing::info!("Deleted folder: {}", folder_id);
     Ok(())
+}
+
+async fn read_folders(manager: &crate::vault::VaultManager) -> Result<Vec<Folder>, String> {
+    let vault_id = match get_folders_vault_id_if_exists(manager) {
+        Some(id) => id,
+        None => return Ok(Vec::new()),
+    };
+    let secrets = manager
+        .read_secrets_in(&vault_id, &["folder"])
+        .await
+        .map_err(|e| e.to_string())?;
+    let mut folders = Vec::new();
+    for (_, plaintext) in secrets {
+        if let Ok(plaintext) = plaintext {
+            use secrecy::ExposeSecret;
+            if let Ok(json) = String::from_utf8(plaintext.expose_secret().clone()) {
+                if let Ok(folder) = serde_json::from_str::<Folder>(&json) {
+                    folders.push(folder);
+                }
+            }
+        }
+    }
+    Ok(folders)
 }
 
 // --- Helper functions (all O(1)) ---
