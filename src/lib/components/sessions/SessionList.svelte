@@ -988,14 +988,14 @@
 			<!-- svelte-ignore a11y_no_static_element_interactions -->
 			<!-- svelte-ignore a11y_click_events_have_key_events -->
 			<div class="sessions-scroll" oncontextmenu={openBackgroundContextMenu} onclick={closeContextMenu}>
+				{#each folderTree.roots as node (node.folder.id)}
+					{@render folderNode(node)}
+				{/each}
 				<div class="ungrouped-drop" data-folder-id="__ungrouped__" class:drop-active={dropTarget === null && dragging}>
 					{#each folderTree.ungrouped as session (session.id)}
 						{@render sessionRow(session, -1)}
 					{/each}
 				</div>
-				{#each folderTree.roots as node (node.folder.id)}
-					{@render folderNode(node)}
-				{/each}
 			</div>
 		{/if}
 	{/if}
