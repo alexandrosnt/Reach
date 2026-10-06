@@ -1406,6 +1406,7 @@
 
 	.folder-node {
 		min-width: 0;
+		flex-shrink: 0;
 	}
 
 	.folder-header {
@@ -1573,6 +1574,7 @@
 
 	.ungrouped-drop {
 		min-height: 2px;
+		flex-shrink: 0;
 	}
 
 	.ungrouped-drop.drop-active {
