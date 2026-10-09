@@ -34,6 +34,7 @@
 	}
 
 	let authLabel = $derived(
+		session.kind === 'wsl' ? 'WSL' :
 		session.auth_method.type === 'Password' ? t('session.auth_pw_label') :
 		session.auth_method.type === 'Key' ? t('session.auth_key') : t('session.auth_agent')
 	);
@@ -82,7 +83,11 @@
 					</span>
 				{/if}
 			</span>
-			<span class="session-detail">{session.username ? `${session.username}@` : ''}{session.host}:{session.port}</span>
+			{#if session.kind === 'wsl'}
+				<span class="session-detail">{session.username ? `${session.username} · ` : ''}{session.wsl_distro || 'WSL'}</span>
+			{:else}
+				<span class="session-detail">{session.username ? `${session.username}@` : ''}{session.host}:{session.port}</span>
+			{/if}
 		</div>
 		<span class="auth-badge" title={t('session.auth_type', { type: session.auth_method.type })}>{authLabel}</span>
 	</button>

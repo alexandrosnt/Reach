@@ -22,3 +22,7 @@ export async function monitoringStop(connectionId: string): Promise<void> {
 export async function monitoringGetStats(connectionId: string): Promise<SystemStats> {
   return invoke<SystemStats>('monitoring_get_stats', { connectionId });
 }
+
+export async function monitoringStartWsl(connectionId: string, distro: string): Promise<void> {
+  return invoke('monitoring_start_wsl', { connectionId, distro });
+}

@@ -414,6 +414,7 @@ pub fn run() {
             session_list,
             session_get,
             session_create,
+            wsl_list_distros,
             session_update,
             session_delete,
             session_move_to_folder,
@@ -438,6 +439,7 @@ pub fn run() {
             serial_send,
             // Monitoring commands
             monitoring_start,
+            monitoring_start_wsl,
             monitoring_stop,
             monitoring_get_stats,
             // AI commands
@@ -802,6 +804,7 @@ pub fn run() {
             session_list,
             session_get,
             session_create,
+            wsl_list_distros,
             session_update,
             session_delete,
             session_move_to_folder,
@@ -816,8 +819,10 @@ pub fn run() {
             tunnel_list,
             // Monitoring commands
             monitoring_start,
+            monitoring_start_wsl,
             monitoring_stop,
             monitoring_get_stats,
+
             // AI commands
             ai_chat,
             ai_fetch_models,

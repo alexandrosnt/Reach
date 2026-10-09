@@ -1,6 +1,10 @@
 <script lang="ts">
-	import { getUpdaterState, downloadAndInstall, skipStartupUpdate } from '$lib/state/updater.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import {
+		getUpdaterState,
+		downloadAndInstall,
+		skipStartupUpdate,
+	} from "$lib/state/updater.svelte";
+	import { t } from "$lib/state/i18n.svelte";
 
 	interface Props {
 		open: boolean;
@@ -11,14 +15,19 @@
 	const updater = getUpdaterState();
 
 	let buttonLabel = $derived.by(() => {
-		if (updater.installing) return t('updater.installing');
-		if (updater.downloading) return t('updater.downloading', { progress: updater.downloadProgress });
-		if (updater.error) return t('updater.retry');
-		return t('updater.update_now');
+		if (updater.installing) return t("updater.installing");
+		if (updater.downloading)
+			return t("updater.downloading", {
+				progress: updater.downloadProgress,
+			});
+		if (updater.error) return t("updater.retry");
+		return t("updater.update_now");
 	});
 
 	let buttonDisabled = $derived(updater.downloading || updater.installing);
-	let showEscapeHatch = $derived(updater.downloadAttempts >= 3 && !!updater.error);
+	let showEscapeHatch = $derived(
+		updater.downloadAttempts >= 3 && !!updater.error,
+	);
 
 	function handleUpdate() {
 		downloadAndInstall();
@@ -31,16 +40,48 @@
 
 {#if open}
 	<div class="update-backdrop" role="presentation">
-		<div class="update-card" role="alertdialog" aria-modal="true" aria-label={t('updater.title')}>
+		<div
+			class="update-card"
+			role="alertdialog"
+			aria-modal="true"
+			aria-label={t("updater.title")}
+		>
 			<div class="card-header">
 				<div class="icon-container">
-					<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-						<path d="M16 3L17.5 8.5L20 6L19 11L24 9.5L20.5 13L26 13.5L21 16L26 18.5L20.5 19L24 22.5L19 21L20 26L17.5 23.5L16 29L14.5 23.5L12 26L13 21L8 22.5L11.5 19L6 18.5L11 16L6 13.5L11.5 13L8 9.5L13 11L12 6L14.5 8.5L16 3Z" fill="var(--color-accent)" fill-opacity="0.15" stroke="var(--color-accent)" stroke-width="1.5" stroke-linejoin="round"/>
-						<path d="M16 10V18M16 18L12.5 14.5M16 18L19.5 14.5" stroke="var(--color-accent)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-						<line x1="12" y1="21" x2="20" y2="21" stroke="var(--color-accent)" stroke-width="1.5" stroke-linecap="round"/>
+					<svg
+						width="32"
+						height="32"
+						viewBox="0 0 32 32"
+						fill="none"
+						xmlns="http://www.w3.org/2000/svg"
+					>
+						<path
+							d="M16 3L17.5 8.5L20 6L19 11L24 9.5L20.5 13L26 13.5L21 16L26 18.5L20.5 19L24 22.5L19 21L20 26L17.5 23.5L16 29L14.5 23.5L12 26L13 21L8 22.5L11.5 19L6 18.5L11 16L6 13.5L11.5 13L8 9.5L13 11L12 6L14.5 8.5L16 3Z"
+							fill="var(--color-accent)"
+							fill-opacity="0.15"
+							stroke="var(--color-accent)"
+							stroke-width="1.5"
+							stroke-linejoin="round"
+						/>
+						<path
+							d="M16 10V18M16 18L12.5 14.5M16 18L19.5 14.5"
+							stroke="var(--color-accent)"
+							stroke-width="1.5"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+						/>
+						<line
+							x1="12"
+							y1="21"
+							x2="20"
+							y2="21"
+							stroke="var(--color-accent)"
+							stroke-width="1.5"
+							stroke-linecap="round"
+						/>
 					</svg>
 				</div>
-				<h2 class="title">{t('updater.title')}</h2>
+				<h2 class="title">{t("updater.title")}</h2>
 				{#if updater.updateVersion}
 					<span class="version-badge">v{updater.updateVersion}</span>
 				{/if}
@@ -48,9 +89,12 @@
 
 			{#if updater.updateNotes}
 				<div class="release-notes">
-					<h3 class="release-notes-heading">{t('updater.release_notes')}</h3>
+					<h3 class="release-notes-heading">
+						{t("updater.release_notes")}
+					</h3>
 					<div class="release-notes-content">
-						<pre class="release-notes-text">{updater.updateNotes}</pre>
+						<pre
+							class="release-notes-text">{updater.updateNotes}</pre>
 					</div>
 				</div>
 			{/if}
@@ -61,11 +105,15 @@
 						<div
 							class="progress-fill"
 							class:installing={updater.installing}
-							style="width: {updater.installing ? 100 : updater.downloadProgress}%"
+							style="width: {updater.installing
+								? 100
+								: updater.downloadProgress}%"
 						></div>
 					</div>
 					{#if updater.installing}
-						<p class="progress-label">{t('updater.installing_desc')}</p>
+						<p class="progress-label">
+							{t("updater.installing_desc")}
+						</p>
 					{/if}
 				</div>
 			{/if}
@@ -73,8 +121,19 @@
 			{#if updater.error}
 				<div class="error-message">
 					<svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-						<circle cx="7" cy="7" r="6" stroke="var(--color-danger)" stroke-width="1.2"/>
-						<path d="M7 4V7.5M7 9.5V10" stroke="var(--color-danger)" stroke-width="1.2" stroke-linecap="round"/>
+						<circle
+							cx="7"
+							cy="7"
+							r="6"
+							stroke="var(--color-danger)"
+							stroke-width="1.2"
+						/>
+						<path
+							d="M7 4V7.5M7 9.5V10"
+							stroke="var(--color-danger)"
+							stroke-width="1.2"
+							stroke-linecap="round"
+						/>
 					</svg>
 					<span>{updater.error}</span>
 				</div>
@@ -92,9 +151,26 @@
 					onclick={handleUpdate}
 				>
 					{#if updater.downloading}
-						<svg class="spinner" width="16" height="16" viewBox="0 0 16 16" fill="none">
-							<circle cx="8" cy="8" r="6" stroke="rgba(255,255,255,0.25)" stroke-width="2"/>
-							<path d="M14 8A6 6 0 0 0 8 2" stroke="white" stroke-width="2" stroke-linecap="round"/>
+						<svg
+							class="spinner"
+							width="16"
+							height="16"
+							viewBox="0 0 16 16"
+							fill="none"
+						>
+							<circle
+								cx="8"
+								cy="8"
+								r="6"
+								stroke="rgba(255,255,255,0.25)"
+								stroke-width="2"
+							/>
+							<path
+								d="M14 8A6 6 0 0 0 8 2"
+								stroke="white"
+								stroke-width="2"
+								stroke-linecap="round"
+							/>
 						</svg>
 					{/if}
 					{buttonLabel}
@@ -109,7 +185,8 @@
 		position: fixed;
 		inset: 0;
 		/* Clear of the phone's status and navigation bars (0 on a desktop). */
-		padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+		padding: env(safe-area-inset-top) env(safe-area-inset-right)
+			env(safe-area-inset-bottom) env(safe-area-inset-left);
 		z-index: 300;
 		display: flex;
 		align-items: center;
@@ -117,7 +194,8 @@
 		background: var(--color-surface-sunken);
 		backdrop-filter: blur(8px);
 		-webkit-backdrop-filter: blur(8px);
-		animation: fadeIn var(--duration-default, 200ms) var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1));
+		animation: fadeIn var(--duration-default, 200ms)
+			var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1));
 	}
 
 	.update-card {
@@ -130,8 +208,15 @@
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
-		animation: scaleIn var(--duration-default, 200ms) var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1));
-		font-family: var(--font-sans, 'Inter', system-ui, -apple-system, sans-serif);
+		animation: scaleIn var(--duration-default, 200ms)
+			var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1));
+		font-family: var(
+			--font-sans,
+			"Inter",
+			system-ui,
+			-apple-system,
+			sans-serif
+		);
 	}
 
 	.card-header {
@@ -196,7 +281,13 @@
 	.release-notes-text {
 		margin: 0;
 		padding: 12px;
-		font-family: var(--font-sans, 'Inter', system-ui, -apple-system, sans-serif);
+		font-family: var(
+			--font-sans,
+			"Inter",
+			system-ui,
+			-apple-system,
+			sans-serif
+		);
 		font-size: 0.8125rem;
 		line-height: 1.55;
 		color: var(--color-text-secondary, var(--color-text-secondary));
@@ -232,7 +323,8 @@
 		height: 100%;
 		border-radius: 3px;
 		background: var(--color-accent, var(--color-accent));
-		transition: width 300ms var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1));
+		transition: width 300ms
+			var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1));
 	}
 
 	.progress-fill.installing {
@@ -281,16 +373,25 @@
 		padding: 10px 20px;
 		border-radius: 10px;
 		border: none;
-		font-family: var(--font-sans, 'Inter', system-ui, -apple-system, sans-serif);
+		font-family: var(
+			--font-sans,
+			"Inter",
+			system-ui,
+			-apple-system,
+			sans-serif
+		);
 		font-size: 0.875rem;
 		font-weight: 500;
 		color: #fff;
 		background-color: var(--color-accent, var(--color-accent));
 		cursor: pointer;
 		transition:
-			background-color var(--duration-default, 200ms) var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1)),
-			opacity var(--duration-default, 200ms) var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1)),
-			transform var(--duration-default, 200ms) var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1));
+			background-color var(--duration-default, 200ms)
+				var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1)),
+			opacity var(--duration-default, 200ms)
+				var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1)),
+			transform var(--duration-default, 200ms)
+				var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1));
 		user-select: none;
 		white-space: nowrap;
 	}
@@ -315,15 +416,23 @@
 		padding: 10px 16px;
 		border-radius: 10px;
 		border: none;
-		font-family: var(--font-sans, 'Inter', system-ui, -apple-system, sans-serif);
+		font-family: var(
+			--font-sans,
+			"Inter",
+			system-ui,
+			-apple-system,
+			sans-serif
+		);
 		font-size: 0.8125rem;
 		font-weight: 500;
 		color: var(--color-text-secondary, var(--color-text-secondary));
 		background: transparent;
 		cursor: pointer;
 		transition:
-			background-color var(--duration-default, 200ms) var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1)),
-			color var(--duration-default, 200ms) var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1));
+			background-color var(--duration-default, 200ms)
+				var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1)),
+			color var(--duration-default, 200ms)
+				var(--ease-default, cubic-bezier(0.25, 0.1, 0.25, 1));
 		user-select: none;
 		white-space: nowrap;
 	}
@@ -362,7 +471,8 @@
 	}
 
 	@keyframes pulse {
-		0%, 100% {
+		0%,
+		100% {
 			opacity: 1;
 		}
 		50% {

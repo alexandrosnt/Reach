@@ -46,6 +46,8 @@ export interface SessionConfig {
   try_agent_keys?: boolean | null;
   /** ssh_config settings: imported files, lines set in Reach, approvals. */
   ssh_options?: SshOptions | null;
+  /** WSL only: the distribution name, e.g. "Ubuntu" */
+  wsl_distro?: string | null;
 }
 
 /** A config file as it was read at import. */
@@ -71,7 +73,7 @@ export interface SshOptions {
   my_accepted_weakenings?: string[] | null;
 }
 
-export type SessionKind = 'ssh' | 'rdp' | 'vnc';
+export type SessionKind = 'ssh' | 'rdp' | 'vnc' | 'wsl';
 
 export function sessionKind(session: Pick<SessionConfig, 'kind'>): SessionKind {
   return session.kind ?? 'ssh';
@@ -120,6 +122,7 @@ export async function sessionCreate(params: {
   viaSessionId?: string | null;
   tryAgentKeys?: boolean | null;
   sshOptions?: SshOptions | null;
+  wslDistro?: string | null;
 }): Promise<SessionConfig> {
   return invoke<SessionConfig>('session_create', {
     name: params.name,
@@ -140,6 +143,7 @@ export async function sessionCreate(params: {
     viaSessionId: params.viaSessionId || null,
     tryAgentKeys: params.tryAgentKeys || null,
     sshOptions: params.sshOptions ?? null,
+    wslDistro: params.wslDistro || null,
   });
 }
 
@@ -187,4 +191,9 @@ export async function sessionShare(
     recipient_public_key: recipientPublicKey,
     expires_in_hours: expiresInHours
   });
+}
+
+/** Fetch installed WSL distributions on Windows */
+export async function wslListDistros(): Promise<string[]> {
+  return invoke<string[]>('wsl_list_distros');
 }

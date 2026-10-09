@@ -40,6 +40,7 @@ pub enum SessionKind {
     Ssh,
     Rdp,
     Vnc,
+    Wsl,
 }
 
 impl SessionKind {
@@ -74,6 +75,9 @@ pub struct SessionConfig {
     /// VNC only: a saved SSH session to reach the server through.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub via_session_id: Option<String>,
+    /// WSL only: distribution name (e.g. "Ubuntu")
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub wsl_distro: Option<String>,
     pub folder_id: Option<String>,
     pub tags: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

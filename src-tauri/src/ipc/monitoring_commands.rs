@@ -49,3 +49,19 @@ pub async fn monitoring_get_stats(
         .cloned()
         .ok_or_else(|| format!("No monitoring data for connection: {}", connection_id))
 }
+
+/// Start monitoring a local WSL distribution.
+#[tauri::command]
+pub async fn monitoring_start_wsl(
+    app: tauri::AppHandle,
+    state: tauri::State<'_, AppState>,
+    connection_id: String,
+    distro: String,
+) -> Result<(), String> {
+    tracing::info!("Starting WSL monitoring for {} ({})", connection_id, distro);
+
+    let mut collector = state.monitoring_collector.lock().await;
+    collector.start_wsl(&connection_id, &distro, app);
+
+    Ok(())
+}

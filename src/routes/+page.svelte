@@ -5,7 +5,7 @@
 	import { t } from '$lib/state/i18n.svelte';
 	import { ptySpawn, ptyClose } from '$lib/ipc/pty';
 	import { sshDisconnect } from '$lib/ipc/ssh';
-	import { monitoringStart, monitoringStop, monitoringGetStats } from '$lib/ipc/monitoring';
+	import { monitoringStart, monitoringStop, monitoringGetStats, monitoringStartWsl } from '$lib/ipc/monitoring';
 	import { updateStats, removeStats } from '$lib/state/monitoring.svelte';
 	import Terminal from '$lib/components/terminal/Terminal.svelte';
 	import RdpPanel from '$lib/components/rdp/RdpPanel.svelte';
@@ -92,14 +92,21 @@
 	// Start monitoring for new SSH connections (poll-based)
 	$effect(() => {
 		for (const tab of tabs) {
-			if (tab.type === 'ssh' && tab.connectionId && !monitoredConnections.has(tab.connectionId)) {
+			if (tab.connectionId && !monitoredConnections.has(tab.connectionId)) {
 				const connId = tab.connectionId;
-				monitoredConnections.add(connId);
-
-				monitoringStart(connId).catch((err) => {
-					console.error(`Failed to start monitoring for ${connId}:`, err);
-				});
-
+				if (tab.type === 'ssh') {
+					monitoredConnections.add(connId);
+					monitoringStart(connId).catch((err) => {
+						console.error(`Failed to start monitoring for ${connId}:`, err);
+					});
+				} else if (tab.wslDistro !== undefined) {
+					monitoredConnections.add(connId);
+					monitoringStartWsl(connId, tab.wslDistro).catch((err) => {
+						console.error(`Failed to start WSL monitoring for ${connId}:`, err);
+					});
+				} else {
+					continue;
+				}
 				// Poll for stats every 3 seconds
 				const poll = async () => {
 					try {

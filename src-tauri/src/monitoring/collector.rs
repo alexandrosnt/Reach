@@ -45,6 +45,24 @@ impl MonitoringCollector {
         tracing::info!("Started monitoring for {}", connection_id);
     }
 
+    pub fn start_wsl(
+        &mut self,
+        connection_id: &str,
+        distro: &str,
+        app_handle: tauri::AppHandle,
+    ) {
+        self.stop(connection_id);
+
+        let id = connection_id.to_string();
+        let distro_name = distro.to_string();
+        let task = tokio::spawn(async move {
+            wsl_monitoring_loop(id, distro_name, app_handle).await;
+        });
+        self.tasks.insert(connection_id.to_string(), task);
+        tracing::info!("Started WSL monitoring for {} ({})", connection_id, distro);
+    }
+
+
     pub fn stop(&mut self, connection_id: &str) {
         if let Some(task) = self.tasks.remove(connection_id) {
             task.abort();
@@ -325,4 +343,147 @@ fn parse_users(output: &str) -> Vec<String> {
     users.sort();
     users.dedup();
     users
+}
+
+
+// ==================== WSL Monitoring ====================
+
+async fn exec_wsl(distro: &str, cmd: &str) -> Result<String, String> {
+    let distro = distro.to_string();
+    let cmd = cmd.to_string();
+    tokio::task::spawn_blocking(move || {
+        let mut c = std::process::Command::new("wsl.exe");
+        if !distro.is_empty() {
+            c.args(["-d", &distro]);
+        }
+        c.args(["--", "sh", "-c", &cmd]);
+        c.stdin(std::process::Stdio::null());
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            c.creation_flags(CREATE_NO_WINDOW);
+        }
+        let output = c.output().map_err(|e| e.to_string())?;
+        if !output.status.success() {
+            return Err(format!("WSL command exited with status {:?}", output.status));
+        }
+        let stdout = output.stdout;
+        let text = if stdout.len() >= 2 && (stdout[1] == 0 || stdout[0] == 0) {
+            let u16_vec: Vec<u16> = stdout
+                .chunks_exact(2)
+                .map(|ch| u16::from_le_bytes([ch[0], ch[1]]))
+                .collect();
+            String::from_utf16_lossy(&u16_vec)
+        } else {
+            String::from_utf8_lossy(&stdout).to_string()
+        };
+        Ok(text.replace("\r\n", "\n"))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+fn parse_cpu_stat(output: &str) -> Option<CpuSnapshot> {
+    for line in output.lines() {
+        if line.starts_with("cpu ") {
+            let values: Vec<u64> = line
+                .split_whitespace()
+                .skip(1)
+                .filter_map(|s| s.parse().ok())
+                .collect();
+
+            if values.len() >= 5 {
+                let total: u64 = values.iter().sum();
+                let idle = values[3] + values.get(4).copied().unwrap_or(0);
+                return Some(CpuSnapshot { total, idle });
+            }
+        }
+    }
+    None
+}
+
+fn parse_net_dev(output: &str) -> Option<NetSnapshot> {
+    let mut rx_total: u64 = 0;
+    let mut tx_total: u64 = 0;
+
+    for line in output.lines() {
+        let line = line.trim();
+        if !line.contains(':') || line.starts_with("lo:") || line.starts_with("Inter") || line.starts_with("face") {
+            continue;
+        }
+        if let Some(data) = line.split(':').nth(1) {
+            let values: Vec<u64> = data.split_whitespace().filter_map(|s| s.parse().ok()).collect();
+            if values.len() >= 10 {
+                rx_total += values[0];
+                tx_total += values[8];
+            }
+        }
+    }
+
+    Some(NetSnapshot { rx_bytes: rx_total, tx_bytes: tx_total })
+}
+
+
+async fn wsl_monitoring_loop(
+    connection_id: String,
+    distro: String,
+    app_handle: tauri::AppHandle,
+) {
+    let event_name = format!("monitoring-{}", connection_id);
+    let mut prev_cpu = CpuSnapshot::default();
+
+    loop {
+        let cpu1 = exec_wsl(&distro, CPU_COMMAND).await.ok().and_then(|o| parse_cpu_stat(&o)).unwrap_or_default();
+        let net1 = exec_wsl(&distro, NET_COMMAND).await.ok().and_then(|o| parse_net_dev(&o)).unwrap_or_default();
+
+        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+
+        let cpu2 = exec_wsl(&distro, CPU_COMMAND).await.ok().and_then(|o| parse_cpu_stat(&o)).unwrap_or_default();
+        let net2 = exec_wsl(&distro, NET_COMMAND).await.ok().and_then(|o| parse_net_dev(&o)).unwrap_or_default();
+
+        let net_down = if net2.rx_bytes >= net1.rx_bytes { (net2.rx_bytes - net1.rx_bytes) * 2 } else { 0 };
+        let net_up = if net2.tx_bytes >= net1.tx_bytes { (net2.tx_bytes - net1.tx_bytes) * 2 } else { 0 };
+
+        let cpu = if cpu2.total > cpu1.total {
+            let total_delta = cpu2.total - cpu1.total;
+            let idle_delta = cpu2.idle - cpu1.idle;
+            ((total_delta - idle_delta) as f64 / total_delta as f64 * 100.0).round()
+        } else if cpu2.total > prev_cpu.total {
+            let total_delta = cpu2.total - prev_cpu.total;
+            let idle_delta = cpu2.idle - prev_cpu.idle;
+            ((total_delta - idle_delta) as f64 / total_delta as f64 * 100.0).round()
+        } else {
+            0.0
+        };
+        prev_cpu = cpu2;
+
+        if let Ok(output) = exec_wsl(&distro, STATS_COMMAND).await {
+            let sections: Vec<&str> = output.split("===REACH_SEP===").collect();
+            let (ram_total, ram_used) = sections.first().map(|s| parse_memory(s)).unwrap_or((0, 0));
+            let ram = if ram_total > 0 { (ram_used as f64 / ram_total as f64) * 100.0 } else { 0.0 };
+            let disk = sections.get(1).map(|s| parse_disk(s)).unwrap_or(0.0);
+            let users = sections.get(2).map(|s| parse_users(s)).unwrap_or_default();
+
+            let stats = SystemStats {
+                cpu,
+                ram,
+                ram_total,
+                ram_used,
+                disk,
+                users,
+                net_up,
+                net_down,
+            };
+
+            {
+                let state = app_handle.state::<AppState>();
+                let mut monitoring = state.monitoring.write().await;
+                monitoring.insert(connection_id.clone(), stats.clone());
+            }
+            let _ = app_handle.emit(&event_name, &stats);
+        }
+
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    }
 }

@@ -214,6 +214,7 @@ pub async fn session_create(
     via_session_id: Option<String>,
     try_agent_keys: Option<bool>,
     ssh_options: Option<crate::ssh::sshconf::session::SshOptions>,
+    wsl_distro: Option<String>,
 ) -> Result<SessionConfig, String> {
     let mut manager = state.vault_manager.lock().await;
     let kind = kind.unwrap_or_default();
@@ -245,6 +246,7 @@ pub async fn session_create(
         username,
         auth_method,
         kind,
+        wsl_distro,
         domain: domain.filter(|d| !d.trim().is_empty()),
         share_path: share_path.filter(|d| !d.trim().is_empty()),
         via_session_id: via_session_id.filter(|s| !s.is_empty()),
@@ -683,5 +685,47 @@ mod approval_tests {
         renamed.folder_id = Some("f".into());
         renamed.auth_method = AuthMethod::Password { password: Some("pw".into()) };
         assert_eq!(mine_after_reading(&renamed, &key), vec!["StrictHostKeyChecking no"]);
+    }
+}
+
+/// List installed WSL distributions on Windows.
+/// On non-Windows platforms, returns an empty list.
+#[tauri::command]
+pub async fn wsl_list_distros() -> Result<Vec<String>, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        // CREATE_NO_WINDOW prevents command prompt flashing
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        let output = std::process::Command::new("wsl.exe")
+            .args(["-l", "-q"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .map_err(|e| format!("Failed to execute wsl.exe: {}", e))?;
+        if !output.status.success() {
+            return Ok(Vec::new());
+        }
+        // wsl.exe output is UTF-16LE with null bytes
+        let stdout = output.stdout;
+        let text = if stdout.len() >= 2 && (stdout[1] == 0 || stdout[0] == 0) {
+            let u16_vec: Vec<u16> = stdout
+                .chunks_exact(2)
+                .map(|c| u16::from_le_bytes([c[0], c[1]]))
+                .collect();
+            String::from_utf16_lossy(&u16_vec)
+        } else {
+            String::from_utf8_lossy(&stdout).to_string()
+        };
+        let distros: Vec<String> = text
+            .lines()
+            .map(|l| l.trim().trim_matches('\0').to_string())
+            .filter(|l| !l.is_empty())
+            .collect();
+        Ok(distros)
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        // WSL is only available on Windows
+        Ok(Vec::new())
     }
 }
