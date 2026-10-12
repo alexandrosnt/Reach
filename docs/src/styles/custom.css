@@ -376,9 +376,12 @@ starlight-toc details > div {
 	cursor: pointer;
 }
 #ads-consent button.primary {
-	border-color: var(--sl-color-accent);
-	background: var(--sl-color-accent);
-	color: var(--sl-color-white);
+	/* The accent a quarter darker: white on the accent itself, and the
+	   accent's own dark text, both fell short of the 4.5:1 text needs. */
+	--accept: color-mix(in srgb, var(--sl-color-accent) 75%, black);
+	border-color: var(--accept);
+	background: var(--accept);
+	color: #fff;
 }
 @media (max-width: 40rem) {
 	#ads-consent {

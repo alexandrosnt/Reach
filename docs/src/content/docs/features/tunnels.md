@@ -1,6 +1,6 @@
 ---
-title: Port Tunneling
-description: Forward ports through SSH connections.
+title: SSH Port Forwarding and Tunnels
+description: Forward ports through SSH with Reach. Local tunnels from the Tunnels panel; local, remote and dynamic (SOCKS) forwards from ssh_config.
 ---
 
 Reach supports SSH port tunneling so you can securely access services behind firewalls or only listening on private networks.
@@ -13,7 +13,9 @@ Three types are available in the UI:
 - **Remote** — binds a port on the remote server and forwards back to your machine. Planned but not implemented yet.
 - **Dynamic** — SOCKS proxy through your SSH connection. Also planned but not implemented yet.
 
-Local forwarding is the only type that actually works right now. Remote and Dynamic show up in the type selector but will return an error if you try to start them.
+In the Tunnels panel, Local is the only type that works right now. Remote and Dynamic show up in the type selector but will return an error if you try to start them.
+
+Remote and dynamic forwarding already work through ssh_config: a session that uses it starts its `LocalForward`, `RemoteForward` and `DynamicForward` lines (SOCKS 4, 4a and 5) with the connection, the way OpenSSH does. See [Jump Hosts & SSH Config](../jump-hosts/).
 
 ## Creating a Tunnel
 

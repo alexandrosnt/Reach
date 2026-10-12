@@ -1,5 +1,5 @@
 ---
-title: Databases
+title: "Database Client: PostgreSQL, MySQL, SQL Server and More"
 description: PostgreSQL, MySQL, MariaDB, SQL Server, SQLite and Redis — browse, query, edit and design, directly or through SSH.
 ---
 

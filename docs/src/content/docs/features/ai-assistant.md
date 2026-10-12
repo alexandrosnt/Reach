@@ -1,6 +1,6 @@
 ---
-title: AI Assistant
-description: Get help from AI right inside Reach.
+title: "AI Assistant for the Terminal"
+description: "Reach's optional AI assistant helps with server administration, using your own OpenRouter key and the model you pick. Off until you set it up."
 ---
 
 Reach has an optional AI assistant that can help with server administration tasks. It's not required to use the app, but it can save you time when you're troubleshooting or need a quick answer.

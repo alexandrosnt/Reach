@@ -1,6 +1,6 @@
 ---
 title: Project Architecture
-description: How the codebase is organized.
+description: "How Reach is built: a Svelte 5 frontend and a Rust backend joined by Tauri 2, and where each part of the code lives."
 ---
 
 Reach is split into two halves: a **Svelte 5 frontend** and a **Rust backend**, connected by **Tauri v2**.

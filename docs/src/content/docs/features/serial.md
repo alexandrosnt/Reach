@@ -1,6 +1,6 @@
 ---
-title: Serial Console
-description: Connect to devices over COM/TTY serial ports.
+title: "Serial Console (COM and TTY)"
+description: "Connect to routers, switches and embedded devices over COM and TTY serial ports from Reach on Windows, macOS and Linux."
 ---
 
 :::note

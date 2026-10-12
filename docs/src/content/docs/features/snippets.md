@@ -1,6 +1,6 @@
 ---
-title: Snippets
-description: Save the commands you keep retyping, and complete them with Tab.
+title: "Command Snippets"
+description: "Save the shell commands you keep retyping in Reach, then complete them in the terminal with Tab."
 ---
 
 Snippets are the commands you type often enough to resent typing. Save one,

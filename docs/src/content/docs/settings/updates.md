@@ -1,6 +1,6 @@
 ---
-title: Auto-Updates
-description: How Reach keeps itself up to date.
+title: "Automatic Updates"
+description: "How Reach checks GitHub for new versions, verifies their signature, and installs an update only when you agree. Android updates by APK."
 ---
 
 Reach checks for updates automatically. On startup, it hits the GitHub releases page and looks for a newer version. If one exists, you'll see an update dialog.

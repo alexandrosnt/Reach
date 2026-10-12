@@ -1,6 +1,6 @@
 ---
-title: Sharing & Collaboration
-description: Share vaults and secrets with your team.
+title: "Sharing Vaults and Secrets"
+description: "Share a whole Reach vault with your team, or send a single secret once, encrypted end to end with X25519 keys."
 ---
 
 Reach supports two kinds of sharing: sharing an entire vault with team members, or sharing individual secrets as a one-off.

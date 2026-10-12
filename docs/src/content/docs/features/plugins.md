@@ -1,6 +1,6 @@
 ---
-title: Plugins
-description: Extend Reach with Lua plugins for custom workflows and automation.
+title: "Lua Plugins"
+description: "Extend Reach with sandboxed Lua plugins that work with SSH connections, keep their own data and react to app events. Currently in beta."
 ---
 
 Reach has a plugin system that lets you extend the app with custom Lua scripts. Plugins run in a sandboxed environment and can interact with SSH connections, store data, and hook into app events.

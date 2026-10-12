@@ -1,6 +1,6 @@
 ---
 title: First Run & Setup
-description: What happens the first time you open Reach.
+description: "What happens the first time you open Reach: a three-step setup (language, optional cloud sync, done) that takes about thirty seconds, then your first connection."
 ---
 
 When you launch Reach for the first time, a short setup wizard walks you through the basics. It's 3 steps and takes about 30 seconds.

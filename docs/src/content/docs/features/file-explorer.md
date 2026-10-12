@@ -1,6 +1,6 @@
 ---
-title: File Explorer (SFTP)
-description: Browse and manage remote files like a local file manager.
+title: "SFTP File Explorer"
+description: "Browse, move and edit remote files over SFTP in Reach's file explorer, which opens with every SSH connection, like a local file manager."
 ---
 
 When you connect to a server via SSH, a file explorer shows up in the sidebar. It lets you browse the remote filesystem, move files around, and edit them without leaving Reach.

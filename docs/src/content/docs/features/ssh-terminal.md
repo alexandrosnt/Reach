@@ -1,6 +1,6 @@
 ---
-title: SSH Terminal
-description: Full interactive SSH terminal with tabs, splits, and WebGL rendering.
+title: "SSH Terminal with Tabs and Split Panes"
+description: "Reach's SSH terminal: xterm.js with WebGL rendering, truecolor, tabs and split panes, so htop, vim and other modern tools render correctly."
 ---
 
 The terminal in Reach is built on xterm.js with WebGL rendering. It handles 256 colors and truecolor, sets `TERM=xterm-256color` and `COLORTERM=truecolor`, so tools like `htop`, `vim`, and everything else that expects a modern terminal will render correctly. If your GPU doesn't support WebGL, it falls back to canvas automatically.

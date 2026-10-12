@@ -1,0 +1,115 @@
+---
+/**
+ * What installing Reach does, said plainly and in one place.
+ *
+ * Google Ads requires a page that leads to a download to state what the
+ * software is, what it does, and everything installing it changes, in text a
+ * visitor cannot miss (Unwanted Software policy). It is also simply what a
+ * careful person wants to know before running an installer. Shown on the
+ * landing page and the download page; every line was checked against the
+ * installers' configuration and the app's code, so keep it that way.
+ */
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const FACTS = [
+	{
+		term: 'What it is',
+		body: 'Reach is a desktop and Android app: an SSH client with SFTP, remote desktop (RDP and VNC), tunnels and an encrypted vault. One app, nothing bundled with it.',
+	},
+	{
+		term: 'Windows',
+		body: 'The installer asks whether to install for you or for everyone. If Microsoft Edge WebView2 is missing (some Windows 10 PCs), it downloads it from Microsoft. Remove Reach from Settings → Apps.',
+	},
+	{
+		term: 'macOS',
+		body: 'Drag Reach into Applications. To remove it, move it to the Trash.',
+	},
+	{
+		term: 'Linux',
+		body: 'The AppImage runs without installing anything. The .deb and .rpm packages install through your package manager, with WebKitGTK and a tray-icon library as dependencies, and are removed the same way.',
+	},
+	{
+		term: 'Android',
+		body: 'The APK asks for one permission, Internet. Uninstall it like any other app.',
+	},
+	{
+		term: 'On your computer',
+		body: 'Reach does not start with your computer unless you turn that on in Settings. Updates are offered in the app and installed only when you agree, after their signature is checked.',
+	},
+	{
+		term: 'Your data',
+		body: 'No account and no telemetry. On its own, Reach only asks GitHub whether there is a new version; everything else connects because you asked.',
+		link: { href: `${base}privacy/`, text: 'Every connection it makes' },
+	},
+	{
+		term: 'Removing it fully',
+		body: 'Uninstalling keeps your encrypted vault in a com.reach.app folder in your user data folder, so a reinstall finds your sessions. Delete that folder to remove everything.',
+	},
+	{
+		term: 'Licence',
+		body: 'Free and open source under the MIT licence.',
+		link: { href: 'https://github.com/alexandrosnt/Reach/blob/main/LICENSE', text: 'Read the licence and the code' },
+	},
+];
+---
+
+<section class="install-facts not-content" aria-labelledby="install-facts-title">
+	<h2 id="install-facts-title">What installing Reach does</h2>
+	<dl>
+		{
+			FACTS.map((f) => (
+				<div>
+					<dt>{f.term}</dt>
+					<dd>
+						{f.body}
+						{f.link && (
+							<>
+								{' '}
+								<a href={f.link.href}>{f.link.text}</a>.
+							</>
+						)}
+					</dd>
+				</div>
+			))
+		}
+	</dl>
+</section>
+
+<style>
+	.install-facts {
+		margin-block: 2.5rem 1rem;
+		padding: 1.5rem;
+		border: 1px solid var(--sl-color-gray-5);
+		border-radius: 0.75rem;
+		background: var(--sl-color-bg-nav);
+		text-align: start;
+	}
+	.install-facts h2 {
+		margin: 0 0 1rem;
+		font-size: var(--sl-text-2xl);
+		color: var(--sl-color-white);
+	}
+	dl {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+		gap: 1rem 1.5rem;
+		margin: 0;
+	}
+	dt {
+		font-weight: 600;
+		color: var(--sl-color-white);
+	}
+	dd {
+		margin: 0.25rem 0 0;
+		font-size: var(--sl-text-base);
+		line-height: 1.55;
+		color: var(--sl-color-gray-2);
+	}
+	a {
+		color: var(--sl-color-text-accent);
+	}
+	@media (max-width: 30rem) {
+		.install-facts {
+			padding: 1.1rem;
+		}
+	}
+</style>

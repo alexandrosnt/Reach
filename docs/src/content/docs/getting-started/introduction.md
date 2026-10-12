@@ -1,6 +1,6 @@
 ---
 title: What is Reach?
-description: A quick intro to Reach and what it can do.
+description: "Reach is a free, open source SSH client and remote management tool for Windows, macOS, Linux and Android. What it does, and why it exists."
 ---
 
 Reach is a cross-platform SSH client and remote management tool. It runs on Windows, macOS, Linux, and Android. You can use it to connect to servers over SSH, browse files with SFTP, manage credentials in an encrypted vault, set up port tunnels, run automated playbooks and recipes, monitor system resources, talk to a serial console, share a live terminal with a colleague, hand a session to an AI client on your terms, and chat with an AI assistant about your infrastructure.

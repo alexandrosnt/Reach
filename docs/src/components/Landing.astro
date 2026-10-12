@@ -17,6 +17,7 @@ import logo from '../assets/reach-logo.png';
 import { latestRelease, RELEASES_URL, resolve } from '../lib/release';
 import AppDemo from './AppDemo.astro';
 import Community from './Community.astro';
+import InstallFacts from './InstallFacts.astro';
 
 /**
  * The left column of the banner. Each keeps the banner's own colour, because
@@ -26,37 +27,37 @@ import Community from './Community.astro';
 const CAPABILITIES = [
 	{
 		title: 'SSH terminal',
-		body: 'Tabs, split panes and a real terminal that gets out of the way.',
+		body: 'Tabs, split panes and jump hosts, with your ssh_config read in full.',
 		hue: 268,
 		icon: 'M13 2 3 14h7l-1 8 10-12h-7l1-8z',
 	},
 	{
-		title: 'Organise servers',
-		body: 'Folders, tags and search across every machine you look after.',
+		title: 'SFTP file explorer',
+		body: 'Browse, edit and move remote files over the same SSH login.',
 		hue: 205,
-		icon: 'M3 5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM3 16a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM7 6.5h.01M7 17.5h.01',
+		icon: 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2zM12 11v5M9.5 13.5 12 16l2.5-2.5',
 	},
 	{
-		title: 'Work together',
-		body: 'Share a vault with your team, or put two terminals side by side.',
+		title: 'RDP and VNC desktops',
+		body: 'Remote desktops open in a tab next to your SSH sessions. VNC can travel inside SSH.',
 		hue: 152,
+		icon: 'M3 4h18v12H3zM8 20h8M12 16v4',
+	},
+	{
+		title: 'Encrypted vault',
+		body: 'Keys and passwords encrypted with XChaCha20-Poly1305 and Argon2id. Nothing stored in plaintext.',
+		hue: 192,
+		icon: 'M5 11h14v10H5zM8 11V7a4 4 0 0 1 8 0v4M12 15v2',
+	},
+	{
+		title: 'Sync and share',
+		body: 'Optional end-to-end encrypted sync to your own database, and shared vaults for a team.',
+		hue: 222,
 		icon: 'M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
 	},
 	{
-		title: 'Self hosted',
-		body: 'Your keys and passwords stay yours. Sync is optional and it is your database.',
-		hue: 192,
-		icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10zM9 12l2 2 4-4',
-	},
-	{
-		title: 'Light on its feet',
-		body: 'A native binary, not a browser in a costume. It opens straight away.',
-		hue: 222,
-		icon: 'M12 2 2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5',
-	},
-	{
-		title: 'Automation built in',
-		body: 'Ansible and OpenTofu, run against the servers you already have saved.',
+		title: 'DevOps built in',
+		body: 'Docker, Podman, Kubernetes, Ansible and OpenTofu, through the servers you already have saved.',
 		hue: 32,
 		icon: 'M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z',
 	},
@@ -145,10 +146,10 @@ const CHIPS = [
 			</span>
 		</span>
 		<h1 data-rise style="--delay:120ms">Reach</h1>
-		<p class="promise" data-rise style="--delay:200ms">Manage your servers, everywhere.</p>
+		<p class="promise" data-rise style="--delay:200ms">The free, open source SSH client.</p>
 		<p class="blurb" data-rise style="--delay:280ms">
-			A modern, lightweight SSH client and remote server manager. Terminals, files,
-			tunnels, secrets and automation, in one place that stays out of your way.
+			SSH terminals, SFTP files, RDP and VNC desktops, tunnels and an encrypted vault in
+			one app for Windows, macOS, Linux and Android. No account, no telemetry.
 		</p>
 
 		<div class="cta" data-rise style="--delay:360ms">
@@ -267,6 +268,7 @@ const CHIPS = [
 		<p class="eyebrow">Downloads</p>
 		<h2 class="block-title">Get Reach</h2>
 		<Downloads />
+		<InstallFacts />
 		<Community />
 	</section>
 
@@ -458,12 +460,6 @@ const CHIPS = [
 		max-width: 70rem;
 		margin: 0 auto;
 		padding: 0 1.25rem 4rem;
-	}
-
-	/* Starlight prints the page title above a splash page. Here the mark and
-	   the wordmark are the title, so the duplicate goes. */
-	:global(.content-panel h1#_top) {
-		display: none;
 	}
 
 	.glow {

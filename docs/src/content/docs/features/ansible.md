@@ -1,6 +1,6 @@
 ---
-title: Ansible
-description: Run Ansible playbooks, manage inventories, and automate infrastructure directly from Reach.
+title: "Ansible Playbooks and Ad-hoc Commands"
+description: "A full Ansible workspace in Reach: projects, playbooks, inventories, roles, collections, ad-hoc commands and vault files. On Windows it runs through WSL."
 ---
 
 > Ansible, OpenTofu and Databases are switched on in **Settings → DevOps**. See [DevOps Tools](/settings/devops/).

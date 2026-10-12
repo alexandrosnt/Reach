@@ -1,6 +1,6 @@
 ---
-title: Backup & Restore
-description: Export and import encrypted backups of all your data.
+title: "Encrypted Backup and Restore"
+description: "Export everything in Reach, vaults, secrets, sessions, settings and sync configuration, to one encrypted backup file, and restore it later."
 ---
 
 You can export everything in Reach to an encrypted backup file. Vaults, secrets, sessions, settings, sync config. All of it, in one file.

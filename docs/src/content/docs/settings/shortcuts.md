@@ -1,6 +1,6 @@
 ---
 title: Keyboard Shortcuts
-description: All the keyboard shortcuts in Reach.
+description: "Every keyboard shortcut in Reach, for tabs, panes, the terminal and the app. On a Mac, use Cmd where it says Ctrl."
 ---
 
 Reach has global keyboard shortcuts that work anywhere in the app. On Mac, replace Ctrl with Cmd.

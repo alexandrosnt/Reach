@@ -1,5 +1,5 @@
 ---
-title: Session Sharing
+title: "Terminal Session Sharing"
 description: Share a terminal with another person, peer to peer, encrypted end to end, with no server in between.
 ---
 

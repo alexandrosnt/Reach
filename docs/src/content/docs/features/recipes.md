@@ -1,5 +1,5 @@
 ---
-title: Recipes
+title: "Recipes: Reusable Scripts with a Risk Check"
 description: Reusable bash scripts with parameters and a risk check, run against the terminal you have open.
 ---
 

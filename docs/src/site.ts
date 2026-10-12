@@ -27,7 +27,7 @@ export const PRODUCT = {
 	tagline: 'Manage your servers, everywhere.',
 	/** Under 160 characters: longer and search results cut it mid-sentence. */
 	description:
-		'Reach is a free, open source SSH client and remote server manager for Windows, macOS, Linux and Android. Terminals, SFTP, tunnels, secrets and automation in one app.',
+		'Reach is a free, open source SSH client for Windows, macOS, Linux and Android: terminals, SFTP, RDP and VNC desktops, tunnels and an encrypted vault in one app.',
 	repo: 'https://github.com/alexandrosnt/Reach',
 	licence: 'MIT',
 	categories: ['DeveloperApplication', 'UtilitiesApplication'],

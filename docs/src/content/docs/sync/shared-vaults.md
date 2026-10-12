@@ -1,6 +1,6 @@
 ---
 title: Syncing Shared Vaults
-description: How shared vaults work with cloud sync.
+description: "How shared vaults sync between team members: Reach creates a Turso database for each shared vault, and the data stays encrypted."
 ---
 
 Shared vaults need Turso to work. When you create a shared vault, Reach automatically creates a Turso database for it.

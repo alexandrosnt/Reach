@@ -1,0 +1,15 @@
+---
+/**
+ * Starlight's page heading, left out on the landing page.
+ *
+ * There the mark and the wordmark in the hero are the title. Hiding
+ * Starlight's copy with CSS still left two h1 elements in the document, and
+ * Google reads the first prominent h1 as the page's main title.
+ */
+import Default from '@astrojs/starlight/components/PageTitle.astro';
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const isHome = Astro.url.pathname === base;
+---
+
+{!isHome && <Default {...Astro.props} />}
