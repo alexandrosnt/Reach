@@ -12,10 +12,16 @@
 //!   never gets it. The time is a fixed deadline from when it was typed, not
 //!   extended by use: "remember for 15 minutes" means fifteen minutes after
 //!   the user typed it, however often it is used meanwhile, so a passphrase
-//!   in steady use still goes away on schedule. Checked on every read, and a
-//!   timer drops it at the deadline even if nothing reads it. Cleared too on
-//!   a settings save, a vault lock, a new vault identity, "Forget now",
-//!   quitting, and when the manager says it is wrong.
+//!   in steady use still goes away on schedule. The time is measured on two
+//!   clocks, and whichever says it is up first wins: the monotonic one
+//!   (immune to the clock being set back) and the wall clock (the monotonic
+//!   one stops while Linux and macOS sleep, so a laptop shut for the night
+//!   would otherwise wake with the passphrase still "fresh"). Checked on
+//!   every read, and a timer drops it at the deadline even if nothing reads
+//!   it. Cleared too on a settings save, a vault lock, a new vault identity,
+//!   the computer locking or going to sleep, "Forget now", quitting, and
+//!   when the manager says it is wrong; all but the last also cancel any
+//!   question still open (`super::prompt::cancel_all`).
 //! - **[`PromptHub`]**: the question to the user. One open question per
 //!   account however many callers need the answer (a jump chain resolving
 //!   three entries, a picker and a connect at once): the first asks, the
@@ -25,7 +31,9 @@
 //! connect, a listing, a test. Whatever it needs, it asks for at most once:
 //! the passphrase it got is kept with the operation until it ends, even when
 //! the setting says not to keep it at all, so connecting through two jump
-//! hosts with an entry each asks once, not three times. An operation also
+//! hosts with an entry each asks once, not three times. Unless everything
+//! kept is forgotten meanwhile (a vault lock, say): then the operation lets
+//! go of it too, and asks again if it still needs it. An operation also
 //! carries what to ask with (the app's window) and why, for the question's
 //! text.
 //!
@@ -39,7 +47,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock};
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 
 use tokio::sync::watch;
 use zeroize::Zeroizing;
@@ -54,6 +62,9 @@ pub const PROMPT_TIMEOUT: Duration = Duration::from_secs(180);
 /// How many passphrases the manager may reject in one operation before it
 /// fails.
 pub const MAX_ATTEMPTS: u32 = 3;
+
+/// How often the deadline timer looks at the wall clock, at the least.
+const EXPIRY_CHECK: Duration = Duration::from_secs(30);
 
 /// The length prefix in front of the passphrase in its shielded buffer.
 const LEN_PREFIX: usize = 2;
@@ -169,6 +180,9 @@ pub struct PromptRequest {
     pub error: Option<String>,
     /// How long the answer will be kept, for the question to say.
     pub remember_secs: u32,
+    /// The server the passphrase signs in to (its host name only), so
+    /// questions for different accounts can be told apart. Not secret.
+    pub server: Option<String>,
 }
 
 /// What the user did with the question.
@@ -296,7 +310,20 @@ impl PromptHub {
 struct Remembered {
     account: CacheKey,
     pass: Arc<Passphrase>,
+    /// The deadline on the monotonic clock.
     until: Instant,
+    /// When it was typed by the wall clock, and for how long it is kept:
+    /// the wall clock goes on while the computer sleeps.
+    stored_wall: SystemTime,
+    remember: Duration,
+}
+
+impl Remembered {
+    /// Its time is up by either clock. A wall clock set back before the
+    /// typing counts as up too: the time kept can no longer be told.
+    fn expired(&self, now: Instant, wall: SystemTime) -> bool {
+        self.until <= now || wall.duration_since(self.stored_wall).map_or(true, |kept| kept >= self.remember)
+    }
 }
 
 #[derive(Default)]
@@ -326,14 +353,14 @@ impl PassphraseCache {
 
     /// The passphrase kept for `account`, if its time is not up.
     pub fn get(&self, account: CacheKey) -> Option<Arc<Passphrase>> {
-        self.get_at(account, Instant::now())
+        self.get_at(account, Instant::now(), SystemTime::now())
     }
 
-    pub(crate) fn get_at(&self, account: CacheKey, now: Instant) -> Option<Arc<Passphrase>> {
+    pub(crate) fn get_at(&self, account: CacheKey, now: Instant, wall: SystemTime) -> Option<Arc<Passphrase>> {
         let mut state = lock(&self.state);
         let provider = account.provider();
         let entry = state.entries.get(&provider)?;
-        if entry.until <= now || entry.account != account {
+        if entry.expired(now, wall) || entry.account != account {
             // Expired, or typed for another account (the settings changed):
             // of no use to anyone now.
             state.entries.remove(&provider);
@@ -351,7 +378,7 @@ impl PassphraseCache {
     /// Nothing is kept for a zero time, or if the cache was cleared since
     /// the question was asked. Returns the deadline.
     pub fn store(&self, account: CacheKey, pass: Arc<Passphrase>, generation: u64, remember: Duration) -> Option<Instant> {
-        self.store_at(account, pass, generation, remember, Instant::now())
+        self.store_at(account, pass, generation, remember, Instant::now(), SystemTime::now())
     }
 
     pub(crate) fn store_at(
@@ -361,6 +388,7 @@ impl PassphraseCache {
         generation: u64,
         remember: Duration,
         now: Instant,
+        wall: SystemTime,
     ) -> Option<Instant> {
         let mut state = lock(&self.state);
         if remember.is_zero() || state.generation != generation {
@@ -374,7 +402,7 @@ impl PassphraseCache {
             }
         }
         let until = now + remember;
-        state.entries.insert(account.provider(), Remembered { account, pass, until });
+        state.entries.insert(account.provider(), Remembered { account, pass, until, stored_wall: wall, remember });
         Some(until)
     }
 
@@ -387,9 +415,11 @@ impl PassphraseCache {
     }
 
     /// The deadline timer: forget the passphrase with this serial if its
-    /// time is up.
-    pub(crate) fn expire_at(&self, serial: u64, now: Instant) {
-        lock(&self.state).entries.retain(|_, e| e.pass.serial() != serial || e.until > now);
+    /// time is up by either clock. Returns whether it is still kept.
+    pub(crate) fn expire_at(&self, serial: u64, now: Instant, wall: SystemTime) -> bool {
+        let mut state = lock(&self.state);
+        state.entries.retain(|_, e| e.pass.serial() != serial || !e.expired(now, wall));
+        state.entries.values().any(|e| e.pass.serial() == serial)
     }
 
     /// Forget everything, and keep any question still open from being kept.
@@ -407,8 +437,17 @@ impl PassphraseCache {
 pub struct Operation {
     asker: Option<Arc<dyn PassphraseAsker>>,
     reason: Mutex<Reason>,
-    held: Mutex<Option<(CacheKey, Arc<Passphrase>)>>,
+    held: Mutex<Option<Held>>,
     rejected: AtomicU32,
+}
+
+/// The passphrase an operation got, for its account, and the cache
+/// generation it was got under: once the cache is cleared (a vault lock,
+/// "Forget now"), the operation lets go of it too.
+struct Held {
+    account: CacheKey,
+    generation: u64,
+    pass: Arc<Passphrase>,
 }
 
 impl Operation {
@@ -416,17 +455,23 @@ impl Operation {
         Self { asker, reason: Mutex::new(reason), held: Mutex::new(None), rejected: AtomicU32::new(0) }
     }
 
-    fn held(&self, account: CacheKey) -> Option<Arc<Passphrase>> {
-        lock(&self.held).as_ref().filter(|(k, _)| *k == account).map(|(_, p)| p.clone())
+    /// The passphrase held for `account`, if it was got under `generation`.
+    /// One got before everything was forgotten is dropped.
+    fn held(&self, account: CacheKey, generation: u64) -> Option<Arc<Passphrase>> {
+        let mut held = lock(&self.held);
+        if held.as_ref().is_some_and(|h| h.generation != generation) {
+            *held = None;
+        }
+        held.as_ref().filter(|h| h.account == account).map(|h| h.pass.clone())
     }
 
-    fn hold(&self, account: CacheKey, pass: Arc<Passphrase>) {
-        *lock(&self.held) = Some((account, pass));
+    fn hold(&self, account: CacheKey, generation: u64, pass: Arc<Passphrase>) {
+        *lock(&self.held) = Some(Held { account, generation, pass });
     }
 
     fn release(&self, serial: u64) {
         let mut held = lock(&self.held);
-        if held.as_ref().is_some_and(|(_, p)| p.serial() == serial) {
+        if held.as_ref().is_some_and(|h| h.pass.serial() == serial) {
             *held = None;
         }
     }
@@ -457,12 +502,14 @@ pub fn name_operation(name: &str) {
     });
 }
 
-/// What a call needs to unlock: the account, and how long a typed
-/// passphrase may be kept (seconds; 0 = only for the operation).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+/// What a call needs to unlock: the account, how long a typed passphrase
+/// may be kept (seconds; 0 = only for the operation), and the server's host
+/// name for the question to show.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Policy {
     pub account: CacheKey,
     pub remember_secs: u32,
+    pub server: Option<String>,
 }
 
 // ---------------------------------------------------------------------------
@@ -522,14 +569,14 @@ impl Unlocker {
     /// The passphrase for `policy`'s account: the operation's own, the
     /// remembered one, or asked for now.
     async fn obtain(&'static self, op: &Operation, policy: &Policy, rejected: Option<String>) -> Result<Arc<Passphrase>, String> {
-        if let Some(p) = op.held(policy.account) {
+        let generation = self.cache.generation();
+        if let Some(p) = op.held(policy.account, generation) {
             return Ok(p);
         }
         if let Some(p) = self.cache.get(policy.account) {
-            op.hold(policy.account, p.clone());
+            op.hold(policy.account, generation, p.clone());
             return Ok(p);
         }
-        let generation = self.cache.generation();
         let provider = policy.account.provider();
         let remember_secs = clamp_remember(policy.remember_secs);
         let request = PromptRequest {
@@ -538,22 +585,36 @@ impl Unlocker {
             retry: rejected.is_some(),
             error: rejected,
             remember_secs,
+            server: policy.server.clone(),
         };
         let pass = self.hub.ask(policy.account, op.asker.as_ref(), request).await.map_err(|e| e.message(provider))?;
+        if self.cache.generation() != generation {
+            // Everything was forgotten while the question was open (the
+            // vault locked, the computer went to sleep): the answer does
+            // not outlive that.
+            return Err(PromptError::Cancelled.message(provider));
+        }
         if let Some(until) = self.cache.store(policy.account, pass.clone(), generation, Duration::from_secs(remember_secs.into())) {
             self.expire_later(pass.serial(), until);
         }
-        op.hold(policy.account, pass.clone());
+        op.hold(policy.account, generation, pass.clone());
         Ok(pass)
     }
 
     /// Drop the passphrase at its deadline even if nothing asks for it (a
-    /// read would drop it then anyway).
+    /// read would drop it then anyway). Wakes at least every
+    /// [`EXPIRY_CHECK`] to look at the wall clock as well: the monotonic
+    /// deadline stands still while the computer sleeps.
     fn expire_later(&'static self, serial: u64, until: Instant) {
         if let Ok(runtime) = tokio::runtime::Handle::try_current() {
             runtime.spawn(async move {
-                tokio::time::sleep_until(until.into()).await;
-                self.cache.expire_at(serial, Instant::now());
+                loop {
+                    let left = until.saturating_duration_since(Instant::now()).min(EXPIRY_CHECK);
+                    tokio::time::sleep(left).await;
+                    if !self.cache.expire_at(serial, Instant::now(), SystemTime::now()) {
+                        break;
+                    }
+                }
             });
         }
     }

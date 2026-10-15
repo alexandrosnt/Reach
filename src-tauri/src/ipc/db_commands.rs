@@ -476,25 +476,31 @@ pub async fn db_connect(
     id: String,
     connection: Option<DbConnection>,
 ) -> Result<Connected, String> {
-    devops::require(Tool::Databases)?;
-    let (conn, origin) = match connection {
-        Some(c) => (complete(&state, DbConnection { id: id.clone(), ..c }, true).await?, Origin::Form),
-        None => {
-            let mut vault = state.vault_manager.lock().await;
-            let mut db = state.db.lock().await;
-            db.store.ensure_loaded(&mut vault).await?;
-            let mut c = db.store.get(&id).cloned().ok_or("That connection no longer exists")?;
-            c.last_used_at = now_ms();
-            let _ = db.store.save(c.clone(), &mut vault).await;
-            (c, Origin::Saved)
-        }
-    };
-    let target = format!("{:?} {}@{}:{} via {:?}", conn.engine, conn.username, conn.host, conn.port, conn.route);
-    let live = open_live(&app, &state, conn, origin).await.inspect_err(|e| tracing::warn!("db_connect {target}: {e}"))?;
-    let described = describe_live(&live).await;
-    let old = state.db.lock().await.insert(id, live);
-    close(old).await;
-    described
+    // Boxed: Tauri builds a command's future on the main thread and passes it
+    // by value before spawning it, and the main thread's stack is small
+    // (1 MB on Windows). Only a pointer is left there this way.
+    Box::pin(async move {
+        devops::require(Tool::Databases)?;
+        let (conn, origin) = match connection {
+            Some(c) => (complete(&state, DbConnection { id: id.clone(), ..c }, true).await?, Origin::Form),
+            None => {
+                let mut vault = state.vault_manager.lock().await;
+                let mut db = state.db.lock().await;
+                db.store.ensure_loaded(&mut vault).await?;
+                let mut c = db.store.get(&id).cloned().ok_or("That connection no longer exists")?;
+                c.last_used_at = now_ms();
+                let _ = db.store.save(c.clone(), &mut vault).await;
+                (c, Origin::Saved)
+            }
+        };
+        let target = format!("{:?} {}@{}:{} via {:?}", conn.engine, conn.username, conn.host, conn.port, conn.route);
+        let live = open_live(&app, &state, conn, origin).await.inspect_err(|e| tracing::warn!("db_connect {target}: {e}"))?;
+        let described = describe_live(&live).await;
+        let old = state.db.lock().await.insert(id, live);
+        close(old).await;
+        described
+    })
+    .await
 }
 
 #[tauri::command]

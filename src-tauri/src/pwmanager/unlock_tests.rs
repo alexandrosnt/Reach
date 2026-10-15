@@ -17,7 +17,7 @@ fn unlocker(prompt_timeout: Duration) -> &'static Unlocker {
 }
 
 fn policy(account: u64, remember_secs: u32) -> Option<Policy> {
-    Some(Policy { account: key(account), remember_secs })
+    Some(Policy { account: key(account), remember_secs, server: None })
 }
 
 /// What the scripted user does with each question, in turn.
@@ -131,30 +131,61 @@ fn a_kept_passphrase_is_for_its_own_account_only() {
 fn a_kept_passphrase_expires_at_a_fixed_deadline() {
     let cache = PassphraseCache::new();
     let now = Instant::now();
+    let wall = SystemTime::now();
+    let secs = Duration::from_secs;
     let p = pass("one");
-    let until = cache.store_at(key(1), p.clone(), cache.generation(), Duration::from_secs(300), now).unwrap();
-    assert_eq!(until, now + Duration::from_secs(300));
-    assert!(cache.get_at(key(1), now + Duration::from_secs(299)).is_some());
+    let until = cache.store_at(key(1), p.clone(), cache.generation(), secs(300), now, wall).unwrap();
+    assert_eq!(until, now + secs(300));
+    assert!(cache.get_at(key(1), now + secs(299), wall + secs(299)).is_some());
     // Used meanwhile, it still goes at the deadline: storing the same
     // typing again does not push it out.
-    let again = cache.store_at(key(1), p.clone(), cache.generation(), Duration::from_secs(300), now + Duration::from_secs(200));
+    let again = cache.store_at(key(1), p.clone(), cache.generation(), secs(300), now + secs(200), wall + secs(200));
     assert_eq!(again, Some(until));
-    assert!(cache.get_at(key(1), until).is_none());
+    assert!(cache.get_at(key(1), until, wall + secs(300)).is_none());
     assert!(cache.get(key(1)).is_none(), "gone once read after its time");
 }
 
 #[test]
-fn the_deadline_timer_drops_only_its_own_passphrase_when_due() {
+fn a_kept_passphrase_expires_by_the_wall_clock_too() {
+    let secs = Duration::from_secs;
     let cache = PassphraseCache::new();
     let now = Instant::now();
+    let wall = SystemTime::now();
+    // The computer slept for an hour: the monotonic clock (Linux, macOS)
+    // says a second went by, the wall clock says an hour.
+    cache.store_at(key(1), pass("one"), cache.generation(), secs(300), now, wall);
+    assert!(cache.get_at(key(1), now + secs(1), wall + secs(1)).is_some());
+    assert!(cache.get_at(key(1), now + secs(1), wall + secs(3600)).is_none(), "up by the wall clock");
+    assert!(!cache.holds(key(1)), "and dropped");
+    // Exactly at the time kept, by the wall clock alone.
+    cache.store_at(key(1), pass("two"), cache.generation(), secs(300), now, wall);
+    assert!(cache.get_at(key(1), now, wall + secs(300)).is_none());
+    // A wall clock set back before the typing: the time kept is unknown,
+    // so it is up.
+    cache.store_at(key(1), pass("three"), cache.generation(), secs(300), now, wall);
+    assert!(cache.get_at(key(1), now + secs(1), wall - secs(60)).is_none());
+}
+
+#[test]
+fn the_deadline_timer_drops_only_its_own_passphrase_when_due() {
+    let secs = Duration::from_secs;
+    let cache = PassphraseCache::new();
+    let now = Instant::now();
+    let wall = SystemTime::now();
     let p = pass("one");
-    cache.store_at(key(1), p.clone(), cache.generation(), Duration::from_secs(60), now);
-    cache.expire_at(p.serial(), now + Duration::from_secs(59));
-    assert!(cache.get_at(key(1), now + Duration::from_secs(1)).is_some(), "not yet due");
-    cache.expire_at(p.serial() + 1000, now + Duration::from_secs(61));
-    assert!(cache.get_at(key(1), now + Duration::from_secs(1)).is_some(), "another typing's timer");
-    cache.expire_at(p.serial(), now + Duration::from_secs(60));
-    assert!(cache.get_at(key(1), now + Duration::from_secs(1)).is_none());
+    cache.store_at(key(1), p.clone(), cache.generation(), secs(60), now, wall);
+    assert!(cache.expire_at(p.serial(), now + secs(59), wall + secs(59)), "not yet due");
+    assert!(cache.get_at(key(1), now + secs(1), wall + secs(1)).is_some());
+    assert!(!cache.expire_at(p.serial() + 1000, now + secs(61), wall + secs(61)), "another typing's timer");
+    assert!(cache.get_at(key(1), now + secs(1), wall + secs(1)).is_some(), "another typing's timer");
+    assert!(!cache.expire_at(p.serial(), now + secs(60), wall + secs(60)));
+    assert!(cache.get_at(key(1), now + secs(1), wall + secs(1)).is_none());
+    // Woken after a sleep: the monotonic deadline is not there yet, the
+    // wall clock's is.
+    let q = pass("two");
+    cache.store_at(key(1), q.clone(), cache.generation(), secs(60), now, wall);
+    assert!(!cache.expire_at(q.serial(), now + secs(10), wall + secs(7200)));
+    assert!(!cache.holds(key(1)));
 }
 
 #[test]
@@ -388,6 +419,44 @@ async fn the_question_names_what_is_connected_to_once_known() {
     assert_eq!(user.asked()[0].reason, Reason::Connect("Office desktop".into()));
     assert_eq!(user.asked()[0].reason.code(), "connect");
     assert_eq!(user.asked()[0].reason.target(), Some("Office desktop"));
+}
+
+#[tokio::test]
+async fn the_question_names_the_server() {
+    let u = unlocker(Duration::from_secs(5));
+    let user = Scripted::new(&[Step::Enter("typed")]);
+    let with_server = Some(Policy { account: key(1), remember_secs: 0, server: Some("pb.example.com".into()) });
+    operation(asker(&user), Reason::List, u.with_passphrase(with_server, echo)).await.unwrap();
+    assert_eq!(user.asked()[0].server.as_deref(), Some("pb.example.com"));
+}
+
+#[tokio::test]
+async fn an_operation_lets_go_of_its_passphrase_once_everything_is_forgotten() {
+    let u = unlocker(Duration::from_secs(5));
+    let user = Scripted::new(&[Step::Enter("first"), Step::Enter("second")]);
+    let both = operation(asker(&user), Reason::Connect("db".into()), async {
+        let a = u.with_passphrase(policy(1, 900), echo).await?;
+        // The vault is locked (or "Forget now") between two legs of the
+        // same connect.
+        u.cache.forget();
+        let b = u.with_passphrase(policy(1, 900), echo).await?;
+        Ok::<_, String>([a, b])
+    })
+    .await
+    .unwrap();
+    assert_eq!(both, ["first", "second"], "asked again, not the one held before");
+    assert_eq!(user.asked().len(), 2);
+}
+
+#[tokio::test]
+async fn an_answer_to_a_question_open_while_everything_was_forgotten_is_not_used() {
+    let u = unlocker(Duration::from_secs(5));
+    let user = Scripted::slow(&[Step::Enter("too late")], Duration::from_millis(80));
+    let call = tokio::spawn(operation(asker(&user), Reason::List, u.with_passphrase(policy(1, 900), echo)));
+    tokio::time::sleep(Duration::from_millis(20)).await;
+    u.cache.forget();
+    assert_eq!(call.await.unwrap().unwrap_err(), "Passbolt: cancelled");
+    assert!(!u.cache.holds(key(1)));
 }
 
 #[test]

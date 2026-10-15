@@ -49,8 +49,7 @@ pub async fn vault_init_identity(
     let mut manager = state.vault_manager.lock().await;
     // A new identity: entry lists cached for the old one must go, and a
     // passphrase typed for the old one.
-    crate::pwmanager::clear_cache();
-    crate::pwmanager::forget_passphrase();
+    crate::pwmanager::forget_all();
     manager.init_identity(&password).await.map_err(|e| e.to_string())
 }
 
@@ -70,9 +69,9 @@ pub async fn vault_lock(state: State<'_, AppState>) -> Result<(), String> {
     let mut manager = state.vault_manager.lock().await;
     manager.hold();
     // The password-manager settings live in the vault: what was listed with
-    // them goes when it locks, and so does a passphrase kept in memory.
-    crate::pwmanager::clear_cache();
-    crate::pwmanager::forget_passphrase();
+    // them goes when it locks, and so does a passphrase kept in memory (and
+    // any passphrase question still open is cancelled).
+    crate::pwmanager::forget_all();
     Ok(())
 }
 
@@ -469,6 +468,8 @@ pub async fn vault_auto_unlock(state: State<'_, AppState>) -> Result<bool, Strin
 #[tracing::instrument(skip(state))]
 pub async fn vault_reset(state: State<'_, AppState>) -> Result<(), String> {
     let mut manager = state.vault_manager.lock().await;
+    // The settings the listings and a kept passphrase came from are gone.
+    crate::pwmanager::forget_all();
     manager.reset().await.map_err(|e| e.to_string())
 }
 
@@ -489,6 +490,8 @@ pub async fn vault_import_identity(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let mut manager = state.vault_manager.lock().await;
+    // Another identity: as for a new one.
+    crate::pwmanager::forget_all();
     manager.import_identity(&secret_key).await.map_err(|e| e.to_string())
 }
 

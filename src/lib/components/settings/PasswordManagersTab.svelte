@@ -12,14 +12,19 @@
 	 *
 	 * The passphrase need not be saved at all: with "Ask when needed" Reach
 	 * asks for it (PassphrasePrompt) when a sign-in needs it and keeps it in
-	 * memory only, for the time chosen here or not at all. Saving that choice
-	 * removes a stored passphrase.
+	 * memory only, for the time chosen here or not at all. Switching to it
+	 * from a stored passphrase removes the stored one.
 	 *
 	 * The CLI path is the one setting kept on this device only (the backend
 	 * stores it outside the synced vault), since the program it names is
 	 * handed the private key and passphrase.
+	 *
+	 * The settings live in the vault: while it is locked there is nothing to
+	 * show and nothing can be saved (the backend refuses to hand out
+	 * defaults in their place, which a save could write back over the real
+	 * ones). The page says to unlock first, and loads once it is open.
 	 */
-	import { onMount } from 'svelte';
+	import { untrack } from 'svelte';
 	import { open as openDialog } from '@tauri-apps/plugin-dialog';
 	import { openUrl } from '@tauri-apps/plugin-opener';
 	import Toggle from '$lib/components/shared/Toggle.svelte';
@@ -43,6 +48,7 @@
 	import { pwManagerProviders, pwManagersLoaded, refreshPwManagers, rememberLabel } from '$lib/state/pwmanager.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import { isLocked } from '$lib/state/vault.svelte';
 
 	const RELEASES_URL = 'https://github.com/passbolt/go-passbolt-cli/releases';
 	const TIMEOUT_MIN = 10;
@@ -124,8 +130,22 @@
 		);
 	});
 
-	onMount(() => {
-		void load();
+	// Load once the vault is open (now or later); forget the page's state
+	// when it locks, so nothing stale can be saved.
+	$effect(() => {
+		const locked = isLocked();
+		untrack(() => {
+			if (locked) {
+				view = null;
+				loadError = null;
+				saveError = null;
+				testResult = null;
+				testError = null;
+				forgetSecrets();
+			} else {
+				void load();
+			}
+		});
 	});
 
 	function fill(v: PasswordManagersView): void {
@@ -175,7 +195,8 @@
 		try {
 			fill(await pwmanagerGetConfig());
 		} catch (e) {
-			loadError = String(e);
+			// Locked meanwhile: the page says so instead.
+			loadError = isLocked() ? null : String(e);
 		}
 		await checkStatus();
 	}
@@ -191,7 +212,7 @@
 
 	/** Save what is stored now with one change, leaving the form's edits pending. */
 	async function saveStored(change: (input: PasswordManagersConfigInput) => void): Promise<boolean> {
-		if (!view) return false;
+		if (!view || isLocked()) return false;
 		const input = configInputFromView(view);
 		change(input);
 		busy = true;
@@ -238,7 +259,8 @@
 				passphrase_remember_secs: rememberSecs,
 				private_key: pasted || null,
 				private_key_file: !pasted && privateKeyFile ? privateKeyFile : null,
-				// Asked for: never sent, and the backend removes a stored one.
+				// Asked for: never sent, and the backend removes a stored one
+				// when this switches from stored to asked.
 				passphrase: !asking && passphrase ? passphrase : null,
 				totp_secret: totpSecret.trim() || null
 			}
@@ -246,7 +268,7 @@
 	}
 
 	async function save(): Promise<boolean> {
-		if (!view || serverError) return false;
+		if (!view || isLocked() || serverError) return false;
 		busy = true;
 		saveError = null;
 		try {
@@ -324,7 +346,9 @@
 <div class="tab-content">
 	<p class="intro">{t('pwmanager.intro')}</p>
 
-	{#if loadError}
+	{#if isLocked()}
+		<p class="hint warn" role="status">{t('pwmanager.unlock_first')}</p>
+	{:else if loadError}
 		<div class="form-error" role="alert">{loadError}</div>
 	{/if}
 
@@ -462,7 +486,7 @@
 						</button>
 					</div>
 					<p class="hint">{asking ? t('pwmanager.passphrase_mode_ask_desc') : t('pwmanager.passphrase_mode_stored_desc')}</p>
-					{#if asking && view.passbolt.has_passphrase}
+					{#if asking && view.passbolt.has_passphrase && view.passbolt.passphrase_mode === 'stored'}
 						<p class="hint warn" role="note">{t('pwmanager.passphrase_mode_ask_removes')}</p>
 					{/if}
 				</div>

@@ -5,12 +5,17 @@
 //!
 //! What comes back from the window is moved straight into a [`Passphrase`]
 //! (shielded, the plain `String` wiped) and never logged or sent back.
+//!
+//! Every open question is cancelled at once ([`cancel_all`]) whenever the
+//! kept passphrases are forgotten: a vault lock, a settings save, "Forget
+//! now", the computer locking or going to sleep. A question left open
+//! across a lock would otherwise take a passphrase for a vault that is no
+//! longer open.
 
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicUsize, Ordering};
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Mutex, MutexGuard, OnceLock};
 
 use serde::Serialize;
 use tauri::Emitter;
@@ -25,18 +30,33 @@ pub const CLOSED_EVENT: &str = "pwmanager-passphrase-prompt-closed";
 
 type Reply = tokio::sync::oneshot::Sender<Option<Passphrase>>;
 
-fn pending() -> &'static Mutex<HashMap<String, Reply>> {
-    static P: OnceLock<Mutex<HashMap<String, Reply>>> = OnceLock::new();
-    P.get_or_init(|| Mutex::new(HashMap::new()))
+/// One open question: where its answer goes, and the window to tell when it
+/// is withdrawn (`None` in tests).
+struct Pending {
+    reply: Reply,
+    app: Option<tauri::AppHandle>,
 }
 
-/// How many questions are open now. A connection logging in meanwhile does
-/// not count that time against its connect limit (see
-/// `ssh::client::within_connect_limit`): the user is busy answering.
-static OPEN: AtomicUsize = AtomicUsize::new(0);
+fn pending() -> MutexGuard<'static, HashMap<String, Pending>> {
+    static P: OnceLock<Mutex<HashMap<String, Pending>>> = OnceLock::new();
+    P.get_or_init(|| Mutex::new(HashMap::new())).lock().unwrap_or_else(|e| e.into_inner())
+}
 
-pub(crate) fn any_open() -> bool {
-    OPEN.load(Ordering::SeqCst) > 0
+/// Cancel every open question, as if the user had pressed Cancel on each,
+/// and tell the window they are withdrawn. Returns how many there were.
+pub(crate) fn cancel_all() -> usize {
+    let drained: Vec<(String, Pending)> = pending().drain().collect();
+    let count = drained.len();
+    for (id, p) in drained {
+        let _ = p.reply.send(None);
+        if let Some(app) = p.app {
+            let _ = app.emit(CLOSED_EVENT, &id);
+        }
+    }
+    if count > 0 {
+        tracing::info!("pwmanager: {count} open passphrase question(s) cancelled");
+    }
+    count
 }
 
 #[derive(Serialize)]
@@ -54,6 +74,9 @@ struct Payload<'a> {
     error: Option<&'a str>,
     /// How long the answer is kept in memory; 0 = not kept.
     remember_secs: u32,
+    /// The server's host name, so questions for different accounts can be
+    /// told apart. Not secret.
+    server: Option<&'a str>,
 }
 
 /// Withdrawn however the question ends.
@@ -64,8 +87,7 @@ struct Open {
 
 impl Drop for Open {
     fn drop(&mut self) {
-        pending().lock().unwrap_or_else(|e| e.into_inner()).remove(&self.id);
-        OPEN.fetch_sub(1, Ordering::SeqCst);
+        pending().remove(&self.id);
         let _ = self.app.emit(CLOSED_EVENT, &self.id);
     }
 }
@@ -75,8 +97,7 @@ impl PassphraseAsker for tauri::AppHandle {
         Box::pin(async move {
             let id = uuid::Uuid::new_v4().to_string();
             let (tx, rx) = tokio::sync::oneshot::channel();
-            pending().lock().unwrap_or_else(|e| e.into_inner()).insert(id.clone(), tx);
-            OPEN.fetch_add(1, Ordering::SeqCst);
+            pending().insert(id.clone(), Pending { reply: tx, app: Some(self.clone()) });
             let _open = Open { id: id.clone(), app: self.clone() };
             let payload = Payload {
                 prompt_id: &id,
@@ -87,6 +108,7 @@ impl PassphraseAsker for tauri::AppHandle {
                 retry: request.retry,
                 error: request.error.as_deref(),
                 remember_secs: request.remember_secs,
+                server: request.server.as_deref(),
             };
             tracing::info!(
                 "pwmanager: asking for the {} passphrase ({}, retry={})",
@@ -113,12 +135,16 @@ pub(crate) fn answer(prompt_id: &str, passphrase: Option<String>) -> Result<(), 
         Some(typed) => Some(Passphrase::new(typed)?),
         None => None,
     };
-    let reply = pending().lock().unwrap_or_else(|e| e.into_inner()).remove(prompt_id);
+    let reply = pending().remove(prompt_id);
     match reply {
-        Some(tx) => {
-            let _ = tx.send(answer);
+        Some(p) => {
+            let _ = p.reply.send(answer);
             Ok(())
         }
         None => Err("This passphrase question is no longer open.".into()),
     }
 }
+
+#[cfg(test)]
+#[path = "prompt_tests.rs"]
+mod tests;

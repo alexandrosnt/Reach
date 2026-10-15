@@ -89,7 +89,7 @@ export interface PassboltConfigInput {
 	server_address: string;
 	mfa_mode: PassboltMfaMode;
 	timeout_secs: number;
-	/** "ask" removes a stored passphrase on save; a passphrase sent with it is ignored. */
+	/** Switching from "stored" to "ask" removes the stored passphrase on save (so does clear_passphrase); a passphrase sent with "ask" is ignored. */
 	passphrase_mode: PassboltPassphraseMode;
 	passphrase_remember_secs: number;
 	/** Absent or null keeps what is stored. */
@@ -184,6 +184,8 @@ export interface PassphrasePrompt {
 	error: string | null;
 	/** How long the answer is kept in memory; 0 = not kept. */
 	rememberSecs: number;
+	/** The server's host name (not secret), so questions for different accounts can be told apart. */
+	server: string | null;
 }
 
 /** Answer a passphrase question; null cancels. Rejected (question stays open) if the passphrase cannot be taken. */

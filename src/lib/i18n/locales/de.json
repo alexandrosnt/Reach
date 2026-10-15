@@ -2431,5 +2431,7 @@
   "pwmanager.prompt_kept": "Wird verschlüsselt im Arbeitsspeicher gehalten, für {{duration}}.",
   "pwmanager.prompt_not_kept": "Wird nicht gemerkt: Reach fragt beim nächsten Mal erneut.",
   "pwmanager.prompt_hint": "Reach speichert sie nie.",
-  "pwmanager.prompt_submit": "Entsperren"
+  "pwmanager.prompt_submit": "Entsperren",
+  "pwmanager.prompt_server": "Server: {{server}}",
+  "pwmanager.unlock_first": "Reach ist gesperrt. Entsperren Sie Reach zuerst, um diese Einstellungen zu sehen oder zu ändern."
 }

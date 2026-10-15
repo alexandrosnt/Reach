@@ -227,3 +227,22 @@ fn display_text_is_cleaned_and_capped() {
     assert_eq!(sanitize_display("a\u{7}b\nc", 10), "abc");
     assert_eq!(sanitize_display("abcdef", 3), "abc…");
 }
+
+#[test]
+fn forgetting_everything_drops_listings_passphrases_and_open_questions() {
+    // What a vault lock, a new or imported identity and a reset call.
+    let key = cache::CacheKey::for_test(ProviderId::Passbolt, 0xF0A1_1F0E_7A11_0001);
+    let lists = cache::global();
+    lists.store(key, lists.generation(), Arc::new(Vec::new()));
+    let kept = &unlock::global().cache;
+    let pass = Arc::new(unlock::Passphrase::new("kept".into()).unwrap());
+    kept.store(key, pass, kept.generation(), std::time::Duration::from_secs(60));
+    let list_generation = lists.generation();
+    let pass_generation = kept.generation();
+    forget_all();
+    assert!(lists.get(key, None).is_none());
+    assert!(!kept.holds(key));
+    // A listing or a question begun before is not kept either.
+    assert_ne!(lists.generation(), list_generation);
+    assert_ne!(kept.generation(), pass_generation);
+}

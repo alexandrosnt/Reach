@@ -12,9 +12,15 @@
 //! - Secrets go in the child's environment, never on its command line (any
 //!   local user can read a process's arguments) and never in a file. A
 //!   passphrase that was asked for rather than stored is opened from its
-//!   in-memory shield (`super::unlock`) only to build the command, and that
-//!   plain copy is wiped once the command exists; the child then holds it in
-//!   its environment until it exits.
+//!   in-memory shield (`super::unlock`) only to build the command, and
+//!   Reach's own plain copy is wiped once the command exists. The copy the
+//!   command keeps for the child's environment (std's `Command`, then the
+//!   environment block the OS hands the child) cannot be wiped by Reach, so
+//!   it is kept as short-lived as possible instead: the command is built
+//!   only once a CLI slot is free ([`build_when_ready`]), right before it
+//!   is started, never while it waits its turn behind other logins, and it
+//!   is dropped as soon as the child has started. The child then holds the
+//!   secrets in its environment until it exits.
 //! - The child's environment starts empty. Only what a Go program needs to
 //!   run and reach the server ([`INHERITED_ENV`]: PATH, the Windows system
 //!   directories, temp and home directories, proxies) is copied from Reach's
@@ -45,8 +51,13 @@
 //!   (`process::cli_slot`).
 //! - Errors are the CLI's last `Error:` line, cleaned up and shortened, or a
 //!   plain explanation of the usual ones; never its environment or stdout.
+//!   A wrong passphrase (asked for again) is recognised from that line only,
+//!   by the exact error chain the CLI prints for it ([`WRONG_PASSPHRASE_PREFIX`]),
+//!   never from text anywhere else in stderr (which can carry what a server
+//!   sent).
 
 use std::ffi::{OsStr, OsString};
+use std::future::Future;
 use std::path::{Path, PathBuf};
 #[cfg(desktop)]
 use std::time::Duration;
@@ -478,6 +489,18 @@ fn truncate_chars(s: &str, max: usize) -> String {
     }
 }
 
+/// How go-passbolt-cli reports a private key its passphrase does not
+/// unlock: cobra prints `Error: ` and the error chain, which for this one is
+/// `creating Client: get Private Key: unlock Key: <gopenpgp's reason>`
+/// (`util.GetClient` → `api.NewClient` → `api.GetPrivateKeyFromArmor`).
+/// Matched at the start of the CLI's own last `Error:` line, without regard
+/// to case. Other keys unlocked later (a metadata key: `get Metadata Private
+/// Key: unlock Key: …`) are not the user's passphrase and do not match.
+pub const WRONG_PASSPHRASE_PREFIX: &str = "creating Client: get Private Key: unlock Key:";
+/// The same chain when the key itself could not be read (not armored, not a
+/// key): asking for the passphrase again would not help.
+const UNREADABLE_KEY_PREFIX: &str = "creating Client: get Private Key:";
+
 /// What kind of failure a CLI call's stderr reports, as far as Reach acts on
 /// it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -516,6 +539,9 @@ pub fn classify_error(stderr: &[u8]) -> (CliErrorKind, String) {
         .or_else(|| lines.last().copied())
         .unwrap_or("")
         .to_string();
+    // The CLI's own error: the last line that is cobra's `Error: …`.
+    let own_error = lines.iter().rev().find_map(|l| l.strip_prefix("Error:")).map(str::trim).unwrap_or("");
+    let own_starts = |prefix: &str| own_error.get(..prefix.len()).is_some_and(|head| head.eq_ignore_ascii_case(prefix));
     let lower = text.to_lowercase();
     let has = |needle: &str| lower.contains(&needle.to_lowercase());
 
@@ -526,9 +552,11 @@ pub fn classify_error(stderr: &[u8]) -> (CliErrorKind, String) {
         "no private key is configured. Add it in Settings → Password managers.".to_string()
     } else if has("reading Password") {
         "no passphrase is configured (the CLI asked for one). Add it in Settings → Password managers.".to_string()
-    } else if has("unlock Key") || has("get Private Key") {
+    } else if own_starts(WRONG_PASSPHRASE_PREFIX) {
         kind = CliErrorKind::WrongPassphrase;
         "could not unlock the private key: wrong passphrase, or not a valid Passbolt key.".to_string()
+    } else if own_starts(UNREADABLE_KEY_PREFIX) {
+        "the private key could not be read: is it the armored key from Passbolt's recovery kit?".to_string()
     } else if has("MFA callback is not defined") || has("reading TOTP") || has("MFA challenge") {
         "the server requires MFA. Choose TOTP in Settings → Password managers and store the TOTP secret.".to_string()
     } else if has("(code 401)") || has("authentication failed") {
@@ -553,6 +581,19 @@ pub fn classify_error(stderr: &[u8]) -> (CliErrorKind, String) {
 
 // ---------------------------------------------------------------------------
 // The provider
+
+/// Wait for `slot` (the CLI slot), and only then `build` the command: the
+/// secrets go into a command, where Reach can no longer wipe them, right
+/// before it starts, not while it queues behind other logins for minutes.
+/// Nothing is built if no slot comes.
+pub(crate) async fn build_when_ready<P, C>(
+    slot: impl Future<Output = Result<P, String>>,
+    build: impl FnOnce() -> Result<C, String>,
+) -> Result<(P, C), String> {
+    let permit = slot.await?;
+    let cmd = build()?;
+    Ok((permit, cmd))
+}
 
 /// Passbolt, with the configuration and secrets for one call.
 pub(crate) struct Passbolt {
@@ -604,23 +645,29 @@ impl Passbolt {
                 isolated.display()
             )));
         }
-        let with_typed = match op {
-            Op::Version => None,
-            _ => self.call_secrets(typed),
-        };
-        let cmd = build_command(&bin, &self.cfg, with_typed.as_ref().unwrap_or(&self.secrets), &isolated, op)?;
-        drop(with_typed);
         let timeout = match op {
             Op::Version => VERSION_TIMEOUT,
             _ => Duration::from_secs(u64::from(self.cfg.timeout_secs())) + TIMEOUT_MARGIN,
         };
         // Every call but `--version` is a full login: take a slot first and
         // keep it until the child is gone. The wait is not counted against
-        // the timeout.
-        let _slot = match op {
-            Op::Version => None,
-            _ => Some(super::process::cli_slot().await.map_err(|e| format!("{NAME}: {e}"))?),
+        // the timeout. The command, with the secrets in its environment, is
+        // built only once the slot is ours, right before it starts.
+        let slot = async {
+            match op {
+                Op::Version => Ok(None),
+                _ => super::process::cli_slot().await.map(Some).map_err(|e| format!("{NAME}: {e}")),
+            }
         };
+        let (_slot, cmd) = build_when_ready(slot, || {
+            let with_typed = match op {
+                Op::Version => None,
+                _ => self.call_secrets(typed),
+            };
+            // `with_typed` (the opened passphrase) is wiped as this returns.
+            build_command(&bin, &self.cfg, with_typed.as_ref().unwrap_or(&self.secrets), &isolated, op)
+        })
+        .await?;
         let out = run(cmd, timeout, STDOUT_CAP, STDERR_CAP).await.map_err(|e| match e {
             RunError::Spawn(e) if e.kind() == std::io::ErrorKind::NotFound => {
                 format!("{NAME}: the passbolt CLI was not found. {INSTALL_HINT}")
@@ -676,6 +723,17 @@ impl PasswordManager for Passbolt {
 
     fn passphrase_prompt(&self) -> Option<u32> {
         self.cfg.asks_passphrase().then(|| self.cfg.remember_secs())
+    }
+
+    /// The host name (`passbolt.example.com`) only: no scheme, port or
+    /// path. Only with credentials stored by Reach: with the CLI's own
+    /// configuration Reach does not know the server, and asks nothing.
+    fn server_host(&self) -> Option<String> {
+        if self.cfg.credentials != CredentialsMode::Reach {
+            return None;
+        }
+        let url = reqwest::Url::parse(self.cfg.server_address.trim()).ok()?;
+        url.host_str().map(|h| sanitize_display(h, 253)).filter(|h| !h.is_empty())
     }
 
     async fn list(&self, passphrase: Option<&Passphrase>) -> Result<Vec<EntrySummary>, Failure> {

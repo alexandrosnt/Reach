@@ -1370,10 +1370,14 @@ pub fn run() {
             }
 
             // When the computer locks or sleeps, tell the interface, which locks
-            // Reach too if the user asked for that (Settings → Security).
+            // Reach too if the user asked for that (Settings → Security). A
+            // password manager passphrase kept in memory goes in any case,
+            // whatever that setting says, and any passphrase question still
+            // open is cancelled: nobody is at the keyboard to have typed it.
             {
                 let handle = app.handle().clone();
                 system_lock::watch(std::sync::Arc::new(move || {
+                    pwmanager::forget_passphrase();
                     let _ = tauri::Emitter::emit(&handle, "system-locked", ());
                 }));
             }

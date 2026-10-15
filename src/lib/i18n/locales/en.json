@@ -2431,5 +2431,7 @@
   "pwmanager.prompt_kept": "Kept in memory, encrypted, for {{duration}}.",
   "pwmanager.prompt_not_kept": "Not kept: Reach will ask again next time.",
   "pwmanager.prompt_hint": "Reach never saves it.",
-  "pwmanager.prompt_submit": "Unlock"
+  "pwmanager.prompt_submit": "Unlock",
+  "pwmanager.prompt_server": "Server: {{server}}",
+  "pwmanager.unlock_first": "Reach is locked. Unlock Reach first to see or change these settings."
 }

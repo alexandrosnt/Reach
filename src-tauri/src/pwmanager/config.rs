@@ -10,8 +10,12 @@
 //!
 //! The passphrase need not be stored at all ([`PassphraseMode::Ask`], the
 //! default for a new setup): Reach then asks for it when a login needs it and
-//! keeps it, encrypted, in memory only (see `super::unlock`). Saving in that
-//! mode removes a stored passphrase, so the two never coexist.
+//! keeps it, encrypted, in memory only (see `super::unlock`). Switching from
+//! stored to asked removes the stored passphrase, so the two never coexist.
+//! Only the switch does, judged against the configuration stored at the
+//! moment of the save (or an explicit `clear_passphrase`): a save that was
+//! already asking leaves the vault's passphrase entry alone, so a form
+//! filled from defaults cannot delete it by accident.
 //!
 //! One setting is not in the vault: the path of the CLI binary. The
 //! `__settings__` vault syncs to every device of the account (and a shared
@@ -320,6 +324,11 @@ pub enum SecretChange {
     Keep,
     Clear,
     Set(Zeroizing<String>),
+    /// The passphrase only, when the save asks for it: cleared if the
+    /// stored configuration had it stored (the user switched to asking),
+    /// kept otherwise. Settled by [`passphrase_effect`] when saving, against
+    /// what is stored then.
+    ClearIfWasStored,
 }
 
 impl fmt::Debug for SecretChange {
@@ -328,7 +337,19 @@ impl fmt::Debug for SecretChange {
             SecretChange::Keep => "Keep",
             SecretChange::Clear => "Clear",
             SecretChange::Set(_) => "Set(<redacted>)",
+            SecretChange::ClearIfWasStored => "ClearIfWasStored",
         })
+    }
+}
+
+/// What a save does to the stored passphrase, given the passphrase mode of
+/// the configuration stored before it: [`SecretChange::ClearIfWasStored`]
+/// clears it only when leaving the stored mode.
+pub fn passphrase_effect(change: &SecretChange, stored_mode: PassphraseMode) -> &SecretChange {
+    match change {
+        SecretChange::ClearIfWasStored if stored_mode == PassphraseMode::Stored => &SecretChange::Clear,
+        SecretChange::ClearIfWasStored => &SecretChange::Keep,
+        other => other,
     }
 }
 
@@ -535,12 +556,17 @@ pub fn validate_input(
     };
 
     let passphrase = if p.passphrase_mode == Some(PassphraseMode::Ask) {
-        // Asked for: whatever is stored goes, and a passphrase sent along
-        // anyway is not kept.
+        // Asked for: a passphrase sent along anyway is not kept, and the
+        // stored one goes if this save switches from stored to asked (or
+        // its removal was asked for).
         if let Some(mut sent) = p.passphrase.take() {
             sent.zeroize();
         }
-        SecretChange::Clear
+        if p.clear_passphrase {
+            SecretChange::Clear
+        } else {
+            SecretChange::ClearIfWasStored
+        }
     } else if p.clear_passphrase {
         SecretChange::Clear
     } else if let Some(pass) = p.passphrase.take().map(Zeroizing::new).filter(|s| !s.is_empty()) {
@@ -654,10 +680,24 @@ async fn apply_secret(
     change: &SecretChange,
 ) -> Result<(), String> {
     match change {
-        SecretChange::Keep => Ok(()),
+        // Settled by `passphrase_effect` before it gets here; unsettled, it
+        // deletes nothing.
+        SecretChange::Keep | SecretChange::ClearIfWasStored => Ok(()),
         SecretChange::Clear => delete_setting_by_key(manager, key).await,
         SecretChange::Set(value) => write_setting_by_key(manager, key, value).await,
     }
+}
+
+/// The passphrase mode of the configuration stored now, decided as [`load`]
+/// does for one saved before the setting existed.
+async fn stored_passphrase_mode(manager: &crate::vault::VaultManager) -> PassphraseMode {
+    let mut stored = read_setting_by_key(manager, CONFIG_KEY)
+        .await
+        .and_then(|raw| parse_config(&raw))
+        .unwrap_or_default();
+    let has_stored = read_setting_by_key(manager, PASSBOLT_PASSPHRASE).await.map(Zeroizing::new).is_some_and(|s| !s.is_empty());
+    stored.passbolt.settle_passphrase_mode(has_stored);
+    stored.passbolt.passphrase_mode()
 }
 
 /// Store a checked save.
@@ -667,9 +707,11 @@ pub async fn save(state: &AppState, save: &ValidatedSave) -> Result<(), String> 
     if manager.is_locked() {
         return Err("The vault is locked. Unlock Reach first.".into());
     }
+    // Before the new configuration replaces it.
+    let stored_mode = stored_passphrase_mode(&manager).await;
     write_setting_by_key(&mut manager, CONFIG_KEY, &json).await?;
     apply_secret(&mut manager, PASSBOLT_PRIVATE_KEY, &save.private_key).await?;
-    apply_secret(&mut manager, PASSBOLT_PASSPHRASE, &save.passphrase).await?;
+    apply_secret(&mut manager, PASSBOLT_PASSPHRASE, passphrase_effect(&save.passphrase, stored_mode)).await?;
     apply_secret(&mut manager, PASSBOLT_TOTP_SECRET, &save.totp_secret).await?;
     drop(manager);
     let path = device_settings_path();

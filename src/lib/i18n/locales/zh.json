@@ -2431,5 +2431,7 @@
   "pwmanager.prompt_kept": "以加密形式在内存中保留 {{duration}}。",
   "pwmanager.prompt_not_kept": "不保留：下次 Reach 会再次询问。",
   "pwmanager.prompt_hint": "Reach 从不保存它。",
-  "pwmanager.prompt_submit": "解锁"
+  "pwmanager.prompt_submit": "解锁",
+  "pwmanager.prompt_server": "服务器：{{server}}",
+  "pwmanager.unlock_first": "Reach 已锁定。请先解锁 Reach，再查看或更改这些设置。"
 }

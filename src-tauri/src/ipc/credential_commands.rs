@@ -37,7 +37,9 @@ pub async fn credential_set_master_password(
             .await
             .map_err(|e| e.to_string())?;
     } else {
-        // Create new identity
+        // Create new identity. Entry lists cached for the old one go, and
+        // a passphrase typed for it (with any question still open).
+        crate::pwmanager::forget_all();
         manager
             .init_identity(&password)
             .await
@@ -88,6 +90,9 @@ pub async fn credential_lock(state: State<'_, AppState>) -> Result<(), String> {
     let mut manager = state.vault_manager.lock().await;
     // The user's act: held, so the next routine check does not reopen it.
     manager.hold();
+    // As vault_lock: the password-manager listings and any passphrase kept
+    // in memory go with it, and any passphrase question still open.
+    crate::pwmanager::forget_all();
     tracing::info!("Credential vault locked");
     Ok(())
 }

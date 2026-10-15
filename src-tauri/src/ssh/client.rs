@@ -1872,7 +1872,7 @@ pub(crate) async fn within_connect_limit<T>(
         tokio::select! {
             done = &mut attempt => return done,
             _ = tokio::time::sleep(tick) => {
-                if hostkey_prompts().lock().unwrap().is_empty() && !crate::ssh::prompt::any_open() && !crate::pwmanager::prompt_open() {
+                if hostkey_prompts().lock().unwrap().is_empty() && !crate::ssh::prompt::any_open() {
                     spent += tick;
                 }
                 if spent >= limit {

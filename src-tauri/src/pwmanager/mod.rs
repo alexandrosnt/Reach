@@ -193,6 +193,10 @@ pub(crate) trait PasswordManager {
     async fn list(&self, passphrase: Option<&unlock::Passphrase>) -> Result<Vec<EntrySummary>, Failure>;
     /// The password of one entry.
     async fn resolve(&self, entry_id: &str, passphrase: Option<&unlock::Passphrase>) -> Result<Zeroizing<String>, Failure>;
+    /// The host name of the server the login goes to, if known: shown in
+    /// the passphrase question so two accounts can be told apart. Not
+    /// secret.
+    fn server_host(&self) -> Option<String>;
 }
 
 /// A manager, configured and ready to call. Built fresh for every call from
@@ -237,9 +241,15 @@ impl Provider {
         }
     }
 
+    fn server_host(&self) -> Option<String> {
+        match self {
+            Provider::Passbolt(p) => p.server_host(),
+        }
+    }
+
     /// What a call must unlock, if the user is to be asked.
     fn unlock_policy(&self, account: cache::CacheKey) -> Option<unlock::Policy> {
-        self.passphrase_prompt().map(|remember_secs| unlock::Policy { account, remember_secs })
+        self.passphrase_prompt().map(|remember_secs| unlock::Policy { account, remember_secs, server: self.server_host() })
     }
 
     /// [`list`](Self::list), asking for the passphrase if it must be.
@@ -274,10 +284,21 @@ pub fn name_operation(name: &str) {
     unlock::name_operation(name);
 }
 
-/// Forget every passphrase kept in memory: "Forget now", a settings save, a
-/// vault lock or a new identity, quitting.
+/// Forget every passphrase kept in memory, and cancel every passphrase
+/// question still open (an answer to it would not be kept anyway): "Forget
+/// now", a settings save, a vault lock or a new identity, the computer
+/// locking or going to sleep, quitting.
 pub fn forget_passphrase() {
     unlock::global().cache.forget();
+    prompt::cancel_all();
+}
+
+/// The vault was locked, or its identity replaced (a new one, an import, a
+/// reset): the cached entry lists and any passphrase kept in memory belong
+/// to what is gone. Both go, and any open passphrase question is cancelled.
+pub fn forget_all() {
+    clear_cache();
+    forget_passphrase();
 }
 
 /// Whether a typed passphrase is kept in memory now for the account these
@@ -285,11 +306,6 @@ pub fn forget_passphrase() {
 pub fn passphrase_cached(loaded: &config::Loaded) -> bool {
     loaded.config.passbolt.asks_passphrase()
         && unlock::global().cache.holds(cache::CacheKey::new(ProviderId::Passbolt, loaded))
-}
-
-/// A passphrase question is open in the window now.
-pub fn prompt_open() -> bool {
-    prompt::any_open()
 }
 
 /// The window's answer to a passphrase question (`None`: cancelled).

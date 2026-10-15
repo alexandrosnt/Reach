@@ -7,7 +7,10 @@
 	 * The backend asks one question per account at a time, however many
 	 * connects are waiting for it, and withdraws it when nobody is waiting any
 	 * more. What is typed is sent once, to the backend, and the field is
-	 * emptied straight away; the backend never sends it back.
+	 * emptied straight away; the backend never sends it back. The field and
+	 * any error are also cleared whenever another question takes this one's
+	 * place, so nothing typed for one account is sent to another's; and the
+	 * question names the server, so the user can tell which account it is.
 	 */
 	import { onMount, onDestroy } from 'svelte';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
@@ -28,19 +31,27 @@
 	let sending = $state(false);
 	let sendError = $state<string | null>(null);
 
-	function drop(id: string): void {
-		queue = queue.filter((p) => p.promptId !== id);
-		if (queue.length === 0) {
+	/** Every change to the queue goes through here: when the question shown
+	 * changes (answered, withdrawn, cancelled by a lock), the next one starts
+	 * with an empty field and no error. */
+	function setQueue(next: PassphrasePrompt[]): void {
+		const before = queue[0]?.promptId;
+		queue = next;
+		if (queue[0]?.promptId !== before) {
 			value = '';
 			sendError = null;
 		}
+	}
+
+	function drop(id: string): void {
+		setQueue(queue.filter((p) => p.promptId !== id));
 	}
 
 	let unlisten: UnlistenFn | undefined;
 	let unlistenClosed: UnlistenFn | undefined;
 	onMount(async () => {
 		unlisten = await listen<PassphrasePrompt>(PASSPHRASE_PROMPT_EVENT, (e) => {
-			queue = [...queue, e.payload];
+			setQueue([...queue, e.payload]);
 		});
 		unlistenClosed = await listen<string>(PASSPHRASE_PROMPT_CLOSED_EVENT, (e) => drop(e.payload));
 	});
@@ -63,10 +74,11 @@
 			await pwmanagerPassphraseResponse(p.promptId, typed);
 			drop(p.promptId);
 		} catch (e) {
-			// Refused (too long, say): the question is still open; say why.
-			// A cancel that fails means the question is gone anyway.
-			if (ok) sendError = String(e);
-			else drop(p.promptId);
+			// Refused (too long, say): the question is still open; say why,
+			// unless another one has taken its place meanwhile. A cancel
+			// that fails means the question is gone anyway.
+			if (ok && current?.promptId === p.promptId) sendError = String(e);
+			else if (!ok) drop(p.promptId);
 		} finally {
 			sending = false;
 		}
@@ -101,6 +113,9 @@
 		{#key current.promptId}
 			<form class="form" onsubmit={(e) => { e.preventDefault(); void respond(true); }}>
 				<p class="msg strong">{reasonText}</p>
+				{#if current.server}
+					<p class="msg server">{t('pwmanager.prompt_server', { server: current.server })}</p>
+				{/if}
 				{#if current.retry}
 					<p class="msg error" role="alert">
 						{t('pwmanager.prompt_retry')}
@@ -154,6 +169,11 @@
 	.msg.strong {
 		color: var(--color-text-primary);
 		font-weight: 600;
+	}
+
+	.msg.server {
+		margin-top: -6px;
+		font-size: 0.75rem;
 	}
 
 	.msg.error {

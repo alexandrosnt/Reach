@@ -351,14 +351,18 @@ fn asking_removes_a_stored_passphrase_and_never_stores_one() {
         "passbolt": { "server_address": "https://pb.example.com", "passphrase_mode": "ask", "passphrase_remember_secs": 300 }
     }));
     let v = validate_input(&mut i, None).unwrap();
-    assert!(matches!(v.passphrase, SecretChange::Clear), "{:?}", v.passphrase);
+    assert!(matches!(v.passphrase, SecretChange::ClearIfWasStored), "{:?}", v.passphrase);
     assert_eq!(v.config.passbolt.passphrase_mode, Some(PassphraseMode::Ask));
     assert_eq!(v.config.passbolt.passphrase_remember_secs, 300);
+    // Switching from stored to asked removes the stored passphrase.
+    assert!(matches!(passphrase_effect(&v.passphrase, PassphraseMode::Stored), SecretChange::Clear));
 
     // A passphrase sent along anyway is dropped, not stored.
     let mut i = input(serde_json::json!({ "enabled": true, "passbolt": { "passphrase_mode": "ask", "passphrase": "do not keep me" } }));
     let v = validate_input(&mut i, None).unwrap();
-    assert!(matches!(v.passphrase, SecretChange::Clear));
+    assert!(matches!(v.passphrase, SecretChange::ClearIfWasStored));
+    assert!(matches!(passphrase_effect(&v.passphrase, PassphraseMode::Stored), SecretChange::Clear));
+    assert!(matches!(passphrase_effect(&v.passphrase, PassphraseMode::Ask), SecretChange::Keep));
     assert!(i.passbolt.passphrase.is_none());
 
     // Stored: as before, set, kept or cleared as asked.
@@ -394,4 +398,26 @@ fn the_view_shows_the_passphrase_mode() {
     assert_eq!(json["passbolt"]["passphrase_mode"], "ask");
     assert_eq!(json["passbolt"]["passphrase_remember_secs"], 3600);
     assert_eq!(json["passbolt"]["passphrase_cached"], false);
+}
+
+#[test]
+fn a_save_that_was_already_asking_deletes_no_stored_passphrase() {
+    // The stored configuration already asks: saving "ask" again (a form
+    // filled from defaults, say) leaves the vault's passphrase entry alone.
+    let mut i = input(serde_json::json!({ "enabled": true, "passbolt": { "passphrase_mode": "ask" } }));
+    let v = validate_input(&mut i, None).unwrap();
+    assert!(matches!(passphrase_effect(&v.passphrase, PassphraseMode::Ask), SecretChange::Keep));
+    // Unless its removal is asked for, in either mode.
+    let mut i = input(serde_json::json!({ "enabled": true, "passbolt": { "passphrase_mode": "ask", "clear_passphrase": true } }));
+    let v = validate_input(&mut i, None).unwrap();
+    assert!(matches!(passphrase_effect(&v.passphrase, PassphraseMode::Ask), SecretChange::Clear));
+    assert!(matches!(passphrase_effect(&v.passphrase, PassphraseMode::Stored), SecretChange::Clear));
+    // Every other change is what it was, whatever is stored.
+    for stored in [PassphraseMode::Ask, PassphraseMode::Stored] {
+        assert!(matches!(passphrase_effect(&SecretChange::Keep, stored), SecretChange::Keep));
+        assert!(matches!(passphrase_effect(&SecretChange::Clear, stored), SecretChange::Clear));
+        let set = SecretChange::Set(Zeroizing::new("p".into()));
+        assert!(matches!(passphrase_effect(&set, stored), SecretChange::Set(_)));
+    }
+    assert_eq!(format!("{:?}", SecretChange::ClearIfWasStored), "ClearIfWasStored");
 }

@@ -2431,5 +2431,7 @@
   "pwmanager.prompt_kept": "Se mantiene cifrada en memoria durante {{duration}}.",
   "pwmanager.prompt_not_kept": "No se guarda: Reach volverá a preguntar la próxima vez.",
   "pwmanager.prompt_hint": "Reach nunca la guarda.",
-  "pwmanager.prompt_submit": "Desbloquear"
+  "pwmanager.prompt_submit": "Desbloquear",
+  "pwmanager.prompt_server": "Servidor: {{server}}",
+  "pwmanager.unlock_first": "Reach está bloqueado. Desbloquea Reach primero para ver o cambiar esta configuración."
 }

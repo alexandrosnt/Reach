@@ -9,6 +9,9 @@
 //!
 //! Reading the configuration and the status works while the feature is off,
 //! so Settings can show it; listing and testing check the master switch.
+//! Reading the configuration needs the vault open: with it locked there is
+//! nothing true to show, and defaults shown in its place could be saved
+//! back over the real settings.
 
 use tauri::State;
 
@@ -22,18 +25,19 @@ fn view(loaded: &config::Loaded) -> PasswordManagersView {
     view
 }
 
-/// The configuration, without secrets. With the vault locked: the shipped
-/// defaults (off), as the other settings do.
+/// The configuration, without secrets. With the vault locked: an error
+/// ("Unlock Reach first"), not defaults that Settings could save back.
 #[tauri::command]
 pub async fn pwmanager_get_config(state: State<'_, AppState>) -> Result<PasswordManagersView, String> {
-    let loaded = config::load(&state).await.unwrap_or_default();
+    let loaded = config::load(&state).await?;
     Ok(view(&loaded))
 }
 
 /// Check and store the configuration. A secret left out keeps the stored one;
 /// the CLI path is stored on this device only. The cached entry lists are
 /// dropped (and any listing still running will not be cached): they may
-/// belong to another account. So is a passphrase kept in memory.
+/// belong to another account. So is a passphrase kept in memory, and any
+/// passphrase question still open is cancelled.
 #[tauri::command]
 pub async fn pwmanager_save_config(
     state: State<'_, AppState>,
@@ -61,8 +65,14 @@ pub async fn pwmanager_status(state: State<'_, AppState>) -> Result<Vec<Provider
 /// passphrase.
 #[tauri::command]
 pub async fn pwmanager_test(app: tauri::AppHandle, state: State<'_, AppState>, provider: String) -> Result<TestResult, String> {
-    let id = ProviderId::parse(&provider)?;
-    pwmanager::with_prompt(&app, Reason::Test, pwmanager::test(&state, id)).await
+    // Boxed: Tauri builds a command's future on the main thread and passes it
+    // by value before spawning it, and the main thread's stack is small
+    // (1 MB on Windows). Only a pointer is left there this way.
+    Box::pin(async move {
+        let id = ProviderId::parse(&provider)?;
+        pwmanager::with_prompt(&app, Reason::Test, pwmanager::test(&state, id)).await
+    })
+    .await
 }
 
 /// Entries for the picker: metadata only, filtered by `query`, at most 500.
@@ -76,9 +86,15 @@ pub async fn pwmanager_list(
     query: Option<String>,
     refresh: Option<bool>,
 ) -> Result<Vec<EntrySummary>, String> {
-    let id = ProviderId::parse(&provider)?;
-    pwmanager::with_prompt(&app, Reason::List, pwmanager::list(&state, id, query.as_deref(), refresh.unwrap_or(false)))
-        .await
+    // Boxed: Tauri builds a command's future on the main thread and passes it
+    // by value before spawning it, and the main thread's stack is small
+    // (1 MB on Windows). Only a pointer is left there this way.
+    Box::pin(async move {
+        let id = ProviderId::parse(&provider)?;
+        pwmanager::with_prompt(&app, Reason::List, pwmanager::list(&state, id, query.as_deref(), refresh.unwrap_or(false)))
+            .await
+    })
+    .await
 }
 
 /// The window's answer to a `pwmanager-passphrase-prompt` question: the
@@ -89,7 +105,8 @@ pub fn pwmanager_passphrase_response(prompt_id: String, passphrase: Option<Strin
     pwmanager::answer_prompt(&prompt_id, passphrase)
 }
 
-/// Settings → "Forget now": drop any passphrase kept in memory.
+/// Settings → "Forget now": drop any passphrase kept in memory, and cancel
+/// any passphrase question still open.
 #[tauri::command]
 pub fn pwmanager_forget_passphrase() {
     pwmanager::forget_passphrase();

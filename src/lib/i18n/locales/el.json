@@ -2431,5 +2431,7 @@
   "pwmanager.prompt_kept": "Κρατιέται κρυπτογραφημένη στη μνήμη για {{duration}}.",
   "pwmanager.prompt_not_kept": "Δεν κρατιέται: το Reach θα ρωτήσει ξανά την επόμενη φορά.",
   "pwmanager.prompt_hint": "Το Reach δεν την αποθηκεύει ποτέ.",
-  "pwmanager.prompt_submit": "Ξεκλείδωμα"
+  "pwmanager.prompt_submit": "Ξεκλείδωμα",
+  "pwmanager.prompt_server": "Διακομιστής: {{server}}",
+  "pwmanager.unlock_first": "Το Reach είναι κλειδωμένο. Ξεκλειδώστε πρώτα το Reach για να δείτε ή να αλλάξετε αυτές τις ρυθμίσεις."
 }

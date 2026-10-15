@@ -2431,5 +2431,7 @@
   "pwmanager.prompt_kept": "Хранится в памяти в зашифрованном виде: {{duration}}.",
   "pwmanager.prompt_not_kept": "Не запоминается: Reach спросит снова в следующий раз.",
   "pwmanager.prompt_hint": "Reach никогда её не сохраняет.",
-  "pwmanager.prompt_submit": "Разблокировать"
+  "pwmanager.prompt_submit": "Разблокировать",
+  "pwmanager.prompt_server": "Сервер: {{server}}",
+  "pwmanager.unlock_first": "Reach заблокирован. Сначала разблокируйте Reach, чтобы просмотреть или изменить эти настройки."
 }

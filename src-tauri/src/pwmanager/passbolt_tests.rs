@@ -623,3 +623,72 @@ fn a_rejected_passphrase_is_told_apart() {
         assert!(matches!(failure(other), Failure::Other(_)));
     }
 }
+
+#[test]
+fn a_wrong_passphrase_is_recognised_only_from_the_clis_own_error_line() {
+    let wrong = |s: &str| classify_error(s.as_bytes()).0 == CliErrorKind::WrongPassphrase;
+    // The CLI's own chain, as cobra prints it, in any case.
+    assert!(wrong("Error: creating Client: get Private Key: unlock Key: gopenpgp: error in unlocking key\n"));
+    assert!(wrong("Error: Creating client: get private key: unlock key: openpgp: invalid data\n"));
+    assert!(wrong("\x1b[31mError:\x1b[0m creating Client: get Private Key: unlock Key: x\n"));
+    // The same words anywhere else are not it: in what a server sent, in
+    // an earlier line, after another prefix, or for another key.
+    assert!(!wrong("Error: getting resource: API error (code 500): unlock Key: get Private Key\n"));
+    assert!(!wrong("note: creating Client: get Private Key: unlock Key: x\nError: logging in: API error (code 401): nope\n"));
+    assert!(!wrong("Error: creating Client: get Private Key: unlock Key: x\nError: logging out: EOF\n"));
+    assert!(!wrong("Warning Error: creating Client: get Private Key: unlock Key: x\n"));
+    assert!(!wrong("Error: getting resource: get Metadata Private Key: unlock Key: gopenpgp: error in unlocking key\n"));
+    assert!(!wrong("creating Client: get Private Key: unlock Key: x\n"), "no Error: line at all");
+    // A key that cannot be read is not a passphrase to ask for again.
+    let (kind, msg) = classify_error(b"Error: creating Client: get Private Key: key From Armored: openpgp: invalid argument\n");
+    assert_eq!(kind, CliErrorKind::Other);
+    assert!(msg.contains("could not be read"), "{msg}");
+}
+
+#[tokio::test]
+async fn the_command_is_built_only_once_a_cli_slot_is_free() {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    let built = std::sync::Arc::new(AtomicBool::new(false));
+    let (free, slot) = tokio::sync::oneshot::channel::<()>();
+    let flag = built.clone();
+    let task = tokio::spawn(build_when_ready(
+        async move {
+            slot.await.map_err(|_| "no slot".to_string())?;
+            Ok::<_, String>("permit")
+        },
+        move || {
+            flag.store(true, Ordering::SeqCst);
+            Ok("command")
+        },
+    ));
+    // Waiting for its turn: nothing built, so no secret is copied anywhere.
+    tokio::time::sleep(std::time::Duration::from_millis(30)).await;
+    assert!(!built.load(Ordering::SeqCst));
+    free.send(()).unwrap();
+    assert_eq!(task.await.unwrap().unwrap(), ("permit", "command"));
+    assert!(built.load(Ordering::SeqCst));
+    // No slot: nothing is ever built.
+    let never = std::sync::Arc::new(AtomicBool::new(false));
+    let flag = never.clone();
+    let e = build_when_ready(async { Err::<(), _>("Passbolt: shutting down".to_string()) }, move || {
+        flag.store(true, Ordering::SeqCst);
+        Ok(())
+    })
+    .await
+    .unwrap_err();
+    assert_eq!(e, "Passbolt: shutting down");
+    assert!(!never.load(Ordering::SeqCst));
+}
+
+#[test]
+fn the_passphrase_question_shows_the_server_host_only() {
+    let mut c = asking(300);
+    c.server_address = "https://pb.example.com:8443/team".into();
+    assert_eq!(Passbolt::new(c.clone(), secrets(), true).server_host().as_deref(), Some("pb.example.com"));
+    c.server_address = String::new();
+    assert_eq!(Passbolt::new(c, secrets(), true).server_host(), None);
+    // With the CLI's own configuration Reach does not know the server.
+    let mut cli = asking(300);
+    cli.credentials = CredentialsMode::CliConfig;
+    assert_eq!(Passbolt::new(cli, PassboltSecrets::default(), true).server_host(), None);
+}

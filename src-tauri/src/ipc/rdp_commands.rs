@@ -20,40 +20,46 @@ pub async fn rdp_connect(
     session_id: Option<String>,
     on_frame: Channel,
 ) -> Result<(), String> {
-    let id = params.id.clone();
-    let mut params = params;
-    // A password held by a password manager, fetched now; not for a panel
-    // that only re-attaches to a running desktop. The entry is the stored
-    // session's, approved by the connecting person for this server (see
-    // `session_commands::require_trusted_refs`); the reference sent here only
-    // says to use it.
-    if params.password_ref.is_some() && !state.rdp_manager.lock().await.running(&id) {
-        let (stored, _) = crate::ipc::session_commands::stored_session_for_desktop(
-            &state,
-            session_id.as_deref(),
-            crate::state::SessionKind::Rdp,
-            &params.host,
-            params.port,
-            Some(&params.username),
-            None,
-        )
-        .await?;
-        let reason = crate::pwmanager::Reason::Connect(stored.name.clone());
-        let entry = crate::ipc::session_commands::desktop_ref(&stored)?;
-        params.password = crate::pwmanager::with_prompt(&app_handle, reason, crate::pwmanager::resolve_to_string(&state, entry))
+    // Boxed: Tauri builds a command's future on the main thread and passes it
+    // by value before spawning it, and the main thread's stack is small
+    // (1 MB on Windows). Only a pointer is left there this way.
+    Box::pin(async move {
+        let id = params.id.clone();
+        let mut params = params;
+        // A password held by a password manager, fetched now; not for a panel
+        // that only re-attaches to a running desktop. The entry is the stored
+        // session's, approved by the connecting person for this server (see
+        // `session_commands::require_trusted_refs`); the reference sent here only
+        // says to use it.
+        if params.password_ref.is_some() && !state.rdp_manager.lock().await.running(&id) {
+            let (stored, _) = crate::ipc::session_commands::stored_session_for_desktop(
+                &state,
+                session_id.as_deref(),
+                crate::state::SessionKind::Rdp,
+                &params.host,
+                params.port,
+                Some(&params.username),
+                None,
+            )
+            .await?;
+            let reason = crate::pwmanager::Reason::Connect(stored.name.clone());
+            let entry = crate::ipc::session_commands::desktop_ref(&stored)?;
+            params.password = crate::pwmanager::with_prompt(&app_handle, reason, crate::pwmanager::resolve_to_string(&state, entry))
+                .await
+                .inspect_err(|e| tracing::warn!("RDP {id}: {e}"))?;
+        }
+        state
+            .rdp_manager
+            .lock()
             .await
-            .inspect_err(|e| tracing::warn!("RDP {id}: {e}"))?;
-    }
-    state
-        .rdp_manager
-        .lock()
-        .await
-        .connect(app_handle, params, on_frame)
-        .map_err(|e| {
-            // The panel shows this; the log keeps it.
-            tracing::warn!("RDP {id}: connect rejected: {e}");
-            e
-        })
+            .connect(app_handle, params, on_frame)
+            .map_err(|e| {
+                // The panel shows this; the log keeps it.
+                tracing::warn!("RDP {id}: connect rejected: {e}");
+                e
+            })
+    })
+    .await
 }
 
 #[tauri::command]

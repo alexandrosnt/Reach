@@ -2431,5 +2431,7 @@
   "pwmanager.prompt_kept": "Gardée chiffrée en mémoire pendant {{duration}}.",
   "pwmanager.prompt_not_kept": "Non conservée : Reach la redemandera la prochaine fois.",
   "pwmanager.prompt_hint": "Reach ne l'enregistre jamais.",
-  "pwmanager.prompt_submit": "Déverrouiller"
+  "pwmanager.prompt_submit": "Déverrouiller",
+  "pwmanager.prompt_server": "Serveur : {{server}}",
+  "pwmanager.unlock_first": "Reach est verrouillé. Déverrouillez d’abord Reach pour voir ou modifier ces paramètres."
 }

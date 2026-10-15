@@ -2431,5 +2431,7 @@
   "pwmanager.prompt_kept": "Пази се шифрована в паметта за {{duration}}.",
   "pwmanager.prompt_not_kept": "Не се пази: Reach ще попита отново следващия път.",
   "pwmanager.prompt_hint": "Reach никога не я запазва.",
-  "pwmanager.prompt_submit": "Отключи"
+  "pwmanager.prompt_submit": "Отключи",
+  "pwmanager.prompt_server": "Сървър: {{server}}",
+  "pwmanager.unlock_first": "Reach е заключен. Първо отключете Reach, за да видите или промените тези настройки."
 }
