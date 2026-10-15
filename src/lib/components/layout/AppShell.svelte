@@ -16,6 +16,7 @@
 	import ActiveSessionsDialog from '$lib/components/shared/ActiveSessionsDialog.svelte';
 	import HostKeyDialog from '$lib/components/shared/HostKeyDialog.svelte';
 	import AuthPromptDialog from '$lib/components/shared/AuthPromptDialog.svelte';
+	import PassphrasePrompt from '$lib/components/pwmanager/PassphrasePrompt.svelte';
 	import DuplicateVaultsDialog from '$lib/components/vault/DuplicateVaultsDialog.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { t } from '$lib/state/i18n.svelte';
@@ -252,6 +253,7 @@
 	/>
 	<HostKeyDialog />
 	<AuthPromptDialog />
+	<PassphrasePrompt />
 	<McpConfirmDialog />
 </div>
 

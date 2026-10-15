@@ -16,21 +16,55 @@ pub async fn vnc_connect(
     app_handle: tauri::AppHandle,
     state: State<'_, AppState>,
     params: VncConnectParams,
+    session_id: Option<String>,
     on_frame: Channel,
 ) -> Result<(), String> {
     let id = params.id.clone();
     // A panel re-created over a running session only re-attaches; no new
     // SSH login for that.
     let running = state.vnc_manager.lock().await.running(&id);
-    let forward = match params.via_session_id.clone().filter(|s| !s.is_empty() && !running) {
-        Some(session_id) => {
-            let route = Route::Session { session_id };
-            crate::ipc::db_commands::forward_route(&app_handle, &state, &route, params.host.clone(), params.port)
+    let mut params = params;
+    // A password held by a password manager, fetched now; not for a panel
+    // that only re-attaches. The entry is the stored session's, approved by
+    // the connecting person for this server and this way in: the SSH
+    // session it goes through, as that is stored now (see
+    // `session_commands::ref_context`). The tunnel is then built from that
+    // session exactly as checked (`pin`), so re-pointing it in between
+    // fails the connect instead of sending the password elsewhere.
+    //
+    // The password and the SSH leg's own entries are one operation: a
+    // password manager passphrase that must be asked for is asked once.
+    let reason = crate::pwmanager::Reason::Connect(params.host.clone());
+    let forward = crate::pwmanager::with_prompt(&app_handle, reason, async {
+        let mut pin = None;
+        if params.password_ref.is_some() && !running {
+            let (stored, via) = crate::ipc::session_commands::stored_session_for_desktop(
+                &state,
+                session_id.as_deref(),
+                crate::state::SessionKind::Vnc,
+                &params.host,
+                params.port,
+                None,
+                Some(params.via_session_id.as_deref()),
+            )
+            .await?;
+            crate::pwmanager::name_operation(&stored.name);
+            pin = via.as_ref().map(crate::ipc::session_commands::approval_context);
+            params.password = crate::pwmanager::resolve_to_string(&state, crate::ipc::session_commands::desktop_ref(&stored)?)
                 .await
-                .inspect_err(|e| tracing::warn!("VNC {id}: SSH leg failed: {e}"))?
+                .inspect_err(|e| tracing::warn!("VNC {id}: {e}"))?;
         }
-        None => None,
-    };
+        Ok::<_, String>(match params.via_session_id.clone().filter(|s| !s.is_empty() && !running) {
+            Some(session_id) => {
+                let route = Route::Session { session_id };
+                crate::ipc::db_commands::forward_route_pinned(&app_handle, &state, &route, params.host.clone(), params.port, pin.as_deref())
+                    .await
+                    .inspect_err(|e| tracing::warn!("VNC {id}: SSH leg failed: {e}"))?
+            }
+            None => None,
+        })
+    })
+    .await?;
     state.vnc_manager.lock().await.connect(app_handle, params, forward, on_frame);
     Ok(())
 }

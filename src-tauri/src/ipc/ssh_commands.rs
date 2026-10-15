@@ -15,6 +15,94 @@ pub struct JumpHostConnectParams {
     pub key_passphrase: Option<String>,
     /// An imported key, instead of a path. See `ssh_key_import`.
     pub key_id: Option<String>,
+    /// Use the saved session's password manager entry for this hop's
+    /// password; wins over `password`. Only a signal: the entry itself is
+    /// read from the stored session (see `ssh_connect`). Sent as
+    /// `passwordRef` (`password_ref` is accepted too).
+    #[serde(default, alias = "password_ref")]
+    pub password_ref: Option<crate::pwmanager::SecretRef>,
+    /// The same for the key passphrase; wins over `key_passphrase`. Sent as
+    /// `keyPassphraseRef` (or `key_passphrase_ref`).
+    #[serde(default, alias = "key_passphrase_ref")]
+    pub key_passphrase_ref: Option<crate::pwmanager::SecretRef>,
+}
+
+/// Which secret of a login a password manager reference stands in for, if
+/// the login method uses one: the session slot's field name (see
+/// `session_commands::ref_slots`).
+fn ref_field(auth_method: &str, has_password_ref: bool, has_passphrase_ref: bool) -> Option<&'static str> {
+    match auth_method {
+        "password" if has_password_ref => Some("password"),
+        "key" if has_passphrase_ref => Some("passphrase"),
+        _ => None,
+    }
+}
+
+/// The slots of the saved session whose password manager entries this
+/// connect asks for. The references the webview sends say only that:
+/// which entry is used, and where it goes, is read from the stored session.
+pub(crate) fn wanted_slots(
+    auth_method: &str,
+    has_password_ref: bool,
+    has_passphrase_ref: bool,
+    jump_chain: Option<&[JumpHostConnectParams]>,
+    proxy: Option<&crate::state::ProxyConfig>,
+) -> Vec<String> {
+    let mut out: Vec<String> = ref_field(auth_method, has_password_ref, has_passphrase_ref).map(String::from).into_iter().collect();
+    let jumps = jump_chain.unwrap_or_default();
+    for (i, j) in jumps.iter().enumerate() {
+        if let Some(field) = ref_field(&j.auth_method, j.password_ref.is_some(), j.key_passphrase_ref.is_some()) {
+            out.push(format!("jump:{i}:{field}"));
+        }
+    }
+    // The proxy is used only without jump hosts.
+    if jumps.is_empty() && proxy.is_some_and(|p| p.password_ref.is_some()) {
+        out.push("proxy".to_string());
+    }
+    out
+}
+
+/// Where a proxy goes, without its credentials.
+fn proxy_endpoint(p: &crate::state::ProxyConfig) -> (&str, &str, u16, Option<&str>) {
+    (p.proxy_type.as_str(), p.host.as_str(), p.port, p.username.as_deref().filter(|u| !u.is_empty()))
+}
+
+/// The connect must go where the saved session goes for its password
+/// manager entries to be sent: the same server, user, jump hosts and proxy.
+/// Their approvals were given for exactly that (`approval_context`).
+pub(crate) fn check_matches_session(
+    stored: &crate::state::SessionConfig,
+    host: &str,
+    port: u16,
+    username: &str,
+    jump_chain: Option<&[JumpHostConnectParams]>,
+    proxy: Option<&crate::state::ProxyConfig>,
+) -> Result<(), String> {
+    let jumps: Vec<(&str, u16, &str)> =
+        jump_chain.unwrap_or_default().iter().map(|j| (j.host.as_str(), j.port, j.username.as_str())).collect();
+    let stored_jumps: Vec<(&str, u16, &str)> =
+        stored.jump_chain.iter().flatten().map(|j| (j.host.as_str(), j.port, j.username.as_str())).collect();
+    let same = stored.kind == crate::state::SessionKind::Ssh
+        && stored.host == host
+        && stored.port == port
+        && stored.username == username
+        && jumps == stored_jumps
+        && proxy.map(proxy_endpoint) == stored.proxy.as_ref().map(proxy_endpoint);
+    if same {
+        Ok(())
+    } else {
+        Err(format!(
+            "This connection does not match the saved session '{}', so its password manager entries are not used. Reload the session list and connect again.",
+            stored.name
+        ))
+    }
+}
+
+/// The reference in one slot of the stored session.
+fn stored_ref<'a>(stored: &'a crate::state::SessionConfig, slot: &str) -> Result<&'a crate::pwmanager::SecretRef, String> {
+    crate::ipc::session_commands::ref_at(stored, slot).ok_or_else(|| {
+        format!("The saved session '{}' has no password manager entry for this login any more. Reload the session list and connect again.", stored.name)
+    })
 }
 
 /// What a login may try, and nothing else. A key session offers its key, a
@@ -102,10 +190,13 @@ pub async fn ssh_connect(
     session_log: Option<crate::ssh::session_log::SessionLogConfig>,
     try_agent_keys: Option<bool>,
     ssh_options: Option<crate::ssh::sshconf::session::SshOptions>,
+    password_ref: Option<crate::pwmanager::SecretRef>,
+    key_passphrase_ref: Option<crate::pwmanager::SecretRef>,
+    session_id: Option<String>,
 ) -> Result<String, String> {
     // Only the approvals of the person connecting count: a session synced
     // from a vault others can write to cannot approve its own commands.
-    let ssh_options = ssh_options.map(|o| o.effective());
+    let mut ssh_options = ssh_options.map(|o| o.effective());
     // Nothing is typed into the user's shell unless the caller asks for it
     // (Settings → Appearance): a caller that does not say gets no setup. The
     // login message is shown unless asked otherwise.
@@ -115,14 +206,63 @@ pub async fn ssh_connect(
         log: session_log,
     };
     tracing::info!(
-        "ssh_connect IPC: id={}, host={}, port={}, user={}, auth_method='{}', has_key_path={}, has_password={}, has_passphrase={}, has_proxy={}, has_jump={}",
+        "ssh_connect IPC: id={}, host={}, port={}, user={}, auth_method='{}', has_key_path={}, has_password={}, has_passphrase={}, has_password_ref={}, has_passphrase_ref={}, has_proxy={}, has_jump={}",
         id, host, port, username, auth_method,
         key_path.as_deref().map(|p| !p.is_empty()).unwrap_or(false),
         password.as_deref().map(|p| !p.is_empty()).unwrap_or(false),
         key_passphrase.as_deref().map(|p| !p.is_empty()).unwrap_or(false),
+        password_ref.is_some(),
+        key_passphrase_ref.is_some(),
         proxy.is_some(),
         jump_chain.as_ref().map(|c| c.len()).unwrap_or(0),
     );
+    // Secrets held by a password manager are fetched now, for the target,
+    // every jump host and the proxy, before anything connects. The proxy is
+    // used only without a jump chain.
+    //
+    // Which entries, and where they may go, come from the saved session as
+    // stored, not from this call: the references sent here only say "use
+    // the session's entry". The connect must match the session, and each
+    // entry must be one the connecting person approved for it; otherwise
+    // the error says which, for the session list to ask (see
+    // `session_commands::require_trusted_refs`).
+    let mut password = password;
+    let mut key_passphrase = key_passphrase;
+    let mut jump_chain = jump_chain;
+    let mut proxy = proxy;
+    let wanted = wanted_slots(&auth_method, password_ref.is_some(), key_passphrase_ref.is_some(), jump_chain.as_deref(), proxy.as_ref());
+    if !wanted.is_empty() {
+        let sid = crate::ipc::session_commands::require_session_id(session_id.as_deref())?;
+        let stored = crate::ipc::session_commands::stored_session(&state, sid).await?;
+        check_matches_session(&stored, &host, port, &username, jump_chain.as_deref(), proxy.as_ref())?;
+        crate::ipc::session_commands::require_trusted_refs(&stored, None, &wanted)?;
+        // The ssh_config settings decide where the login really goes
+        // (HostName, ProxyJump): the stored session's, which the approvals
+        // were given for.
+        ssh_options = stored.ssh_options.clone().map(|o| o.effective());
+        // One operation: if the manager's passphrase must be asked for, it
+        // is asked once for all of these, not once per entry.
+        let reason = crate::pwmanager::Reason::Connect(stored.name.clone());
+        crate::pwmanager::with_prompt(&app, reason, async {
+            if let Some(field) = ref_field(&auth_method, password_ref.is_some(), key_passphrase_ref.is_some()) {
+                let secret = crate::pwmanager::resolve_to_string(&state, stored_ref(&stored, field)?).await?;
+                if field == "password" { password = Some(secret) } else { key_passphrase = Some(secret) }
+            }
+            for (i, j) in jump_chain.iter_mut().flatten().enumerate() {
+                if let Some(field) = ref_field(&j.auth_method, j.password_ref.is_some(), j.key_passphrase_ref.is_some()) {
+                    let secret = crate::pwmanager::resolve_to_string(&state, stored_ref(&stored, &format!("jump:{i}:{field}"))?).await?;
+                    if field == "password" { j.password = Some(secret) } else { j.key_passphrase = Some(secret) }
+                }
+            }
+            if wanted.iter().any(|s| s == "proxy") {
+                if let Some(p) = proxy.as_mut() {
+                    p.password = Some(crate::pwmanager::resolve_to_string(&state, stored_ref(&stored, "proxy")?).await?);
+                }
+            }
+            Ok::<(), String>(())
+        })
+        .await?;
+    }
     if let Some(s) = shell.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
         tracing::info!("ssh_connect: per-session login shell override = '{}'", s);
     }

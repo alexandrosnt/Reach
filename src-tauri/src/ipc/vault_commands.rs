@@ -3,11 +3,40 @@ use secrecy::SecretBox;
 use tauri::State;
 
 use crate::state::AppState;
+use crate::vault::manager::INTERNAL_VAULTS;
 use crate::vault::{biometric, fido2};
 use crate::vault::{
     AppSettings, InviteInfo, MemberInfo, MemberRole, ReceivedShare, SecretCategory, SecretMetadata,
     ShareItemResult, SharedItemInfo, VaultInfo, VaultType,
 };
+
+// ==================== REACH'S OWN VAULTS ====================
+
+/// The vault the internal vaults map onto while personal sync is on.
+const UNIFIED_VAULT: &str = "__personal__";
+
+/// Whether `vault_id` is one of the vaults Reach keeps for itself (sessions,
+/// settings with the password-manager secrets, SSH keys, …), with `id_of`
+/// mapping a vault name to its id. The secret commands below are for the
+/// user's own vaults, which the vault panel lists; Reach's vaults are read
+/// and written only through the commands made for them, which check what
+/// they store (the settings commands refuse the password-manager keys, for
+/// one). Their ids are random and never listed, but a guessed or leaked id
+/// must not open them either.
+fn is_internal_vault_id(vault_id: &str, id_of: impl Fn(&str) -> Option<String>) -> bool {
+    INTERNAL_VAULTS
+        .iter()
+        .chain(std::iter::once(&UNIFIED_VAULT))
+        .any(|name| id_of(name).as_deref() == Some(vault_id))
+}
+
+fn refuse_internal_vault(manager: &crate::vault::VaultManager, vault_id: &str) -> Result<(), String> {
+    if is_internal_vault_id(vault_id, |name| manager.get_vault_id_by_name(name)) {
+        Err("This vault is kept by Reach for its own data and cannot be opened here".into())
+    } else {
+        Ok(())
+    }
+}
 
 // ==================== IDENTITY ====================
 
@@ -18,6 +47,10 @@ pub async fn vault_init_identity(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let mut manager = state.vault_manager.lock().await;
+    // A new identity: entry lists cached for the old one must go, and a
+    // passphrase typed for the old one.
+    crate::pwmanager::clear_cache();
+    crate::pwmanager::forget_passphrase();
     manager.init_identity(&password).await.map_err(|e| e.to_string())
 }
 
@@ -36,6 +69,10 @@ pub async fn vault_unlock(
 pub async fn vault_lock(state: State<'_, AppState>) -> Result<(), String> {
     let mut manager = state.vault_manager.lock().await;
     manager.hold();
+    // The password-manager settings live in the vault: what was listed with
+    // them goes when it locks, and so does a passphrase kept in memory.
+    crate::pwmanager::clear_cache();
+    crate::pwmanager::forget_passphrase();
     Ok(())
 }
 
@@ -492,7 +529,7 @@ pub async fn vault_create(
 }
 
 #[tauri::command(rename_all = "snake_case")]
-#[tracing::instrument(skip(state))]
+#[tracing::instrument(skip(state, token))]
 pub async fn vault_open(
     vault_id: String,
     sync_url: Option<String>,
@@ -584,6 +621,7 @@ pub async fn vault_secret_create(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let manager = state.vault_manager.lock().await;
+    refuse_internal_vault(&manager, &vault_id)?;
 
     let cat: SecretCategory = category.parse().map_err(|e: String| e)?;
     let plaintext = SecretBox::new(Box::new(value.into_bytes()));
@@ -602,6 +640,7 @@ pub async fn vault_secret_read(
     state: State<'_, AppState>,
 ) -> Result<String, String> {
     let manager = state.vault_manager.lock().await;
+    refuse_internal_vault(&manager, &vault_id)?;
 
     let plaintext = manager
         .read_secret(&vault_id, &secret_id)
@@ -622,6 +661,7 @@ pub async fn vault_secret_update(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let manager = state.vault_manager.lock().await;
+    refuse_internal_vault(&manager, &vault_id)?;
 
     let plaintext = SecretBox::new(Box::new(value.into_bytes()));
 
@@ -639,6 +679,7 @@ pub async fn vault_secret_delete(
     state: State<'_, AppState>,
 ) -> Result<(), String> {
     let manager = state.vault_manager.lock().await;
+    refuse_internal_vault(&manager, &vault_id)?;
     manager
         .delete_secret(&vault_id, &secret_id)
         .await
@@ -652,6 +693,7 @@ pub async fn vault_secret_list(
     state: State<'_, AppState>,
 ) -> Result<Vec<SecretMetadata>, String> {
     let manager = state.vault_manager.lock().await;
+    refuse_internal_vault(&manager, &vault_id)?;
     manager.list_secrets(&vault_id).await.map_err(|e| e.to_string())
 }
 
@@ -1035,4 +1077,31 @@ pub async fn vault_get_personal_sync(
 ) -> Result<(Option<String>, Option<String>), String> {
     let manager = state.vault_manager.lock().await;
     Ok(manager.get_personal_sync_config())
+}
+
+#[cfg(test)]
+mod internal_vault_tests {
+    use super::*;
+
+    #[test]
+    fn reach_s_own_vaults_are_refused_by_id() {
+        let ids = |name: &str| match name {
+            "__settings__" => Some("settings-id".to_string()),
+            "__sessions__" => Some("sessions-id".to_string()),
+            "__personal__" => Some("unified-id".to_string()),
+            _ => None,
+        };
+        assert!(is_internal_vault_id("settings-id", ids));
+        assert!(is_internal_vault_id("sessions-id", ids));
+        assert!(is_internal_vault_id("unified-id", ids), "the vault they map onto with sync on");
+        assert!(!is_internal_vault_id("my-team-vault", ids));
+        assert!(!is_internal_vault_id("", ids));
+        // Every internal vault, not only those named above.
+        for name in INTERNAL_VAULTS {
+            let id = format!("id-of-{name}");
+            assert!(is_internal_vault_id(&id, |n| Some(format!("id-of-{n}"))), "{name}");
+        }
+        // No vault open yet: nothing is internal.
+        assert!(!is_internal_vault_id("settings-id", |_| None));
+    }
 }

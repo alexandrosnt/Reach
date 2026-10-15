@@ -6,6 +6,8 @@
 	import { sessionCreate, sessionList, sessionUpdate, sessionKind, wslListDistros, type SessionConfig, type SessionKind, type AuthMethod, type JumpHostConfig, type Folder, type SshOptions } from '$lib/ipc/sessions';
 	import { isWindows } from '$lib/platform';
 	import SshOptionsSection from './SshOptionsSection.svelte';
+	import SecretRefField from '$lib/components/pwmanager/SecretRefField.svelte';
+	import type { EntrySummary, SecretRef } from '$lib/ipc/pwmanager';
 	import { t } from '$lib/state/i18n.svelte';
 	import { folderPath } from '$lib/sessions/folder-tree';
 	import { open as openDialog } from '@tauri-apps/plugin-dialog';
@@ -78,25 +80,30 @@
 		if (next === 'ssh' && username === '') username = 'root';
 		kind = next;
 	}
-	let authType = $state<'Password' | 'Key' | 'Agent'>('Password');
+	/** 'Manager' is a password from a password manager: saved as a Password login with a reference. */
+	let authType = $state<'Password' | 'Key' | 'Agent' | 'Manager'>('Password');
 	let password = $state('');
 	let keyPath = $state('');
 	/** An imported key, used instead of keyPath. */
 	let keyId = $state('');
 	let keyPassphrase = $state('');
+	/** Password-manager entries for the password and the passphrase; they win over the typed ones. */
+	let passwordRef = $state<SecretRef | null>(null);
+	let keyPassphraseRef = $state<SecretRef | null>(null);
 	/** Key sessions: also offer the agent's keys if this key is refused. Off by default: see build_auth. */
 	let tryAgentKeys = $state(false);
 	let shell = $state('');
 	let tagsStr = $state('');
 	let folderIdStr = $state('');
 	let jumpEnabled = $state(false);
-	let jumpHops = $state<Array<{host: string; port: string; username: string; authType: 'Password' | 'Key' | 'Agent'; password: string; keyPath: string; keyPassphrase: string}>>([]);
+	let jumpHops = $state<Array<{host: string; port: string; username: string; authType: 'Password' | 'Key' | 'Agent' | 'Manager'; password: string; keyPath: string; keyPassphrase: string; passwordRef: SecretRef | null; keyPassphraseRef: SecretRef | null}>>([]);
 	let proxyEnabled = $state(false);
 	let proxyType = $state<'socks5' | 'socks4' | 'http'>('socks5');
 	let proxyHost = $state('127.0.0.1');
 	let proxyPort = $state('9050');
 	let proxyUsername = $state('');
 	let proxyPassword = $state('');
+	let proxyPasswordRef = $state<SecretRef | null>(null);
 	/** ssh_config settings: imported files, lines set here, approvals. */
 	let sshOptions = $state<SshOptions>({});
 	let sshSection = $state<ReturnType<typeof SshOptionsSection> | undefined>();
@@ -124,11 +131,13 @@
 			host = editSession.host;
 			portStr = String(editSession.port);
 			username = editSession.username;
-			authType = editSession.auth_method.type;
+			authType = editSession.auth_method.type === 'Password' && editSession.auth_method.password_ref ? 'Manager' : editSession.auth_method.type;
 			password = editSession.auth_method.password ?? '';
 			keyPath = editSession.auth_method.path ?? '';
 			keyId = editSession.auth_method.key_id ?? '';
 			keyPassphrase = editSession.auth_method.passphrase ?? '';
+			passwordRef = editSession.auth_method.type === 'Password' ? (editSession.auth_method.password_ref ?? null) : null;
+			keyPassphraseRef = editSession.auth_method.type === 'Key' ? (editSession.auth_method.passphrase_ref ?? null) : null;
 			tryAgentKeys = editSession.try_agent_keys === true;
 			shell = editSession.shell ?? '';
 			sshOptions = editSession.ssh_options ?? {};
@@ -140,10 +149,12 @@
 					host: j.host,
 					port: String(j.port),
 					username: j.username,
-					authType: j.auth_method.type,
+					authType: j.auth_method.type === 'Password' && j.auth_method.password_ref ? 'Manager' : j.auth_method.type,
 					password: j.auth_method.type === 'Password' ? (j.auth_method.password ?? '') : '',
 					keyPath: j.auth_method.type === 'Key' ? (j.auth_method.path ?? '') : '',
 					keyPassphrase: j.auth_method.type === 'Key' ? (j.auth_method.passphrase ?? '') : '',
+					passwordRef: j.auth_method.type === 'Password' ? (j.auth_method.password_ref ?? null) : null,
+					keyPassphraseRef: j.auth_method.type === 'Key' ? (j.auth_method.passphrase_ref ?? null) : null,
 				}));
 			} else {
 				jumpEnabled = false;
@@ -156,8 +167,10 @@
 			proxyPort = String(editSession.proxy.port ?? 9050);
 			proxyUsername = editSession.proxy.username ?? '';
 			proxyPassword = editSession.proxy.password ?? '';
+			proxyPasswordRef = editSession.proxy.password_ref ?? null;
 		} else {
 			proxyEnabled = false;
+			proxyPasswordRef = null;
 		}
 		} else {
 			kind = 'ssh';
@@ -174,6 +187,8 @@
 			keyPath = '';
 			keyId = '';
 			keyPassphrase = '';
+			passwordRef = null;
+			keyPassphraseRef = null;
 			tryAgentKeys = false;
 			shell = '';
 			sshOptions = {};
@@ -188,12 +203,20 @@
 			proxyUsername = '';
 			proxyPassword = '';
 			wslDistro = '';
+			proxyPasswordRef = null;
 		}
 		error = undefined;
 	});
 
 	async function handleSave(): Promise<void> {
 		if (!canSave) return;
+		// "Password manager" without a chosen entry would save a login with
+		// no password at all.
+		const ssh = kind === 'ssh';
+		if (ssh && ((authType === 'Manager' && !passwordRef) || (jumpEnabled && jumpHops.some((h) => h.authType === 'Manager' && !h.passwordRef)))) {
+			error = t('session.manager_pick_entry');
+			return;
+		}
 		saving = true;
 		error = undefined;
 
@@ -209,8 +232,12 @@
 		// itself: nothing to keep, so a password left in the form is not saved.
 		const authMethod: AuthMethod = wsl
 			? { type: 'Password' }
-			: desktop || authType === 'Password'
-			? { type: 'Password', password: password || undefined }
+			: desktop
+			? passwordAuth(password, passwordRef)
+			: authType === 'Password'
+			? passwordAuth(password, null)
+			: authType === 'Manager'
+			? passwordAuth('', passwordRef)
 			: authType === 'Key'
 				? {
 						type: 'Key',
@@ -218,7 +245,10 @@
 						// whichever the user did not choose.
 						path: keyId ? undefined : keyPath.trim(),
 						key_id: keyId || undefined,
-						passphrase: keyPassphrase || undefined
+						// A passphrase from a password manager wins; the typed one is
+						// not kept beside it. An imported key carries its own.
+						passphrase: keyPassphraseRef && !keyId ? undefined : keyPassphrase || undefined,
+						passphrase_ref: keyId ? undefined : (keyPassphraseRef ?? undefined)
 					}
 				: { type: 'Agent' };
 		const tags = tagsStr.split(',').map(t => t.trim()).filter(Boolean);
@@ -226,9 +256,16 @@
 		const jumpChain: JumpHostConfig[] | undefined = !desktop && jumpEnabled && jumpHops.length > 0
 			? jumpHops.map(h => {
 				const hopAuth: AuthMethod = h.authType === 'Password'
-					? { type: 'Password', password: h.password || undefined }
+					? passwordAuth(h.password, null)
+					: h.authType === 'Manager'
+					? passwordAuth('', h.passwordRef)
 					: h.authType === 'Key'
-						? { type: 'Key', path: h.keyPath.trim(), passphrase: h.keyPassphrase || undefined }
+						? {
+								type: 'Key',
+								path: h.keyPath.trim(),
+								passphrase: h.keyPassphraseRef ? undefined : h.keyPassphrase || undefined,
+								passphrase_ref: h.keyPassphraseRef ?? undefined
+							}
 						: { type: 'Agent' };
 				return {
 					host: h.host.trim(),
@@ -251,7 +288,8 @@
 			host: proxyHost.trim(),
 			port: parseInt(proxyPort, 10) || 9050,
 			username: proxyUsername.trim() || null,
-			password: proxyPassword || null,
+			password: proxyPasswordRef ? null : (proxyPassword || null),
+			password_ref: proxyPasswordRef ?? undefined,
 		} : null;
 
 		try {
@@ -310,6 +348,22 @@
 		}
 	}
 
+	/** A password logon: the entry from a password manager, or the typed password. */
+	function passwordAuth(typed: string, ref: SecretRef | null): AuthMethod {
+		return ref ? { type: 'Password', password_ref: ref } : { type: 'Password', password: typed || undefined };
+	}
+
+	/**
+	 * A user name from the picked entry, for a field still empty (or still the
+	 * default a new session starts with). One the user typed is never replaced.
+	 */
+	function nameFromEntry(current: string, entry: EntrySummary): string {
+		const picked = entry.username?.trim();
+		if (!picked) return current;
+		const untouched = current.trim() === '' || (!isEditing && current === 'root');
+		return untouched ? picked : current;
+	}
+
 	async function browseKey(setter: (path: string) => void): Promise<void> {
 		try {
 			const selected = await openDialog({
@@ -337,7 +391,7 @@
 	}
 
 	function addHop(): void {
-		jumpHops = [...jumpHops, { host: '', port: '22', username: 'root', authType: 'Password', password: '', keyPath: '', keyPassphrase: '' }];
+		jumpHops = [...jumpHops, { host: '', port: '22', username: 'root', authType: 'Password', password: '', keyPath: '', keyPassphrase: '', passwordRef: null, keyPassphraseRef: null }];
 	}
 
 	function removeHop(index: number): void {
@@ -413,7 +467,7 @@
 
 		{#if kind === 'rdp'}
 			<div class="shell-field">
-				<Input label={t('session.password_optional')} bind:value={password} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
+				<SecretRefField approvable label={t('session.password_optional')} bind:value={password} bind:secretRef={passwordRef} placeholder="Stored encrypted in vault" disabled={saving} onpick={(e) => (username = nameFromEntry(username, e))} />
 				<p class="shell-hint">{t('session.rdp_password_hint')}</p>
 			</div>
 			<Input label={t('session.rdp_domain')} bind:value={domain} placeholder="CORP" disabled={saving} />
@@ -437,7 +491,7 @@
 			</div>
 		{:else if kind === 'vnc'}
 			<div class="shell-field">
-				<Input label={t('session.password_optional')} bind:value={password} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
+				<SecretRefField approvable label={t('session.password_optional')} bind:value={password} bind:secretRef={passwordRef} placeholder="Stored encrypted in vault" disabled={saving} />
 				<p class="shell-hint">{t('session.vnc_password_hint')}</p>
 			</div>
 			<div class="shell-field">
@@ -488,15 +542,26 @@
 				>
 					{t('session.auth_agent')}
 				</button>
+				<button
+					type="button"
+					class="auth-btn"
+					class:active={authType === 'Manager'}
+					disabled={saving}
+					onclick={() => (authType = 'Manager')}
+				>
+					{t('session.auth_manager')}
+				</button>
 			</div>
 		</div>
 
 		{#if authType === 'Password'}
-			<Input label={t('session.password_optional')} bind:value={password} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
+			<Input label={t('session.password_optional')} type="password" bind:value={password} placeholder="Stored encrypted in vault" disabled={saving} />
+		{:else if authType === 'Manager'}
+			<SecretRefField approvable refOnly label={t('session.password_from_manager')} bind:value={password} bind:secretRef={passwordRef} disabled={saving} onpick={(e) => (username = nameFromEntry(username, e))} />
 		{:else if authType === 'Key'}
 			<KeyPicker bind:path={keyPath} bind:keyId disabled={saving} />
 			{#if !keyId}
-				<Input label={t('session.passphrase_optional')} bind:value={keyPassphrase} type="password" placeholder="Stored encrypted in vault" disabled={saving} />
+				<SecretRefField approvable label={t('session.passphrase_optional')} bind:value={keyPassphrase} bind:secretRef={keyPassphraseRef} placeholder="Stored encrypted in vault" disabled={saving} />
 			{/if}
 			<div class="shell-field">
 				<label class="jump-toggle">
@@ -551,11 +616,16 @@
 								<button type="button" class="auth-btn" class:active={hop.authType === 'Agent'} disabled={saving} onclick={() => (hop.authType = 'Agent')}>
 									{t('session.auth_agent')}
 								</button>
+								<button type="button" class="auth-btn" class:active={hop.authType === 'Manager'} disabled={saving} onclick={() => (hop.authType = 'Manager')}>
+									{t('session.auth_manager')}
+								</button>
 							</div>
 						</div>
 
 						{#if hop.authType === 'Password'}
-							<Input label={t('session.password_optional')} bind:value={hop.password} type="password" disabled={saving} />
+							<Input label={t('session.password_optional')} type="password" bind:value={hop.password} disabled={saving} />
+						{:else if hop.authType === 'Manager'}
+							<SecretRefField approvable refOnly label={t('session.password_from_manager')} bind:value={hop.password} bind:secretRef={hop.passwordRef} disabled={saving} onpick={(e) => (hop.username = nameFromEntry(hop.username, e))} />
 						{:else if hop.authType === 'Key'}
 							<div class="key-path-row">
 								<div class="key-path-input">
@@ -565,7 +635,7 @@
 									{t('session.browse_key')}
 								</Button>
 							</div>
-							<Input label={t('session.passphrase_optional')} bind:value={hop.keyPassphrase} type="password" disabled={saving} />
+							<SecretRefField approvable label={t('session.passphrase_optional')} bind:value={hop.keyPassphrase} bind:secretRef={hop.keyPassphraseRef} disabled={saving} />
 						{/if}
 					</div>
 				{/each}
@@ -602,7 +672,7 @@
 							<Input label="Username (optional)" bind:value={proxyUsername} placeholder="" disabled={saving} />
 						</div>
 						<div class="field-host">
-							<Input label="Password (optional)" bind:value={proxyPassword} type="password" disabled={saving} />
+							<SecretRefField approvable label="Password (optional)" bind:value={proxyPassword} bind:secretRef={proxyPasswordRef} disabled={saving} onpick={(e) => { if (!proxyUsername.trim() && e.username) proxyUsername = e.username; }} />
 						</div>
 					</div>
 					<p class="proxy-hint">

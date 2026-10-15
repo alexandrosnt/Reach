@@ -5,6 +5,7 @@
  */
 
 import { invoke, Channel } from '@tauri-apps/api/core';
+import { explainUntrustedRefs } from './sessions';
 
 export type Engine = 'docker' | 'podman';
 export type Environment = 'none' | 'development' | 'staging' | 'production';
@@ -91,7 +92,7 @@ export const ctrHosts = () => invoke<ContainerHost[]>('ctr_hosts');
 export const ctrHostSave = (host: ContainerHost) => invoke<ContainerHost>('ctr_host_save', { host });
 export const ctrHostDelete = (id: string) => invoke<void>('ctr_host_delete', { id });
 
-export const ctrOpen = (hostId: string) => invoke<Opened>('ctr_open', { hostId });
+export const ctrOpen = (hostId: string) => explainUntrustedRefs(invoke<Opened>('ctr_open', { hostId }));
 export const ctrOpenLive = (connectionId: string, engine: Engine) => invoke<Opened>('ctr_open_live', { connectionId, engine });
 export const ctrClose = (key: string) => invoke<void>('ctr_close', { key });
 

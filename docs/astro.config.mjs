@@ -109,6 +109,7 @@ export default defineConfig({
 					items: [
 						{ label: 'How Encryption Works', slug: 'vault/encryption' },
 						{ label: 'Managing Secrets', slug: 'vault/secrets' },
+						{ label: 'Password Managers (Passbolt)', slug: 'vault/password-managers' },
 						{ label: 'Sharing & Collaboration', slug: 'vault/sharing' },
 						{ label: 'Backup & Restore', slug: 'vault/backup' },
 					],

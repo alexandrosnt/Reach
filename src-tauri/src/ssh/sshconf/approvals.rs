@@ -17,6 +17,10 @@ use base64::Engine;
 pub enum Kind {
     Command,
     Weakening,
+    /// A password manager entry a session may send its secret from (see
+    /// `session_commands::ref_slots`). Its own tag, so a signature given for
+    /// one list never counts for another.
+    SecretRef,
 }
 
 impl Kind {
@@ -24,6 +28,7 @@ impl Kind {
         match self {
             Kind::Command => "command",
             Kind::Weakening => "weakening",
+            Kind::SecretRef => "secret_ref",
         }
     }
 }
@@ -107,6 +112,7 @@ mod tests {
         // Copied to another session or list, alice's entry counts for nothing.
         assert!(verified(std::slice::from_ref(&mine), &ALICE, "alice", Kind::Command, "s2").is_empty());
         assert!(verified(std::slice::from_ref(&mine), &ALICE, "alice", Kind::Weakening, "s1").is_empty());
+        assert!(verified(std::slice::from_ref(&mine), &ALICE, "alice", Kind::SecretRef, "s1").is_empty());
         // A changed approved text breaks the tag.
         let tampered = mine.replacen(&b64().encode("nc %h %p"), &b64().encode("evil"), 1);
         assert!(verified(&[tampered], &ALICE, "alice", Kind::Command, "s1").is_empty());

@@ -10,6 +10,7 @@
 	import Button from '$lib/components/shared/Button.svelte';
 	import Toggle from '$lib/components/shared/Toggle.svelte';
 	import EngineBadge from './EngineBadge.svelte';
+	import SecretRefField from '$lib/components/pwmanager/SecretRefField.svelte';
 	import { ENGINES, engineInfo } from '$lib/db/engines';
 	import type { DbConnection, DbConnectionView, Engine, TlsMode } from '$lib/ipc/db';
 	import { testConnection } from '$lib/ipc/db';
@@ -51,6 +52,7 @@
 			port: info.port,
 			username: info.defaultUser,
 			password: null,
+			passwordRef: null,
 			database: null,
 			filePath: null,
 			route: { kind: 'direct' },
@@ -65,7 +67,7 @@
 	$effect(() => {
 		if (!open) return;
 		const base = blank(initial?.engine ?? 'postgres');
-		form = { ...base, ...(initial ?? {}), password: null } as DbConnection;
+		form = { ...base, ...(initial ?? {}), password: null, passwordRef: initial?.passwordRef ?? null } as DbConnection;
 		hasStoredPassword = !!initial?.hasPassword;
 		password = (initial?.password as string | undefined) ?? '';
 		testResult = null;
@@ -111,8 +113,11 @@
 	}
 
 	function payload(): { conn: DbConnection; keep: boolean } {
-		const conn: DbConnection = { ...form, password: password || null, name: form.name.trim() || suggestedName() };
-		return { conn, keep: !password && hasStoredPassword };
+		// A password manager entry replaces the password: the typed one is not
+		// sent and a stored one is not kept beside it.
+		const ref = form.passwordRef ?? null;
+		const conn: DbConnection = { ...form, password: ref ? null : password || null, passwordRef: ref, name: form.name.trim() || suggestedName() };
+		return { conn, keep: !ref && !password && hasStoredPassword };
 	}
 
 	function suggestedName(): string {
@@ -225,15 +230,27 @@
 						<span>{t('db.username')}</span>
 						<input bind:value={form.username} autocapitalize="off" spellcheck="false" autocomplete="off" />
 					</label>
-					<label class="field grow">
-						<span>{t('db.password')}</span>
-						<input
-							type="password"
+					<div class="field grow">
+						<span id="db-password-label">{t('db.password')}</span>
+						<SecretRefField
 							bind:value={password}
-							autocomplete="new-password"
-							placeholder={hasStoredPassword ? t('db.password_kept') : ''}
-						/>
-					</label>
+							bind:secretRef={form.passwordRef}
+							label={t('db.password')}
+							onpick={(e) => {
+								if (!form.username?.trim() && e.username) form.username = e.username;
+							}}
+						>
+							{#snippet input()}
+								<input
+									type="password"
+									bind:value={password}
+									autocomplete="new-password"
+									aria-labelledby="db-password-label"
+									placeholder={hasStoredPassword ? t('db.password_kept') : ''}
+								/>
+							{/snippet}
+						</SecretRefField>
+					</div>
 				</div>
 
 				<div class="grid2">

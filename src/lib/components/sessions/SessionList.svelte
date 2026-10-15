@@ -26,6 +26,8 @@
 	import ConfirmAction from '$lib/components/devops/ConfirmAction.svelte';
 	import Modal from '$lib/components/shared/Modal.svelte';
 	import Button from '$lib/components/shared/Button.svelte';
+	import UntrustedRefsDialog from '$lib/components/pwmanager/UntrustedRefsDialog.svelte';
+	import { sessionUntrustedSecretRefs, sessionApproveSecretRefs, untrustedRefsFromError, type UntrustedRefs } from '$lib/ipc/sessions';
 	import { sessionKind, sessionGet, sessionList, sessionDelete, sessionUpdate, sessionListFolders, sessionCreateFolder, sessionUpdateFolderParent, sessionDeleteFolder, sessionMoveToFolder, type SessionConfig, type Folder } from '$lib/ipc/sessions';
 	import { setActivePage } from '$lib/state/navigation.svelte';
 	import { sshConnect, sshDisconnect, sshDetectOs, type JumpHostConnectParams } from '$lib/ipc/ssh';
@@ -35,6 +37,8 @@
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { hasMasterPassword } from '$lib/ipc/credentials';
 	import { t } from '$lib/state/i18n.svelte';
+	import { providerName } from '$lib/state/pwmanager.svelte';
+	import type { SecretRef } from '$lib/ipc/pwmanager';
 	import { untrack } from 'svelte';
 	import { positionMenu } from '$lib/utils/positionMenu';
 	import { buildFolderTree, canMoveFolder, folderPath, type FolderTreeNode } from '$lib/sessions/folder-tree';
@@ -621,14 +625,17 @@
 	 * knows its size; nothing to await here. Saving the password is the same
 	 * promise the SSH prompt makes, kept the same way.
 	 */
-	async function openRdp(session: SessionConfig, password: string, remember: boolean): Promise<void> {
+	async function openRdp(session: SessionConfig, password: string, remember: boolean, passwordRef?: SecretRef | null): Promise<void> {
 		const tab = createTab('rdp', `${session.username}@${session.host}`, undefined, session.name, session.detected_os ?? 'windows');
 		tab.rdpConnectParams = {
 			id: tab.id,
 			host: session.host,
 			port: session.port,
 			username: session.username,
-			password,
+			// The backend fetches the password from the manager; none goes beside it.
+			password: passwordRef ? '' : password,
+			passwordRef: passwordRef ?? null,
+			sessionId: session.id,
 			domain: session.domain ?? undefined,
 			sharePath: session.share_path ?? undefined,
 			width: 0,
@@ -637,7 +644,7 @@
 		addToast(t('session.connected_toast', { name: session.name }), 'success');
 
 		const stored = session.auth_method.type === 'Password' ? session.auth_method.password : undefined;
-		if (remember && password && password !== stored) {
+		if (remember && !passwordRef && password && password !== stored) {
 			try {
 				await sessionUpdate({ ...session, auth_method: { type: 'Password', password } });
 				await loadSessions();
@@ -658,7 +665,9 @@
 			id: tab.id,
 			host: session.host,
 			port: session.port,
-			password: session.auth_method.type === 'Password' ? (session.auth_method.password ?? '') : '',
+			password: session.auth_method.type === 'Password' && !session.auth_method.password_ref ? (session.auth_method.password ?? '') : '',
+			passwordRef: session.auth_method.type === 'Password' ? (session.auth_method.password_ref ?? null) : null,
+			sessionId: session.id,
 			viaSessionId: session.via_session_id ?? null,
 		};
 		addToast(t('session.connected_toast', { name: session.name }), 'success');
@@ -684,7 +693,80 @@
 		);
 		addToast(t('session.connected_toast', { name: session.name }), 'success');
 	}
+
+	// Password manager entries the user has not approved for a session (see
+	// UntrustedRefsDialog). One question at a time; the connect waits on it.
+	let askedRefs = $state<UntrustedRefs | null>(null);
+	let approvingRefs = $state(false);
+	let approveRefsError = $state<string | undefined>();
+	let answerAsked: ((allowed: boolean) => void) | null = null;
+
+	function askToApprove(asked: UntrustedRefs): Promise<boolean> {
+		answerAsked?.(false);
+		return new Promise((resolve) => {
+			approveRefsError = undefined;
+			askedRefs = asked;
+			answerAsked = resolve;
+		});
+	}
+
+	function finishAsking(allowed: boolean): void {
+		const answer = answerAsked;
+		answerAsked = null;
+		askedRefs = null;
+		approveRefsError = undefined;
+		answer?.(allowed);
+	}
+
+	async function allowAskedRefs(): Promise<void> {
+		if (!askedRefs || approvingRefs) return;
+		approvingRefs = true;
+		try {
+			await sessionApproveSecretRefs(askedRefs);
+			finishAsking(true);
+			void loadSessions();
+		} catch (err) {
+			// The session changed while the dialog was open, or could not be
+			// saved: say so, approve nothing.
+			approveRefsError = String(err);
+		} finally {
+			approvingRefs = false;
+		}
+	}
+
+	function hasRefs(s: SessionConfig): boolean {
+		const ref = (a: SessionConfig['auth_method']) => !!(a.type === 'Password' ? a.password_ref : a.type === 'Key' ? a.passphrase_ref : null);
+		return ref(s.auth_method) || (s.jump_chain ?? []).some((j) => ref(j.auth_method)) || !!s.proxy?.password_ref;
+	}
+
+	/**
+	 * Before connecting: the session's password manager entries, and those
+	 * of the SSH session a VNC one goes through, must be approved by this
+	 * user. Asks about any that are not; false when the user said no.
+	 */
+	async function approveRefsFirst(session: SessionConfig): Promise<boolean> {
+		const ids: string[] = [];
+		if (hasRefs(session)) ids.push(session.id);
+		const via = sessionKind(session) === 'vnc' ? session.via_session_id : null;
+		if (via) {
+			const viaSession = sessions.find((s) => s.id === via);
+			if (!viaSession || hasRefs(viaSession)) ids.push(via);
+		}
+		for (const id of ids) {
+			let asked: UntrustedRefs | null;
+			try {
+				asked = await sessionUntrustedSecretRefs(id);
+			} catch {
+				// The connect itself will say what is wrong.
+				continue;
+			}
+			if (asked && !(await askToApprove(asked))) return false;
+		}
+		return true;
+	}
+
 	async function handleConnect(session: SessionConfig): Promise<void> {
+		if (!(await approveRefsFirst(session))) return;
 		if (sessionKind(session) === 'vnc') {
 			openVnc(session);
 			return;
@@ -695,12 +777,16 @@
 		}
 		// Check if credentials are stored in the session (from vault)
 		const storedPassword = session.auth_method.type === 'Password' ? session.auth_method.password : undefined;
+		// A password manager entry stands in for a saved secret: the backend
+		// fetches it at connect, so there is nothing to ask for.
+		const passwordRef = session.auth_method.type === 'Password' ? (session.auth_method.password_ref ?? null) : null;
 
-		if (sessionKind(session) === 'rdp' && storedPassword) {
-			await openRdp(session, storedPassword, false);
+		if (sessionKind(session) === 'rdp' && (storedPassword || passwordRef)) {
+			await openRdp(session, storedPassword ?? '', false, passwordRef);
 			return;
 		}
 		const storedPassphrase = session.auth_method.type === 'Key' ? session.auth_method.passphrase : undefined;
+		const passphraseRef = session.auth_method.type === 'Key' ? (session.auth_method.passphrase_ref ?? null) : null;
 
 		// A key session has everything it needs the moment it names a key:
 		// most keys have no passphrase at all, and an imported one carries its
@@ -713,16 +799,18 @@
 			(!!session.auth_method.key_id || !!session.auth_method.path?.trim());
 
 		// Auto-connect if we have stored credentials OR Agent auth
-		if (storedPassword || storedPassphrase || keyReady || session.auth_method.type === 'Agent') {
+		if (storedPassword || storedPassphrase || passwordRef || passphraseRef || keyReady || session.auth_method.type === 'Agent') {
 			connectSession = session;
 			connectError = undefined;
 			rememberPassword = true;
-			hasSavedPassword = !!storedPassword || !!storedPassphrase;
+			hasSavedPassword = !!storedPassword || !!storedPassphrase || !!passwordRef || !!passphraseRef;
 
+			// With an entry from a password manager the stored plaintext is not
+			// sent: the entry wins (an empty field here means "use the entry").
 			if (session.auth_method.type === 'Password') {
-				connectPassword = storedPassword ?? '';
+				connectPassword = passwordRef ? '' : (storedPassword ?? '');
 			} else if (session.auth_method.type === 'Key') {
-				connectKeyPassphrase = storedPassphrase ?? '';
+				connectKeyPassphrase = passphraseRef ? '' : (storedPassphrase ?? '');
 			}
 
 			await doConnect();
@@ -754,12 +842,13 @@
 		const session = connectSession;
 
 		if (sessionKind(session) === 'rdp') {
-			if (!connectPassword) {
+			const rdpRef = session.auth_method.type === 'Password' && !connectPassword ? (session.auth_method.password_ref ?? null) : null;
+			if (!connectPassword && !rdpRef) {
 				connectError = t('session.password_required');
 				connecting = false;
 				return;
 			}
-			await openRdp(session, connectPassword, rememberPassword);
+			await openRdp(session, connectPassword, rememberPassword, rdpRef);
 			connectSession = undefined;
 			connecting = false;
 			return;
@@ -780,18 +869,30 @@
 				port: j.port,
 				username: j.username,
 				authMethod: j.auth_method.type === 'Key' ? 'key' : j.auth_method.type.toLowerCase(),
-				password: j.auth_method.type === 'Password' ? j.auth_method.password : undefined,
+				// A password manager entry wins; the plaintext goes only without one.
+				password: j.auth_method.type === 'Password' && !j.auth_method.password_ref ? j.auth_method.password : undefined,
+				passwordRef: j.auth_method.type === 'Password' ? (j.auth_method.password_ref ?? undefined) : undefined,
 				keyPath: j.auth_method.type === 'Key' ? j.auth_method.path : undefined,
 				keyId: j.auth_method.type === 'Key' ? j.auth_method.key_id : undefined,
-				keyPassphrase: j.auth_method.type === 'Key' ? j.auth_method.passphrase : undefined,
+				keyPassphrase: j.auth_method.type === 'Key' && !j.auth_method.passphrase_ref ? j.auth_method.passphrase : undefined,
+				keyPassphraseRef: j.auth_method.type === 'Key' ? (j.auth_method.passphrase_ref ?? undefined) : undefined,
 			}))
 			: undefined;
 
+		let untrusted: UntrustedRefs | null = null;
 		try {
 			const sessionKeyPath = session.auth_method.type === 'Key' ? session.auth_method.path : undefined;
 			const sessionKeyId = session.auth_method.type === 'Key' ? session.auth_method.key_id : undefined;
 			const passwordToUse = authType === 'Password'
 				? (passwordFallback ? fallbackPassword : connectPassword)
+				: undefined;
+			// The session's password manager entries, unless something was typed
+			// in the prompt for this attempt: then that is what the user means.
+			const passwordRef = authType === 'Password' && !passwordFallback && !passwordToUse && session.auth_method.type === 'Password'
+				? (session.auth_method.password_ref ?? undefined)
+				: undefined;
+			const keyPassphraseRef = authType === 'Key' && !connectKeyPassphrase && session.auth_method.type === 'Key'
+				? (session.auth_method.passphrase_ref ?? undefined)
 				: undefined;
 			const connectParams = {
 				id,
@@ -800,9 +901,11 @@
 				username: session.username,
 				authMethod: authType === 'Key' ? 'key' : authType.toLowerCase(),
 				password: passwordToUse,
+				passwordRef,
 				keyPath: authType === 'Key' && sessionKeyPath ? sessionKeyPath.trim() : undefined,
 				keyId: authType === 'Key' && sessionKeyId ? sessionKeyId : undefined,
 				keyPassphrase: authType === 'Key' && connectKeyPassphrase ? connectKeyPassphrase : undefined,
+				keyPassphraseRef,
 				cols: 80,
 				rows: 24,
 				shell: session.shell ?? undefined,
@@ -811,13 +914,16 @@
 				showLoginMessage: getSettings().showLoginMessage,
 				tryAgentKeys: authType === 'Key' && session.try_agent_keys === true,
 				sshOptions: session.ssh_options ?? null,
+				// Password manager entries are taken from the stored session.
+				sessionId: session.id,
 				jumpChain,
 				proxy: session.proxy ? {
 					proxy_type: session.proxy.proxy_type,
 					host: session.proxy.host,
 					port: session.proxy.port,
 					username: session.proxy.username ?? undefined,
-					password: session.proxy.password ?? undefined,
+					password: session.proxy.password_ref ? undefined : (session.proxy.password ?? undefined),
+					password_ref: session.proxy.password_ref ?? undefined,
 				} : undefined,
 			};
 			await sshConnect(connectParams);
@@ -848,8 +954,11 @@
 				}).catch(() => {});
 			}
 		} catch (err) {
+			// The session's password manager entries are not approved (it
+			// changed since the list was read): ask, below, then try again.
+			untrusted = untrustedRefsFromError(err);
 			const errStr = String(err);
-			connectError = errStr;
+			if (!untrusted) connectError = errStr;
 			// If the saved auth method got rejected and we haven't already tried the password fallback,
 			// switch the modal to password mode so the user can retry without changing the session.
 			const isAuthRejection = /auth/i.test(errStr) && (
@@ -860,13 +969,25 @@
 			// what this needs — offering a password instead would be answering
 			// a question nobody asked.
 			const needsPassphrase = /passphrase/i.test(errStr);
-			if (isAuthRejection && !needsPassphrase && !passwordFallback && session.auth_method.type !== 'Password') {
+			if (!untrusted && isAuthRejection && !needsPassphrase && !passwordFallback && session.auth_method.type !== 'Password') {
 				passwordFallback = true;
 				fallbackPassword = '';
 			}
 		} finally {
 			connecting = false;
 		}
+		if (untrusted) {
+			if (await askToApprove(untrusted)) await doConnect();
+			else cancelConnect();
+		}
+	}
+
+	/** The password manager entry the prompt's secret field stands in for, if any. */
+	function promptRef(session: SessionConfig): SecretRef | null {
+		const a = session.auth_method;
+		if (a.type === 'Password') return a.password_ref ?? null;
+		if (a.type === 'Key') return a.passphrase_ref ?? null;
+		return null;
 	}
 
 	function cancelConnect(): void {
@@ -1348,6 +1469,13 @@
 <RdpQuickConnect bind:open={showRdpConnect} />
 <SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={targetVaultId} {folders} onsave={handleEditorSave} />
 <SshConfigImport bind:open={showImport} onsave={handleEditorSave} />
+<UntrustedRefsDialog
+	asked={askedRefs}
+	busy={approvingRefs}
+	error={approveRefsError}
+	onallow={() => void allowAskedRefs()}
+	oncancel={() => { if (!approvingRefs) finishAsking(false); }}
+/>
 
 {#if showConnectPrompt && connectSession}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
@@ -1386,6 +1514,11 @@
 						bind:value={connectKeyPassphrase}
 						disabled={connecting}
 					/>
+				{/if}
+
+				{#if !passwordFallback && promptRef(connectSession)}
+					{@const ref = promptRef(connectSession)!}
+					<div class="fallback-hint">{t('pwmanager.prompt_uses_ref', { name: `${providerName(ref.provider)} · ${ref.label?.trim() || ref.entry_id}` })}</div>
 				{/if}
 
 				{#if connectSession.auth_method.type !== 'Agent' && !passwordFallback}

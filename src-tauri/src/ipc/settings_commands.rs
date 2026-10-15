@@ -56,6 +56,7 @@ pub async fn settings_get(
     state: State<'_, AppState>,
     key: String,
 ) -> Result<Option<String>, String> {
+    refuse_reserved(&key)?;
     let manager = state.vault_manager.lock().await;
 
     if manager.is_locked() {
@@ -78,6 +79,7 @@ pub async fn settings_set(
     key: String,
     value: String,
 ) -> Result<(), String> {
+    refuse_reserved(&key)?;
     let mut manager = state.vault_manager.lock().await;
 
     if manager.is_locked() {
@@ -110,6 +112,7 @@ pub async fn settings_set(
 #[tauri::command]
 #[tracing::instrument(skip(state))]
 pub async fn settings_delete(state: State<'_, AppState>, key: String) -> Result<(), String> {
+    refuse_reserved(&key)?;
     let manager = state.vault_manager.lock().await;
 
     if manager.is_locked() {
@@ -157,6 +160,16 @@ pub async fn settings_save_all(
 }
 
 // --- Helper functions (all O(1)) ---
+
+/// The password manager settings hold secrets that no command returns (see
+/// `crate::pwmanager::config`); the generic commands cannot reach them, and
+/// cannot write past that module's checks either.
+fn refuse_reserved(key: &str) -> Result<(), String> {
+    if crate::pwmanager::config::is_reserved_setting_key(key) {
+        return Err("This setting is managed in Settings → Password managers".to_string());
+    }
+    Ok(())
+}
 
 /// Read a setting by key without resolving the vault first. Returns `None`
 /// when the settings vault does not exist or the key is absent. Used by

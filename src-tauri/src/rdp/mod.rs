@@ -76,7 +76,13 @@ pub struct RdpConnectParams {
     pub host: String,
     pub port: u16,
     pub username: String,
+    /// Empty when `password_ref` names it instead.
+    #[serde(default)]
     pub password: String,
+    /// The password from a password manager, fetched by `rdp_connect`; wins
+    /// over `password`. JSON `passwordRef` (`password_ref` is accepted).
+    #[serde(default, alias = "password_ref")]
+    pub password_ref: Option<crate::pwmanager::SecretRef>,
     #[serde(default)]
     pub domain: String,
     /// A local folder to show inside the desktop as a drive.
@@ -252,6 +258,12 @@ pub struct RdpManager {
 impl RdpManager {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Whether a desktop is open under `id` and still running: a connect for
+    /// it only re-attaches the panel.
+    pub fn running(&self, id: &str) -> bool {
+        self.open.get(id).is_some_and(|o| !o.session.is_finished())
     }
 
     /// Open a desktop and start streaming it to `frames`.

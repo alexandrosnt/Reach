@@ -41,6 +41,11 @@ pub struct VncConnectParams {
     /// The VNC password; empty for a server that asks for none.
     #[serde(default)]
     pub password: String,
+    /// Use the saved session's password manager entry, fetched by
+    /// `vnc_connect` from the stored session (not from this value); wins over
+    /// `password`. JSON `passwordRef` (`password_ref` is accepted).
+    #[serde(default, alias = "password_ref")]
+    pub password_ref: Option<crate::pwmanager::SecretRef>,
     /// A saved SSH session to reach the server through. VNC itself is not
     /// encrypted; through SSH it is.
     #[serde(default)]
