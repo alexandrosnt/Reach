@@ -3,6 +3,8 @@ mod compat_tests;
 pub mod biometric;
 pub mod cache;
 pub mod crypto;
+#[cfg(any(target_os = "linux", test))]
+pub mod deadline;
 pub mod error;
 pub mod export;
 pub mod fido2;
