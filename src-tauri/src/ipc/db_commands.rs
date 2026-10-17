@@ -94,10 +94,40 @@ pub async fn db_delete_connection(state: State<'_, AppState>, id: String) -> Res
 // ---------------------------------------------------------------------------
 // Connecting
 
-async fn auth_for(state: &State<'_, AppState>, method: &AuthMethod, try_agent_keys: bool) -> Result<AuthParams, String> {
+/// Who a login is for, to ask for a password that is not saved.
+struct LoginFor<'a> {
+    app: &'a tauri::AppHandle,
+    host: &'a str,
+    port: u16,
+    username: &'a str,
+}
+
+async fn auth_for(state: &State<'_, AppState>, method: &AuthMethod, try_agent_keys: bool, who: LoginFor<'_>) -> Result<AuthParams, String> {
     use crate::ipc::ssh_commands::{build_auth, resolve_key_source};
+    use crate::ssh::prompt::{ask, Field, Kind};
     match method {
-        AuthMethod::Password { password } => build_auth("password", password.clone(), None, None, false),
+        AuthMethod::Password { password } => {
+            // Not saving a password is the safer choice. Ask for it, as a
+            // terminal tab does, instead of failing with "Password required"
+            // and a Try again that could never work.
+            let password = match password.clone().filter(|p| !p.is_empty()) {
+                Some(p) => p,
+                None => ask(
+                    Some(who.app),
+                    who.host,
+                    who.port,
+                    Kind::Password,
+                    &format!("Password for {}@{}", who.username, who.host),
+                    "",
+                    vec![Field { text: "Password".into(), echo: false }],
+                )
+                .await
+                .and_then(|a| a.into_iter().next())
+                .filter(|p| !p.is_empty())
+                .ok_or("No password was given")?,
+            };
+            build_auth("password", Some(password), None, None, false)
+        }
         AuthMethod::Key { path, passphrase, key_content, key_id } => {
             let (source, stored) = match key_content.clone().filter(|k| !k.trim().is_empty()) {
                 Some(k) => (Some(KeySource::Material(k)), None),
@@ -155,11 +185,14 @@ pub(crate) async fn ssh_for_route(
             // Only the approvals of the person connecting count (session_get
             // has checked their signatures).
             s.ssh_options = s.ssh_options.map(|o| o.effective());
-            let auth = auth_for(state, &s.auth_method, s.try_agent_keys.unwrap_or(false)).await?;
+            let who = LoginFor { app, host: &s.host, port: s.port, username: &s.username };
+            let auth = auth_for(state, &s.auth_method, s.try_agent_keys.unwrap_or(false), who).await?;
             let mut jumps = Vec::new();
             for j in s.jump_chain.clone().unwrap_or_default() {
                 let opts = crate::ssh::sshconf::session::plan_for(s.ssh_options.as_ref(), &j.host, j.port, &j.username, true).into();
-                jumps.push(JumpHostParams { auth: auth_for(state, &j.auth_method, false).await?, host: j.host, port: j.port, username: j.username, opts });
+                let who = LoginFor { app, host: &j.host, port: j.port, username: &j.username };
+                let auth = auth_for(state, &j.auth_method, false, who).await?;
+                jumps.push(JumpHostParams { auth, host: j.host, port: j.port, username: j.username, opts });
             }
             let opts = crate::ssh::sshconf::session::plan_for(s.ssh_options.as_ref(), &s.host, s.port, &s.username, false).into();
             let ssh = SshManager::open_headless(&s.host, s.port, &s.username, auth, jumps, s.proxy.clone(), app.clone(), opts)
