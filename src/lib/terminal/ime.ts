@@ -40,7 +40,10 @@
  * a drag starts and not when it ends.
  *
  * So the terminal now asks the backend to do that deliberately once the drag
- * settles, which is `webview_refocus`. The caret nudge below is kept because
+ * settles, which is `webview_refocus`. A resize turned out not to be fine
+ * after all (issue #104): dragging the bottom-right corner leaves the
+ * candidate window misplaced in the same way, cured by the same click away
+ * and back, so a resize settling re-arms too. The caret nudge below is kept because
  * it costs a frame and may still help where the rectangle itself went stale,
  * but it is no longer the mechanism being relied on.
  *

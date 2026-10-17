@@ -216,6 +216,7 @@
 	let unlistenMenuCopy: UnlistenFn | undefined;
 	let unlistenMenuPaste: UnlistenFn | undefined;
 	let unlistenMoved: UnlistenFn | undefined;
+	let unlistenResized: UnlistenFn | undefined;
 	let disposeWebkitInputFix: (() => void) | undefined;
 	/** True between compositionstart and compositionend — see $lib/terminal/ime. */
 	let composing = false;
@@ -715,6 +716,16 @@
 				.catch(() => {
 					// No Tauri window (browser preview) — nothing to re-arm.
 				});
+			// Resizing by a bottom or right edge leaves the window where it was,
+			// so no move arrives, yet the candidate window is left just as
+			// misplaced, and the same click away and back puts it right (#104).
+			getCurrentWindow()
+				.onResized(() => {
+					clearTimeout(rearmTimer);
+					rearmTimer = setTimeout(rearmIme, REARM_SETTLE_MS);
+				})
+				.then((fn) => { unlistenResized = fn; })
+				.catch(() => {});
 
 			// Ctrl+Wheel zooms terminal font size
 			function onWheel(e: WheelEvent) {
@@ -775,6 +786,7 @@
 			unlistenMenuCopy?.();
 			unlistenMenuPaste?.();
 			unlistenMoved?.();
+			unlistenResized?.();
 			disposeWebkitInputFix?.();
 			disposeWebkitInputFix = undefined;
 			clearTimeout(rearmTimer);
@@ -838,6 +850,7 @@
 <div
 	class="terminal-wrapper"
 	style:display={active ? 'flex' : 'none'}
+	style:--term-bg={themeState.current.terminal.background}
 >
 	<div bind:this={containerEl} class="terminal-container"></div>
 	{#if onPhone && !disconnected}
@@ -937,12 +950,20 @@
 	}
 
 
+	/* Painted with the terminal's own background: the padding and the strip
+	   left below the last whole row showed xterm.css's black viewport, a
+	   black frame around a light theme (#105). */
+	.terminal-container {
+		background: var(--term-bg);
+	}
+
 	.terminal-container :global(.xterm) {
 		height: 100%;
 		padding: 4px;
 	}
 
 	.terminal-container :global(.xterm-viewport) {
+		background-color: var(--term-bg);
 		scrollbar-width: thin;
 		scrollbar-color: var(--color-surface-strong) transparent;
 	}
