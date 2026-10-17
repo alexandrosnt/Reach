@@ -37,10 +37,11 @@
 
 	/** The saved hosts, accounts and names, to take out of the log. */
 	async function privateTerms(): Promise<Private[]> {
-		// The vault may be what is stuck (issue #87); a report must still open.
 		const sessions = await Promise.race([
-			sessionList().catch(() => []),
-			new Promise<[]>((r) => setTimeout(() => r([]), 3000))
+			sessionList(),
+			new Promise<never>((_, reject) =>
+				setTimeout(() => reject(new Error('Could not load saved sessions in time; report redaction was not prepared.')), 3000)
+			)
 		]);
 		return sessions.flatMap((s) => [
 			{ text: s.host, label: 'host' as const },
