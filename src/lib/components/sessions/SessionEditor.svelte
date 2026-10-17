@@ -3,7 +3,8 @@
 	import Button from '$lib/components/shared/Button.svelte';
 	import KeyPicker from './KeyPicker.svelte';
 	import Input from '$lib/components/shared/Input.svelte';
-	import { sessionCreate, sessionList, sessionUpdate, sessionKind, type SessionConfig, type SessionKind, type AuthMethod, type JumpHostConfig, type Folder, type SshOptions } from '$lib/ipc/sessions';
+	import { sessionCreate, sessionList, sessionUpdate, sessionKind, wslListDistros, type SessionConfig, type SessionKind, type AuthMethod, type JumpHostConfig, type Folder, type SshOptions } from '$lib/ipc/sessions';
+	import { isWindows } from '$lib/platform';
 	import SshOptionsSection from './SshOptionsSection.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { folderPath } from '$lib/sessions/folder-tree';
@@ -36,7 +37,24 @@
 	let sharePath = $state('');
 	/** VNC only: the saved SSH session to go through, or '' for direct. */
 	let viaSessionId = $state('');
+	let wslDistro = $state('');
+	let availableDistros = $state<string[]>([]);
 	let sshSessions = $state<SessionConfig[]>([]);
+
+	$effect(() => {
+		if (open && kind === 'wsl') {
+			wslListDistros()
+				.then((list) => {
+					availableDistros = list;
+					if (list.length > 0) {
+						if (!wslDistro || !list.includes(wslDistro)) {
+							wslDistro = list[0];
+						}
+					}
+				})
+				.catch(() => (availableDistros = []));
+		}
+	});
 
 	$effect(() => {
 		if (open && kind === 'vnc') {
@@ -51,7 +69,7 @@
 	let portStr = $state('22');
 	let username = $state('root');
 
-	const DEFAULT_PORT: Record<SessionKind, string> = { ssh: '22', rdp: '3389', vnc: '5900' };
+	const DEFAULT_PORT: Record<SessionKind, string> = { ssh: '22', rdp: '3389', vnc: '5900', wsl: '0' };
 
 	function setKind(next: SessionKind): void {
 		if (next === kind) return;
@@ -86,7 +104,12 @@
 	let error = $state<string | undefined>();
 
 	let isEditing = $derived(!!editSession);
-	let canSave = $derived(name.trim().length > 0 && host.trim().length > 0 && (kind === 'vnc' || username.trim().length > 0) && !saving);
+	let canSave = $derived(
+		name.trim().length > 0 &&
+		(kind === 'wsl' ? wslDistro.trim().length > 0 : host.trim().length > 0) &&
+		(kind === 'vnc' || kind === 'wsl' || username.trim().length > 0) &&
+		!saving
+	);
 
 	// Populate fields when editing, reset when creating
 	$effect(() => {
@@ -96,6 +119,7 @@
 			os = editSession.detected_os === 'linux' ? 'linux' : 'windows';
 			sharePath = editSession.share_path ?? '';
 			viaSessionId = editSession.via_session_id ?? '';
+			wslDistro = editSession.wsl_distro ?? '';
 			name = editSession.name;
 			host = editSession.host;
 			portStr = String(editSession.port);
@@ -163,6 +187,7 @@
 			proxyPort = '9050';
 			proxyUsername = '';
 			proxyPassword = '';
+			wslDistro = '';
 		}
 		error = undefined;
 	});
@@ -172,15 +197,19 @@
 		saving = true;
 		error = undefined;
 
-		const port = parseInt(portStr, 10) || parseInt(DEFAULT_PORT[kind], 10);
+		const port = kind === 'wsl' ? 0 : (parseInt(portStr, 10) || parseInt(DEFAULT_PORT[kind], 10) || 22);
 		const rdp = kind === 'rdp';
 		const vnc = kind === 'vnc';
-		/** Jump hosts, proxies and login shells are SSH's alone. */
-		const desktop = rdp || vnc;
+		const wsl = kind === 'wsl';
+		/** Jump hosts, proxies, login shells and ssh_config are SSH's alone. */
+		const desktop = rdp || vnc || wsl;
 		const via = vnc ? viaSessionId || null : null;
 		// RDP and VNC are password logons; the toggle below is SSH-only and
-		// its value is ignored here rather than trusted.
-		const authMethod: AuthMethod = desktop || authType === 'Password'
+		// its value is ignored here rather than trusted. WSL signs in by
+		// itself: nothing to keep, so a password left in the form is not saved.
+		const authMethod: AuthMethod = wsl
+			? { type: 'Password' }
+			: desktop || authType === 'Password'
 			? { type: 'Password', password: password || undefined }
 			: authType === 'Key'
 				? {
@@ -230,7 +259,7 @@
 				await sessionUpdate({
 					...editSession,
 					name: name.trim(),
-					host: host.trim(),
+					host: kind === 'wsl' ? (host.trim() || 'wsl') : host.trim(),
 					port,
 					username: vnc ? '' : username.trim(),
 					auth_method: authMethod,
@@ -246,12 +275,13 @@
 					share_path: rdp ? (sharePath.trim() || null) : null,
 					via_session_id: via,
 					try_agent_keys: !desktop && authType === 'Key' && tryAgentKeys ? true : null,
+					wsl_distro: kind === 'wsl' ? wslDistro.trim() : null,
 					ssh_options: sshOptionsToSave,
 				});
 			} else {
 				await sessionCreate({
 					name: name.trim(),
-					host: host.trim(),
+					host: kind === 'wsl' ? (host.trim() || 'wsl') : host.trim(),
 					port,
 					username: vnc ? '' : username.trim(),
 					authMethod: authMethod,
@@ -268,6 +298,7 @@
 					viaSessionId: via,
 					tryAgentKeys: !desktop && authType === 'Key' && tryAgentKeys,
 					sshOptions: sshOptionsToSave,
+					wslDistro: kind === 'wsl' ? wslDistro.trim() : null
 				});
 			}
 			onsave?.();
@@ -336,21 +367,47 @@
 				<button type="button" class="auth-btn" class:active={kind === 'vnc'} disabled={saving} onclick={() => setKind('vnc')}>
 					{t('session.protocol_vnc')}
 				</button>
+				<!-- Only show WSL option on Windows -->
+				{#if isWindows()}
+					<button type="button" class="auth-btn" class:active={kind === 'wsl'} disabled={saving} onclick={() => setKind('wsl')}>
+						{t('session.protocol_wsl')}
+					</button>
+				{/if}
 			</div>
 		</div>
 
 		<Input label={t('session.name')} bind:value={name} placeholder={kind === 'rdp' ? 'Office PC' : 'My Server'} disabled={saving} />
 
-		<div class="row">
-			<div class="field-host">
-				<Input label={t('session.host')} bind:value={host} placeholder="192.168.1.1" disabled={saving} />
+		{#if kind === 'wsl'}
+			<div class="shell-field">
+				<label class="via-label" for="wsl-distro">{t('session.wsl_distro')}</label>
+				{#if availableDistros.length > 0}
+					<select id="wsl-distro" class="via-select" bind:value={wslDistro} disabled={saving}>
+						{#each availableDistros as d}
+							<option value={d}>{d}</option>
+						{/each}
+					</select>
+				{:else}
+					<Input
+						label={t('session.wsl_distro')}
+						bind:value={wslDistro}
+						placeholder={t('session.wsl_distro_placeholder')}
+						disabled={saving}
+					/>
+				{/if}
 			</div>
-			<div class="field-port">
-				<Input label={t('session.port')} bind:value={portStr} type="number" placeholder={DEFAULT_PORT[kind]} disabled={saving} />
+		{:else}
+			<div class="row">
+				<div class="field-host">
+					<Input label={t('session.host')} bind:value={host} placeholder="192.168.1.1" disabled={saving} />
+				</div>
+				<div class="field-port">
+					<Input label={t('session.port')} bind:value={portStr} type="number" placeholder={DEFAULT_PORT[kind]} disabled={saving} />
+				</div>
 			</div>
-		</div>
+		{/if}
 
-		{#if kind !== 'vnc'}
+		{#if kind !== 'vnc' && kind !== 'wsl'}
 			<Input label={t('session.username')} bind:value={username} placeholder={kind === 'rdp' ? 'Administrator' : 'root'} disabled={saving} />
 		{/if}
 
@@ -392,6 +449,13 @@
 					{/each}
 				</select>
 				<p class="shell-hint">{t('session.vnc_via_hint')}</p>
+			</div>
+		{:else if kind === 'wsl'}
+			<!-- wsl.exe signs in by itself: no password, key, jump host, proxy or
+			     ssh_config here. Only which Linux user, if not the distro's default. -->
+			<div class="shell-field">
+				<Input label={t('session.wsl_user')} bind:value={username} placeholder={t('session.wsl_user_placeholder')} disabled={saving} />
+				<p class="shell-hint">{t('session.wsl_user_hint')}</p>
 			</div>
 		{:else}
 		<div class="auth-section">

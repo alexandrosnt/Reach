@@ -7,7 +7,7 @@
 	 */
 	import { untrack } from 'svelte';
 	import StatusPill from '$lib/components/devops/StatusPill.svelte';
-	import LogViewer from '$lib/components/devops/LogViewer.svelte';
+	import LogSources from '$lib/components/devops/LogSources.svelte';
 	import ConfirmAction from '$lib/components/devops/ConfirmAction.svelte';
 	import ErrorHelp from '$lib/components/devops/ErrorHelp.svelte';
 	import DetailHeader from './DetailHeader.svelte';
@@ -15,7 +15,8 @@
 	import Tabs from './Tabs.svelte';
 	import EventList from './EventList.svelte';
 	import YamlPane from './YamlPane.svelte';
-	import { k8sDelete, k8sEvents, k8sLogs, type EventRow, type PodRow } from '$lib/ipc/k8s';
+	import { k8sDelete, k8sEvents, k8sLogs, k8sLogsFiles, k8sLogFiles, type EventRow, type PodRow } from '$lib/ipc/k8s';
+	import type { LogView } from '$lib/ipc/containers';
 	import { podStatus, ago } from '$lib/devops/status';
 	import { busy } from '$lib/state/k8s.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
@@ -84,13 +85,18 @@
 	// The stream restarts only when what it follows changes, not on every
 	// refresh of the row.
 	let logTarget = $derived(`${ctx.key}\n${row.namespace}\n${row.name}\n${container ?? ''}`);
-	let startLogs = $derived.by(() => {
+	let logFns = $derived.by(() => {
 		void logTarget;
 		return untrack(() => {
 			const { key } = ctx;
 			const { namespace, name } = row;
 			const c = container;
-			return (onData: (chunk: string) => void) => k8sLogs(key, namespace, name, c, 500, onData);
+			return {
+				output: (view: LogView) => (onData: (chunk: string) => void) => k8sLogs(key, namespace, name, c, view, onData),
+				files: (paths: string[], lines: number) => (onData: (chunk: string) => void) => k8sLogsFiles(key, namespace, name, c, paths, lines, onData),
+				listFiles: () => k8sLogFiles(key, namespace, name, c),
+				target: { name, namespace, container: c ?? row.containers[0] ?? null }
+			};
 		});
 	});
 
@@ -176,7 +182,17 @@
 					</label>
 				{/if}
 				<div class="viewer">
-					<LogViewer start={startLogs} name={container ? `${row.name}-${container}` : row.name} />
+					{#key logTarget}
+						<LogSources
+							name={container ? `${row.name}-${container}` : row.name}
+							target={logFns.target}
+							owner={ctx.clusterId}
+							kind="k8s"
+							output={logFns.output}
+							files={logFns.files}
+							listFiles={logFns.listFiles}
+						/>
+					{/key}
 				</div>
 			</div>
 		{:else if tab === 'events'}

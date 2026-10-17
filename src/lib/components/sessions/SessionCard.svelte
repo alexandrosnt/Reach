@@ -3,6 +3,7 @@
 	import type { VaultInfo } from '$lib/state/vault.svelte';
 	import DistroIcon from './DistroIcon.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import { isWindows } from '$lib/platform';
 
 	interface Props {
 		session: SessionConfig;
@@ -23,8 +24,9 @@
 	}
 
 	let { session, vault = null, onconnect, onedit, ondelete, oncontextmenu, ondragstart, ondragend, selecting = false, selected = false, onselect }: Props = $props();
-
+	let unavailable = $derived(session.kind === 'wsl' && !isWindows());
 	function onMain(e: MouseEvent): void {
+		if (unavailable && !selecting) return;
 		if (onselect && (selecting || e.ctrlKey || e.metaKey || e.shiftKey)) {
 			e.preventDefault();
 			onselect(e);
@@ -34,13 +36,14 @@
 	}
 
 	let authLabel = $derived(
+		session.kind === 'wsl' ? 'WSL' :
 		session.auth_method.type === 'Password' ? t('session.auth_pw_label') :
 		session.auth_method.type === 'Key' ? t('session.auth_key') : t('session.auth_agent')
 	);
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
-<div class="session-card" class:selected oncontextmenu={oncontextmenu} role="group">
+<div class="session-card" class:selected class:unavailable oncontextmenu={oncontextmenu} role="group">
 	{#if selecting}
 		<input
 			class="select-box"
@@ -62,7 +65,7 @@
 			<circle cx="2" cy="10" r="1.2"/><circle cx="6" cy="10" r="1.2"/>
 		</svg>
 	</span>
-	<button class="card-main" onclick={onMain} aria-pressed={selecting ? selected : undefined} title={selecting ? t('session.select_name', { name: session.name }) : t('session.connect_to', { name: session.name })}>
+	<button class="card-main" onclick={onMain} disabled={unavailable && !selecting} aria-pressed={selecting ? selected : undefined} title={unavailable ? t('session.wsl_windows_only') : (selecting ? t('session.select_name', { name: session.name }) : t('session.connect_to', { name: session.name }))} >
 		<DistroIcon osId={session.detected_os} size={18} />
 		<div class="session-info">
 			<span class="session-name-row">
@@ -82,13 +85,22 @@
 					</span>
 				{/if}
 			</span>
-			<span class="session-detail">{session.username ? `${session.username}@` : ''}{session.host}:{session.port}</span>
+			{#if session.kind === 'wsl'}
+				<span class="session-detail">
+					{session.username ? `${session.username} · ` : ''}{session.wsl_distro || 'WSL'}
+					{#if unavailable}
+						· <span class="unavailable-text">({t('session.wsl_windows_only')})</span>
+					{/if}
+				</span>
+			{:else}
+				<span class="session-detail">{session.username ? `${session.username}@` : ''}{session.host}:{session.port}</span>
+			{/if}
 		</div>
 		<span class="auth-badge" title={t('session.auth_type', { type: session.auth_method.type })}>{authLabel}</span>
 	</button>
 
 	<div class="session-actions">
-		<button class="action-btn connect-btn" onclick={onconnect} title={t('session.connect')} aria-label={t('session.connect_to', { name: session.name })}>
+		<button class="action-btn connect-btn" disabled={unavailable} onclick={onconnect} title={t('session.connect')} aria-label={t('session.connect_to', { name: session.name })}>
 			<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
 				<path d="M8 5v14l11-7z"/>
 			</svg>
@@ -348,4 +360,22 @@
 			padding-left: 4px;
 		}
 	}
+
+	.session-card.unavailable {
+		opacity: 0.55;
+	}
+
+	.session-card.unavailable .card-main {
+		cursor: not-allowed;
+	}
+
+	.session-card.unavailable .connect-btn {
+		cursor: not-allowed;
+		opacity: 0.3;
+	}
+
+	.unavailable-text {
+		color: var(--color-text-secondary);
+	}
+
 </style>

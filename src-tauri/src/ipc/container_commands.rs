@@ -7,7 +7,8 @@ use tauri::ipc::Channel;
 use tauri::State;
 
 use crate::container::compose::{ComposeAction, Project};
-use crate::container::{self, Action, ContainerRow, Engine, HostInfo, ImageRow, NetworkRow, VolumeRow};
+use crate::container::{self, Action, ContainerRow, Engine, HostInfo, ImageRow, LogView, NetworkRow, VolumeRow};
+use crate::logfiles::{self, FoundFile, LogRule};
 use crate::db::types::Route;
 use crate::devops::{self, Tool};
 use crate::devops_store::ContainerHost;
@@ -187,10 +188,60 @@ pub async fn ctr_logs(
     id: String,
     stream_id: String,
     tail: Option<u32>,
+    view: Option<LogView>,
     on_data: Channel<String>,
 ) -> Result<(), String> {
     let h = host(&state, &key).await?;
-    state.containers.lock().await.follow_logs(stream_id, h, id, tail.unwrap_or(500), on_data);
+    let view = view.unwrap_or(LogView { tail: tail.unwrap_or(500), since_secs: None, timestamps: false });
+    state.containers.lock().await.follow_logs(stream_id, h, id, view, on_data);
+    Ok(())
+}
+
+/// The log files in a running container, for the file picker (#101).
+#[tauri::command]
+pub async fn ctr_log_files(state: State<'_, AppState>, key: String, id: String) -> Result<Vec<FoundFile>, String> {
+    host(&state, &key).await?.find_log_files(&id).await
+}
+
+/// The log files saved for a host's or cluster's containers.
+#[tauri::command]
+pub async fn devops_log_rules(state: State<'_, AppState>, owner: String) -> Result<Vec<LogRule>, String> {
+    let mut vault = state.vault_manager.lock().await;
+    let mut store = state.devops_store.lock().await;
+    store.ensure_loaded(&mut vault).await?;
+    Ok(store.log_rules(&owner))
+}
+
+/// Save them, in the vault with the host, carried to every device.
+#[tauri::command]
+pub async fn devops_log_rules_save(state: State<'_, AppState>, owner: String, rules: Vec<LogRule>) -> Result<(), String> {
+    if rules.len() > 200 {
+        return Err("Too many saved log sources".into());
+    }
+    for r in &rules {
+        logfiles::check_paths(&r.paths)?;
+    }
+    let mut vault = state.vault_manager.lock().await;
+    let mut store = state.devops_store.lock().await;
+    store.ensure_loaded(&mut vault).await?;
+    store.save_log_rules(&owner, rules, &mut vault).await
+}
+
+/// Follow files inside a container, as `tail -F`, into `on_data` until
+/// [`ctr_logs_stop`]. Reading only: a read-only host allows it.
+#[tauri::command]
+pub async fn ctr_logs_files(
+    state: State<'_, AppState>,
+    key: String,
+    id: String,
+    stream_id: String,
+    paths: Vec<String>,
+    lines: Option<u32>,
+    on_data: Channel<String>,
+) -> Result<(), String> {
+    let paths = logfiles::check_paths(&paths)?;
+    let h = host(&state, &key).await?;
+    state.containers.lock().await.follow_files(stream_id, h, id, paths, lines.unwrap_or(500).min(100_000), on_data);
     Ok(())
 }
 

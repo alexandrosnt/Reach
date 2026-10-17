@@ -12,6 +12,7 @@ pub mod db;
 pub mod devops;
 pub mod devops_store;
 pub mod k8s;
+pub mod logfiles;
 pub mod dragout;
 pub mod hardening;
 pub mod system_lock;
@@ -32,6 +33,7 @@ pub mod tofu;
 pub mod toolchain;
 pub mod tunnel;
 pub mod vault;
+pub mod wsl;
 
 use std::sync::atomic::Ordering;
 
@@ -364,6 +366,10 @@ pub fn run() {
             ctr_compose,
             ctr_logs,
             ctr_logs_stop,
+            ctr_log_files,
+            ctr_logs_files,
+            devops_log_rules,
+            devops_log_rules_save,
             ctr_shell_command,
             k8s_contexts,
             k8s_clusters,
@@ -383,6 +389,8 @@ pub fn run() {
             k8s_restart,
             k8s_logs,
             k8s_logs_stop,
+            k8s_log_files,
+            k8s_logs_files,
             k8s_helm_releases,
             k8s_helm_history,
             k8s_helm_detail,
@@ -428,6 +436,7 @@ pub fn run() {
             session_list,
             session_get,
             session_create,
+            wsl_list_distros,
             session_update,
             session_delete,
             session_move_to_folder,
@@ -453,6 +462,7 @@ pub fn run() {
             serial_send,
             // Monitoring commands
             monitoring_start,
+            monitoring_start_wsl,
             monitoring_stop,
             monitoring_get_stats,
             // AI commands
@@ -756,6 +766,10 @@ pub fn run() {
             ctr_compose,
             ctr_logs,
             ctr_logs_stop,
+            ctr_log_files,
+            ctr_logs_files,
+            devops_log_rules,
+            devops_log_rules_save,
             ctr_shell_command,
             k8s_contexts,
             k8s_clusters,
@@ -775,6 +789,8 @@ pub fn run() {
             k8s_restart,
             k8s_logs,
             k8s_logs_stop,
+            k8s_log_files,
+            k8s_logs_files,
             k8s_helm_releases,
             k8s_helm_history,
             k8s_helm_detail,
@@ -820,6 +836,7 @@ pub fn run() {
             session_list,
             session_get,
             session_create,
+            wsl_list_distros,
             session_update,
             session_delete,
             session_move_to_folder,
@@ -835,8 +852,10 @@ pub fn run() {
             tunnel_list,
             // Monitoring commands
             monitoring_start,
+            monitoring_start_wsl,
             monitoring_stop,
             monitoring_get_stats,
+
             // AI commands
             ai_chat,
             ai_fetch_models,

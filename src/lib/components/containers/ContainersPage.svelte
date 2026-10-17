@@ -16,6 +16,7 @@
 	import ErrorHelp from '$lib/components/devops/ErrorHelp.svelte';
 	import HostEditor from '$lib/components/containers/HostEditor.svelte';
 	import ContainerDetail from '$lib/components/containers/ContainerDetail.svelte';
+	import DbMenu, { type MenuItem } from '$lib/components/db/DbMenu.svelte';
 	import {
 		ctrHosts,
 		ctrOpen,
@@ -67,6 +68,9 @@
 	let query = $state('');
 	let problemsOnly = $state(false);
 	let selectedId = $state('');
+	/** The row menu, where it was opened (#101 asked for "Log files…" there). */
+	let rowMenu = $state<{ x: number; y: number; c: ContainerRow } | null>(null);
+	let pickFiles = $state(false);
 	let openStacks = $state<Record<string, boolean>>({});
 	let working = $state<Record<string, boolean>>({});
 
@@ -248,6 +252,31 @@
 			const { [id]: _, ...rest } = working;
 			working = rest;
 		}
+	}
+
+	function copy(text: string): void {
+		navigator.clipboard.writeText(text).then(
+			() => addToast(t('ctr.copied'), 'success'),
+			(e) => addToast(String(e), 'error')
+		);
+	}
+
+	function rowMenuItems(c: ContainerRow): MenuItem[] {
+		const running = c.state === 'running';
+		return [
+			{ label: t('ctr.logs'), action: () => (selectedId = c.id) },
+			{
+				label: t('logsrc.menu_files'),
+				action: () => {
+					selectedId = c.id;
+					pickFiles = true;
+				}
+			},
+			{ label: t('ctr.shell'), disabled: !running, hint: running ? undefined : t('ctr.shell_needs_running'), action: () => containerAction(c, 'shell') },
+			{ label: '', separator: true },
+			{ label: t('ctr.copy_name'), action: () => copy(c.name) },
+			{ label: t('ctr.copy_id'), action: () => copy(c.id) }
+		];
 	}
 
 	function containerAction(c: ContainerRow, action: ContainerAction | 'shell'): void {
@@ -538,6 +567,8 @@
 				<div class="detail-pane" class:sheet={narrow}>
 					<ContainerDetail
 						hostKey={opened.key}
+						owner={host.id}
+						bind:pickFiles
 						engine={host.engine}
 						container={selected}
 						{readOnly}
@@ -553,7 +584,15 @@
 {#snippet containerRow(c: ContainerRow)}
 	{@const st = containerStatus(c.state, c.status)}
 	{@const running = c.state === 'running'}
-	<div class="row" class:selected={c.id === selectedId}>
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="row"
+		class:selected={c.id === selectedId}
+		oncontextmenu={(e) => {
+			e.preventDefault();
+			rowMenu = { x: e.clientX, y: e.clientY, c };
+		}}
+	>
 		<button type="button" class="row-main" onclick={() => (selectedId = c.id === selectedId && !narrow ? '' : c.id)}>
 			<span class="row-name">{c.service ?? c.name}</span>
 			<span class="row-sub mono">{c.image}</span>
@@ -574,6 +613,10 @@
 		</span>
 	</div>
 {/snippet}
+
+{#if rowMenu}
+	<DbMenu x={rowMenu.x} y={rowMenu.y} items={rowMenuItems(rowMenu.c)} onclose={() => (rowMenu = null)} />
+{/if}
 
 <HostEditor
 	open={editorOpen}

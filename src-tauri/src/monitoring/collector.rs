@@ -45,6 +45,23 @@ impl MonitoringCollector {
         tracing::info!("Started monitoring for {}", connection_id);
     }
 
+    pub fn start_wsl(
+        &mut self,
+        connection_id: &str,
+        distro: &str,
+        app_handle: tauri::AppHandle,
+    ) {
+        self.stop(connection_id);
+
+        let id = connection_id.to_string();
+        let distro_name = distro.to_string();
+        let task = tokio::spawn(async move {
+            wsl_monitoring_loop(id, distro_name, app_handle).await;
+        });
+        self.tasks.insert(connection_id.to_string(), task);
+        tracing::info!("Started WSL monitoring for {} ({})", connection_id, distro);
+    }
+
     pub fn stop(&mut self, connection_id: &str) {
         if let Some(task) = self.tasks.remove(connection_id) {
             task.abort();
@@ -325,4 +342,134 @@ fn parse_users(output: &str) -> Vec<String> {
     users.sort();
     users.dedup();
     users
+}
+
+
+// ==================== WSL Monitoring ====================
+
+const WSL_ALL_STATS_COMMAND: &str = concat!(
+    "c1=$(head -1 /proc/stat 2>/dev/null); ",
+    "n1=$(cat /proc/net/dev 2>/dev/null); ",
+    "sleep 0.5; ",
+    "c2=$(head -1 /proc/stat 2>/dev/null); ",
+    "n2=$(cat /proc/net/dev 2>/dev/null); ",
+    "echo \"$c1\"; echo '===REACH_SEP==='; ",
+    "echo \"$c2\"; echo '===REACH_SEP==='; ",
+    "echo \"$n1\"; echo '===REACH_SEP==='; ",
+    "echo \"$n2\"; echo '===REACH_SEP==='; ",
+    "cat /proc/meminfo 2>/dev/null; echo '===REACH_SEP==='; ",
+    "df -P / 2>/dev/null; echo '===REACH_SEP==='; ",
+    "w -hs 2>/dev/null || who 2>/dev/null"
+);
+
+async fn exec_wsl(distro: &str, cmd: &str) -> Result<String, String> {
+    let mut args = Vec::new();
+    if !distro.is_empty() {
+        args.extend(["-d", distro]);
+    }
+    args.extend(["-e", "sh", "-c", cmd]);
+    crate::wsl::run(&args, crate::wsl::RUN_WITHIN).await
+}
+
+fn parse_cpu_stat(output: &str) -> Option<CpuSnapshot> {
+    for line in output.lines() {
+        if line.starts_with("cpu ") {
+            let values: Vec<u64> = line
+                .split_whitespace()
+                .skip(1)
+                .filter_map(|s| s.parse().ok())
+                .collect();
+
+            if values.len() >= 5 {
+                let total: u64 = values.iter().sum();
+                let idle = values[3] + values.get(4).copied().unwrap_or(0);
+                return Some(CpuSnapshot { total, idle });
+            }
+        }
+    }
+    None
+}
+
+fn parse_net_dev(output: &str) -> Option<NetSnapshot> {
+    let mut rx_total: u64 = 0;
+    let mut tx_total: u64 = 0;
+
+    for line in output.lines() {
+        let line = line.trim();
+        if !line.contains(':') || line.starts_with("lo:") || line.starts_with("Inter") || line.starts_with("face") {
+            continue;
+        }
+        if let Some(data) = line.split(':').nth(1) {
+            let values: Vec<u64> = data.split_whitespace().filter_map(|s| s.parse().ok()).collect();
+            if values.len() >= 10 {
+                rx_total += values[0];
+                tx_total += values[8];
+            }
+        }
+    }
+
+    Some(NetSnapshot { rx_bytes: rx_total, tx_bytes: tx_total })
+}
+
+async fn wsl_monitoring_loop(
+    connection_id: String,
+    distro: String,
+    app_handle: tauri::AppHandle,
+) {
+    let event_name = format!("monitoring-{}", connection_id);
+    let mut prev_cpu = CpuSnapshot::default();
+
+    loop {
+        // Run only ONE wsl.exe process per cycle to collect all metrics in a single shot
+        if let Ok(output) = exec_wsl(&distro, WSL_ALL_STATS_COMMAND).await {
+            let sections: Vec<&str> = output.split("===REACH_SEP===").collect();
+            if sections.len() >= 7 {
+                let cpu1 = sections.first().and_then(|s| parse_cpu_stat(s)).unwrap_or_default();
+                let cpu2 = sections.get(1).and_then(|s| parse_cpu_stat(s)).unwrap_or_default();
+                let net1 = sections.get(2).and_then(|s| parse_net_dev(s)).unwrap_or_default();
+                let net2 = sections.get(3).and_then(|s| parse_net_dev(s)).unwrap_or_default();
+
+                let net_down = if net2.rx_bytes >= net1.rx_bytes { (net2.rx_bytes - net1.rx_bytes) * 2 } else { 0 };
+                let net_up = if net2.tx_bytes >= net1.tx_bytes { (net2.tx_bytes - net1.tx_bytes) * 2 } else { 0 };
+
+                let cpu = if cpu2.total > cpu1.total {
+                    let total_delta = cpu2.total - cpu1.total;
+                    let idle_delta = cpu2.idle - cpu1.idle;
+                    ((total_delta - idle_delta) as f64 / total_delta as f64 * 100.0).round()
+                } else if cpu2.total > prev_cpu.total {
+                    let total_delta = cpu2.total - prev_cpu.total;
+                    let idle_delta = cpu2.idle - prev_cpu.idle;
+                    ((total_delta - idle_delta) as f64 / total_delta as f64 * 100.0).round()
+                } else {
+                    0.0
+                };
+                prev_cpu = cpu2;
+
+                let (ram_total, ram_used) = sections.get(4).map(|s| parse_memory(s)).unwrap_or((0, 0));
+                let ram = if ram_total > 0 { (ram_used as f64 / ram_total as f64) * 100.0 } else { 0.0 };
+                let disk = sections.get(5).map(|s| parse_disk(s)).unwrap_or(0.0);
+                let users = sections.get(6).map(|s| parse_users(s)).unwrap_or_default();
+
+                let stats = SystemStats {
+                    cpu,
+                    ram,
+                    ram_total,
+                    ram_used,
+                    disk,
+                    users,
+                    net_up,
+                    net_down,
+                };
+
+                {
+                    let state = app_handle.state::<AppState>();
+                    let mut monitoring = state.monitoring.write().await;
+                    monitoring.insert(connection_id.clone(), stats.clone());
+                }
+                let _ = app_handle.emit(&event_name, &stats);
+            }
+        }
+
+        tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+    }
 }
