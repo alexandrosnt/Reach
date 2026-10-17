@@ -17,6 +17,7 @@ pub mod hardening;
 pub mod system_lock;
 pub mod http;
 pub mod recipe;
+pub mod report;
 pub mod share;
 #[cfg(desktop)]
 pub mod serial;
@@ -190,6 +191,15 @@ fn init_logging() {
         .with(file.map(|f| f.with_filter(file_filter)))
         .with(crate::ssh::connlog::ConnLogLayer.with_filter(crate::ssh::connlog::ConnLogFilter))
         .init();
+
+    // A panic is printed to stderr, which nobody sees when Reach is started
+    // from a menu: a crash left nothing in the log (issue #87). Put it there.
+    let print = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        let thread = std::thread::current();
+        tracing::error!("Panic on thread {}: {info}", thread.name().unwrap_or("unnamed"));
+        print(info);
+    }));
 }
 
 #[cfg(desktop)]
@@ -410,6 +420,8 @@ pub fn run() {
             drag_preview_icon,
             dragout_start,
             webview_refocus,
+            report::report_prepare,
+            report::report_reveal,
             // Session commands
             session_list,
             session_get,
@@ -799,6 +811,8 @@ pub fn run() {
             drag_preview_icon,
             dragout_start,
             webview_refocus,
+            report::report_prepare,
+            report::report_reveal,
             // Session commands
             session_list,
             session_get,
