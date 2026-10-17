@@ -284,6 +284,10 @@ webview2-com = "0.39"
 # Service, with the kernel keyring as the fallback where there is none.
 linux-keyutils-keyring-store = "1"
 zbus-secret-service-keyring-store = { version = "1", features = ["rt-tokio-crypto-rust"] }
+# The notification sound, played without WebKitGTK's GStreamer, whose missing
+# audio output crashed the page (src/sound.rs, issue #87). The version RDP's
+# sound already builds.
+cpal = "0.17"
 # Following the screen lock and sleep over D-Bus (src/system_lock.rs); the
 # version already in the tree.
 zbus = { version = "5", features = ["blocking-api"] }

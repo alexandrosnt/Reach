@@ -19,6 +19,7 @@ pub mod http;
 pub mod recipe;
 pub mod report;
 pub mod share;
+pub mod sound;
 #[cfg(desktop)]
 pub mod serial;
 pub mod session;
@@ -422,6 +423,7 @@ pub fn run() {
             webview_refocus,
             report::report_prepare,
             report::report_reveal,
+            sound::play_notification_sound,
             // Session commands
             session_list,
             session_get,
@@ -813,6 +815,7 @@ pub fn run() {
             webview_refocus,
             report::report_prepare,
             report::report_reveal,
+            sound::play_notification_sound,
             // Session commands
             session_list,
             session_get,
@@ -1215,7 +1218,14 @@ pub fn run() {
                     .item(&help_menu)
                     .build()?;
 
+                // GTK draws a menu bar inside the window, above Reach's own
+                // title bar: a strip of macOS items (Services, Hide Others)
+                // whose menus did not even open. Reach's title bar and the
+                // terminal's own keys cover everything it offered there.
+                #[cfg(not(target_os = "linux"))]
                 app.set_menu(app_menu)?;
+                #[cfg(target_os = "linux")]
+                drop(app_menu);
 
                 // Route menu-bar Copy/Paste clicks to the webview so the active
                 // terminal can handle them.
