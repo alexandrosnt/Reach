@@ -30,6 +30,8 @@ export interface Tab {
 	/** A local tab that runs this program instead of the default shell
 	 *  (a shell inside a container on this computer, say). */
 	localCommand?: { program: string; args: string[] };
+	/** The WSL distribution name if this tab is a WSL session. */
+	wslDistro?: string
 }
 
 let tabs = $state<Tab[]>([]);
@@ -88,7 +90,7 @@ export function getActiveTab(): Tab | undefined {
 	return activeTab;
 }
 
-export function createTab(type: TabType, title?: string, connectionId?: string, sessionName?: string, detectedOs?: string | null): Tab {
+export function createTab(type: TabType, title?: string, connectionId?: string, sessionName?: string, detectedOs?: string | null, localCommand?: { program: string; args: string[] }, wslDistro?: string): Tab {
 	const id = crypto.randomUUID();
 
 	// In a split, a new tab takes the focused pane, as choosing a tab does.
@@ -106,7 +108,9 @@ export function createTab(type: TabType, title?: string, connectionId?: string, 
 		connectionId,
 		active: true,
 		sessionName,
-		detectedOs
+		detectedOs,
+		localCommand,
+		wslDistro,
 	};
 
 	tabs.push(tab);

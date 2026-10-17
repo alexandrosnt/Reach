@@ -6,7 +6,7 @@
 	import { t } from '$lib/state/i18n.svelte';
 	import { ptySpawn, ptyClose } from '$lib/ipc/pty';
 	import { sshDisconnect } from '$lib/ipc/ssh';
-	import { monitoringStart, monitoringStop, monitoringGetStats } from '$lib/ipc/monitoring';
+	import { monitoringStart, monitoringStop, monitoringGetStats, monitoringStartWsl } from '$lib/ipc/monitoring';
 	import { updateStats, removeStats } from '$lib/state/monitoring.svelte';
 	import Terminal from '$lib/components/terminal/Terminal.svelte';
 	import RdpPanel from '$lib/components/rdp/RdpPanel.svelte';
@@ -172,20 +172,24 @@
 	let monitoredConnections = $state(new Set<string>());
 	let pollIntervals = $state(new Map<string, ReturnType<typeof setInterval>>());
 
+	function handleTerminalReady(tab: (typeof tabs)[number]) {
+    if (tab.type === 'local' && !spawnedPtys.has(tab.id)) {
+        spawnedPtys.add(tab.id);
+        ptySpawn(tab.id, tab.localCommand?.program, undefined, undefined, tab.localCommand?.args).catch((err) => {
+            console.error(`Failed to spawn PTY for tab ${tab.id}:`, err);
+        });
+    }
+}
+
 	// Spawn PTY for new local tabs
 	$effect(() => {
-		for (const tab of tabs) {
-			if (tab.type === 'local' && !spawnedPtys.has(tab.id)) {
-				spawnedPtys.add(tab.id);
-				ptySpawn(tab.id, tab.localCommand?.program, undefined, undefined, tab.localCommand?.args).catch((err) => {
-					console.error(`Failed to spawn PTY for tab ${tab.id}:`, err);
-				});
-			}
-			if (tab.type === 'ssh' && tab.connectionId) {
-				connectedSsh.add(tab.connectionId);
-			}
-		}
-	});
+    for (const tab of tabs) {
+        if (tab.type === 'ssh' && tab.connectionId) {
+            connectedSsh.add(tab.connectionId);
+        }
+    }
+});
+
 
 	// Start monitoring for new SSH connections (poll-based)
 	$effect(() => {
@@ -214,6 +218,40 @@
 			}
 		}
 	});
+
+	// WSL monitoring: only poll while the WSL tab is in view to let the WSL VM go idle
+	$effect(() => {
+		const isWslInView = activePage === 'terminal' && activeTab?.wslDistro !== undefined && activeTab?.connectionId;
+		if (isWslInView) {
+			const connId = activeTab!.connectionId!;
+			const distro = activeTab!.wslDistro!;
+
+			monitoringStartWsl(connId, distro).catch((err) => {
+				console.error(`Failed to start WSL monitoring for ${connId}:`, err);
+			});
+
+			const poll = async () => {
+				try {
+					const stats = await monitoringGetStats(connId);
+					updateStats(connId, stats);
+				} catch {
+					// Stats not available yet — ignore
+				}
+			};
+
+			const initialTimer = setTimeout(poll, 1500);
+			const interval = setInterval(poll, 3000);
+
+			return () => {
+				clearTimeout(initialTimer);
+				clearInterval(interval);
+				monitoringStop(connId).catch((err) => {
+					console.error(`Failed to stop WSL monitoring for ${connId}:`, err);
+				});
+			};
+		}
+	});
+
 
 	// Clean up PTYs, SSH connections, and monitoring for closed tabs
 	$effect(() => {
@@ -323,7 +361,7 @@
 									onTitleChange={(title) => handleTerminalTitleChange(tab.id, title)}
 									sshConnectParams={tab.sshConnectParams}
 									onReconnected={(newId) => updateTabConnection(tab.id, newId)}
-								/>
+									onReady={() => handleTerminalReady(tab)}/>
 							{/if}
 						</div>
 					{/each}

@@ -36,9 +36,10 @@
 		onTitleChange?: (title: string) => void;
 		sshConnectParams?: SshConnectParams;
 		onReconnected?: (newConnectionId: string) => void;
+		onReady?: () => void;
 	}
 
-	let { ptyId, type: termType, connectionId, active, visible, onTitleChange, sshConnectParams, onReconnected }: Props = $props();
+	let { ptyId, type: termType, connectionId, active, visible, onTitleChange, sshConnectParams, onReconnected, onReady }: Props = $props();
 	let shown = $derived(visible ?? active);
 
 	// Local state seeded from the `connectionId` prop and overridden in-place on
@@ -589,6 +590,8 @@
 				disconnected = true;
 			}
 		});
+
+		onReady?.();
 
 		// Listeners are attached — tell the SSH backend to flush any buffered
 		// output (motd/banner) emitted before this terminal mounted.
