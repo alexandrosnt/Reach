@@ -29,13 +29,17 @@
 		ptyId: string;
 		type: 'local' | 'ssh';
 		connectionId?: string;
+		/** Has the keyboard. */
 		active: boolean;
+		/** Shown, which in a split (#106) both panes are; only one is active. Active when not given. */
+		visible?: boolean;
 		onTitleChange?: (title: string) => void;
 		sshConnectParams?: SshConnectParams;
 		onReconnected?: (newConnectionId: string) => void;
 	}
 
-	let { ptyId, type: termType, connectionId, active, onTitleChange, sshConnectParams, onReconnected }: Props = $props();
+	let { ptyId, type: termType, connectionId, active, visible, onTitleChange, sshConnectParams, onReconnected }: Props = $props();
+	let shown = $derived(visible ?? active);
 
 	// Local state seeded from the `connectionId` prop and overridden in-place on
 	// reconnect (handleReconnect assigns a new UUID and notifies the parent via
@@ -825,12 +829,16 @@
 	// Re-fit: while the tab was hidden, the container measured 0×0 so the ResizeObserver
 	// could not track window/sidebar resizes. We re-fit on the next frame (after layout)
 	// instead of waiting for the observer's 50ms debounce — keeps the switch feeling instant.
+	// In a split both panes are shown and fitted; only the active one takes
+	// the keyboard, so clicking the other pane is what moves it.
 	$effect(() => {
-		if (!active || !terminal) return;
+		if (!shown || !terminal) return;
 		const term = terminal;
 		const fit = fitAddon;
 		const el = containerEl;
+		const takeKeys = active;
 		const focusNow = () => {
+			if (!takeKeys) return;
 			try {
 				term.focus();
 			} catch {
@@ -849,7 +857,7 @@
 
 <div
 	class="terminal-wrapper"
-	style:display={active ? 'flex' : 'none'}
+	style:display={shown ? 'flex' : 'none'}
 	style:--term-bg={themeState.current.terminal.background}
 >
 	<div bind:this={containerEl} class="terminal-container"></div>

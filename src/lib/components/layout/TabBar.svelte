@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { getTabs, getActiveTab, createTab, closeTab, activateTab , type Tab } from '$lib/state/tabs.svelte';
+	import { getTabs, getActiveTab, createTab, closeTab, activateTab, getSplit, splitWith, unsplit, getDraggedTab, setDraggedTab, type Tab } from '$lib/state/tabs.svelte';
+	import DbMenu, { type MenuItem } from '$lib/components/db/DbMenu.svelte';
 	import { getActivePage, setActivePage, type Page } from '$lib/state/navigation.svelte';
 	import { getEnabledDevopsTools } from '$lib/state/devops.svelte';
 	import { t } from '$lib/state/i18n.svelte';
@@ -51,6 +52,55 @@
 		closeTab(id);
 	}
 
+	// Split view (#106): drag a tab onto the terminal, or use its menu.
+	let split = $derived(getSplit());
+	let dragged = $derived(getDraggedTab());
+	let menu = $state<{ x: number; y: number; id: string } | null>(null);
+	/** A drag ended on this tab's own pointerup: that is not a click. */
+	let swallowClick = false;
+	const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
+	const mod = isMac ? '⌘⇧' : 'Ctrl+Shift+';
+
+	function beginDrag(e: PointerEvent, id: string): void {
+		if (e.button !== 0 || (e.target as HTMLElement).closest('button')) return;
+		const x0 = e.clientX;
+		const y0 = e.clientY;
+		const move = (ev: PointerEvent) => {
+			if (!getDraggedTab() && Math.hypot(ev.clientX - x0, ev.clientY - y0) > 6) {
+				setDraggedTab(id);
+				swallowClick = true;
+			}
+		};
+		const up = () => {
+			window.removeEventListener('pointermove', move);
+			window.removeEventListener('pointerup', up);
+		};
+		window.addEventListener('pointermove', move);
+		window.addEventListener('pointerup', up);
+	}
+
+	function onTabClick(id: string): void {
+		if (swallowClick) {
+			swallowClick = false;
+			return;
+		}
+		activateTab(id);
+	}
+
+	function inSplit(id: string): boolean {
+		return !!split && (split.first === id || split.second === id);
+	}
+
+	function menuItems(id: string): MenuItem[] {
+		const items: MenuItem[] = [
+			{ label: t('split.right'), hint: `${mod}E`, disabled: tabs.length < 2 && id !== activeTab?.id, action: () => splitWith(id, 'right') },
+			{ label: t('split.down'), hint: `${mod}O`, disabled: tabs.length < 2 && id !== activeTab?.id, action: () => splitWith(id, 'down') }
+		];
+		if (split) items.push({ label: t('split.unsplit'), hint: `${mod}U`, action: unsplit });
+		items.push({ label: '', separator: true }, { label: t('common.close'), action: () => closeTab(id) });
+		return items;
+	}
+
 	// The terminal always, then whichever DevOps tools are switched on.
 	let pages = $derived<{ id: Page; label: () => string }[]>([
 		{ id: 'terminal', label: () => t('nav.terminal') },
@@ -86,7 +136,14 @@
 				<div
 					class="tab"
 					class:active={tab.id === activeTab?.id}
-					onclick={() => activateTab(tab.id)}
+					class:in-split={inSplit(tab.id)}
+					class:dragging={dragged === tab.id}
+					onclick={() => onTabClick(tab.id)}
+					onpointerdown={(e) => beginDrag(e, tab.id)}
+					oncontextmenu={(e) => {
+						e.preventDefault();
+						menu = { x: e.clientX, y: e.clientY, id: tab.id };
+					}}
 					onkeydown={(e) => { if (e.key === 'Enter' || e.key === ' ') activateTab(tab.id); }}
 					role="tab"
 					tabindex="0"
@@ -154,6 +211,10 @@
 		</button>
 	{/if}
 </nav>
+
+{#if menu}
+	<DbMenu x={menu.x} y={menu.y} items={menuItems(menu.id)} onclose={() => (menu = null)} />
+{/if}
 
 <style>
 	.tabbar {
@@ -247,6 +308,17 @@
 		background-color: var(--color-bg-secondary);
 		color: var(--color-text-primary);
 		border-bottom-color: var(--color-accent);
+	}
+
+	/* The other tab on screen in a split: shown, without the keyboard. */
+	.tab.in-split:not(.active) {
+		color: var(--color-text-primary);
+		border-bottom-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+	}
+
+	.tab.dragging {
+		opacity: 0.6;
+		cursor: grabbing;
 	}
 
 	.tab-icon {
