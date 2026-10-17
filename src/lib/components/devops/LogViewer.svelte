@@ -40,9 +40,16 @@
 	// eslint-disable-next-line no-control-regex
 	const ANSI = /\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\r/g;
 
+	/**
+	 * Starts a line that is Reach's own note (a stream that ended, a file
+	 * shown as it is now), not the log's. The backend takes this mark out of
+	 * whatever a container prints, so a log cannot pass for a note.
+	 */
+	const NOTE = '\u0001';
+
 	function push(chunk: string): void {
 		const text = partial + chunk.replace(ANSI, '');
-		const parts = text.split('\n');
+		const parts = text.split('\n').filter((p, i, all) => !(p === '' && all[i + 1]?.startsWith(NOTE)));
 		partial = parts.pop() ?? '';
 		if (parts.length === 0) return;
 		const next = lines.length + parts.length > KEEP ? lines.slice(lines.length + parts.length - KEEP) : lines.slice();
@@ -134,7 +141,7 @@
 	/** The backend opens the Save dialog, so the page never names a path. */
 	async function download(): Promise<void> {
 		try {
-			const content = lines.join('\n') + (partial ? '\n' + partial : '') + '\n';
+			const content = lines.filter((l) => !l.startsWith(NOTE)).join('\n') + (partial ? '\n' + partial : '') + '\n';
 			if (await invoke<boolean>('devops_save_text', { defaultName: `${name}.log`, content })) addToast(t('logs.saved'), 'success');
 		} catch (e) {
 			addToast(String(e), 'error');
@@ -151,9 +158,16 @@
 		{/if}
 		<span class="spacer"></span>
 		<label class="check"><input type="checkbox" bind:checked={wrap} />{t('logs.wrap')}</label>
-		<button type="button" class="tool" aria-pressed={!!frozen} onclick={togglePause}>{frozen ? t('logs.resume') : t('logs.pause')}</button>
-		<button type="button" class="tool" onclick={() => (lines = [])}>{t('logs.clear')}</button>
-		<button type="button" class="tool" onclick={download}>{t('logs.download')}</button>
+		<!-- In a narrow pane the words give way to icons; the names stay for tooltips and screen readers. -->
+		<button type="button" class="tool" aria-pressed={!!frozen} onclick={togglePause} title={frozen ? t('logs.resume') : t('logs.pause')} aria-label={frozen ? t('logs.resume') : t('logs.pause')}>
+			<span class="ico" aria-hidden="true">{frozen ? '▶' : '⏸'}</span><span class="txt">{frozen ? t('logs.resume') : t('logs.pause')}</span>
+		</button>
+		<button type="button" class="tool" onclick={() => (lines = [])} title={t('logs.clear')} aria-label={t('logs.clear')}>
+			<span class="ico" aria-hidden="true">⌫</span><span class="txt">{t('logs.clear')}</span>
+		</button>
+		<button type="button" class="tool" onclick={download} title={t('logs.download')} aria-label={t('logs.download')}>
+			<span class="ico" aria-hidden="true">⤓</span><span class="txt">{t('logs.download')}</span>
+		</button>
 	</div>
 
 	<div class="text" class:wrap bind:this={box} onscroll={onScroll} role="log" aria-live="off">
@@ -166,7 +180,11 @@
 			<div class="older">{t('logs.older_hidden', { count: hiddenCount })}</div>
 		{/if}
 		{#each shown as line, i (i)}
-			<div class="line">{#each parts(line) as p, j (j)}{#if p.hit}<mark>{p.text}</mark>{:else}{p.text}{/if}{/each}</div>
+			{#if line.startsWith(NOTE)}
+				<div class="note" role="note">{line.slice(1)}</div>
+			{:else}
+				<div class="line">{#each parts(line) as p, j (j)}{#if p.hit}<mark>{p.text}</mark>{:else}{p.text}{/if}{/each}</div>
+			{/if}
 		{/each}
 	</div>
 
@@ -184,6 +202,35 @@
 		flex-direction: column;
 		min-height: 0;
 		height: 100%;
+		container-type: inline-size;
+	}
+
+	/* A narrow pane keeps the tools on one line: they tighten, the search gives way. */
+	.tool .ico {
+		display: none;
+	}
+
+	@container (max-width: 440px) {
+		.bar {
+			gap: 4px;
+		}
+
+		.tool {
+			min-width: 28px;
+			padding: 0 6px;
+		}
+
+		.tool .ico {
+			display: inline;
+		}
+
+		.tool .txt {
+			display: none;
+		}
+
+		.search {
+			min-width: 60px;
+		}
 	}
 
 	.bar {
@@ -198,8 +245,9 @@
 	}
 
 	.search {
-		flex: 1 1 160px;
-		min-width: 120px;
+		/* Shrinks first, so the buttons stay on one line in a narrow pane. */
+		flex: 1 1 100px;
+		min-width: 80px;
 		max-width: 320px;
 		padding: 5px 8px;
 		border-radius: var(--radius-btn);
@@ -247,6 +295,8 @@
 		overflow: auto;
 		padding: 6px 10px 28px;
 		font-family: var(--font-mono);
+		/* A log shows the characters it holds: no ==> drawn as an arrow. */
+		font-variant-ligatures: none;
 		font-size: 12px;
 		line-height: 1.55;
 		color: var(--color-text-primary);
@@ -267,6 +317,17 @@
 		background: color-mix(in srgb, var(--color-warning) 45%, transparent);
 		color: inherit;
 		border-radius: 2px;
+	}
+
+	.note {
+		margin: 6px 0;
+		padding: 4px 8px;
+		border-left: 2px solid var(--color-border);
+		color: var(--color-text-secondary);
+		font-family: var(--font-sans);
+		font-size: var(--text-xs);
+		font-style: italic;
+		white-space: normal;
 	}
 
 	.empty,

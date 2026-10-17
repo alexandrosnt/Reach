@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::container::Engine;
 use crate::db::types::Route;
+use crate::logfiles::LogRule;
 use crate::vault::manager::DEVOPS_VAULT;
 use crate::vault::types::{SecretCategory, VaultType};
 use crate::vault::VaultManager;
@@ -97,18 +98,34 @@ impl Cluster {
     }
 }
 
+/// The log files saved for a host's or cluster's containers (#101). An entry
+/// of its own, so the host's entry is never rewritten for it, and an older
+/// Reach, which skips entries it does not know, leaves it alone.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct LogSources {
+    pub owner: String,
+    pub rules: Vec<LogRule>,
+}
+
 #[derive(Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 enum Entry {
     Host(ContainerHost),
     Cluster(Cluster),
+    Logs(LogSources),
 }
 
 #[derive(Default)]
 pub struct DevopsStore {
     hosts: HashMap<String, ContainerHost>,
     clusters: HashMap<String, Cluster>,
+    logs: HashMap<String, Vec<LogRule>>,
     loaded: bool,
+}
+
+fn logs_id(owner: &str) -> String {
+    format!("logs-{owner}")
 }
 
 impl DevopsStore {
@@ -126,6 +143,9 @@ impl DevopsStore {
                 }
                 Ok(Entry::Cluster(c)) => {
                     self.clusters.insert(c.id.clone(), c);
+                }
+                Ok(Entry::Logs(l)) => {
+                    self.logs.insert(l.owner, l.rules);
                 }
                 Err(_) => {}
             }
@@ -186,8 +206,35 @@ impl DevopsStore {
     pub async fn delete(&mut self, id: &str, vault: &mut VaultManager) -> Result<(), String> {
         let vault_id = ensure_vault(vault).await?;
         vault.delete_secret(&vault_id, id).await.map_err(|e| e.to_string())?;
+        // Its saved log files go with it.
+        if self.logs.remove(id).is_some() {
+            let _ = vault.delete_secret(&vault_id, &logs_id(id)).await;
+        }
         self.hosts.remove(id);
         self.clusters.remove(id);
+        Ok(())
+    }
+
+    /// The log files saved for a host's or cluster's containers.
+    pub fn log_rules(&self, owner: &str) -> Vec<LogRule> {
+        self.logs.get(owner).cloned().unwrap_or_default()
+    }
+
+    /// Replace them; an empty list removes the entry.
+    pub async fn save_log_rules(&mut self, owner: &str, rules: Vec<LogRule>, vault: &mut VaultManager) -> Result<(), String> {
+        if !self.hosts.contains_key(owner) && !self.clusters.contains_key(owner) {
+            return Err("That host is no longer saved".into());
+        }
+        let id = logs_id(owner);
+        if rules.is_empty() {
+            let vault_id = ensure_vault(vault).await?;
+            let _ = vault.delete_secret(&vault_id, &id).await;
+            self.logs.remove(owner);
+            return Ok(());
+        }
+        let entry = Entry::Logs(LogSources { owner: owner.to_string(), rules: rules.clone() });
+        self.put(&id, "Log files", "container_logs", &entry, vault).await?;
+        self.logs.insert(owner.to_string(), rules);
         Ok(())
     }
 }
@@ -246,7 +293,31 @@ mod tests {
         let json = serde_json::to_vec(&Entry::Host(h.clone())).unwrap();
         match serde_json::from_slice::<Entry>(&json).unwrap() {
             Entry::Host(back) => assert_eq!(back, h),
-            Entry::Cluster(_) => panic!("came back as a cluster"),
+            _ => panic!("came back as something else"),
         }
+    }
+
+    #[test]
+    fn saved_log_files_round_trip_and_an_older_reach_skips_them() {
+        use crate::logfiles::Scope;
+        let l = LogSources {
+            owner: "h".into(),
+            rules: vec![LogRule { scope: Scope::Service { project: "shop".into(), service: "api".into() }, paths: vec!["/logs/api.INFO".into()], label: None }],
+        };
+        let json = serde_json::to_vec(&Entry::Logs(l.clone())).unwrap();
+        match serde_json::from_slice::<Entry>(&json).unwrap() {
+            Entry::Logs(back) => assert_eq!(back, l),
+            _ => panic!("came back as something else"),
+        }
+        // An older Reach knows only hosts and clusters: the entry fails to
+        // parse there, and ensure_loaded skips what fails.
+        #[derive(Deserialize)]
+        #[serde(tag = "type", rename_all = "lowercase")]
+        #[allow(dead_code)]
+        enum Older {
+            Host(ContainerHost),
+            Cluster(Cluster),
+        }
+        assert!(serde_json::from_slice::<Older>(&json).is_err());
     }
 }

@@ -151,15 +151,35 @@ export async function k8sLogs(
 	namespace: string,
 	pod: string,
 	container: string | null,
-	tail: number,
+	view: import('$lib/ipc/containers').LogView,
 	onData: (chunk: string) => void
 ): Promise<() => void> {
 	const streamId = crypto.randomUUID();
 	const channel = new Channel<string>();
 	channel.onmessage = onData;
-	await invoke('k8s_logs', { key, namespace, pod, container, streamId, tail, onData: channel });
+	await invoke('k8s_logs', { key, namespace, pod, container, streamId, view, onData: channel });
 	return () => void invoke('k8s_logs_stop', { streamId }).catch(() => {});
 }
+
+/** Follow files inside a pod's container, as `tail -F` (#101). */
+export async function k8sLogsFiles(
+	key: string,
+	namespace: string,
+	pod: string,
+	container: string | null,
+	paths: string[],
+	lines: number,
+	onData: (chunk: string) => void
+): Promise<() => void> {
+	const streamId = crypto.randomUUID();
+	const channel = new Channel<string>();
+	channel.onmessage = onData;
+	await invoke('k8s_logs_files', { key, namespace, pod, container, streamId, paths, lines, onData: channel });
+	return () => void invoke('k8s_logs_stop', { streamId }).catch(() => {});
+}
+
+export const k8sLogFiles = (key: string, namespace: string, pod: string, container: string | null) =>
+	invoke<import('$lib/ipc/containers').FoundFile[]>('k8s_log_files', { key, namespace, pod, container });
 
 export const k8sHelmReleases = (key: string, namespace: Ns) => invoke<Revision[]>('k8s_helm_releases', { key, namespace });
 export const k8sHelmHistory = (key: string, namespace: string, name: string) => invoke<Revision[]>('k8s_helm_history', { key, namespace, name });

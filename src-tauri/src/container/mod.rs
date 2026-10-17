@@ -8,6 +8,7 @@
 //! may do at all.
 
 pub mod compose;
+pub mod files;
 pub mod transport;
 
 use std::collections::HashMap;
@@ -167,6 +168,17 @@ pub struct Host {
     pub info: HostInfo,
     /// Set from the saved host; every change refuses while it is on.
     pub read_only: bool,
+}
+
+/// How much of a log to show, as `docker logs --tail/--since/-t` choose it.
+#[derive(Clone, Copy, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LogView {
+    pub tail: u32,
+    #[serde(default)]
+    pub since_secs: Option<u32>,
+    #[serde(default)]
+    pub timestamps: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -498,34 +510,44 @@ impl ContainerManager {
     }
 
     /// Follow a container's log into `out` until stopped or the container
-    /// ends. `tail` lines of history come first.
-    pub fn follow_logs(&mut self, stream_id: String, host: Arc<Host>, id: String, tail: u32, out: tauri::ipc::Channel<String>) {
+    /// ends. `view.tail` lines of history come first, or only those newer
+    /// than `view.since_secs` ago, as `docker logs --since`.
+    pub fn follow_logs(&mut self, stream_id: String, host: Arc<Host>, id: String, view: LogView, out: tauri::ipc::Channel<String>) {
         if let Some(old) = self.streams.remove(&stream_id) {
             old.abort();
         }
         let task = tokio::spawn(async move {
+            let since = view
+                .since_secs
+                .map(|s| (chrono::Utc::now().timestamp() - s as i64).clamp(0, i32::MAX as i64) as i32)
+                .unwrap_or(0);
             let opts = q::LogsOptions {
                 follow: true,
                 stdout: true,
                 stderr: true,
-                timestamps: false,
-                tail: tail.to_string(),
+                timestamps: view.timestamps,
+                // With --since, everything since then: a count would cut it.
+                tail: if view.since_secs.is_some() { "all".into() } else { view.tail.to_string() },
+                since,
                 ..Default::default()
             };
             let mut s = host.docker.logs(&id, Some(opts));
             while let Some(item) = s.next().await {
                 match item {
                     Ok(chunk) => {
-                        if out.send(chunk.to_string()).is_err() {
-                            break;
+                        if out.send(crate::logfiles::data(chunk.to_string())).is_err() {
+                            return;
                         }
                     }
                     Err(e) => {
-                        let _ = out.send(format!("\r\n[{e}]\r\n"));
-                        break;
+                        let _ = out.send(crate::logfiles::note(&e.to_string()));
+                        return;
                     }
                 }
             }
+            // The engine ends a followed log when the container stops; say
+            // so, or the pane looks like it is still waiting.
+            let _ = out.send(crate::logfiles::note("The container is not running; nothing more will come."));
         });
         self.streams.insert(stream_id, task);
     }

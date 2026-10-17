@@ -12,6 +12,7 @@ pub mod db;
 pub mod devops;
 pub mod devops_store;
 pub mod k8s;
+pub mod logfiles;
 pub mod dragout;
 pub mod hardening;
 pub mod system_lock;
@@ -364,6 +365,10 @@ pub fn run() {
             ctr_compose,
             ctr_logs,
             ctr_logs_stop,
+            ctr_log_files,
+            ctr_logs_files,
+            devops_log_rules,
+            devops_log_rules_save,
             ctr_shell_command,
             k8s_contexts,
             k8s_clusters,
@@ -383,6 +388,8 @@ pub fn run() {
             k8s_restart,
             k8s_logs,
             k8s_logs_stop,
+            k8s_log_files,
+            k8s_logs_files,
             k8s_helm_releases,
             k8s_helm_history,
             k8s_helm_detail,
@@ -756,6 +763,10 @@ pub fn run() {
             ctr_compose,
             ctr_logs,
             ctr_logs_stop,
+            ctr_log_files,
+            ctr_logs_files,
+            devops_log_rules,
+            devops_log_rules_save,
             ctr_shell_command,
             k8s_contexts,
             k8s_clusters,
@@ -775,6 +786,8 @@ pub fn run() {
             k8s_restart,
             k8s_logs,
             k8s_logs_stop,
+            k8s_log_files,
+            k8s_logs_files,
             k8s_helm_releases,
             k8s_helm_history,
             k8s_helm_detail,

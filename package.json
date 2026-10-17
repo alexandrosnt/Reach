@@ -20,6 +20,7 @@
     "share:test": "node scripts/share-test.mjs",
     "paste:test": "node scripts/paste-test.mjs",
     "ime:test": "node scripts/ime-test.mjs",
+    "logsource:test": "node scripts/logsource-test.mjs",
     "webkit:test": "node --import ./scripts/resolve-lib.mjs scripts/webkit-input-test.mjs",
     "webkit:live": "node scripts/webkit-live-test.mjs",
     "archive:test": "node --import ./scripts/resolve-lib.mjs scripts/archive-progress-test.mjs",

@@ -5,8 +5,8 @@
 	 * opens as a terminal tab on the same host.
 	 */
 	import StatusPill from '$lib/components/devops/StatusPill.svelte';
-	import LogViewer from '$lib/components/devops/LogViewer.svelte';
-	import { ctrInspect, ctrLogs, type ContainerRow, type Engine } from '$lib/ipc/containers';
+	import LogSources from '$lib/components/devops/LogSources.svelte';
+	import { ctrInspect, ctrLogs, ctrLogsFiles, ctrLogFiles, type ContainerRow, type Engine, type LogView } from '$lib/ipc/containers';
 	import { containerStatus, ago } from '$lib/devops/status';
 	import { t } from '$lib/state/i18n.svelte';
 
@@ -18,9 +18,13 @@
 		/** Run an action; the page confirms the ones that need it. */
 		onaction: (action: 'start' | 'stop' | 'restart' | 'pause' | 'unpause' | 'kill' | 'remove' | 'shell') => void;
 		onback?: () => void;
+		/** The saved host's id, where log files are remembered. */
+		owner: string | null;
+		/** Open the log file picker (the row menu's "Log files…"). */
+		pickFiles?: boolean;
 	}
 
-	let { hostKey, engine, container, readOnly, onaction, onback }: Props = $props();
+	let { hostKey, engine, container, readOnly, onaction, onback, owner, pickFiles = $bindable(false) }: Props = $props();
 
 	let tab = $state<'logs' | 'details' | 'inspect'>('logs');
 	let inspect = $state('');
@@ -35,10 +39,29 @@
 	// equal rows, and following those restarted the log and threw the reader
 	// back to the end (#94).
 	let containerId = $derived(container.id);
-	let start = $derived.by(() => {
+	let containerName = $derived(container.name);
+	let project = $derived(container.project);
+	let service = $derived(container.service);
+	let target = $derived({ name: containerName, project, service });
+	let output = $derived.by(() => {
 		const key = hostKey;
 		const id = containerId;
-		return (onData: (c: string) => void) => ctrLogs(key, id, 500, onData);
+		return (view: LogView) => (onData: (c: string) => void) => ctrLogs(key, id, view, onData);
+	});
+	let files = $derived.by(() => {
+		const key = hostKey;
+		const id = containerId;
+		return (paths: string[], lines: number) => (onData: (c: string) => void) => ctrLogsFiles(key, id, paths, lines, onData);
+	});
+	let listFiles = $derived.by(() => {
+		const key = hostKey;
+		const id = containerId;
+		return () => ctrLogFiles(key, id);
+	});
+
+	// "Log files…" from the row menu lands on the Logs tab.
+	$effect(() => {
+		if (pickFiles) tab = 'logs';
 	});
 
 	$effect(() => {
@@ -93,7 +116,9 @@
 
 	<div class="body">
 		{#if tab === 'logs'}
-			<LogViewer {start} name={container.name} />
+			{#key containerId}
+				<LogSources name={containerName} {target} {owner} kind="docker" {output} {files} {listFiles} bind:pick={pickFiles} />
+			{/key}
 		{:else if tab === 'details'}
 			<dl class="facts">
 				<dt>{t('ctr.status')}</dt>

@@ -14,6 +14,7 @@
 //! The cluster's own RBAC decides what the user may do; Reach never asks for
 //! more than the kubeconfig's identity has.
 
+pub mod files;
 pub mod helm;
 
 use std::collections::HashMap;
@@ -603,7 +604,7 @@ impl K8sManager {
         ns: String,
         pod: String,
         container: Option<String>,
-        tail: i64,
+        view: crate::container::LogView,
         out: tauri::ipc::Channel<String>,
     ) {
         if let Some(old) = self.streams.remove(&stream_id) {
@@ -611,26 +612,34 @@ impl K8sManager {
         }
         let task = tokio::spawn(async move {
             let api: Api<Pod> = Api::namespaced(cluster.client.clone(), &ns);
-            let lp = LogParams { follow: true, container, tail_lines: Some(tail), ..Default::default() };
+            // With --since, everything since then: a count would cut it.
+            let lp = LogParams {
+                follow: true,
+                container,
+                tail_lines: if view.since_secs.is_some() { None } else { Some(view.tail as i64) },
+                since_seconds: view.since_secs.map(i64::from),
+                timestamps: view.timestamps,
+                ..Default::default()
+            };
             match api.log_stream(&pod, &lp).await {
                 Ok(stream) => {
                     let mut lines = stream.lines();
                     while let Some(line) = lines.next().await {
                         match line {
                             Ok(l) => {
-                                if out.send(format!("{l}\r\n")).is_err() {
+                                if out.send(crate::logfiles::data(format!("{l}\r\n"))).is_err() {
                                     break;
                                 }
                             }
                             Err(e) => {
-                                let _ = out.send(format!("\r\n[{e}]\r\n"));
+                                let _ = out.send(crate::logfiles::note(&e.to_string()));
                                 break;
                             }
                         }
                     }
                 }
                 Err(e) => {
-                    let _ = out.send(format!("[{}]\r\n", explain(e)));
+                    let _ = out.send(crate::logfiles::note(&explain(e)));
                 }
             }
         });

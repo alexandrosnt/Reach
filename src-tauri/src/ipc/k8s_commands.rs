@@ -232,10 +232,45 @@ pub async fn k8s_logs(
     container: Option<String>,
     stream_id: String,
     tail: Option<i64>,
+    view: Option<crate::container::LogView>,
     on_data: Channel<String>,
 ) -> Result<(), String> {
     let c = cluster(&state, &key).await?;
-    state.k8s.lock().await.follow_logs(stream_id, c, namespace, pod, container, tail.unwrap_or(500), on_data);
+    let view = view.unwrap_or(crate::container::LogView { tail: tail.unwrap_or(500).clamp(0, u32::MAX as i64) as u32, since_secs: None, timestamps: false });
+    state.k8s.lock().await.follow_logs(stream_id, c, namespace, pod, container, view, on_data);
+    Ok(())
+}
+
+/// The log files in a pod's container, for the file picker (#101).
+#[tauri::command]
+pub async fn k8s_log_files(
+    state: State<'_, AppState>,
+    key: String,
+    namespace: String,
+    pod: String,
+    container: Option<String>,
+) -> Result<Vec<crate::logfiles::FoundFile>, String> {
+    cluster(&state, &key).await?.find_log_files(&namespace, &pod, container).await
+}
+
+/// Follow files inside a pod's container, as `tail -F`, until
+/// [`k8s_logs_stop`]. Reading only: a read-only cluster allows it.
+#[tauri::command]
+#[allow(clippy::too_many_arguments)]
+pub async fn k8s_logs_files(
+    state: State<'_, AppState>,
+    key: String,
+    namespace: String,
+    pod: String,
+    container: Option<String>,
+    stream_id: String,
+    paths: Vec<String>,
+    lines: Option<u32>,
+    on_data: Channel<String>,
+) -> Result<(), String> {
+    let paths = crate::logfiles::check_paths(&paths)?;
+    let c = cluster(&state, &key).await?;
+    state.k8s.lock().await.follow_files(stream_id, c, namespace, pod, container, paths, lines.unwrap_or(500).min(100_000), on_data);
     Ok(())
 }
 
