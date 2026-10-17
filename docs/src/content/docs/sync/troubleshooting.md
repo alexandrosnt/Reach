@@ -1,6 +1,6 @@
 ---
-title: Troubleshooting
-description: Common issues with cloud sync and how to fix them.
+title: "Cloud Sync Troubleshooting"
+description: "Fixes for common Reach cloud sync problems: sync not working after setup, a vault missing on a new device, a shared vault out of step, and keychain errors."
 ---
 
 ## Sync Not Working After Setup

@@ -1,6 +1,6 @@
 ---
-title: OpenTofu
-description: Manage infrastructure as code with OpenTofu directly from Reach.
+title: "OpenTofu Plan, Apply and State"
+description: "Infrastructure as code with OpenTofu in Reach: projects, providers, plan, apply and destroy with live output, state, dependency graphs and workspaces."
 ---
 
 > Ansible, OpenTofu and Databases are switched on in **Settings → DevOps**. See [DevOps Tools](/settings/devops/).

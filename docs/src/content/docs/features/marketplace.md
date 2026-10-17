@@ -1,5 +1,5 @@
 ---
-title: Marketplace
+title: "Marketplace: Plugins, Themes and Recipes"
 description: Install plugins, themes and recipes from a registry, or point Reach at your own.
 ---
 

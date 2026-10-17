@@ -1,6 +1,6 @@
 ---
-title: System Monitoring
-description: Live CPU, RAM, and disk stats from connected servers.
+title: "Server Monitoring: CPU, RAM and Disk"
+description: "Live CPU, RAM and disk figures for the server you are connected to, in a bar under the terminal. Nothing to install on the server."
 ---
 
 When you're connected to a server via SSH, Reach shows a monitoring bar at the bottom of the terminal. It gives you a quick glance at what's going on without needing to run `htop` or `top` yourself.

@@ -1,6 +1,6 @@
 ---
 title: What is Turso?
-description: Why Reach uses Turso for cloud sync.
+description: "Turso is a cloud database built on libSQL, a fork of SQLite. Why Reach uses it to sync encrypted vaults between devices and team members."
 ---
 
 Turso is a cloud database service built on libSQL (a fork of SQLite). Reach uses it to sync vaults across devices and between team members.

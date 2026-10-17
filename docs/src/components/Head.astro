@@ -69,7 +69,10 @@ const softwareGraph = {
 				'Compress and extract archives on the remote machine',
 				'Drag files out of the explorer straight to your desktop',
 				'Encrypted vault for keys and passwords',
-				'Port forwarding: local, remote and dynamic SOCKS',
+				'Local port forwarding, plus remote and dynamic (SOCKS) forwards from ssh_config',
+				'Remote desktop over RDP and VNC, VNC optionally through SSH',
+				'Docker, Podman and Kubernetes through your SSH sessions',
+				'Database client',
 				'Jump hosts and SSH config import',
 				'Multi-exec: one command broadcast to many servers',
 				'Agentless system monitoring',
@@ -91,6 +94,8 @@ const softwareGraph = {
 			'@type': 'WebSite',
 			'@id': `${origin}${import.meta.env.BASE_URL}#website`,
 			name: ORG.name,
+			// What Google falls back to when it will not use the name alone.
+			alternateName: ['reachssh.com', 'Reach SSH'],
 			url: `${origin}${import.meta.env.BASE_URL}`,
 			description: PRODUCT.description,
 			publisher: { '@id': `${origin}${import.meta.env.BASE_URL}#org` },
@@ -111,8 +116,6 @@ const softwareGraph = {
 
 <AdsConsent />
 
-<link rel="canonical" href={canonical} />
-
 <meta name="keywords" content={KEYWORDS.join(', ')} />
 <meta name="author" content={ORG.name} />
 <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
@@ -124,7 +127,6 @@ const softwareGraph = {
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
 <meta property="og:image:alt" content={`${PRODUCT.name} — ${PRODUCT.tagline}`} />
-<meta property="og:locale" content="en" />
 
 <!--
 	Only the two tags Starlight does not emit. twitter:title and

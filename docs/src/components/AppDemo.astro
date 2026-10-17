@@ -11,6 +11,10 @@
  *
  * Deliberately no real hosts, addresses or team names anywhere in the data.
  */
+import { latestRelease } from '../lib/release';
+
+/** The demo names the release it stands for, so it never shows an old one. */
+const version = (await latestRelease())?.tag_name ?? '';
 
 /** The sidebar. Names are invented and carry no addresses. */
 const SESSIONS = [
@@ -72,7 +76,7 @@ const ICONS = {
 			</svg>
 			Reach
 		</span>
-		<span class="ver">v0.6.5</span>
+		<span class="ver">{version}</span>
 		<span class="live"><i aria-hidden="true"></i>Live demo — type in it</span>
 		<button class="icon-btn" type="button" aria-label="Settings">
 			<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
@@ -468,7 +472,7 @@ const ICONS = {
 					write('This one stays open. Install Reach for the real thing.', 'ok');
 					break;
 				case 'reach':
-					write('Reach v0.6.5 — SSH, SFTP, tunnels, vault, Ansible, OpenTofu.', 'ok');
+					write(`Reach ${document.querySelector('.ver')?.textContent ?? ''} — SSH, SFTP, RDP, VNC, tunnels, vault, Docker, Kubernetes.`.replace('  ', ' '), 'ok');
 					break;
 				default:
 					write(`ash: ${name}: not found`, 'bad');
@@ -665,14 +669,15 @@ const ICONS = {
 	 */
 
 	.demo {
-		/* src/app.css, dark theme. */
+		/* src/app.css, dark theme; the two grey text tones are lifted a step so
+		   they reach the 4.5:1 contrast a web page is held to. */
 		--bg-primary: #0a0a0a;
 		--bg-secondary: #141414;
 		--bg-elevated: #1c1c1e;
 		--border: rgba(255, 255, 255, 0.08);
 		--text-primary: #f5f5f7;
-		--text-secondary: #86868b;
-		--text-tertiary: #6e6e73;
+		--text-secondary: #9d9da3;
+		--text-tertiary: #8a8a90;
 		--accent: #0a84ff;
 		--accent-hover: #409cff;
 		--success: #30d158;

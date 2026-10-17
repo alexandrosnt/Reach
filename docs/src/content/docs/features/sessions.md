@@ -1,6 +1,6 @@
 ---
-title: Session Manager
-description: Save, organize, and quickly connect to your SSH servers.
+title: "SSH Session Manager"
+description: "Save SSH servers once with host, user and authentication, organise them in folders with tags, and connect with a click."
 ---
 
 Sessions are saved connections. Each one stores the host, port, username, auth method, and optionally a folder and tags. Instead of typing connection details every time, you save them once and connect with a click.

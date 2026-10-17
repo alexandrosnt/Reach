@@ -1,6 +1,6 @@
 ---
 title: Managing Secrets
-description: Store passwords, API keys, SSH keys, and notes securely.
+description: "Store passwords, SSH keys, API tokens, certificates and notes in Reach's encrypted vault, and use them as your sessions' passwords."
 ---
 
 The vault stores secrets in categories: **Password**, **SSH Key**, **API Token**, **Certificate**, **Note**, or **Custom**.

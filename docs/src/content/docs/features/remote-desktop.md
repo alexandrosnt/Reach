@@ -1,6 +1,6 @@
 ---
-title: Remote Desktop (RDP)
-description: Open a Windows desktop in a tab, with the clipboard and files shared both ways.
+title: "Remote Desktop: RDP and VNC"
+description: "Open remote desktops over RDP or VNC in a Reach tab, next to your SSH sessions. RDP shares the clipboard and a folder; VNC can travel inside SSH."
 ---
 
 Reach opens a remote desktop the same way it opens a shell: in a tab, from a saved session or from the **+** menu. The protocol is RDP, spoken by [IronRDP](https://github.com/Devolutions/IronRDP), which is pure Rust from the TLS handshake to the bitmap decoders. That is why it works on Windows, Linux, macOS and Android alike, with no native RDP library involved.
@@ -53,3 +53,11 @@ Hover the desktop for the **Full screen** button, or press Ctrl+Alt+Enter with t
 ## Windows or Linux
 
 RDP cannot say what the machine is: xrdp fills in the OS field as Windows to keep clients happy. So the session editor asks, Windows unless told otherwise, and the icon in the session list follows.
+
+## VNC
+
+VNC servers (TigerVNC, x11vnc, RealVNC with a VNC password, and others) open in the same panel as RDP: **New session → Protocol: VNC**, port `5900` by default. Scaling, the cursor, full screen and the phone key bar work the same way.
+
+VNC's own traffic is not encrypted, so a VNC session can go through one of your saved SSH sessions instead. The desktop then travels inside SSH, and the VNC server can stay closed to the network.
+
+A VNC desktop is usually shared with whoever else is watching, so Reach scales it to fit and never resizes it. Keys are sent as the characters you type, which means your local keyboard layout is the one that counts.

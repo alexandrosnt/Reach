@@ -1,6 +1,6 @@
 ---
-title: Development Setup
-description: How to build Reach from source.
+title: "Build Reach from Source"
+description: "Build Reach from source: the tools to install first, then the commands to run it in development and to produce release builds."
 ---
 
 ## Prerequisites

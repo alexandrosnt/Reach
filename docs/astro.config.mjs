@@ -59,6 +59,7 @@ export default defineConfig({
 			customCss: ['./src/styles/custom.css'],
 			components: {
 				Head: './src/components/Head.astro',
+				PageTitle: './src/components/PageTitle.astro',
 			},
 			logo: {
 				src: './src/assets/reach-logo.png',

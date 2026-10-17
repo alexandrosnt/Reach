@@ -1,6 +1,6 @@
 ---
-title: Installation
-description: How to install Reach on your platform.
+title: "Install Reach on Windows, macOS, Linux and Android"
+description: "How to install Reach on Windows, macOS, Linux and Android, the libraries Linux needs, and how updates arrive afterwards."
 ---
 
 Grab the latest release from the [GitHub Releases page](https://github.com/alexandrosnt/Reach/releases). Pick the installer for your platform and you're good to go.

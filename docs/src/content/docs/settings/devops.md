@@ -1,5 +1,5 @@
 ---
-title: DevOps Tools
+title: "DevOps Tools Settings"
 description: Switch Ansible, OpenTofu and Databases on or off in Settings → DevOps.
 ---
 

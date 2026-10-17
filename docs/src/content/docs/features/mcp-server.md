@@ -1,5 +1,5 @@
 ---
-title: MCP Server
+title: "MCP Server for AI Clients"
 description: Let an AI client read a terminal session you choose, and type into it only on your terms.
 ---
 

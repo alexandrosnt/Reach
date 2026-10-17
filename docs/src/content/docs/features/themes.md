@@ -1,6 +1,6 @@
 ---
-title: Themes
-description: Change how Reach looks, and install themes other people made.
+title: "Terminal and App Themes"
+description: "Change how Reach looks with built-in themes, or install themes other people made. A theme is colour data, not code."
 ---
 
 Reach ships with themes and can install more. A theme is data, not code — a

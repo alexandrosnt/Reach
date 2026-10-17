@@ -1,6 +1,6 @@
 ---
-title: Setting Up Cloud Sync
-description: Step-by-step guide to connecting Reach with Turso.
+title: "Set Up Encrypted Cloud Sync"
+description: "Sync your encrypted Reach vault across devices through your own Turso database, step by step: account, token and settings."
 ---
 
 ## Step 1: Create a Turso Account

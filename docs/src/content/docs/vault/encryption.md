@@ -1,6 +1,6 @@
 ---
 title: How Encryption Works
-description: A look at how Reach protects your data.
+description: "How Reach encrypts your data at rest: XChaCha20-Poly1305 for data, Argon2id for passwords, X25519 for sharing, and keys kept in the OS keychain."
 ---
 
 Everything sensitive in Reach is encrypted at rest. Sessions, passwords, secrets, API keys, playbooks. All of it. Nothing is stored in plaintext.
