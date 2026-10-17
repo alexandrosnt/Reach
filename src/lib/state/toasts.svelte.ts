@@ -1,3 +1,6 @@
+import { invoke } from '@tauri-apps/api/core';
+import { isMac, isMobile, isWebKit } from '$lib/platform';
+
 export type ToastType = 'info' | 'success' | 'warning' | 'error';
 
 export interface Toast {
@@ -11,6 +14,28 @@ export interface Toast {
 let toasts = $state<Toast[]>([]);
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
+
+const VOLUME = 0.4;
+
+/**
+ * The toast's chime. On Linux, Reach plays it itself: an `<audio>` element
+ * there goes through WebKitGTK to GStreamer, and where GStreamer has no audio
+ * output (common on Arch, and always in the AppImage) the page's process
+ * crashed on the first toast, leaving the window frozen (issue #87).
+ */
+function playSound(): void {
+	if (isWebKit() && !isMac() && !isMobile()) {
+		invoke('play_notification_sound', { volume: VOLUME }).catch(() => {});
+		return;
+	}
+	try {
+		const audio = new Audio('/sounds/notification.wav');
+		audio.volume = VOLUME;
+		void audio.play().catch(() => {});
+	} catch {
+		// Audio playback not available
+	}
+}
 
 export function getToasts(): Toast[] {
 	return toasts;
@@ -26,13 +51,7 @@ export function addToast(
 	const toast: Toast = { id, message, type, duration, dismissing: false };
 	toasts.push(toast);
 
-	try {
-		const audio = new Audio('/sounds/notification.wav');
-		audio.volume = 0.4;
-		audio.play();
-	} catch {
-		// Audio playback not available
-	}
+	playSound();
 
 	if (duration > 0) {
 		const timer = setTimeout(() => {

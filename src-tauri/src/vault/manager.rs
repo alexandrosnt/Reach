@@ -3193,16 +3193,6 @@ impl VaultManager {
         Ok(sealed)
     }
 
-    /// Preview a backup file — validate and return metadata.
-    #[tracing::instrument(skip(self, export_password))]
-    pub async fn preview_backup(
-        &self,
-        data: &[u8],
-        export_password: &str,
-    ) -> Result<crate::vault::export::BackupPreview, VaultError> {
-        crate::vault::export::preview_bundle(data, export_password)
-    }
-
     /// Import a full backup.
     ///
     /// Simple approach:

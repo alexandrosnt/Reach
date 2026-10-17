@@ -974,19 +974,24 @@ pub async fn vault_export_backup(
 
 /// Preview a backup file (validate and return metadata).
 #[tauri::command(rename_all = "snake_case")]
-#[tracing::instrument(skip(app, state, export_password))]
+#[tracing::instrument(skip(app, export_password))]
 pub async fn vault_preview_backup(
     app: tauri::AppHandle,
     file_path: String,
     export_password: String,
-    state: State<'_, AppState>,
 ) -> Result<BackupPreview, String> {
     let data = picked_file::read(&app, &file_path).await?;
-    let manager = state.vault_manager.lock().await;
-    manager
-        .preview_backup(&data, &export_password)
+    tracing::info!("Checking a backup of {} bytes", data.len());
+    // Checking a backup only decrypts the file. It needs neither the vault
+    // nor its lock, and waiting for the lock is how Verify hung behind a
+    // keychain call that never returned (issue #87). Argon2id over 256 MiB
+    // takes seconds, so it runs off the async workers.
+    let preview = tokio::task::spawn_blocking(move || crate::vault::export::preview_bundle(&data, &export_password))
         .await
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string());
+    tracing::info!("Backup check {}", if preview.is_ok() { "passed" } else { "failed" });
+    preview
 }
 
 /// Import a full encrypted backup from a file.

@@ -10,20 +10,47 @@
 //!
 //! zbus's blocking calls must not run inside an async runtime, which is where
 //! Reach calls the keychain from, so each Secret Service call runs on a short
-//! thread of its own.
+//! thread of its own. That thread is not waited on forever: a locked keychain
+//! whose unlock prompt never appears leaves the call unanswered, and Reach
+//! hung with it (issue #87, on Arch-based systems). After one unanswered call
+//! the rest of the run uses the kernel keyring only.
 
 use std::any::Any;
 use std::collections::HashMap;
+use std::panic::AssertUnwindSafe;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 use keyring_core::api::{CredentialApi, CredentialStoreApi};
 use keyring_core::{Credential, CredentialStore, Entry, Error, Result};
 
-/// Runs `f` on a thread of its own and waits for it.
+/// How long a Secret Service call may take: enough for someone to answer an
+/// unlock prompt, not forever for one that never appears.
+const ANSWER_WITHIN: Duration = Duration::from_secs(30);
+
+/// Set once a Secret Service call went unanswered. Waiting again on every
+/// later call would only hang the app 30 seconds at a time.
+static UNANSWERED: AtomicBool = AtomicBool::new(false);
+
+/// Runs `f` on a thread of its own and waits for it, up to [`ANSWER_WITHIN`].
 fn off_runtime<T: Send + 'static>(f: impl FnOnce() -> T + Send + 'static) -> Result<T> {
-    std::thread::spawn(f)
-        .join()
-        .map_err(|_| Error::PlatformFailure("the Secret Service call panicked".into()))
+    if UNANSWERED.load(Ordering::Relaxed) {
+        return Err(Error::PlatformFailure("the Secret Service did not answer earlier in this run".into()));
+    }
+    match std::panic::catch_unwind(AssertUnwindSafe(|| super::deadline::call_with_deadline(ANSWER_WITHIN, f))) {
+        Ok(Some(v)) => Ok(v),
+        Ok(None) => {
+            UNANSWERED.store(true, Ordering::Relaxed);
+            tracing::warn!(
+                "The Secret Service did not answer within {}s (a locked keychain whose unlock prompt never appeared?); \
+                 until Reach restarts the vault key is kept in the kernel keyring only, which a reboot empties",
+                ANSWER_WITHIN.as_secs()
+            );
+            Err(Error::PlatformFailure("the Secret Service did not answer".into()))
+        }
+        Err(_) => Err(Error::PlatformFailure("the Secret Service call panicked".into())),
+    }
 }
 
 pub struct Store {
@@ -38,7 +65,7 @@ impl Store {
             "prefix",
             "keyring-rs:",
         )]))?;
-        let secret_service = match off_runtime(zbus_secret_service_keyring_store::Store::new)? {
+        let secret_service = match off_runtime(zbus_secret_service_keyring_store::Store::new).and_then(|r| r) {
             Ok(s) => Some(s as Arc<CredentialStore>),
             Err(e) => {
                 tracing::warn!("No Secret Service in this session ({e}); the vault key goes to the kernel keyring only, which a reboot empties");
@@ -68,7 +95,7 @@ impl CredentialStoreApi for Store {
         let ss = match &self.secret_service {
             Some(s) => {
                 let (s, service, user) = (s.clone(), service.to_string(), user.to_string());
-                off_runtime(move || s.build(&service, &user, None))?.ok().map(Arc::new)
+                off_runtime(move || s.build(&service, &user, None)).and_then(|r| r).ok().map(Arc::new)
             }
             None => None,
         };
@@ -89,8 +116,14 @@ struct Cred {
 }
 
 impl Cred {
+    /// The Secret Service entry, unless the Secret Service stopped answering:
+    /// then the kernel keyring alone holds the key, as where there is none.
+    fn ss(&self) -> Option<Arc<Entry>> {
+        self.ss.clone().filter(|_| !UNANSWERED.load(Ordering::Relaxed))
+    }
+
     fn ss_set(&self, secret: &[u8]) -> Option<Result<()>> {
-        let e = self.ss.clone()?;
+        let e = self.ss()?;
         let secret = secret.to_vec();
         Some(off_runtime(move || e.set_secret(&secret)).and_then(|r| r))
     }
@@ -116,7 +149,7 @@ impl CredentialApi for Cred {
             Some(Err(e)) => {
                 tracing::warn!("Secret Service did not store the key ({e}); kept in the kernel keyring, which a reboot empties");
                 ku?;
-                match self.ss.clone().map(|s| off_runtime(move || s.delete_credential()).and_then(|r| r)) {
+                match self.ss().map(|s| off_runtime(move || s.delete_credential()).and_then(|r| r)) {
                     Some(Ok(())) | Some(Err(Error::NoEntry)) | None => Ok(()),
                     Some(Err(_)) => Err(e),
                 }
@@ -126,7 +159,7 @@ impl CredentialApi for Cred {
     }
 
     fn get_secret(&self) -> Result<Vec<u8>> {
-        if let Some(e) = self.ss.clone() {
+        if let Some(e) = self.ss() {
             match off_runtime(move || e.get_secret()).and_then(|r| r) {
                 Ok(secret) => return Ok(secret),
                 Err(Error::NoEntry) => {}
@@ -143,7 +176,7 @@ impl CredentialApi for Cred {
     }
 
     fn delete_credential(&self) -> Result<()> {
-        let ss = self.ss.clone().map(|e| off_runtime(move || e.delete_credential()).and_then(|r| r));
+        let ss = self.ss().map(|e| off_runtime(move || e.delete_credential()).and_then(|r| r));
         let ku = self.ku.delete_credential();
         match (ss, ku) {
             (Some(Err(Error::NoEntry)) | None, Err(Error::NoEntry)) => Err(Error::NoEntry),
@@ -163,5 +196,26 @@ impl CredentialApi for Cred {
 
     fn as_any(&self) -> &dyn Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use keyring_core::api::CredentialStoreApi;
+    use std::time::{Duration, Instant};
+
+    /// Issue #87: a Secret Service that never answers must not hang Reach.
+    /// Needs one: run under `dbus-run-session` with gnome-keyring holding a
+    /// locked default collection and no display for its unlock prompt.
+    #[test]
+    #[ignore]
+    fn an_unanswered_secret_service_falls_back_to_the_kernel_keyring() {
+        let store = super::Store::new().expect("store");
+        let entry = store.build("reach-unanswered-test", "user", None).expect("entry");
+        let started = Instant::now();
+        entry.set_secret(b"key").expect("kept in the kernel keyring");
+        assert_eq!(entry.get_secret().expect("read back"), b"key");
+        assert!(started.elapsed() < super::ANSWER_WITHIN + Duration::from_secs(10), "took {:?}", started.elapsed());
+        let _ = entry.delete_credential();
     }
 }
