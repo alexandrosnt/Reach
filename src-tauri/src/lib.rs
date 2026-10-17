@@ -33,6 +33,7 @@ pub mod tofu;
 pub mod toolchain;
 pub mod tunnel;
 pub mod vault;
+pub mod wsl;
 
 use std::sync::atomic::Ordering;
 

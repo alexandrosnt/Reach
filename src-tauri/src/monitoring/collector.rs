@@ -62,7 +62,6 @@ impl MonitoringCollector {
         tracing::info!("Started WSL monitoring for {} ({})", connection_id, distro);
     }
 
-
     pub fn stop(&mut self, connection_id: &str) {
         if let Some(task) = self.tasks.remove(connection_id) {
             task.abort();
@@ -364,41 +363,12 @@ const WSL_ALL_STATS_COMMAND: &str = concat!(
 );
 
 async fn exec_wsl(distro: &str, cmd: &str) -> Result<String, String> {
-    let distro = distro.to_string();
-    let cmd = cmd.to_string();
-    tokio::task::spawn_blocking(move || {
-        let mut c = std::process::Command::new("wsl.exe");
-        if !distro.is_empty() {
-            c.args(["-d", &distro]);
-        }
-        c.args(["-e", "sh", "-c", &cmd]);
-        c.stdin(std::process::Stdio::null());
-        #[cfg(target_os = "windows")]
-        {
-            use std::os::windows::process::CommandExt;
-            const CREATE_NO_WINDOW: u32 = 0x08000000;
-            c.creation_flags(CREATE_NO_WINDOW);
-        }
-        let output = c.output().map_err(|e| e.to_string())?;
-        if !output.status.success() {
-            return Err(format!("WSL command exited with status {:?}", output.status));
-        }
-        let stdout = output.stdout;
-        let text = if stdout.len() >= 2 && (stdout[1] == 0 || stdout[0] == 0) {
-            let u16_vec: Vec<u16> = stdout
-                .as_chunks::<2>()
-                .0
-                .iter()
-                .map(|&[b0, b1]| u16::from_le_bytes([b0, b1]))
-                .collect();
-            String::from_utf16_lossy(&u16_vec)
-        } else {
-            String::from_utf8_lossy(&stdout).to_string()
-        };
-        Ok(text.replace("\r\n", "\n"))
-    })
-    .await
-    .map_err(|e| e.to_string())?
+    let mut args = Vec::new();
+    if !distro.is_empty() {
+        args.extend(["-d", distro]);
+    }
+    args.extend(["-e", "sh", "-c", cmd]);
+    crate::wsl::run(&args, crate::wsl::RUN_WITHIN).await
 }
 
 fn parse_cpu_stat(output: &str) -> Option<CpuSnapshot> {

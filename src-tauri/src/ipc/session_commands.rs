@@ -758,46 +758,15 @@ mod approval_tests {
     }
 }
 
-/// List installed WSL distributions on Windows.
-/// On non-Windows platforms, returns an empty list.
+/// The WSL distributions a person can open, on Windows; elsewhere none.
 #[tauri::command]
 pub async fn wsl_list_distros() -> Result<Vec<String>, String> {
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        // CREATE_NO_WINDOW prevents command prompt flashing
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        let output = std::process::Command::new("wsl.exe")
-            .args(["-l", "-q"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output()
-            .map_err(|e| format!("Failed to execute wsl.exe: {}", e))?;
-        if !output.status.success() {
-            return Ok(Vec::new());
-        }
-        // wsl.exe output is UTF-16LE with null bytes
-        let stdout = output.stdout;
-        let text = if stdout.len() >= 2 && (stdout[1] == 0 || stdout[0] == 0) {
-            let u16_vec: Vec<u16> = stdout
-                .as_chunks::<2>()
-                .0
-                .iter()
-                .map(|&[b0, b1]| u16::from_le_bytes([b0, b1]))
-                .collect();
-            String::from_utf16_lossy(&u16_vec)
-        } else {
-            String::from_utf8_lossy(&stdout).to_string()
-        };
-        let distros: Vec<String> = text
-            .lines()
-            .map(|l| l.trim().trim_matches('\0').to_string())
-            .filter(|l| !l.is_empty())
-            .collect();
-        Ok(distros)
+    if !cfg!(windows) {
+        return Ok(Vec::new());
     }
-    #[cfg(not(target_os = "windows"))]
-    {
-        // WSL is only available on Windows
-        Ok(Vec::new())
-    }
+    // No WSL installed, or not answering: nothing to offer, not an error.
+    Ok(crate::wsl::run(&["-l", "-q"], crate::wsl::LIST_WITHIN)
+        .await
+        .map(|listing| crate::wsl::distros(&listing))
+        .unwrap_or_default())
 }

@@ -172,24 +172,25 @@
 	let monitoredConnections = $state(new Set<string>());
 	let pollIntervals = $state(new Map<string, ReturnType<typeof setInterval>>());
 
+	// A local tab's PTY starts once its terminal listens, so the first
+	// output (a WSL distro's banner, a prompt) is not lost.
 	function handleTerminalReady(tab: (typeof tabs)[number]) {
-    if (tab.type === 'local' && !spawnedPtys.has(tab.id)) {
-        spawnedPtys.add(tab.id);
-        ptySpawn(tab.id, tab.localCommand?.program, undefined, undefined, tab.localCommand?.args).catch((err) => {
-            console.error(`Failed to spawn PTY for tab ${tab.id}:`, err);
-        });
-    }
-}
+		if (tab.type === 'local' && !spawnedPtys.has(tab.id)) {
+			spawnedPtys.add(tab.id);
+			ptySpawn(tab.id, tab.localCommand?.program, undefined, undefined, tab.localCommand?.args).catch((err) => {
+				console.error(`Failed to spawn PTY for tab ${tab.id}:`, err);
+			});
+		}
+	}
 
-	// Spawn PTY for new local tabs
+	// Track SSH connections opened in tabs
 	$effect(() => {
-    for (const tab of tabs) {
-        if (tab.type === 'ssh' && tab.connectionId) {
-            connectedSsh.add(tab.connectionId);
-        }
-    }
-});
-
+		for (const tab of tabs) {
+			if (tab.type === 'ssh' && tab.connectionId) {
+				connectedSsh.add(tab.connectionId);
+			}
+		}
+	});
 
 	// Start monitoring for new SSH connections (poll-based)
 	$effect(() => {

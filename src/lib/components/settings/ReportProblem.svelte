@@ -30,19 +30,21 @@
 	let error = $state('');
 	let attach = $state(true);
 	let sent = $state(false);
+	/** Saved sessions could not be read, so their names stay in the log. */
+	let partial = $state(false);
 
 	$effect(() => {
 		if (open) void prepare();
 	});
 
-	/** The saved hosts, accounts and names, to take out of the log. */
-	async function privateTerms(): Promise<Private[]> {
+	/** The saved hosts, accounts and names, to take out of the log; null when
+	 *  they could not be read in time (a locked or slow vault). */
+	async function privateTerms(): Promise<Private[] | null> {
 		const sessions = await Promise.race([
 			sessionList(),
-			new Promise<never>((_, reject) =>
-				setTimeout(() => reject(new Error('Could not load saved sessions in time; report redaction was not prepared.')), 3000)
-			)
-		]);
+			new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000))
+		]).catch(() => null);
+		if (!sessions) return null;
 		return sessions.flatMap((s) => [
 			{ text: s.host, label: 'host' as const },
 			{ text: s.username, label: 'user' as const },
@@ -55,7 +57,12 @@
 		error = '';
 		sent = false;
 		try {
-			report = await reportPrepare(await privateTerms());
+			const terms = await privateTerms();
+			// Without the saved names the report still opens, read before
+			// anything leaves, but the log is no longer attached by default.
+			partial = terms === null;
+			attach = !partial;
+			report = await reportPrepare(terms ?? []);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		}
@@ -112,6 +119,9 @@
 			<p>{t('report.after')}</p>
 		{:else}
 			<p class="muted">{t('report.cleaned')}</p>
+			{#if partial}
+				<p class="warning" role="status">{t('report.partial')}</p>
+			{/if}
 			<pre class="log" aria-label={t('report.log_label')}>{report.log || t('report.empty')}</pre>
 			<label class="attach">
 				<input type="checkbox" bind:checked={attach} />
@@ -158,6 +168,12 @@
 		line-height: 1.45;
 		white-space: pre-wrap;
 		word-break: break-all;
+	}
+
+	.warning {
+		margin: 0;
+		color: var(--color-warning);
+		font-size: 0.8125rem;
 	}
 
 	.attach {

@@ -69,7 +69,7 @@
 	let portStr = $state('22');
 	let username = $state('root');
 
-	const DEFAULT_PORT: Record<SessionKind, string> = { ssh: '22', rdp: '3389', vnc: '5900', wsl:'0' };
+	const DEFAULT_PORT: Record<SessionKind, string> = { ssh: '22', rdp: '3389', vnc: '5900', wsl: '0' };
 
 	function setKind(next: SessionKind): void {
 		if (next === kind) return;
@@ -200,12 +200,16 @@
 		const port = kind === 'wsl' ? 0 : (parseInt(portStr, 10) || parseInt(DEFAULT_PORT[kind], 10) || 22);
 		const rdp = kind === 'rdp';
 		const vnc = kind === 'vnc';
-		/** Jump hosts, proxies and login shells are SSH's alone. */
-		const desktop = rdp || vnc;
+		const wsl = kind === 'wsl';
+		/** Jump hosts, proxies, login shells and ssh_config are SSH's alone. */
+		const desktop = rdp || vnc || wsl;
 		const via = vnc ? viaSessionId || null : null;
 		// RDP and VNC are password logons; the toggle below is SSH-only and
-		// its value is ignored here rather than trusted.
-		const authMethod: AuthMethod = desktop || authType === 'Password'
+		// its value is ignored here rather than trusted. WSL signs in by
+		// itself: nothing to keep, so a password left in the form is not saved.
+		const authMethod: AuthMethod = wsl
+			? { type: 'Password' }
+			: desktop || authType === 'Password'
 			? { type: 'Password', password: password || undefined }
 			: authType === 'Key'
 				? {
@@ -445,6 +449,13 @@
 					{/each}
 				</select>
 				<p class="shell-hint">{t('session.vnc_via_hint')}</p>
+			</div>
+		{:else if kind === 'wsl'}
+			<!-- wsl.exe signs in by itself: no password, key, jump host, proxy or
+			     ssh_config here. Only which Linux user, if not the distro's default. -->
+			<div class="shell-field">
+				<Input label={t('session.wsl_user')} bind:value={username} placeholder={t('session.wsl_user_placeholder')} disabled={saving} />
+				<p class="shell-hint">{t('session.wsl_user_hint')}</p>
 			</div>
 		{:else}
 		<div class="auth-section">
