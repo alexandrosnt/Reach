@@ -93,6 +93,16 @@ body {
   user-select: none;
 }
 
+/* Native controls, scrollbars and select fields drawn dark or light to match
+   the theme; without it the engine draws them light under a dark theme. */
+.dark {
+  color-scheme: dark;
+}
+
+.light {
+  color-scheme: light;
+}
+
 /* Dark mode (default) */
 .dark body {
   background-color: var(--color-bg-primary);
@@ -124,6 +134,112 @@ body {
   --color-surface-sunken: rgba(0, 0, 0, 0.03);
   --color-surface-strong: rgba(0, 0, 0, 0.16);
   --color-text-tertiary: #8e8e93;
+}
+
+/* ─── Select menus ─── */
+
+/* The field itself: WebKitGTK paints a native select as a GTK button and drops
+   the background it is given, so it is drawn plainly with its own chevron.
+   The chevron's properties win over a component's `background` shorthand,
+   which would otherwise reset the image. */
+select:not([multiple]) {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%2386868b' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+  background-repeat: no-repeat !important;
+  background-position: right 10px center !important;
+  background-size: 10px 6px !important;
+  padding-right: 28px !important;
+  cursor: pointer;
+}
+
+select:not([multiple]):disabled {
+  cursor: default;
+}
+
+/* The open list of a <select>, drawn by $lib/utils/selectMenu in place of the
+   platform's popup, which no theme can style. */
+.select-menu {
+  position: fixed;
+  z-index: 10001;
+  box-sizing: border-box;
+  padding: 4px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background-color: var(--color-bg-elevated);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-btn);
+  box-shadow: var(--shadow-elevated);
+  user-select: none;
+  animation: select-menu-in 120ms var(--ease-default);
+}
+
+.select-menu-row {
+  position: relative;
+  padding: 6px 28px 6px 10px;
+  border-radius: 4px;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.select-menu-row.in-group {
+  padding-left: 20px;
+}
+
+.select-menu-row.active {
+  background-color: var(--color-surface-active);
+}
+
+.select-menu-row.selected {
+  color: var(--color-accent);
+}
+
+/* A tick on the chosen row, as the theme-drawn dropdowns have. */
+.select-menu-row.selected::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  width: 4px;
+  height: 8px;
+  margin-top: -6px;
+  border: solid var(--color-accent);
+  border-width: 0 1.5px 1.5px 0;
+  transform: rotate(45deg);
+}
+
+.select-menu-row.disabled {
+  color: var(--color-text-tertiary);
+}
+
+.select-menu-row.group {
+  padding-top: 8px;
+  font-size: 0.85em;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+}
+
+@media (pointer: coarse) {
+  .select-menu-row {
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+}
+
+@keyframes select-menu-in {
+  from {
+    opacity: 0;
+    transform: translateY(-2px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .select-menu {
+    animation: none;
+  }
 }
 
 /* ─── Glass Effect ─── */
