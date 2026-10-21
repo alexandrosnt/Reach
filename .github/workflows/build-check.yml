@@ -48,7 +48,7 @@ jobs:
         # something, and with warnings as errors the build breaks overnight
         # with no change of ours (1.99 renamed fetch_update). Rust is moved
         # forward on purpose, here and in release.yml together.
-        uses: dtolnay/rust-toolchain@1.99.0
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'x86_64-apple-darwin' || '' }}
           components: clippy
@@ -111,7 +111,7 @@ jobs:
         # something, and with warnings as errors the build breaks overnight
         # with no change of ours (1.99 renamed fetch_update). Rust is moved
         # forward on purpose, here and in release.yml together.
-        uses: dtolnay/rust-toolchain@1.99.0
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           targets: x86_64-linux-android
 
@@ -205,7 +205,7 @@ jobs:
         # something, and with warnings as errors the build breaks overnight
         # with no change of ours (1.99 renamed fetch_update). Rust is moved
         # forward on purpose, here and in release.yml together.
-        uses: dtolnay/rust-toolchain@1.99.0
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi
 
