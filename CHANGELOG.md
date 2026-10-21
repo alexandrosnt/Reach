@@ -2,6 +2,10 @@
 
 All notable changes to Reach are documented here.
 
+## v0.8.0
+- **Import RDP hosts in bulk** — Sessions → Add → Import RDP Hosts takes a Termix export or a JSON list of hosts (name, address, port, user, domain, folder) and creates them as RDP sessions in the selected vault, with their folders. Passwords in the export are never read; RDP asks on connect. Hosts already saved are shown and not created twice, an existing folder of the same name is reused, and an entry with no address or a port outside 1–65535 is listed as not imported instead of stopping the rest. Contributed by @swjpilot (#117).
+- **Select sessions without searching first** — The bar under the search box now offers Select (tick sessions one by one) next to Select all whenever the list has more than one session, not only while searching. Contributed by @swjpilot (#118).
+
 ## v0.7.9
 - **Fixed: dropdown lists ignored the theme** — A dropdown list opened in the platform's own colours: on Linux, under a dark KDE or GTK theme, it could be white with the theme's white text on it, unreadable, and on Windows and macOS it was the system's grey. Reach now draws every dropdown list itself, in the current theme, with the keyboard working as before (arrows, Enter, Space, Alt+Down, Escape, type to find); dropdown fields, native controls and scrollbars follow dark and light themes too (#110).
 

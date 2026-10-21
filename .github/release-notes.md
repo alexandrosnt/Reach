@@ -1,10 +1,10 @@
-Dropdown lists that follow your theme everywhere.
+Bring your RDP hosts over in one go.
 
-- Fixed: dropdown lists ignored the theme. On Linux under a dark KDE or
-  GTK theme they could be white with white text; on Windows and macOS
-  they were the system's grey. Reach now draws every dropdown list in
-  the current theme, with full keyboard support.
-- Dropdown fields, native controls and scrollbars follow dark and light
-  themes too.
+- New: import RDP hosts in bulk from a Termix export or a JSON list,
+  into the selected vault with their folders. Passwords are never
+  imported, and hosts you already have are not added twice.
+- New: start selecting sessions without searching first.
+
+Thanks to @swjpilot for both.
 
 Full details: https://github.com/alexandrosnt/Reach/blob/main/CHANGELOG.md
