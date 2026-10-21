@@ -2,6 +2,9 @@
 
 All notable changes to Reach are documented here.
 
+## v0.8.1
+- **Security: secrets no longer reach the log file** — Up to 0.8.0, creating or editing a saved session wrote its login into `reach.log` in plain text: the password, the key passphrase, an embedded private key, and jump-host and proxy passwords. Opening a synced vault wrote its sync token, and importing a full backup wrote the backup. Those log entries now keep only the host, port and kind (the session id on an edit), and a test fails the build if any traced function logs an argument that carries a secret. On first start, 0.8.1 deletes `reach.log` and `reach.1.log` written by earlier versions. If you ever shared a Reach log file (in an issue, a chat or a support request), change the passwords of the sessions you created or edited before then. Reported in #109 by @qwerin.
+
 ## v0.8.0
 - **Import RDP hosts in bulk** — Sessions → Add → Import RDP Hosts takes a Termix export or a JSON list of hosts (name, address, port, user, domain, folder) and creates them as RDP sessions in the selected vault, with their folders. Passwords in the export are never read; RDP asks on connect. Hosts already saved are shown and not created twice, an existing folder of the same name is reused, and an entry with no address or a port outside 1–65535 is listed as not imported instead of stopping the rest. Contributed by @swjpilot (#117).
 - **Select sessions without searching first** — The bar under the search box now offers Select (tick sessions one by one) next to Select all whenever the list has more than one session, not only while searching. Contributed by @swjpilot (#118).
