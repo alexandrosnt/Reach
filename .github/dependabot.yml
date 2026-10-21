@@ -21,6 +21,13 @@ updates:
       # SvelteKit lists 7 in its peer dependencies.
       - dependency-name: "typescript"
         versions: [">=7"]
+      # SvelteKit 3 and adapter-static 4 only install together and move
+      # every $lib import to #lib; that migration is done as its own
+      # release, not as two bot PRs that each fail without the other.
+      - dependency-name: "@sveltejs/kit"
+        update-types: ["version-update:semver-major"]
+      - dependency-name: "@sveltejs/adapter-static"
+        update-types: ["version-update:semver-major"]
     groups:
       npm-minor:
         update-types: ["minor", "patch"]
