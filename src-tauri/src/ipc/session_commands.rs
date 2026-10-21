@@ -192,7 +192,10 @@ pub async fn session_get(
 /// If vault_id is provided and is a user vault, stores in that vault (for sharing).
 /// Otherwise stores in __sessions__ (private).
 #[tauri::command]
-#[tracing::instrument(skip(state))]
+// Only what names the session: the login, jump hosts and proxy carry
+// passwords, passphrases and embedded keys, and every argument left in an
+// instrument span is written to reach.log.
+#[tracing::instrument(skip_all, fields(host = %host, port = port, kind = ?kind))]
 #[expect(clippy::too_many_arguments, reason = "a Tauri command takes each argument from the frontend's invoke by name")]
 pub async fn session_create(
     state: State<'_, AppState>,
@@ -293,7 +296,8 @@ pub async fn session_create(
 
 /// Update an existing session configuration. O(1) update.
 #[tauri::command]
-#[tracing::instrument(skip(state))]
+// The session carries its secrets; only its id is logged.
+#[tracing::instrument(skip_all, fields(id = %session.id))]
 pub async fn session_update(
     state: State<'_, AppState>,
     mut session: SessionConfig,
