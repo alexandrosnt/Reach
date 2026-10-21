@@ -36,6 +36,9 @@
 	/** Where the imported sessions go: '' no folder, a folder id, or NEW. */
 	const NEW = '__new__';
 	let folders = $state<Folder[]>([]);
+	/** Only the target vault's folders: a session in one vault filed under
+	 *  another vault's folder shows ungrouped to everyone who shares it. */
+	let vaultFolders = $derived(folders.filter((f) => (f.vault_id ?? null) === (vaultId ?? null)));
 	let folderChoice = $state('');
 	let newFolder = $state('');
 
@@ -236,7 +239,7 @@
 					<span>{t('session.import_into')}</span>
 					<select class="tool-input" bind:value={folderChoice} disabled={importing}>
 						<option value="">{t('session.import_no_folder')}</option>
-						{#each folders as f (f.id)}<option value={f.id}>{folderPath(f.id, folders)}</option>{/each}
+						{#each vaultFolders as f (f.id)}<option value={f.id}>{folderPath(f.id, folders)}</option>{/each}
 						<option value={NEW}>{t('session.new_folder')}</option>
 					</select>
 				</label>
