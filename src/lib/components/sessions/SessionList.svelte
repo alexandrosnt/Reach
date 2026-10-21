@@ -20,6 +20,7 @@
 	import { listen } from '@tauri-apps/api/event';
 	import SessionEditor from './SessionEditor.svelte';
 	import SshConfigImport from './SshConfigImport.svelte';
+	import RdpImport from './RdpImport.svelte';
 	import SessionCard from './SessionCard.svelte';
 	import VaultSelector from '$lib/components/vault/VaultSelector.svelte';
 	import ContextMenuBackdrop from '$lib/components/shared/ContextMenuBackdrop.svelte';
@@ -44,6 +45,7 @@
 	let showRdpConnect = $state(false);
 	let showEditor = $state(false);
 	let showImport = $state(false);
+	let showRdpImport = $state(false);
 	let editingSession = $state<SessionConfig | undefined>();
 	let sessions = $state<SessionConfig[]>([]);
 	let loading = $state(true);
@@ -1153,6 +1155,10 @@
 							<FaIcon icon={faFileImport} size={12} />
 							<span>{t('session.import_ssh_config')}</span>
 						</button>
+						<button class="menu-item" role="menuitem" onclick={() => fromMenu(() => (showRdpImport = true))}>
+							<FaIcon icon={faFileImport} size={12} />
+							<span>{t('session.import_rdp')}</span>
+						</button>
 					</div>
 				{/if}
 			</div>
@@ -1351,6 +1357,7 @@
 <RdpQuickConnect bind:open={showRdpConnect} />
 <SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={targetVaultId} {folders} onsave={handleEditorSave} />
 <SshConfigImport bind:open={showImport} onsave={handleEditorSave} />
+<RdpImport bind:open={showRdpImport} vaultId={targetVaultId} onsave={handleEditorSave} />
 
 {#if showConnectPrompt && connectSession}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
