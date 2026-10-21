@@ -1590,6 +1590,10 @@ mod log_secret_tests {
     /// argument holding a secret has to be skipped (or the span `skip_all`).
     /// Logs are what people attach to bug reports.
     #[test]
+    #[cfg_attr(
+        target_os = "android",
+        ignore = "reads the crate's source, which is not on the device; the desktop runs check the same code"
+    )]
     fn instrument_spans_never_record_secrets() {
         let mut files = Vec::new();
         rust_files(&Path::new(env!("CARGO_MANIFEST_DIR")).join("src"), &mut files);
