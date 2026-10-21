@@ -1193,10 +1193,13 @@
 					<button class="bulk-btn danger" type="button" disabled={selected.size === 0} onclick={() => (bulkDeleteConfirm = true)}>{t('common.delete')}</button>
 				</div>
 			</div>
-		{:else if searchQuery.trim() && filteredSessions.length > 1}
+		{:else if filteredSessions.length > 1}
 			<div class="match-row">
-				<span>{t('session.matches_n', { count: String(filteredSessions.length) })}</span>
-				<button class="match-select" type="button" onclick={selectAllShown}>{t('session.select_all')}</button>
+				<span>{searchQuery.trim() ? t('session.matches_n', { count: String(filteredSessions.length) }) : ''}</span>
+				<span class="match-actions">
+					<button class="match-select" type="button" onclick={() => { selectMode = true; }}>{t('session.select_sessions')}</button>
+					<button class="match-select" type="button" onclick={selectAllShown}>{t('session.select_all')}</button>
+				</span>
 			</div>
 		{/if}
 
@@ -2268,6 +2271,11 @@
 		color: var(--color-text-secondary);
 	}
 
+	.match-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
 	.match-select {
 		border: none;
 		background: none;
