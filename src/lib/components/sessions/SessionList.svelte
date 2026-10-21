@@ -1347,7 +1347,7 @@
 <QuickConnect bind:open={showQuickConnect} prefill={quickPrefill} />
 <RdpQuickConnect bind:open={showRdpConnect} />
 <SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={targetVaultId} {folders} onsave={handleEditorSave} />
-<SshConfigImport bind:open={showImport} onsave={handleEditorSave} />
+<SshConfigImport bind:open={showImport} vaultId={targetVaultId} onsave={handleEditorSave} />
 
 {#if showConnectPrompt && connectSession}
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
