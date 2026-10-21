@@ -16,10 +16,11 @@
 
 	interface Props {
 		open: boolean;
+		vaultId?: string | null;
 		onsave?: () => void;
 	}
 
-	let { open = $bindable(), onsave }: Props = $props();
+	let { open = $bindable(), vaultId = null, onsave }: Props = $props();
 
 	let hosts = $state<HostImport[]>([]);
 	let files = $state<string[]>([]);
@@ -143,7 +144,7 @@
 			if (folderChoice === NEW) {
 				const name = newFolder.trim();
 				if (!name) throw new Error(t('session.import_folder_name_needed'));
-				folderId = (await sessionCreateFolder(name, null, null)).id;
+				folderId = (await sessionCreateFolder(name, null, vaultId)).id;
 			}
 			for (const host of hosts) {
 				if (!selected.has(host.alias)) continue;
@@ -159,6 +160,7 @@
 					username: host.user,
 					authMethod: keyAuth(host.identityFiles),
 					folderId,
+					vaultId,
 					tags: ['ssh-config'],
 					jumpChain,
 					// What this person ticked; the backend signs it as theirs.
