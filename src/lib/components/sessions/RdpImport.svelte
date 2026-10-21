@@ -164,7 +164,7 @@
 	}
 </script>
 
-<Modal {open} onclose={close} title={t('session.import_rdp')}>
+<Modal {open} onclose={close} title={t('session.import_rdp')} maxWidth="600px">
 	<div class="import-content">
 		<p class="import-desc">{t('session.rdp_import_desc')}</p>
 
@@ -261,7 +261,7 @@
 		display: flex;
 		flex-direction: column;
 		gap: 12px;
-		min-width: min(540px, 80vw);
+		min-width: 0;
 	}
 
 	.import-desc {
@@ -401,6 +401,7 @@
 
 	.host-info {
 		display: flex;
+		flex: 1;
 		flex-direction: column;
 		gap: 2px;
 		min-width: 0;
@@ -413,6 +414,9 @@
 	}
 
 	.host-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 		font-size: 0.8125rem;
 		font-weight: 600;
 		color: var(--color-text-primary);
@@ -437,7 +441,9 @@
 	}
 
 	.host-folder {
-		margin-left: auto;
+		max-width: 40%;
+		overflow: hidden;
+		text-overflow: ellipsis;
 		font-size: 0.6875rem;
 		color: var(--color-text-tertiary);
 		white-space: nowrap;
