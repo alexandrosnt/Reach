@@ -3205,7 +3205,7 @@ impl VaultManager {
     ///
     /// On restart, `auto_unlock()` reads identity → gets key from keychain →
     /// connects to Turso (if sync enabled) → everything works.
-    #[tracing::instrument(skip(self, export_password, _master_password))]
+    #[tracing::instrument(skip(self, data, export_password, _master_password))]
     pub async fn import_full_backup(
         &mut self,
         data: &[u8],

@@ -492,7 +492,7 @@ pub async fn vault_create(
 }
 
 #[tauri::command(rename_all = "snake_case")]
-#[tracing::instrument(skip(state))]
+#[tracing::instrument(skip(state, token))]
 pub async fn vault_open(
     vault_id: String,
     sync_url: Option<String>,

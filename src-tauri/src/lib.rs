@@ -210,11 +210,36 @@ fn log_file() -> Option<std::fs::File> {
     const LIMIT: u64 = 5 * 1024 * 1024;
     let dir = app_data_dir().join("logs");
     std::fs::create_dir_all(&dir).ok()?;
+    purge_logs_with_secrets(&dir);
     let path = dir.join("reach.log");
     if std::fs::metadata(&path).map(|m| m.len() > LIMIT).unwrap_or(false) {
         let _ = std::fs::rename(&path, dir.join("reach.1.log"));
     }
     std::fs::OpenOptions::new().create(true).append(true).open(path).ok()
+}
+
+/// Up to 0.8.0, creating or editing a session wrote its login (password, key
+/// passphrase, embedded key, proxy password) into reach.log, and opening a
+/// synced vault its token. Those logs are deleted once, before anything new
+/// is written; the marker keeps later starts from deleting new logs.
+#[cfg(desktop)]
+fn purge_logs_with_secrets(dir: &std::path::Path) {
+    let marker = dir.join(".secrets-purged");
+    if marker.exists() {
+        return;
+    }
+    let mut cleared = true;
+    for name in ["reach.log", "reach.1.log"] {
+        let path = dir.join(name);
+        if path.exists() && std::fs::remove_file(&path).is_err() {
+            cleared = false;
+        }
+    }
+    // Only marked done when both are gone, so a file that was locked is
+    // tried again next start.
+    if cleared {
+        let _ = std::fs::write(&marker, b"");
+    }
 }
 
 /// Mobile platforms keep their own system log (logcat on Android).
@@ -1485,5 +1510,151 @@ mod metainfo_tests {
             xml.contains(&release),
             "linux/com.reach.desktop.metainfo.xml has no {release} entry: add this version to <releases>"
         );
+    }
+}
+
+#[cfg(test)]
+mod log_secret_tests {
+    use std::path::Path;
+
+    /// Argument types that hold a password, a passphrase, a key or a token.
+    const SECRET_TYPES: &[&str] = &[
+        "AuthMethod",
+        "SessionConfig",
+        "ProxyConfig",
+        "JumpHostConfig",
+        "SshOptions",
+        "SecretBox",
+        "SecretString",
+    ];
+    /// Argument names that do.
+    const SECRET_NAMES: &[&str] = &[
+        "password", "passphrase", "token", "secret", "key_content", "private_key", "pin",
+    ];
+
+    fn rust_files(dir: &Path, out: &mut Vec<std::path::PathBuf>) {
+        for entry in std::fs::read_dir(dir).unwrap().flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                rust_files(&path, out);
+            } else if path.extension().is_some_and(|e| e == "rs") {
+                out.push(path);
+            }
+        }
+    }
+
+    /// The parameter list of the first fn after `from`, split at top-level commas.
+    fn params(source: &str) -> Vec<(String, String)> {
+        let Some(fn_at) = source.find("fn ") else { return vec![] };
+        let rest = &source[fn_at..];
+        let Some(open) = rest.find('(') else { return vec![] };
+        let (mut depth, mut end) = (0i32, open);
+        for (i, c) in rest[open..].char_indices() {
+            match c {
+                '(' | '<' | '[' => depth += 1,
+                ')' | '>' | ']' => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = open + i;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let (mut parts, mut cur, mut depth) = (Vec::new(), String::new(), 0i32);
+        for c in rest[open + 1..end].chars() {
+            match c {
+                '(' | '<' | '[' => depth += 1,
+                ')' | '>' | ']' => depth -= 1,
+                ',' if depth == 0 => {
+                    parts.push(std::mem::take(&mut cur));
+                    continue;
+                }
+                _ => {}
+            }
+            cur.push(c);
+        }
+        parts.push(cur);
+        parts
+            .iter()
+            .filter_map(|p| {
+                let (name, ty) = p.split_once(':')?;
+                let name = name.trim().trim_start_matches("mut ").trim().to_string();
+                Some((name, ty.trim().to_string()))
+            })
+            .collect()
+    }
+
+    /// Every argument an instrument span keeps is written to reach.log, so an
+    /// argument holding a secret has to be skipped (or the span `skip_all`).
+    /// Logs are what people attach to bug reports.
+    #[test]
+    #[cfg_attr(
+        target_os = "android",
+        ignore = "reads the crate's source, which is not on the device; the desktop runs check the same code"
+    )]
+    fn instrument_spans_never_record_secrets() {
+        let mut files = Vec::new();
+        rust_files(&Path::new(env!("CARGO_MANIFEST_DIR")).join("src"), &mut files);
+        let mut leaks = Vec::new();
+        for file in files {
+            let source = std::fs::read_to_string(&file).unwrap();
+            for (at, _) in source.match_indices("#[tracing::instrument") {
+                let attr_end = at + source[at..].find(")]").map_or(0, |e| e + 2);
+                let attr = &source[at..attr_end];
+                if attr.contains("skip_all") {
+                    continue;
+                }
+                let skipped: Vec<&str> = attr
+                    .split("skip(")
+                    .nth(1)
+                    .and_then(|s| s.split(')').next())
+                    .map(|s| s.split(',').map(str::trim).collect())
+                    .unwrap_or_default();
+                for (name, ty) in params(&source[attr_end..]) {
+                    if name.contains("self") || skipped.contains(&name.as_str()) {
+                        continue;
+                    }
+                    // An id or a yes/no flag names a secret without holding it.
+                    if name.ends_with("_id") || ty.trim_start_matches("Option<").starts_with("bool") {
+                        continue;
+                    }
+                    let lower = name.to_lowercase();
+                    if SECRET_TYPES.iter().any(|t| ty.contains(t)) || SECRET_NAMES.iter().any(|n| lower.contains(n)) {
+                        let line = source[..at].lines().count() + 1;
+                        leaks.push(format!("{}:{line}: `{name}: {ty}`", file.display()));
+                    }
+                }
+            }
+        }
+        assert!(leaks.is_empty(), "instrument spans that log a secret (add it to skip(...)):\n{}", leaks.join("\n"));
+    }
+}
+
+#[cfg(all(test, desktop))]
+mod purge_logs_tests {
+    use super::purge_logs_with_secrets;
+
+    #[test]
+    fn old_logs_go_once_and_new_ones_stay() {
+        let dir = std::env::temp_dir().join(format!("reach-purge-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("reach.log"), "auth_method=Password { password: Some(\"x\") }").unwrap();
+        std::fs::write(dir.join("reach.1.log"), "older").unwrap();
+        std::fs::write(dir.join("other.txt"), "kept").unwrap();
+
+        purge_logs_with_secrets(&dir);
+        assert!(!dir.join("reach.log").exists(), "the old log is deleted");
+        assert!(!dir.join("reach.1.log").exists(), "the rotated old log is deleted");
+        assert!(dir.join("other.txt").exists(), "nothing else in the folder is touched");
+        assert!(dir.join(".secrets-purged").exists(), "the purge is remembered");
+
+        std::fs::write(dir.join("reach.log"), "new").unwrap();
+        purge_logs_with_secrets(&dir);
+        assert!(dir.join("reach.log").exists(), "a log written after the purge is kept");
+
+        let _ = std::fs::remove_dir_all(&dir);
     }
 }
