@@ -406,6 +406,7 @@ pub async fn session_list_folders(state: State<'_, AppState>) -> Result<Vec<Fold
         return Ok(Vec::new());
     }
 
+    move_folders_to_their_vaults(&manager).await;
     read_folders(&manager).await
 }
 
@@ -424,9 +425,27 @@ pub async fn session_create_folder(
         return Err("Vault is locked. Set a master password first.".to_string());
     }
 
-    let storage_vault_id = ensure_folders_vault(&mut manager).await?;
+    create_folder(&mut manager, name, parent_id, vault_id).await
+}
+
+async fn create_folder(
+    manager: &mut crate::vault::VaultManager,
+    name: String,
+    parent_id: Option<String>,
+    vault_id: Option<String>,
+) -> Result<Folder, String> {
+    // A folder lives in the vault its sessions are in, so it syncs with
+    // them; one for this device's own sessions stays in __folders__.
+    let vault_id = match vault_id {
+        Some(vid) if is_user_vault(manager, &vid).await? => Some(vid),
+        _ => None,
+    };
+    let storage_vault_id = match vault_id {
+        Some(ref vid) => vid.clone(),
+        None => ensure_folders_vault(manager).await?,
+    };
     if let Some(ref parent_id) = parent_id {
-        let parent = read_folders(&manager)
+        let parent = read_folders(manager)
             .await?
             .into_iter()
             .find(|folder| folder.id == *parent_id)
@@ -475,7 +494,15 @@ pub async fn session_update_folder_parent(
         return Err("Vault is locked".to_string());
     }
 
-    let folders = read_folders(&manager).await?;
+    set_folder_parent(&manager, folder_id, parent_id).await
+}
+
+async fn set_folder_parent(
+    manager: &crate::vault::VaultManager,
+    folder_id: String,
+    parent_id: Option<String>,
+) -> Result<Folder, String> {
+    let folders = read_folders(manager).await?;
     let by_id = folders
         .iter()
         .map(|folder| (folder.id.as_str(), folder))
@@ -510,8 +537,9 @@ pub async fn session_update_folder_parent(
     folder.parent_id = parent_id;
     let json = serde_json::to_string(&folder).map_err(|e| e.to_string())?;
     let plaintext = SecretBox::new(Box::new(json.into_bytes()));
-    let vault_id = get_folders_vault_id_if_exists(&manager)
-        .ok_or_else(|| "Folders vault not found".to_string())?;
+    let vault_id = find_folder_vault(manager, &folder.id)
+        .await
+        .ok_or_else(|| format!("Folder not found: {}", folder.id))?;
     manager
         .update_secret(&vault_id, &folder.id, plaintext)
         .await
@@ -534,42 +562,104 @@ pub async fn session_delete_folder(
         return Err("Vault is locked".to_string());
     }
 
-    let vault_id = match get_folders_vault_id_if_exists(&manager) {
-        Some(id) => id,
-        None => return Ok(()),
-    };
+    delete_folder(&manager, &folder_id).await
+}
 
-    // O(1) delete by primary key
-    manager
-        .delete_secret(&vault_id, &folder_id)
-        .await
-        .map_err(|e| e.to_string())?;
-
-    tracing::info!("Deleted folder: {}", folder_id);
+/// Removes the folder from its vault and any copy left in __folders__ by a
+/// move cut short, which would otherwise be moved back on the next listing.
+async fn delete_folder(manager: &crate::vault::VaultManager, folder_id: &str) -> Result<(), String> {
+    let mut holders: Vec<String> = find_in_user_vaults(manager, folder_id).await.into_iter().collect();
+    if let Some(local) = get_folders_vault_id_if_exists(manager) {
+        if manager.secret_exists(&local, folder_id).await {
+            holders.push(local);
+        }
+    }
+    for vault_id in holders {
+        manager
+            .delete_secret(&vault_id, folder_id)
+            .await
+            .map_err(|e| e.to_string())?;
+        tracing::info!("Deleted folder: {} from vault: {}", folder_id, vault_id);
+    }
     Ok(())
 }
 
+/// Every folder: this device's own from __folders__, and each user vault's
+/// from that vault. A folder found in both (a move cut short) is the user
+/// vault's.
 async fn read_folders(manager: &crate::vault::VaultManager) -> Result<Vec<Folder>, String> {
-    let vault_id = match get_folders_vault_id_if_exists(manager) {
-        Some(id) => id,
-        None => return Ok(Vec::new()),
-    };
+    let mut folders: Vec<Folder> = Vec::new();
+    if let Some(vault_id) = get_folders_vault_id_if_exists(manager) {
+        folders.extend(folders_in(manager, &vault_id).await?);
+    }
+    for vault in manager.list_vaults().await.unwrap_or_default() {
+        if vault.name.starts_with("__") {
+            continue;
+        }
+        // A vault that is not open here (unreachable, not yet unlocked)
+        // shows its folders once it is.
+        let Ok(found) = folders_in(manager, &vault.id).await else { continue };
+        for mut folder in found {
+            // A vault has its own id on each device; the stored folder
+            // names the one it was made on.
+            folder.vault_id = Some(vault.id.clone());
+            folders.retain(|f| f.id != folder.id);
+            folders.push(folder);
+        }
+    }
+    Ok(folders)
+}
+
+async fn folders_in(manager: &crate::vault::VaultManager, vault_id: &str) -> Result<Vec<Folder>, String> {
     let secrets = manager
-        .read_secrets_in(&vault_id, &["folder"])
+        .read_secrets_in(vault_id, &["folder"])
         .await
         .map_err(|e| e.to_string())?;
     let mut folders = Vec::new();
     for (_, plaintext) in secrets {
         if let Ok(plaintext) = plaintext {
             use secrecy::ExposeSecret;
-            if let Ok(json) = String::from_utf8(plaintext.expose_secret().clone()) {
-                if let Ok(folder) = serde_json::from_str::<Folder>(&json) {
-                    folders.push(folder);
-                }
+            if let Ok(folder) = serde_json::from_slice::<Folder>(plaintext.expose_secret()) {
+                folders.push(folder);
             }
         }
     }
     Ok(folders)
+}
+
+/// Before 0.8.2 every folder was kept in __folders__, which never leaves
+/// the device, so a shared vault's folders reached no other device or
+/// member. Each one is copied into its vault and only then removed here;
+/// one whose vault is not open now is moved on a later listing.
+async fn move_folders_to_their_vaults(manager: &crate::vault::VaultManager) {
+    let Some(local) = get_folders_vault_id_if_exists(manager) else { return };
+    let Ok(secrets) = manager.read_secrets_in(&local, &["folder"]).await else { return };
+    let user_vaults: Vec<String> = manager
+        .list_vaults()
+        .await
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|v| !v.name.starts_with("__"))
+        .map(|v| v.id)
+        .collect();
+    for (meta, plaintext) in secrets {
+        let Ok(plaintext) = plaintext else { continue };
+        use secrecy::ExposeSecret;
+        let Ok(folder) = serde_json::from_slice::<Folder>(plaintext.expose_secret()) else { continue };
+        let Some(target) = folder.vault_id.as_ref().filter(|id| user_vaults.contains(id)) else { continue };
+        let copy = SecretBox::new(Box::new(plaintext.expose_secret().clone()));
+        if let Err(e) = manager
+            .create_secret_with_id(target, &folder.id, &meta.name, SecretCategory::Folder, copy)
+            .await
+        {
+            tracing::warn!("Folder {} stays on this device for now: {}", folder.id, e);
+            continue;
+        }
+        match manager.delete_secret(&local, &folder.id).await {
+            Ok(()) => tracing::info!("Moved folder {} into vault {}", folder.id, target),
+            Err(e) => tracing::warn!("Folder {} copied to vault {}, local copy left: {}", folder.id, target, e),
+        }
+    }
 }
 
 // --- Helper functions (all O(1)) ---
@@ -634,26 +724,44 @@ fn get_folders_vault_id_if_exists(manager: &crate::vault::VaultManager) -> Optio
 /// Find which vault contains a session by ID.
 /// Checks __sessions__ first, then all user vaults.
 async fn find_session_vault(manager: &crate::vault::VaultManager, session_id: &str) -> Option<String> {
-    // Check __sessions__ vault first
     if let Some(vault_id) = get_sessions_vault_id_if_exists(manager) {
         if manager.secret_exists(&vault_id, session_id).await {
             return Some(vault_id);
         }
     }
+    find_in_user_vaults(manager, session_id).await
+}
 
-    // Check all user vaults
+/// Find which vault contains a folder by ID: the user vaults first, as
+/// `read_folders` prefers them, then __folders__.
+async fn find_folder_vault(manager: &crate::vault::VaultManager, folder_id: &str) -> Option<String> {
+    if let Some(vault_id) = find_in_user_vaults(manager, folder_id).await {
+        return Some(vault_id);
+    }
+    let local = get_folders_vault_id_if_exists(manager)?;
+    manager.secret_exists(&local, folder_id).await.then_some(local)
+}
+
+/// The user vault holding a secret, if any.
+async fn find_in_user_vaults(manager: &crate::vault::VaultManager, secret_id: &str) -> Option<String> {
     if let Ok(vaults) = manager.list_vaults().await {
         for vault in vaults {
             if vault.name.starts_with("__") {
                 continue;
             }
-            if manager.secret_exists(&vault.id, session_id).await {
+            if manager.secret_exists(&vault.id, secret_id).await {
                 return Some(vault.id);
             }
         }
     }
 
     None
+}
+
+/// Whether an id names one of the user's own or joined vaults, not an internal one.
+async fn is_user_vault(manager: &crate::vault::VaultManager, vault_id: &str) -> Result<bool, String> {
+    let vaults = manager.list_vaults().await.map_err(|e| e.to_string())?;
+    Ok(vaults.iter().any(|v| v.id == vault_id && !v.name.starts_with("__")))
 }
 
 /// Share a session with another user via X25519 key re-wrap.
@@ -773,4 +881,108 @@ pub async fn wsl_list_distros() -> Result<Vec<String>, String> {
         .await
         .map(|listing| crate::wsl::distros(&listing))
         .unwrap_or_default())
+}
+
+/// Folders of a shared vault, end to end between two devices over a real
+/// libsql server: an old folder kept on the device moves into its vault,
+/// new ones are made there, and another member sees, nests and deletes
+/// them with no copy coming back.
+///
+/// Needs a libsql server, so it is skipped unless one is named, e.g.
+/// `docker run -d -p 58080:8080 ghcr.io/tursodatabase/libsql-server` and
+/// `REACH_TEST_SQLD=http://127.0.0.1:58080`.
+#[cfg(test)]
+mod folder_sync_tests {
+    use super::*;
+    use crate::vault::types::{MemberRole, VaultType};
+    use crate::vault::VaultManager;
+
+    fn device(name: &str) -> VaultManager {
+        let dir = std::env::temp_dir().join(format!("reach-folder-sync-{}-{}", name, std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        VaultManager::new(dir)
+    }
+
+    fn put(folder: &Folder) -> SecretBox<Vec<u8>> {
+        SecretBox::new(Box::new(serde_json::to_vec(folder).unwrap()))
+    }
+
+    fn names(folders: &[Folder]) -> Vec<String> {
+        let mut names: Vec<String> = folders.iter().map(|f| f.name.clone()).collect();
+        names.sort();
+        names
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn a_shared_vaults_folders_reach_the_other_member() {
+        let Ok(url) = std::env::var("REACH_TEST_SQLD") else { return };
+        let server = libsql::Builder::new_remote(url.clone(), String::new())
+            .connector(crate::vault::turso_tls::TursoConnector::new().unwrap())
+            .build()
+            .await
+            .unwrap();
+        server
+            .connect()
+            .unwrap()
+            .execute_batch("DROP TABLE IF EXISTS secrets; DROP TABLE IF EXISTS vault_members; DROP TABLE IF EXISTS vault_header;")
+            .await
+            .unwrap();
+
+        let mut a = device("a");
+        a.init_identity("folder-sync-a").await.unwrap();
+        let team = a.create_vault("Team", VaultType::Private, Some(&url), Some("")).await.unwrap().id;
+
+        // As Reach before 0.8.2 left them: both folders on the device, one
+        // naming the shared vault.
+        let local = ensure_folders_vault(&mut a).await.unwrap();
+        let old = Folder { id: "old".into(), name: "Servers".into(), parent_id: None, vault_id: Some(team.clone()) };
+        let mine = Folder { id: "mine".into(), name: "Home".into(), parent_id: None, vault_id: None };
+        for f in [&old, &mine] {
+            a.create_secret_with_id(&local, &f.id, &f.name, SecretCategory::Folder, put(f)).await.unwrap();
+        }
+
+        move_folders_to_their_vaults(&a).await;
+        assert!(a.secret_exists(&team, "old").await, "the shared folder is in its vault");
+        assert!(!a.secret_exists(&local, "old").await, "and no longer on the device");
+        assert!(a.secret_exists(&local, "mine").await, "a folder of the device's own sessions stays");
+        move_folders_to_their_vaults(&a).await;
+        assert_eq!(names(&read_folders(&a).await.unwrap()), ["Home", "Servers"], "a second run changes nothing");
+
+        // A new folder in the shared vault, nested under the moved one.
+        let web = create_folder(&mut a, "Web".into(), Some("old".into()), Some(team.clone())).await.unwrap();
+        assert!(a.secret_exists(&team, &web.id).await);
+        assert!(create_folder(&mut a, "Mixed".into(), Some("mine".into()), Some(team.clone())).await.is_err());
+
+        // Device B joins; the vault has its own id there.
+        let mut b = device("b");
+        b.init_identity("folder-sync-b").await.unwrap();
+        let b_key: [u8; 32] = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, b.get_public_key().unwrap())
+            .unwrap()
+            .try_into()
+            .unwrap();
+        let invite = a.invite_member(&team, &b_key, &b.get_user_uuid().unwrap(), MemberRole::Member).await.unwrap();
+        let b_team = b.accept_invite(&invite.sync_url, &invite.token).await.unwrap().id;
+        assert_ne!(b_team, team);
+
+        let seen = read_folders(&b).await.unwrap();
+        assert_eq!(names(&seen), ["Servers", "Web"], "B sees the shared folders, not A's own");
+        assert!(seen.iter().all(|f| f.vault_id.as_deref() == Some(b_team.as_str())), "under B's id for the vault");
+        assert_eq!(seen.iter().find(|f| f.name == "Web").unwrap().parent_id.as_deref(), Some("old"));
+
+        // B moves Web to the top and deletes Servers; A sees both.
+        set_folder_parent(&b, web.id.clone(), None).await.unwrap();
+        delete_folder(&b, "old").await.unwrap();
+        a.sync_vault(&team).await.unwrap();
+        let after = read_folders(&a).await.unwrap();
+        assert_eq!(names(&after), ["Home", "Web"]);
+        assert_eq!(after.iter().find(|f| f.name == "Web").unwrap().parent_id, None);
+
+        // A copy left on the device by a move cut short goes with the folder.
+        a.create_secret_with_id(&local, &web.id, "Web", SecretCategory::Folder, put(&web)).await.unwrap();
+        delete_folder(&a, &web.id).await.unwrap();
+        move_folders_to_their_vaults(&a).await;
+        assert_eq!(names(&read_folders(&a).await.unwrap()), ["Home"]);
+    }
 }

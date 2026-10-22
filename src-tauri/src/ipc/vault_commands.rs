@@ -652,7 +652,11 @@ pub async fn vault_secret_list(
     state: State<'_, AppState>,
 ) -> Result<Vec<SecretMetadata>, String> {
     let manager = state.vault_manager.lock().await;
-    manager.list_secrets(&vault_id).await.map_err(|e| e.to_string())
+    let mut secrets = manager.list_secrets(&vault_id).await.map_err(|e| e.to_string())?;
+    // A shared vault keeps its session folders; they are the sidebar's
+    // structure, not secrets to list here.
+    secrets.retain(|s| s.category != "folder");
+    Ok(secrets)
 }
 
 // ==================== SHARING ====================
