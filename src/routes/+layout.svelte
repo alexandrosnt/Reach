@@ -18,6 +18,7 @@
 	import { vaultState } from '$lib/state/vault.svelte';
 	import * as mcp from '$lib/state/mcp.svelte';
 	import * as share from '$lib/state/share.svelte';
+	import { installSelectMenus } from '$lib/utils/selectMenu';
 	import { onMount } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -51,6 +52,8 @@
 		}
 		loadAISettings();
 		initShortcuts();
+		// Every <select> opens a theme-drawn list, not the platform popup (#110).
+		const stopSelectMenus = installSelectMenus();
 		startupUpdateCheck();
 		startPeriodicChecks();
 
@@ -60,6 +63,7 @@
 
 		return () => {
 			cleanupShortcuts();
+			stopSelectMenus();
 			stopPeriodicChecks();
 		};
 	});

@@ -20,6 +20,7 @@
 	import { listen } from '@tauri-apps/api/event';
 	import SessionEditor from './SessionEditor.svelte';
 	import SshConfigImport from './SshConfigImport.svelte';
+	import RdpImport from './RdpImport.svelte';
 	import SessionCard from './SessionCard.svelte';
 	import VaultSelector from '$lib/components/vault/VaultSelector.svelte';
 	import ContextMenuBackdrop from '$lib/components/shared/ContextMenuBackdrop.svelte';
@@ -48,6 +49,7 @@
 	let showRdpConnect = $state(false);
 	let showEditor = $state(false);
 	let showImport = $state(false);
+	let showRdpImport = $state(false);
 	let editingSession = $state<SessionConfig | undefined>();
 	let sessions = $state<SessionConfig[]>([]);
 	let loading = $state(true);
@@ -1274,6 +1276,10 @@
 							<FaIcon icon={faFileImport} size={12} />
 							<span>{t('session.import_ssh_config')}</span>
 						</button>
+						<button class="menu-item" role="menuitem" onclick={() => fromMenu(() => (showRdpImport = true))}>
+							<FaIcon icon={faFileImport} size={12} />
+							<span>{t('session.import_rdp')}</span>
+						</button>
 					</div>
 				{/if}
 			</div>
@@ -1314,10 +1320,13 @@
 					<button class="bulk-btn danger" type="button" disabled={selected.size === 0} onclick={() => (bulkDeleteConfirm = true)}>{t('common.delete')}</button>
 				</div>
 			</div>
-		{:else if searchQuery.trim() && filteredSessions.length > 1}
+		{:else if filteredSessions.length > 1}
 			<div class="match-row">
-				<span>{t('session.matches_n', { count: String(filteredSessions.length) })}</span>
-				<button class="match-select" type="button" onclick={selectAllShown}>{t('session.select_all')}</button>
+				<span>{searchQuery.trim() ? t('session.matches_n', { count: String(filteredSessions.length) }) : ''}</span>
+				<span class="match-actions">
+					<button class="match-select" type="button" onclick={() => { selectMode = true; }}>{t('session.select_sessions')}</button>
+					<button class="match-select" type="button" onclick={selectAllShown}>{t('session.select_all')}</button>
+				</span>
 			</div>
 		{/if}
 
@@ -1468,7 +1477,8 @@
 <QuickConnect bind:open={showQuickConnect} prefill={quickPrefill} />
 <RdpQuickConnect bind:open={showRdpConnect} />
 <SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={targetVaultId} {folders} onsave={handleEditorSave} />
-<SshConfigImport bind:open={showImport} onsave={handleEditorSave} />
+<SshConfigImport bind:open={showImport} vaultId={targetVaultId} onsave={handleEditorSave} />
+<RdpImport bind:open={showRdpImport} vaultId={targetVaultId} onsave={handleEditorSave} />
 <UntrustedRefsDialog
 	asked={askedRefs}
 	busy={approvingRefs}
@@ -2401,6 +2411,11 @@
 		color: var(--color-text-secondary);
 	}
 
+	.match-actions {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+	}
 	.match-select {
 		border: none;
 		background: none;
