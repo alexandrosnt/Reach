@@ -82,6 +82,7 @@ pub async fn db_save_connection(
     if let Some((r, session_id)) = ref_through_session(&conn).map(|(r, s)| (r.clone(), s.to_owned())) {
         let s = crate::ipc::session_commands::stored_session(&state, &session_id).await?;
         require_ssh_route(&s)?;
+        check_route_shown(&conn, &s)?;
         let vault = state.vault_manager.lock().await;
         let (key, who) = (vault.approval_key(), vault.get_user_uuid());
         if let (Some(k), Some(w)) = (key.as_deref(), who.as_deref()) {
@@ -156,6 +157,41 @@ pub(crate) fn check_route_approval(
         _ => false,
     };
     if ok { Ok(()) } else { Err(ROUTE_CHANGED.to_string()) }
+}
+
+/// The message Save, Test or Connect from the form is refused with when the
+/// route session is not, or no longer, what the form showed. The frontend
+/// recognises the code before the colon, shows its own translation and
+/// reads the route again.
+pub const ROUTE_UNCONFIRMED: &str = "DB_ROUTE_UNCONFIRMED: The session this connection goes through is not what the editor showed; check where it goes and try again.";
+
+/// The form showed the route session as it now is: the user saw where the
+/// password would go (host, jump hosts, proxy, ssh_config lines) before
+/// choosing it. Picking a session by its name is not enough, since another
+/// member of a shared vault can re-point it.
+pub(crate) fn check_route_shown(conn: &DbConnection, route_session: &crate::state::SessionConfig) -> Result<(), String> {
+    let now = crate::ipc::session_commands::approval_context(route_session);
+    if conn.route_context.as_deref() == Some(now.as_str()) { Ok(()) } else { Err(ROUTE_UNCONFIRMED.to_string()) }
+}
+
+/// Where a session a connection would go through really leads, for the
+/// editor to show; `context` goes back with Save, Test and Connect.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoutePreview {
+    pub route: crate::ipc::session_commands::ViaRoute,
+    pub context: String,
+}
+
+#[tauri::command]
+pub async fn db_route_preview(state: State<'_, AppState>, session_id: String) -> Result<RoutePreview, String> {
+    devops::require(Tool::Databases)?;
+    let s = crate::ipc::session_commands::stored_session(&state, &session_id).await?;
+    require_ssh_route(&s)?;
+    Ok(RoutePreview {
+        route: crate::ipc::session_commands::via_route(&s),
+        context: crate::ipc::session_commands::approval_context(&s),
+    })
 }
 
 /// Only an SSH session can carry a route: an RDP or VNC session's host and
@@ -380,6 +416,8 @@ async fn open_live(app: &tauri::AppHandle, state: &State<'_, AppState>, mut conn
             let vault = state.vault_manager.lock().await;
             let (key, who) = (vault.approval_key(), vault.get_user_uuid());
             check_route_approval(key.as_deref(), who.as_deref(), &conn, r, &s)?;
+        } else {
+            check_route_shown(&conn, &s)?;
         }
         pin = Some(crate::ipc::session_commands::approval_context(&s));
     }
@@ -445,10 +483,10 @@ async fn describe_live(live: &Live) -> Result<Connected, String> {
 }
 
 /// Try a connection from the form without saving it. Testing is the user's
-/// explicit act on the route they chose in the form, so a password manager
-/// entry may go through the route session as it now is without the
-/// signature saving makes (see `Origin`); the session's own entries are
-/// still checked.
+/// explicit act on the route the form showed them, so a password manager
+/// entry may go through the route session without the signature saving
+/// makes, as long as the session is still what was shown (see `Origin`);
+/// the session's own entries are still checked.
 #[tauri::command]
 pub async fn db_test_connection(
     app: tauri::AppHandle,
@@ -1359,7 +1397,7 @@ mod tests {
     fn conn(read_only: bool, production: bool) -> DbConnection {
         DbConnection {
             id: "c".into(), name: "c".into(), engine: Engine::Postgres, host: String::new(), port: 0,
-            username: String::new(), password: None, password_ref: None, route_approval: None, database: None, file_path: None, route: Route::Direct,
+            username: String::new(), password: None, password_ref: None, route_approval: None, route_context: None, database: None, file_path: None, route: Route::Direct,
             tls: TlsMode::Prefer, color: None, read_only, production, last_used_at: 0,
         }
     }
@@ -1411,6 +1449,29 @@ mod tests {
 
     fn check(c: &DbConnection, s: &crate::state::SessionConfig) -> Result<(), String> {
         check_route_approval(Some(&ALICE), Some("alice"), c, c.password_ref.as_ref().unwrap(), s)
+    }
+
+    #[test]
+    fn the_form_must_have_shown_the_route_session_as_it_is() {
+        let s = route_session("ssh");
+        let shown = |s: &crate::state::SessionConfig| DbConnection {
+            route_context: Some(crate::ipc::session_commands::approval_context(s)),
+            ..through_session()
+        };
+        assert_eq!(check_route_shown(&shown(&s), &s), Ok(()));
+        // Picked by name only: nothing was shown.
+        assert_eq!(check_route_shown(&through_session(), &s), Err(ROUTE_UNCONFIRMED.to_string()));
+        // Another member re-points the session after the editor showed it.
+        let shown_before = shown(&s);
+        let mut moved = s.clone();
+        moved.host = "mallory.example".into();
+        assert_eq!(check_route_shown(&shown_before, &moved), Err(ROUTE_UNCONFIRMED.to_string()));
+        let mut jumped = s.clone();
+        jumped.jump_chain = serde_json::from_value(serde_json::json!([{ "host": "j.mallory.example", "port": 22, "username": "m", "auth_method": { "type": "Agent" } }])).unwrap();
+        assert_eq!(check_route_shown(&shown_before, &jumped), Err(ROUTE_UNCONFIRMED.to_string()));
+        // What the form sends is never stored with the connection.
+        let stored = serde_json::to_value(shown(&s)).unwrap();
+        assert!(stored.get("routeContext").is_none());
     }
 
     #[test]

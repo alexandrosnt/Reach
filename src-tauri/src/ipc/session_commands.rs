@@ -411,6 +411,21 @@ fn route_of(s: &SessionConfig) -> (Vec<String>, Option<String>, Vec<String>) {
     (jumps, proxy, route_lines)
 }
 
+/// Where a session another one goes through really leads, as stored now.
+pub(crate) fn via_route(v: &SessionConfig) -> ViaRoute {
+    let (jumps, proxy, route_lines) = route_of(v);
+    ViaRoute {
+        session_id: v.id.clone(),
+        session_name: v.name.clone(),
+        host: v.host.clone(),
+        port: v.port,
+        username: v.username.clone(),
+        jumps,
+        proxy,
+        route_lines,
+    }
+}
+
 /// The references among `slots` the reading person has not approved;
 /// `Ok(None)` when there are none. `via` is the session's via session as
 /// read when the references were checked (see [`ref_context`]); when the
@@ -432,19 +447,7 @@ pub(crate) fn untrusted_refs(s: &SessionConfig, via: Option<&SessionConfig>, slo
         ));
     };
     let (jumps, proxy, route_lines) = route_of(s);
-    let via = via_id(s).and(via).map(|v| {
-        let (jumps, proxy, route_lines) = route_of(v);
-        ViaRoute {
-            session_id: v.id.clone(),
-            session_name: v.name.clone(),
-            host: v.host.clone(),
-            port: v.port,
-            username: v.username.clone(),
-            jumps,
-            proxy,
-            route_lines,
-        }
-    });
+    let via = via_id(s).and(via).map(via_route);
     Ok(Some(UntrustedRefs {
         session_id: s.id.clone(),
         session_name: s.name.clone(),

@@ -89,6 +89,12 @@ pub struct DbConnection {
     /// webview, never taken from it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub route_approval: Option<String>,
+    /// The route session as the form showed it to the user (its
+    /// `approval_context`, from `db_route_preview`), sent with Save, Test and
+    /// Connect: a password manager entry goes through the session only if it
+    /// still is that. Taken from the form, never stored.
+    #[serde(default, skip_serializing)]
+    pub route_context: Option<String>,
     /// The database to open first. Empty means the server's default.
     #[serde(default)]
     pub database: Option<String>,

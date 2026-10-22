@@ -1,7 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import type { SecretRef } from './pwmanager';
-import { explainUntrustedRefs } from './sessions';
+import { explainUntrustedRefs, type ViaRoute } from './sessions';
 import { t } from '$lib/state/i18n.svelte';
 
 export type Engine = 'postgres' | 'mysql' | 'mariadb' | 'sqlite' | 'mssql' | 'redis';
@@ -22,6 +22,8 @@ export interface DbConnection {
 	password?: string | null;
 	/** A password-manager entry for the password; wins over it. Not secret. */
 	passwordRef?: SecretRef | null;
+	/** The route session as this form showed it (`RoutePreview.context`); sent with Save, Test and Connect, never stored. */
+	routeContext?: string | null;
 	database?: string | null;
 	filePath?: string | null;
 	route: Route;
@@ -270,19 +272,33 @@ export type RedisOutcome = { status: 'confirm'; reason: string } | { status: 'do
 /** What the backend's refusal of a saved connection starts with when the session it goes through changed since it was saved (`db_commands::ROUTE_CHANGED`). */
 const ROUTE_CHANGED = 'DB_ROUTE_CHANGED:';
 
-/** That refusal, in the user's language; other errors pass through unchanged. */
+/** What it starts with when the route session is not what the editor showed (`db_commands::ROUTE_UNCONFIRMED`). */
+const ROUTE_UNCONFIRMED = 'DB_ROUTE_UNCONFIRMED:';
+
+/** Those refusals, in the user's language; other errors pass through unchanged. */
 function explainRouteChanged<T>(call: Promise<T>): Promise<T> {
 	return call.catch((err: unknown) => {
-		throw String(err).includes(ROUTE_CHANGED) ? t('db.route_changed') : err;
+		const text = String(err);
+		if (text.includes(ROUTE_CHANGED)) throw t('db.route_changed');
+		if (text.includes(ROUTE_UNCONFIRMED)) throw t('db.route_unconfirmed');
+		throw err;
 	});
 }
 
+/** Where a session a connection would go through really leads, as stored now; `context` goes back with Save, Test and Connect. */
+export interface RoutePreview {
+	route: ViaRoute;
+	context: string;
+}
+
+export const routePreview = (sessionId: string) => invoke<RoutePreview>('db_route_preview', { sessionId });
+
 export const listConnections = () => invoke<DbConnectionView[]>('db_list_connections');
 export const saveConnection = (connection: DbConnection, keepPassword: boolean) =>
-	invoke<DbConnectionView>('db_save_connection', { connection, keepPassword });
+	explainRouteChanged(invoke<DbConnectionView>('db_save_connection', { connection, keepPassword }));
 export const deleteConnection = (id: string) => invoke<void>('db_delete_connection', { id });
 export const testConnection = (connection: DbConnection, keepPassword: boolean) =>
-	explainUntrustedRefs(invoke<ServerInfo>('db_test_connection', { connection, keepPassword }));
+	explainRouteChanged(explainUntrustedRefs(invoke<ServerInfo>('db_test_connection', { connection, keepPassword })));
 export const connect = (id: string, connection?: DbConnection) =>
 	explainRouteChanged(explainUntrustedRefs(invoke<Connected>('db_connect', { id, connection: connection ?? null })));
 export const disconnect = (id: string) => invoke<void>('db_disconnect', { id });

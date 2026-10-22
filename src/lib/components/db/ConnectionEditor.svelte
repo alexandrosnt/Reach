@@ -12,8 +12,8 @@
 	import EngineBadge from './EngineBadge.svelte';
 	import SecretRefField from '$lib/components/pwmanager/SecretRefField.svelte';
 	import { ENGINES, engineInfo } from '$lib/db/engines';
-	import type { DbConnection, DbConnectionView, Engine, TlsMode } from '$lib/ipc/db';
-	import { testConnection } from '$lib/ipc/db';
+	import type { DbConnection, DbConnectionView, Engine, RoutePreview, TlsMode } from '$lib/ipc/db';
+	import { routePreview, testConnection } from '$lib/ipc/db';
 	import { sessionList, type SessionConfig } from '$lib/ipc/sessions';
 	import * as dbState from '$lib/state/db.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
@@ -41,6 +41,10 @@
 	let testing = $state(false);
 	let saving = $state(false);
 	let testResult = $state<{ ok: boolean; text: string } | null>(null);
+	/** Where the chosen session really goes, read from the vault now. */
+	let route = $state<RoutePreview | null>(null);
+	let routeError = $state<string | null>(null);
+	let routeRead = 0;
 
 	function blank(engine: Engine): DbConnection {
 		const info = engineInfo(engine);
@@ -94,6 +98,47 @@
 		if (e === 'sqlite') form.route = { kind: 'direct' };
 	}
 
+	/**
+	 * Read where the route session goes, as stored now, and show it: a
+	 * session in a shared vault can be re-pointed by another member, so its
+	 * name alone does not say where a password would go. Its context goes
+	 * back with Save, Test and Connect, which the backend refuses if the
+	 * session has changed since.
+	 */
+	async function readRoute(): Promise<void> {
+		const read = ++routeRead;
+		const id = form.route.kind === 'session' ? form.route.sessionId : null;
+		if (!id) {
+			route = null;
+			routeError = null;
+			form.routeContext = null;
+			return;
+		}
+		try {
+			const preview = await routePreview(id);
+			if (read !== routeRead) return;
+			route = preview;
+			routeError = null;
+			form.routeContext = preview.context;
+		} catch (e) {
+			if (read !== routeRead) return;
+			route = null;
+			routeError = String(e);
+			form.routeContext = null;
+		}
+	}
+
+	$effect(() => {
+		if (!open) return;
+		// Re-read whenever another session is chosen.
+		void (form.route.kind === 'session' ? form.route.sessionId : form.route.kind);
+		void readRoute();
+	});
+
+	function target(r: RoutePreview['route']): string {
+		return `${r.username}@${r.host}:${r.port}`;
+	}
+
 	let routeValue = $derived(form.route.kind === 'session' ? `s:${form.route.sessionId}` : form.route.kind === 'live' ? 'live' : 'direct');
 
 	function setRoute(v: string): void {
@@ -135,6 +180,8 @@
 			testResult = { ok: true, text: info.version };
 		} catch (e) {
 			testResult = { ok: false, text: String(e) };
+			// The session may have been re-pointed: show where it goes now.
+			void readRoute();
 		} finally {
 			testing = false;
 		}
@@ -149,6 +196,7 @@
 			onclose();
 		} catch (e) {
 			addToast(String(e), 'error', 6000);
+			void readRoute();
 		} finally {
 			saving = false;
 		}
@@ -211,6 +259,22 @@
 					</select>
 					{#if form.route.kind !== 'direct'}
 						<small>{t('db.route_hint')}</small>
+					{/if}
+					{#if route}
+						<span class="route-dest" role="note">
+							<span>{t('db.route_goes_to', { target: target(route.route) })}</span>
+							{#if route.route.jumps.length > 0 || route.route.proxy}
+								<span>{t('db.route_through', { route: route.route.jumps.length > 0 ? route.route.jumps.join(' → ') : (route.route.proxy ?? '') })}</span>
+							{/if}
+							{#if route.route.route_lines.length > 0}
+								<span>{t('db.route_lines')}</span>
+								{#each route.route.route_lines as line, i (i)}
+									<code>{line}</code>
+								{/each}
+							{/if}
+						</span>
+					{:else if routeError}
+						<small class="route-error">{routeError}</small>
 					{/if}
 				</label>
 
@@ -370,6 +434,32 @@
 	.field small {
 		color: var(--color-text-tertiary);
 		line-height: 1.4;
+	}
+
+	.route-dest {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		padding: 6px 9px;
+		border-radius: var(--radius-sm);
+		border: 1px solid var(--color-border);
+		font-size: var(--text-xs);
+		color: var(--color-text-primary);
+		min-width: 0;
+	}
+
+	.route-dest span,
+	.route-dest code {
+		overflow-wrap: anywhere;
+	}
+
+	.route-dest code {
+		font-family: var(--font-mono);
+		color: var(--color-text-secondary);
+	}
+
+	.field .route-error {
+		color: var(--color-danger);
 	}
 
 	.field input,
