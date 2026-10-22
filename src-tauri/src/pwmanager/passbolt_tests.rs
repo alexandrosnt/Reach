@@ -267,6 +267,11 @@ async fn the_child_really_gets_only_the_allowlisted_environment() {
     let names: Vec<&str> = stdout.lines().filter_map(|l| l.strip_prefix("ENV:")).collect();
     assert!(names.contains(&ENV_DUMP_MARKER), "the dump did not run: {stdout}");
     for name in names {
+        // macOS puts this one back in every process it starts (the user's
+        // text encoding, from CoreFoundation); it was not passed on.
+        if cfg!(target_os = "macos") && name == "__CF_USER_TEXT_ENCODING" {
+            continue;
+        }
         assert!(name == ENV_DUMP_MARKER || is_inherited_env(OsStr::new(name)), "{name} reached the child");
     }
 }
@@ -414,6 +419,17 @@ fn temp_dir() -> std::path::PathBuf {
     dir
 }
 
+/// A stand-in CLI that passes the owner check whatever the umask: the
+/// Android emulator's shell creates files group and world writable.
+fn write_cli(path: &Path, bytes: &[u8]) {
+    std::fs::write(path, bytes).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+}
+
 #[test]
 fn a_configured_cli_path_must_be_an_absolute_file() {
     assert!(resolve_binary(Some("passbolt")).is_err(), "relative");
@@ -431,7 +447,7 @@ fn the_cli_must_be_called_passbolt() {
     let dir = temp_dir();
     for name in ["passbolt", "passbolt.exe", "PassBolt.EXE"] {
         let path = dir.join(name);
-        std::fs::write(&path, b"binary").unwrap();
+        write_cli(&path, b"binary");
         let found = resolve_binary(Some(path.to_str().unwrap())).unwrap_or_else(|e| panic!("{name}: {e}"));
         assert!(found.file_name().unwrap().eq_ignore_ascii_case(name), "{found:?}");
         let _ = std::fs::remove_file(&path);
@@ -439,7 +455,7 @@ fn the_cli_must_be_called_passbolt() {
     // Scripts and other programs are refused even though the file exists.
     for name in ["passbolt.cmd", "passbolt.bat", "passbolt.ps1", "passbolt.vbs", "passbolt.js", "passbolt.sh", "cmd.exe", "passbolt.exe.bat"] {
         let path = dir.join(name);
-        std::fs::write(&path, b"@echo off").unwrap();
+        write_cli(&path, b"@echo off");
         let e = resolve_binary(Some(path.to_str().unwrap())).unwrap_err();
         assert!(e.contains("passbolt program"), "{name}: {e}");
     }
