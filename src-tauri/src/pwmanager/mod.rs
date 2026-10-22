@@ -32,6 +32,8 @@ pub mod passbolt;
 mod process;
 pub(crate) mod prompt;
 pub mod unlock;
+#[cfg(windows)]
+mod winacl;
 
 use std::future::Future;
 use std::sync::Arc;

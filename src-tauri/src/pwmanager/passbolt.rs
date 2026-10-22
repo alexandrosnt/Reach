@@ -69,7 +69,7 @@ use super::config::{CredentialsMode, MfaMode, PassboltConfig, PassboltSecrets};
 use super::unlock::Passphrase;
 use super::{sanitize_display, EntrySummary, Failure, PasswordManager, ProviderId, ProviderStatus};
 
-const NAME: &str = "Passbolt";
+pub(super) const NAME: &str = "Passbolt";
 
 /// Every key go-passbolt-cli reads through viper, as the environment
 /// variable viper's `AutomaticEnv` (no prefix) looks for: the key upper-cased.
@@ -227,10 +227,11 @@ pub fn check_cli_path_shape(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// The checks that look at the file: it exists and is a file, and on Unix
-/// neither it nor its folder can be changed by anyone but the user or root.
-/// Returns the path to run: on Unix the real file behind any symlink, so
-/// what runs is what was checked.
+/// The checks that look at the file: it exists and is a file, and neither
+/// it nor its folder can be changed by anyone but the user or the system
+/// (root on Unix; LocalSystem, Administrators or TrustedInstaller on
+/// Windows). Returns the path to run: on Unix the real file behind any
+/// symlink, so what runs is what was checked.
 pub fn check_cli_file(path: &Path) -> Result<PathBuf, String> {
     check_cli_path_shape(path)?;
     if !path.is_file() {
@@ -246,7 +247,19 @@ pub fn check_cli_file(path: &Path) -> Result<PathBuf, String> {
         }
         Ok(real)
     }
-    #[cfg(not(unix))]
+    #[cfg(windows)]
+    {
+        // A link (winget's Links folder) is checked with the file it leads
+        // to; the link itself is what runs, and its folder is checked too.
+        let real = std::fs::canonicalize(path)
+            .map_err(|e| format!("{NAME}: the CLI at {} cannot be read: {}", path.display(), e.kind()))?;
+        super::winacl::check_not_replaceable(&real, "the CLI")?;
+        for dir in [real.parent(), path.parent()].into_iter().flatten() {
+            super::winacl::check_not_replaceable(dir, "the CLI's folder")?;
+        }
+        Ok(path.to_path_buf())
+    }
+    #[cfg(not(any(unix, windows)))]
     Ok(path.to_path_buf())
 }
 

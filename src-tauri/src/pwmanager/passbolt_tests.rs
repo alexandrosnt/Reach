@@ -482,6 +482,36 @@ fn a_cli_on_a_network_share_is_refused_unopened() {
     assert!(!is_network_path("/usr/bin/passbolt"));
 }
 
+#[cfg(windows)]
+#[test]
+fn a_cli_others_can_change_is_refused() {
+    let icacls = |path: &Path, args: &[&str]| {
+        let ok = std::process::Command::new("icacls").arg(path).args(args).output().unwrap().status.success();
+        assert!(ok, "icacls {} {args:?}", path.display());
+    };
+    let dir = temp_dir();
+    let bin = dir.join("passbolt.exe");
+    write_cli(&bin, b"binary");
+    assert!(resolve_binary(Some(bin.to_str().unwrap())).is_ok(), "in the user's own temp folder");
+
+    // Everyone (S-1-1-0), then Authenticated Users (S-1-5-11), may write.
+    for who in ["*S-1-1-0:(W)", "*S-1-5-11:(M)"] {
+        icacls(&bin, &["/grant", who]);
+        assert!(resolve_binary(Some(bin.to_str().unwrap())).unwrap_err().contains("other users"), "{who}");
+        icacls(&bin, &["/remove:g", &who[..who.find(':').unwrap()]]);
+    }
+    assert!(resolve_binary(Some(bin.to_str().unwrap())).is_ok());
+
+    // Its folder: anyone who may add or delete files there may swap it.
+    icacls(&dir, &["/grant", "*S-1-5-32-545:(M)"]);
+    assert!(resolve_binary(Some(bin.to_str().unwrap())).unwrap_err().contains("folder"), "Users may change its folder");
+    icacls(&dir, &["/remove:g", "*S-1-5-32-545"]);
+    // Read and run for everyone is fine, as in Program Files.
+    icacls(&dir, &["/grant", "*S-1-5-32-545:(OI)(CI)(RX)"]);
+    assert!(resolve_binary(Some(bin.to_str().unwrap())).is_ok());
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 #[cfg(unix)]
 #[test]
 fn a_cli_others_can_change_is_refused() {
