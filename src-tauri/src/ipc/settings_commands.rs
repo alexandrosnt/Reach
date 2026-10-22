@@ -194,13 +194,15 @@ pub(crate) async fn write_setting_by_key(
     save_setting(manager, &vault_id, key, value).await
 }
 
-/// Delete a setting by key if the settings vault exists. No-op otherwise.
+/// Delete a setting by key if the settings vault exists. No-op otherwise. A
+/// delete that fails is an error: a stored passphrase the user removed must
+/// not stay behind, synced, while Reach says it is gone.
 pub(crate) async fn delete_setting_by_key(
     manager: &mut crate::vault::VaultManager,
     key: &str,
 ) -> Result<(), String> {
     if let Some(vault_id) = get_settings_vault_id_if_exists(manager) {
-        let _ = manager.delete_secret(&vault_id, key).await;
+        manager.delete_secret(&vault_id, key).await.map_err(|e| e.to_string())?;
     }
     Ok(())
 }

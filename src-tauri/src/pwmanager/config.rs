@@ -709,10 +709,13 @@ pub async fn save(state: &AppState, save: &ValidatedSave) -> Result<(), String> 
     }
     // Before the new configuration replaces it.
     let stored_mode = stored_passphrase_mode(&manager).await;
-    write_setting_by_key(&mut manager, CONFIG_KEY, &json).await?;
+    // The secrets first: if removing one fails, the configuration that says
+    // it is gone ("Ask when needed") is not written, so what Settings shows
+    // is never less than what is stored.
     apply_secret(&mut manager, PASSBOLT_PRIVATE_KEY, &save.private_key).await?;
     apply_secret(&mut manager, PASSBOLT_PASSPHRASE, passphrase_effect(&save.passphrase, stored_mode)).await?;
     apply_secret(&mut manager, PASSBOLT_TOTP_SECRET, &save.totp_secret).await?;
+    write_setting_by_key(&mut manager, CONFIG_KEY, &json).await?;
     drop(manager);
     let path = device_settings_path();
     let mut device = read_device_settings(&path);
