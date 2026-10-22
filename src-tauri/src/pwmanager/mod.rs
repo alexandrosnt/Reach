@@ -277,8 +277,12 @@ pub use unlock::Reason;
 /// Run `fut` as one operation that may ask the user for a manager's
 /// passphrase in `app`'s window, saying it is for `reason`. Whatever `fut`
 /// resolves, the passphrase is asked for at most once (see [`unlock`]).
+///
+/// `fut` is boxed: it is often a whole SSH login, and inline it is part of
+/// every future around it. A database connect through a session nests two
+/// of them, which overflowed a worker thread's stack in a debug build.
 pub async fn with_prompt<F: Future>(app: &tauri::AppHandle, reason: Reason, fut: F) -> F::Output {
-    unlock::operation(Some(Arc::new(app.clone())), reason, fut).await
+    unlock::operation(Some(Arc::new(app.clone())), reason, Box::pin(fut)).await
 }
 
 /// Name what the current operation connects to, once known.
