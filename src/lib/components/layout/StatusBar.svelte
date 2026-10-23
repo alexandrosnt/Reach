@@ -28,8 +28,14 @@
 		};
 	});
 
+	// The tab's own link state, as its mark in the tab bar shows it: an SSH
+	// tab whose connection dropped is not "Connected to" anything.
+	let link = $derived(activeTab?.type === 'ssh' ? activeTab.link : undefined);
+
 	let connectionStatus = $derived.by(() => {
 		if (!activeTab) return t('statusbar.no_session');
+		if (link === 'down') return t('tabs.disconnected');
+		if (link === 'reconnecting') return t('terminal.reconnecting');
 		if (activeTab.type === 'ssh' && activeTab.connectionId) {
 			return t('statusbar.connected_to', { title: activeTab.title });
 		}
@@ -39,7 +45,12 @@
 
 <footer class="statusbar">
 	<div class="statusbar-left">
-		<div class="status-indicator" class:connected={activeTab?.type === 'ssh'}></div>
+		<div
+			class="status-indicator"
+			class:connected={activeTab?.type === 'ssh' && !link}
+			class:down={link === 'down'}
+			class:reconnecting={link === 'reconnecting'}
+		></div>
 		<span class="status-text">{connectionStatus}</span>
 	</div>
 
@@ -105,5 +116,13 @@
 
 	.status-indicator.connected {
 		background-color: var(--color-success);
+	}
+
+	.status-indicator.down {
+		background-color: var(--color-danger);
+	}
+
+	.status-indicator.reconnecting {
+		background-color: var(--color-warning);
 	}
 </style>
