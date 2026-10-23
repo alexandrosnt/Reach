@@ -66,6 +66,10 @@
 	let showTooltip = $state(false);
 </script>
 
+<!-- Sized by its own width, not the window's: beside an open sidebar, at a
+     larger interface size, or in a split, the pane is narrower than the
+     window says. -->
+<div class="monitoring-wrap">
 {#if stats}
 	<div class="monitoring-bar">
 		<div class="gauge">
@@ -152,8 +156,13 @@
 		<ShareBar />
 	</div>
 {/if}
+</div>
 
 <style>
+	.monitoring-wrap {
+		container-type: inline-size;
+	}
+
 	.monitoring-bar {
 		display: flex;
 		flex-direction: row;
@@ -303,11 +312,18 @@
 		color: var(--color-text-secondary);
 	}
 
-	/* A phone's width cannot hold the gauges: they shrank into one another
+	/* A short screen (a phone on its side) gets the shorter bar. */
+	@media (max-height: 480px) {
+		.monitoring-bar {
+			height: 26px;
+		}
+	}
+
+	/* A narrow pane cannot hold the gauges: they shrank into one another
 	   and the figures were drawn over each other (#127). Figures only, then,
 	   at their own width, and the bar scrolls sideways if they still do not
-	   fit. */
-	@media (max-width: 640px), (max-height: 480px) {
+	   fit. The full row needs about 640px. */
+	@container (max-width: 640px) {
 		.monitoring-bar {
 			height: 26px;
 			gap: 12px;
