@@ -444,8 +444,14 @@ select:not([multiple]):disabled {
 .settings-content .setting-control > .dropdown,
 .settings-content .setting-control > .select,
 .settings-content .setting-control > select,
-.settings-content .setting-control > input {
+.settings-content .setting-control > input:not([type="number"]) {
   width: 100%;
+}
+
+/* A number is a few digits: a field the width of the dropdowns above it read
+   as a text box. */
+.settings-content .setting-control > input[type="number"] {
+  width: 96px;
 }
 
 .settings-content .section {

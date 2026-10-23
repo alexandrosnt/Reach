@@ -272,7 +272,6 @@
 
 <style>
 	.threshold-input {
-		width: 100%;
 		padding: 7px 10px;
 		border-radius: var(--radius-btn);
 		border: 1px solid var(--color-border);
