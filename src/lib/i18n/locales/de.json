@@ -1,4 +1,6 @@
 {
+  "recipes.empty_title": "Noch keine Rezepte",
+  "recipes.empty_hint": "Mit + eines erstellen oder unter Durchsuchen finden.",
   "tabs.disconnected": "Getrennt",
   "settings.ui_zoom": "Größe der Oberfläche",
   "settings.ui_zoom_hint": "Alles im Fenster, nicht nur das Terminal. {{in}} und {{out}} ändern sie ebenfalls; {{reset}} setzt auf 100 % zurück.",

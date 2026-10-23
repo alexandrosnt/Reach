@@ -1,4 +1,6 @@
 {
+  "recipes.empty_title": "还没有配方",
+  "recipes.empty_hint": "用 + 创建一个，或在“浏览”中查找。",
   "tabs.disconnected": "已断开连接",
   "settings.ui_zoom": "界面大小",
   "settings.ui_zoom_hint": "整个窗口，而不仅是终端。{{in}} 和 {{out}} 也可调整；{{reset}} 恢复到 100%。",

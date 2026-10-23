@@ -1,4 +1,6 @@
 {
+  "recipes.empty_title": "Ancora nessuna ricetta",
+  "recipes.empty_hint": "Creane una con +, o trovane una in Sfoglia.",
   "tabs.disconnected": "Disconnesso",
   "settings.ui_zoom": "Dimensione dell’interfaccia",
   "settings.ui_zoom_hint": "Tutto ciò che è nella finestra, non solo il terminale. Anche {{in}} e {{out}} la cambiano; {{reset}} torna al 100%.",

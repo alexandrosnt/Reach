@@ -156,7 +156,15 @@
 
 	{#if view === 'installed'}
 		{#if filteredRecipes.length === 0}
-			<p class="empty">{search ? t('recipes.no_matches') : t('recipes.none_yet')}</p>
+			{#if search}
+				<p class="empty">{t('recipes.no_matches')}</p>
+			{:else}
+				<!-- As the other panels' empty states: what is missing, then how to add it. -->
+				<div class="empty-state">
+					<p class="empty-text">{t('recipes.empty_title')}</p>
+					<p class="empty-hint">{t('recipes.empty_hint')}</p>
+				</div>
+			{/if}
 		{:else}
 			<ul class="list">
 				{#each filteredRecipes as r (r.id)}
@@ -375,6 +383,25 @@
 
 	.error {
 		color: var(--color-danger);
+	}
+
+	.empty-state {
+		padding: 32px 16px;
+		text-align: center;
+	}
+
+	.empty-text {
+		margin: 0 0 4px;
+		font-size: 0.8125rem;
+		color: var(--color-text-secondary);
+	}
+
+	.empty-hint {
+		margin: 0;
+		font-size: 0.6875rem;
+		color: var(--color-text-secondary);
+		opacity: 0.7;
+		line-height: 1.5;
 	}
 
 	.list {

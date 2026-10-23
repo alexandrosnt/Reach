@@ -1,4 +1,6 @@
 {
+  "recipes.empty_title": "Aún no hay recetas",
+  "recipes.empty_hint": "Crea una con +, o busca una en Explorar.",
   "tabs.disconnected": "Desconectado",
   "settings.ui_zoom": "Tamaño de la interfaz",
   "settings.ui_zoom_hint": "Todo lo que hay en la ventana, no solo el terminal. {{in}} y {{out}} también lo cambian; {{reset}} vuelve al 100 %.",
