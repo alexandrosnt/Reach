@@ -1,4 +1,12 @@
 {
+  "common.drag_to_reorder": "Zum Umsortieren ziehen",
+  "common.clear_search": "Suche löschen",
+  "explorer.close_preview": "Vorschau schließen",
+  "vault.pubkey_placeholder": "Base64-codierter Public Key",
+  "vault.secret_example": "Mein Geheimnis",
+  "vault.api_key_example": "Mein API-Schlüssel",
+  "vault.name_example": "Meine Geheimnisse",
+  "vault.team_example": "DevOps-Team",
   "start.actions": "Starten",
   "palette.group_snippets": "Snippets",
   "common.reenter_password": "Passwort erneut eingeben",

@@ -976,7 +976,7 @@
 					bind:value={fileSearch}
 				/>
 				{#if fileSearch}
-					<button class="explorer-search-clear" onclick={() => (fileSearch = '')} type="button" aria-label="Clear search">
+					<button class="explorer-search-clear" onclick={() => (fileSearch = '')} type="button" aria-label={t('common.clear_search')}>
 						<svg width="8" height="8" viewBox="0 0 10 10" fill="none">
 							<path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
 						</svg>
@@ -1194,7 +1194,7 @@
 			<div class="preview-header">
 				<span class="preview-filename">{previewFile.name}</span>
 				<span class="preview-path">{previewFile.path}</span>
-				<button class="preview-close" onclick={() => (previewFile = undefined)} type="button" aria-label="Close preview">
+				<button class="preview-close" onclick={() => (previewFile = undefined)} type="button" aria-label={t('explorer.close_preview')}>
 					<svg width="12" height="12" viewBox="0 0 10 10" fill="none">
 						<path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
 					</svg>

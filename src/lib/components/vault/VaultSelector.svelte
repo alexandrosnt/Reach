@@ -440,7 +440,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 					id="vault-name"
 					type="text"
 					bind:value={newVaultName}
-					placeholder="DevOps Team"
+					placeholder={t('vault.team_example')}
 					disabled={creating}
 				/>
 			</div>

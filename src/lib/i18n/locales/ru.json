@@ -1,4 +1,12 @@
 {
+  "common.drag_to_reorder": "Перетащите, чтобы изменить порядок",
+  "common.clear_search": "Очистить поиск",
+  "explorer.close_preview": "Закрыть предпросмотр",
+  "vault.pubkey_placeholder": "Открытый ключ в base64",
+  "vault.secret_example": "Мой секрет",
+  "vault.api_key_example": "Мой API-ключ",
+  "vault.name_example": "Мои секреты",
+  "vault.team_example": "Команда DevOps",
   "start.actions": "Начать",
   "palette.group_snippets": "Сниппеты",
   "common.reenter_password": "Введите пароль ещё раз",

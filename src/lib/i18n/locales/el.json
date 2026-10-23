@@ -1,4 +1,12 @@
 {
+  "common.drag_to_reorder": "Σύρετε για αναδιάταξη",
+  "common.clear_search": "Καθαρισμός αναζήτησης",
+  "explorer.close_preview": "Κλείσιμο προεπισκόπησης",
+  "vault.pubkey_placeholder": "Δημόσιο κλειδί σε base64",
+  "vault.secret_example": "Το μυστικό μου",
+  "vault.api_key_example": "Το κλειδί API μου",
+  "vault.name_example": "Τα μυστικά μου",
+  "vault.team_example": "Ομάδα DevOps",
   "start.actions": "Έναρξη",
   "palette.group_snippets": "Αποσπάσματα",
   "common.reenter_password": "Εισαγάγετε ξανά τον κωδικό",

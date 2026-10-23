@@ -151,7 +151,7 @@
 	<form class="form" onsubmit={(e) => { e.preventDefault(); handleSave(); }}>
 		<Input
 			label={t('vault.secret_name')}
-			placeholder="My Secret"
+			placeholder={t('vault.secret_example')}
 			bind:value={name}
 			disabled={isEditMode || saving}
 		/>

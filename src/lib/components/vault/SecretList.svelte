@@ -295,7 +295,7 @@
 	<div class="form">
 		<Input
 			label={t('vault.secret_name')}
-			placeholder="My API Key"
+			placeholder={t('vault.api_key_example')}
 			bind:value={newName}
 			disabled={creating}
 		/>

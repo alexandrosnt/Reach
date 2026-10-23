@@ -68,7 +68,7 @@
 	<span
 		class="drag-handle"
 		role="img"
-		aria-label="Drag to reorder"
+		aria-label={t('common.drag_to_reorder')}
 		onpointerdown={(e) => { if (ondragstart) { e.stopPropagation(); ondragstart(e); } }}
 	>
 		<svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor">

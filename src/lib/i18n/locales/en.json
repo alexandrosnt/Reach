@@ -1,4 +1,12 @@
 {
+  "common.drag_to_reorder": "Drag to reorder",
+  "common.clear_search": "Clear search",
+  "explorer.close_preview": "Close preview",
+  "vault.pubkey_placeholder": "Base64-encoded public key",
+  "vault.secret_example": "My Secret",
+  "vault.api_key_example": "My API Key",
+  "vault.name_example": "My Secrets",
+  "vault.team_example": "DevOps Team",
   "start.actions": "Start",
   "palette.group_snippets": "Snippets",
   "common.reenter_password": "Re-enter password",

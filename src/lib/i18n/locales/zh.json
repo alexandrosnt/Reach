@@ -1,4 +1,12 @@
 {
+  "common.drag_to_reorder": "拖动以重新排序",
+  "common.clear_search": "清除搜索",
+  "explorer.close_preview": "关闭预览",
+  "vault.pubkey_placeholder": "base64 编码的公钥",
+  "vault.secret_example": "我的密钥",
+  "vault.api_key_example": "我的 API 密钥",
+  "vault.name_example": "我的密钥库",
+  "vault.team_example": "DevOps 团队",
   "start.actions": "开始",
   "palette.group_snippets": "代码片段",
   "common.reenter_password": "再次输入密码",

@@ -1,4 +1,12 @@
 {
+  "common.drag_to_reorder": "Плъзнете за пренареждане",
+  "common.clear_search": "Изчистване на търсенето",
+  "explorer.close_preview": "Затваряне на прегледа",
+  "vault.pubkey_placeholder": "Публичен ключ в base64",
+  "vault.secret_example": "Моята тайна",
+  "vault.api_key_example": "Моят API ключ",
+  "vault.name_example": "Моите тайни",
+  "vault.team_example": "Екип DevOps",
   "start.actions": "Начало",
   "palette.group_snippets": "Фрагменти",
   "common.reenter_password": "Въведете паролата отново",

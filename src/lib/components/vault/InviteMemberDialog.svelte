@@ -236,7 +236,7 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 						<div class="form-field">
 							<Input
 								label={t('vault.invitee_public_key')}
-								placeholder="Base64 encoded public key"
+								placeholder={t('vault.pubkey_placeholder')}
 								bind:value={inviteePublicKey}
 								disabled={inviting}
 							/>

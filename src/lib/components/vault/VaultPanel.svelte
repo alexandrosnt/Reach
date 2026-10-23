@@ -461,7 +461,7 @@
 	<div class="create-vault-form">
 		<Input
 			label={t('vault.vault_name')}
-			placeholder="My Secrets"
+			placeholder={t('vault.name_example')}
 			bind:value={newVaultName}
 			disabled={creatingVault}
 		/>

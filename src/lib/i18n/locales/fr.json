@@ -1,4 +1,12 @@
 {
+  "common.drag_to_reorder": "Glisser pour réorganiser",
+  "common.clear_search": "Effacer la recherche",
+  "explorer.close_preview": "Fermer l’aperçu",
+  "vault.pubkey_placeholder": "Clé publique encodée en base64",
+  "vault.secret_example": "Mon secret",
+  "vault.api_key_example": "Ma clé d’API",
+  "vault.name_example": "Mes secrets",
+  "vault.team_example": "Équipe DevOps",
   "start.actions": "Démarrer",
   "palette.group_snippets": "Extraits",
   "common.reenter_password": "Saisissez à nouveau le mot de passe",

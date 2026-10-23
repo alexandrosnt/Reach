@@ -805,7 +805,7 @@
 		width="1024"
 		height="768"
 		tabindex="0"
-		aria-label="Remote desktop"
+		aria-label={t('settings.rdp_section')}
 		onmousemove={onMove}
 		onmousedown={(e) => onButton(e, 'down')}
 		onmouseup={(e) => onButton(e, 'up')}
