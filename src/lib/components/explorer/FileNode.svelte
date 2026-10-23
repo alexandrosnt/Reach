@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { FileEntry } from '$lib/state/explorer.svelte';
+	import { t } from '$lib/state/i18n.svelte';
 
 	interface Props {
 		entry: FileEntry;
@@ -94,7 +95,7 @@
 	{/if}
 
 	{#if !entry.isDirectory && ondownload}
-		<button class="download-btn" onclick={(e) => { e.stopPropagation(); ondownload?.(); }} type="button" title="Download">
+		<button class="download-btn" onclick={(e) => { e.stopPropagation(); ondownload?.(); }} type="button" title={t('explorer.download')} aria-label={t('explorer.download')}>
 			<svg width="12" height="12" viewBox="0 0 24 24" fill="none">
 				<path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
 				<polyline points="7 10 12 15 17 10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

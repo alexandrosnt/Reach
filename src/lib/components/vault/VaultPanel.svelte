@@ -547,7 +547,7 @@
 				<Input
 					type="password"
 					label={t('vault.export_password')}
-					placeholder="Password used during export"
+					placeholder={t('common.export_password_hint')}
 					bind:value={importExportPassword}
 					disabled={importVerifying || importLoading}
 				/>
@@ -587,7 +587,7 @@
 				<Input
 					type="password"
 					label={t('vault.master_password_optional')}
-					placeholder="Leave blank if you used TLS-style init"
+					placeholder={t('common.tls_init_hint')}
 					bind:value={importMasterPassword}
 					disabled={importLoading}
 				/>

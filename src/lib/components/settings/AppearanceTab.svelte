@@ -335,7 +335,7 @@
 						<input
 							class="font-search"
 							type="text"
-							placeholder="Search fonts..."
+							placeholder={t('settings.search_fonts')}
 							bind:value={fontSearch}
 						/>
 						<div class="font-list">

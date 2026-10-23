@@ -134,7 +134,7 @@
 						id="recipient-key"
 						type="text"
 						bind:value={recipientPublicKey}
-						placeholder="X25519 public key in base64"
+						placeholder={t('share.pubkey_placeholder')}
 						disabled={sharing}
 					/>
 				</div>
@@ -145,7 +145,7 @@
 						id="expires"
 						type="number"
 						bind:value={expiresInHours}
-						placeholder="Never expires"
+						placeholder={t('share.never_expires')}
 						min="1"
 						disabled={sharing}
 					/>
