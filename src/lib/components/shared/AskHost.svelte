@@ -3,8 +3,18 @@
 	import Button from '$lib/components/shared/Button.svelte';
 	import { currentQuestion, answer } from '$lib/state/ask.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import { tick } from 'svelte';
 
 	let question = $derived(currentQuestion());
+	let buttons = $state<HTMLElement>();
+
+	// Focus goes to Cancel, as it went into the browser's own box: Enter and
+	// Escape then answer this question, not whatever was focused behind it,
+	// and a stray Enter cancels rather than deletes.
+	$effect(() => {
+		if (!question) return;
+		void tick().then(() => buttons?.querySelector('button')?.focus());
+	});
 </script>
 
 <!-- Above any dialog the question comes from. Every caller asks before
@@ -12,12 +22,19 @@
 <Modal open={question !== null} onclose={() => answer(false)} title={t('common.confirm')} maxWidth="420px" zIndex={1100}>
 	<p class="message">{question?.message}</p>
 	{#snippet actions()}
-		<Button variant="secondary" size="sm" onclick={() => answer(false)}>{t('common.cancel')}</Button>
-		<Button variant="danger" size="sm" onclick={() => answer(true)}>{question?.options.confirmLabel ?? t('common.confirm')}</Button>
+		<span class="buttons" bind:this={buttons}>
+			<Button variant="secondary" size="sm" onclick={() => answer(false)}>{t('common.cancel')}</Button>
+			<Button variant="danger" size="sm" onclick={() => answer(true)}>{question?.options.confirmLabel ?? t('common.confirm')}</Button>
+		</span>
 	{/snippet}
 </Modal>
 
 <style>
+	/* A handle for focus only: the buttons lay out as the dialog's own. */
+	.buttons {
+		display: contents;
+	}
+
 	.message {
 		margin: 0;
 		font-size: var(--text-sm);
