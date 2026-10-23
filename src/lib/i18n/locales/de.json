@@ -1771,6 +1771,8 @@
   "keys.up": "Hoch",
   "keys.down": "Runter",
   "keys.right": "Rechts",
+  "keys.smaller": "Kleinere Schrift",
+  "keys.larger": "Größere Schrift",
   "settings.login_message": "Anmeldenachricht anzeigen",
   "settings.login_message_desc": "Die Begrüßungsnachricht des Servers (MOTD, letzte Anmeldung, Systemstatus) nach dem Verbinden anzeigen, wie andere SSH-Clients.",
   "ssh.key_refused_agent": "Bei {{host}} mit einem Schlüssel aus Ihrem SSH-Agent angemeldet: Der Server hat den Schlüssel dieser Sitzung abgelehnt ({{fingerprint}}). Auf Geräten ohne diesen Agent, etwa einem Telefon, schlägt die Sitzung fehl. Tragen Sie den öffentlichen Schlüssel der Sitzung in authorized_keys auf dem Server ein oder importieren Sie den Schlüssel, dem der Server vertraut.",

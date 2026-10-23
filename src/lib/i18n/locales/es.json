@@ -1771,6 +1771,8 @@
   "keys.up": "Arriba",
   "keys.down": "Abajo",
   "keys.right": "Derecha",
+  "keys.smaller": "Texto más pequeño",
+  "keys.larger": "Texto más grande",
   "settings.login_message": "Mostrar el mensaje de inicio de sesión",
   "settings.login_message_desc": "Mantener en pantalla el mensaje de bienvenida del servidor (MOTD, último inicio de sesión, estado del sistema) tras conectar, como otros clientes SSH.",
   "ssh.key_refused_agent": "Sesión iniciada en {{host}} con una clave de tu agente SSH: el servidor rechazó la clave de esta sesión ({{fingerprint}}). La sesión fallará en dispositivos sin ese agente, como un teléfono. Añade la clave pública de la sesión al authorized_keys del servidor o importa la clave en la que confía el servidor.",

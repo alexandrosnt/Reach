@@ -528,6 +528,8 @@
 			void withModifiers(async () => tapKey('MetaLeft'));
 			return;
 		}
+		// Text size is the terminal's; this bar does not offer it.
+		if (key === 'smaller' || key === 'larger') return;
 		const code = {
 			esc: 'Escape', tab: 'Tab', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight',
 			home: 'Home', end: 'End', pgup: 'PageUp', pgdn: 'PageDown', del: 'Delete'

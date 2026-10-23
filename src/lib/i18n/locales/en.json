@@ -1771,6 +1771,8 @@
   "keys.up": "Up",
   "keys.down": "Down",
   "keys.right": "Right",
+  "keys.smaller": "Smaller text",
+  "keys.larger": "Larger text",
   "settings.login_message": "Show the login message",
   "settings.login_message_desc": "Keep the server's welcome message (MOTD, last login, system status) on screen after connecting, as other SSH clients do.",
   "ssh.key_refused_agent": "Logged in to {{host}} with a key from your SSH agent: the server refused this session's own key ({{fingerprint}}). The session will fail on devices without that agent, such as a phone. Put the session's public key in the server's authorized_keys, or import the key the server trusts.",

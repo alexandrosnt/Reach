@@ -14,6 +14,8 @@
 		| 'del'
 		| 'win'
 		| 'ctrl-alt-del'
+		| 'smaller'
+		| 'larger'
 		| { char: string };
 </script>
 
@@ -38,12 +40,14 @@
 		alt?: boolean;
 		/** Remote desktop adds Win, Del and Ctrl+Alt+Del. */
 		desktop?: boolean;
+		/** A terminal adds smaller and larger text, as a phone has no wheel. */
+		zoom?: boolean;
 		onkey: (key: BarKey) => void;
 		/** Buttons of the owner's own, before the keys (keyboard, full screen). */
 		leading?: Snippet;
 	}
 
-	let { ctrl = $bindable(false), alt = $bindable(false), desktop = false, onkey, leading }: Props = $props();
+	let { ctrl = $bindable(false), alt = $bindable(false), desktop = false, zoom = false, onkey, leading }: Props = $props();
 
 	const SYMBOLS = ['|', '~', '/', '-', ':', '_'];
 
@@ -94,6 +98,15 @@
 			>{char}</button
 		>
 	{/each}
+	{#if zoom}
+		<span class="divider" aria-hidden="true"></span>
+		<button type="button" tabindex="-1" aria-label={t('keys.smaller')} onpointerdown={(e) => press(e, () => onkey('smaller'))}
+			>A−</button
+		>
+		<button type="button" tabindex="-1" aria-label={t('keys.larger')} onpointerdown={(e) => press(e, () => onkey('larger'))}
+			>A+</button
+		>
+	{/if}
 </div>
 
 <style>

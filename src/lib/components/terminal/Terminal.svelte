@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	import { Terminal } from '@xterm/xterm';
 	import { FitAddon } from '@xterm/addon-fit';
 	import { WebglAddon } from '@xterm/addon-webgl';
@@ -64,6 +65,41 @@
 	let barCtrl = $state(false);
 	let barAlt = $state(false);
 
+	/** The font family the terminal draws with, for the one in settings.
+	 *  On a phone, the default `monospace` becomes the JetBrains Mono Reach
+	 *  ships: phones that let the user change the system font (ColorOS, MIUI,
+	 *  One UI) can hand `monospace` a proportional font, whose narrow letters
+	 *  then sit spread out in cells sized for its widest one (#127). */
+	function terminalFont(family: string | undefined): string {
+		const f = family || 'monospace';
+		return onPhone && f === 'monospace' ? '"JetBrains Mono", monospace' : f;
+	}
+
+	/** Make the terminal's text a size larger or smaller, from 8 to 32 px,
+	 *  and keep it for every terminal. */
+	function zoomBy(step: 1 | -1): void {
+		const term = terminal;
+		if (!term || !fitAddon || !containerEl) return;
+		const current = term.options.fontSize ?? 14;
+		const next = Math.min(Math.max(current + step, 8), 32);
+		if (next === current) return;
+		term.options.fontSize = next;
+		term.clearTextureAtlas();
+		safeFitAndResize(term, fitAddon, containerEl);
+		updateSetting('fontSize', next);
+	}
+
+	/** Load a terminal font before xterm measures it. A single name is
+	 *  quoted, as a family may have spaces; a list already is, and quoting
+	 *  the generic `monospace` would name a font called "monospace". */
+	function loadFont(family: string, size: number): Promise<unknown> {
+		const name = family === 'monospace' || family.includes(',') ? family : `"${family}"`;
+		return Promise.all([
+			document.fonts.load(`${size}px ${name}`),
+			document.fonts.load(`bold ${size}px ${name}`)
+		]);
+	}
+
 	/** Apply a sticky Ctrl or Alt from the key bar to text the phone keyboard
 	 *  typed, then let go of them: they apply to one key, as on Termux. */
 	function applyBarModifiers(data: string): string {
@@ -84,6 +120,10 @@
 
 	/** A key from the bar, as the bytes a real keyboard's key would send. */
 	function onBarKey(key: BarKey): void {
+		if (key === 'smaller' || key === 'larger') {
+			zoomBy(key === 'larger' ? 1 : -1);
+			return;
+		}
 		const appCursor = terminal?.modes.applicationCursorKeysMode ?? false;
 		// xterm's modifier parameter: 3 is Alt, 5 is Ctrl, 7 is both.
 		const mod = (barAlt ? 2 : 0) + (barCtrl ? 4 : 0);
@@ -293,7 +333,7 @@
 	function createTerminal(): Terminal {
 		const appSettings = getSettings();
 		return new Terminal({
-			fontFamily: appSettings.fontFamily || 'monospace',
+			fontFamily: terminalFont(appSettings.fontFamily),
 			fontSize: appSettings.fontSize ?? 14,
 			cursorBlink: true,
 			cursorStyle: 'bar',
@@ -652,18 +692,16 @@
 	$effect(() => {
 		if (!containerEl) return;
 
-		const term = createTerminal();
+		// The settings are read untracked: as a dependency of this effect, a
+		// new font size (Ctrl+wheel, a pinch, A−/A+) threw the terminal away
+		// and opened an empty one in its place. Size, font and theme changes
+		// reach the open terminal through their own paths instead.
+		const term = untrack(createTerminal);
 		const fit = new FitAddon();
-		const font = getSettings().fontFamily || 'monospace';
-
 		loadAddons(term, fit, containerEl);
 
 		// Wait for font to load before opening (canvas needs the font ready)
-		const fontSize = getSettings().fontSize ?? 14;
-		Promise.all([
-			document.fonts.load(`${fontSize}px "${font}"`),
-			document.fonts.load(`bold ${fontSize}px "${font}"`)
-		]).catch(() => {}).finally(() => {
+		loadFont(term.options.fontFamily ?? 'monospace', term.options.fontSize ?? 14).catch(() => {}).finally(() => {
 			if (!containerEl) return;
 			term.open(containerEl);
 
@@ -740,16 +778,31 @@
 			function onWheel(e: WheelEvent) {
 				if (!e.ctrlKey) return;
 				e.preventDefault();
-				const current = term.options.fontSize ?? 14;
-				const next = e.deltaY < 0 ? Math.min(current + 1, 32) : Math.max(current - 1, 8);
-				if (next !== current) {
-					term.options.fontSize = next;
-					term.clearTextureAtlas();
-					safeFitAndResize(term, fit, termEl);
-					updateSetting('fontSize', next);
-				}
+				zoomBy(e.deltaY < 0 ? 1 : -1);
 			}
 			termEl.addEventListener('wheel', onWheel, { passive: false });
+
+			// So does a pinch, on a phone with no wheel (#127): a step each
+			// time the fingers' distance grows or shrinks by a tenth. Two
+			// fingers are taken from the page, which would zoom as a whole.
+			let pinchFrom = 0;
+			const spread = (e: TouchEvent): number =>
+				Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+			termEl.addEventListener('touchstart', (e) => {
+				if (e.touches.length === 2) pinchFrom = spread(e);
+			}, { passive: true });
+			termEl.addEventListener('touchmove', (e) => {
+				if (e.touches.length !== 2 || !pinchFrom) return;
+				e.preventDefault();
+				const ratio = spread(e) / pinchFrom;
+				if (ratio > 1.1 || ratio < 1 / 1.1) {
+					zoomBy(ratio > 1 ? 1 : -1);
+					pinchFrom = spread(e);
+				}
+			}, { passive: false });
+			termEl.addEventListener('touchend', (e) => {
+				if (e.touches.length < 2) pinchFrom = 0;
+			}, { passive: true });
 
 			// Listen for menu-bar Copy/Paste events (Rust emits these when the
 			// user clicks Edit > Copy / Paste since the menu items have no
@@ -806,25 +859,35 @@
 		};
 	});
 
-	// Live font family updates from settings (size is changed via Ctrl+Wheel directly)
+	// Live font family updates from settings
 	const appSettings = getSettings();
 	$effect(() => {
-		const family = appSettings.fontFamily;
 		const term = terminal;
 		const fit = fitAddon;
 		const el = containerEl;
-		if (!term || !fit || !el || !family) return;
+		if (!term || !fit || !el || !appSettings.fontFamily) return;
+		const family = terminalFont(appSettings.fontFamily);
 		if (term.options.fontFamily === family) return;
 
-		const size = term.options.fontSize ?? 14;
-		Promise.all([
-			document.fonts.load(`${size}px "${family}"`),
-			document.fonts.load(`bold ${size}px "${family}"`)
-		]).catch(() => {}).finally(() => {
+		loadFont(family, term.options.fontSize ?? 14).catch(() => {}).finally(() => {
 			term.options.fontFamily = family;
 			term.clearTextureAtlas();
 			safeFitAndResize(term, fit, el);
 		});
+	});
+
+	// And the size, as one terminal's zoom (or a synced vault) sets it for
+	// all; the terminal zoomed has it already. A hidden tab is fitted when
+	// it is shown again.
+	$effect(() => {
+		const size = appSettings.fontSize;
+		const term = terminal;
+		const fit = fitAddon;
+		const el = containerEl;
+		if (!term || !fit || !el || !size || term.options.fontSize === size) return;
+		term.options.fontSize = size;
+		term.clearTextureAtlas();
+		safeFitAndResize(term, fit, el);
 	});
 
 	// Auto-focus xterm AND re-fit when this tab becomes active (Ctrl+Tab, click, sidebar switch).
@@ -867,7 +930,7 @@
 >
 	<div bind:this={containerEl} class="terminal-container"></div>
 	{#if onPhone && !disconnected}
-		<MobileKeyBar bind:ctrl={barCtrl} bind:alt={barAlt} onkey={onBarKey} />
+		<MobileKeyBar bind:ctrl={barCtrl} bind:alt={barAlt} zoom onkey={onBarKey} />
 	{/if}
 	{#if disconnected && termType === 'ssh'}
 		<div class="reconnect-overlay">
