@@ -1,4 +1,5 @@
 {
+  "snippets.delete_confirm": "删除“{{name}}”？",
   "common.drag_to_reorder": "拖动以重新排序",
   "common.clear_search": "清除搜索",
   "explorer.close_preview": "关闭预览",

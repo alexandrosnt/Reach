@@ -1,4 +1,5 @@
 {
+  "snippets.delete_confirm": "¿Eliminar «{{name}}»?",
   "common.drag_to_reorder": "Arrastra para reordenar",
   "common.clear_search": "Borrar búsqueda",
   "explorer.close_preview": "Cerrar vista previa",

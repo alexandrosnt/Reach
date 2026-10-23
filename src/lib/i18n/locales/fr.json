@@ -1,4 +1,5 @@
 {
+  "snippets.delete_confirm": "Supprimer « {{name}} » ?",
   "common.drag_to_reorder": "Glisser pour réorganiser",
   "common.clear_search": "Effacer la recherche",
   "explorer.close_preview": "Fermer l’aperçu",

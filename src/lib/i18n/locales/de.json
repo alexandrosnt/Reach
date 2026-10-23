@@ -1,4 +1,5 @@
 {
+  "snippets.delete_confirm": "„{{name}}“ löschen?",
   "common.drag_to_reorder": "Zum Umsortieren ziehen",
   "common.clear_search": "Suche löschen",
   "explorer.close_preview": "Vorschau schließen",

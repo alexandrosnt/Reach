@@ -1,4 +1,5 @@
 {
+  "snippets.delete_confirm": "Delete \"{{name}}\"?",
   "common.drag_to_reorder": "Drag to reorder",
   "common.clear_search": "Clear search",
   "explorer.close_preview": "Close preview",

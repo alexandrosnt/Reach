@@ -19,6 +19,8 @@
 	let newDescription = $state('');
 	let newTags = $state('');
 	let editingId = $state<string | null>(null);
+	/** The snippet asked about before it is deleted, as a session is. */
+	let deleteConfirm = $state<string | null>(null);
 
 	let filtered = $derived.by(() => {
 		if (!search.trim()) return snippets;
@@ -60,6 +62,7 @@
 
 	async function handleDelete(id: string): Promise<void> {
 		try {
+			deleteConfirm = null;
 			await removeSnippet(id);
 		} catch (err) {
 			addToast(String(err), 'error');
@@ -142,45 +145,53 @@
 
 	<div class="snippet-list">
 		{#each filtered as snippet (snippet.id)}
-			<div class="snippet-card">
-				<div class="snippet-header">
-					<span class="snippet-name">{snippet.name}</span>
-					<div class="snippet-actions">
-						<button class="action-btn" onclick={() => pasteToTerminal(snippet.command)} title={t('snippets.paste')} aria-label={t('snippets.paste')}>
-							<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-								<rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/>
-								<path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="1.5"/>
-							</svg>
-						</button>
-						<button class="action-btn run-btn" onclick={() => executeSnippet(snippet.command)} title={t('snippets.run')} aria-label={t('snippets.run')}>
-							<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
-								<path d="M8 5v14l11-7z"/>
-							</svg>
-						</button>
-						<button class="action-btn" onclick={() => startEdit(snippet)} title={t('common.edit')} aria-label={t('common.edit')}>
-							<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-								<path d="M17 3a2.85 2.85 0 014 4L7.5 20.5 2 22l1.5-5.5Z"/>
-							</svg>
-						</button>
-						<button class="action-btn delete-btn" onclick={() => handleDelete(snippet.id)} title={t('common.delete')} aria-label={t('common.delete')}>
-							<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-								<path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
-							</svg>
-						</button>
-					</div>
+			{#if deleteConfirm === snippet.id}
+				<div class="delete-confirm">
+					<span class="delete-confirm-text">{t('snippets.delete_confirm', { name: snippet.name })}</span>
+					<button class="delete-confirm-btn" onclick={() => handleDelete(snippet.id)}>{t('common.confirm')}</button>
+					<button class="delete-cancel-btn" onclick={() => (deleteConfirm = null)}>{t('common.cancel')}</button>
 				</div>
-				<pre class="snippet-command">{snippet.command}</pre>
-				{#if snippet.description}
-					<span class="snippet-desc">{snippet.description}</span>
-				{/if}
-				{#if snippet.tags.length > 0}
-					<div class="snippet-tags">
-						{#each snippet.tags as tag}
-							<span class="tag">{tag}</span>
-						{/each}
+			{:else}
+				<div class="snippet-card">
+					<div class="snippet-header">
+						<span class="snippet-name">{snippet.name}</span>
+						<div class="snippet-actions">
+							<button class="action-btn" onclick={() => pasteToTerminal(snippet.command)} title={t('snippets.paste')} aria-label={t('snippets.paste')}>
+								<svg width="11" height="11" viewBox="0 0 24 24" fill="none">
+									<rect x="9" y="9" width="13" height="13" rx="2" stroke="currentColor" stroke-width="1.5"/>
+									<path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1" stroke="currentColor" stroke-width="1.5"/>
+								</svg>
+							</button>
+							<button class="action-btn run-btn" onclick={() => executeSnippet(snippet.command)} title={t('snippets.run')} aria-label={t('snippets.run')}>
+								<svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+									<path d="M8 5v14l11-7z"/>
+								</svg>
+							</button>
+							<button class="action-btn" onclick={() => startEdit(snippet)} title={t('common.edit')} aria-label={t('common.edit')}>
+								<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M17 3a2.85 2.85 0 014 4L7.5 20.5 2 22l1.5-5.5Z"/>
+								</svg>
+							</button>
+							<button class="action-btn delete-btn" onclick={() => (deleteConfirm = snippet.id)} title={t('common.delete')} aria-label={t('common.delete')}>
+								<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+									<path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+								</svg>
+							</button>
+						</div>
 					</div>
-				{/if}
-			</div>
+					<pre class="snippet-command">{snippet.command}</pre>
+					{#if snippet.description}
+						<span class="snippet-desc">{snippet.description}</span>
+					{/if}
+					{#if snippet.tags.length > 0}
+						<div class="snippet-tags">
+							{#each snippet.tags as tag}
+								<span class="tag">{tag}</span>
+							{/each}
+						</div>
+					{/if}
+				</div>
+			{/if}
 		{:else}
 			<p class="empty">{search ? t('snippets.no_matches') : t('snippets.empty')}</p>
 		{/each}
@@ -419,5 +430,47 @@
 		font-size: 0.6875rem;
 		color: var(--color-text-secondary);
 		opacity: 0.6;
+	}
+
+	.delete-confirm {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 6px 8px;
+		background-color: rgba(255, 69, 58, 0.06);
+		border: 1px solid rgba(255, 69, 58, 0.15);
+		border-radius: var(--radius-card, 8px);
+	}
+
+	.delete-confirm-text {
+		flex: 1;
+		min-width: 0;
+		font-size: var(--text-sm);
+		color: var(--color-danger);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+	}
+
+	.delete-confirm-btn,
+	.delete-cancel-btn {
+		flex-shrink: 0;
+		padding: 3px 8px;
+		font-family: var(--font-sans);
+		font-size: var(--text-sm);
+		font-weight: 500;
+		border: none;
+		border-radius: 4px;
+		cursor: pointer;
+	}
+
+	.delete-confirm-btn {
+		background-color: var(--color-danger);
+		color: #fff;
+	}
+
+	.delete-cancel-btn {
+		background-color: var(--color-surface-hover);
+		color: var(--color-text-secondary);
 	}
 </style>

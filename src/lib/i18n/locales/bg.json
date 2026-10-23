@@ -1,4 +1,5 @@
 {
+  "snippets.delete_confirm": "Да се изтрие ли „{{name}}“?",
   "common.drag_to_reorder": "Плъзнете за пренареждане",
   "common.clear_search": "Изчистване на търсенето",
   "explorer.close_preview": "Затваряне на прегледа",
