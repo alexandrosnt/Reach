@@ -368,13 +368,16 @@
 		<!-- Vault List -->
 		<div class="vault-list-view">
 			<div class="list-tools">
-				<input
-					class="list-search"
-					type="text"
-					placeholder={t('vault.search_vaults')}
-					aria-label={t('vault.search_vaults')}
-					bind:value={listQuery}
-				/>
+				<!-- Nothing to search before the first vault. -->
+				{#if userVaults.length > 0}
+					<input
+						class="list-search"
+						type="text"
+						placeholder={t('vault.search_vaults')}
+						aria-label={t('vault.search_vaults')}
+						bind:value={listQuery}
+					/>
+				{/if}
 				<button class="header-btn" onclick={handleRefresh} disabled={refreshing} title={t('vault.refresh_vaults')}>
 					<svg class:spinning={refreshing} width="14" height="14" viewBox="0 0 24 24" fill="none">
 						<path d="M1 4v6h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -782,6 +785,7 @@
 	.list-tools {
 		display: flex;
 		align-items: center;
+		justify-content: flex-end;
 		gap: 2px;
 	}
 
