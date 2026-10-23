@@ -1,4 +1,10 @@
 {
+  "security.prompt_title": "Set a master password",
+  "security.prompt_desc": "Right now only this computer's keychain can open your vault. If that is ever lost, so are your saved passwords and keys. A master password is a way back in.",
+  "security.prompt_later": "Not now",
+  "security.prompt_done": "Master password set",
+  "settings.window_mica": "Mica",
+  "settings.window_mica_desc": "The desktop's colour, softly blurred, under the title bar, tabs and sidebar, as in Windows 11's own apps. Terminals stay solid.",
   "recipes.empty_title": "No recipes yet",
   "recipes.empty_hint": "Create one with +, or find one under Browse.",
   "tabs.disconnected": "Disconnected",

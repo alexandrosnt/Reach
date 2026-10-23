@@ -1,4 +1,10 @@
 {
+  "security.prompt_title": "设置主密码",
+  "security.prompt_desc": "目前只有这台电脑的钥匙串能打开你的保管库。一旦它丢失，保存的密码和密钥也会随之丢失。主密码是重新进入的途径。",
+  "security.prompt_later": "以后再说",
+  "security.prompt_done": "已设置主密码",
+  "settings.window_mica": "Mica",
+  "settings.window_mica_desc": "在标题栏、标签页和侧边栏下透出柔和模糊的桌面颜色，与 Windows 11 自带应用一致。终端保持不透明。",
   "recipes.empty_title": "还没有配方",
   "recipes.empty_hint": "用 + 创建一个，或在“浏览”中查找。",
   "tabs.disconnected": "已断开连接",

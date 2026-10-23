@@ -1,4 +1,10 @@
 {
+  "security.prompt_title": "Définir un mot de passe maître",
+  "security.prompt_desc": "Pour l’instant, seul le trousseau de cet ordinateur peut ouvrir votre coffre. S’il est perdu, vos mots de passe et clés enregistrés le sont aussi. Un mot de passe maître permet d’y revenir.",
+  "security.prompt_later": "Plus tard",
+  "security.prompt_done": "Mot de passe maître défini",
+  "settings.window_mica": "Mica",
+  "settings.window_mica_desc": "La couleur du bureau, légèrement floutée, sous la barre de titre, les onglets et la barre latérale, comme dans les applications de Windows 11. Les terminaux restent opaques.",
   "recipes.empty_title": "Aucune recette pour l’instant",
   "recipes.empty_hint": "Créez-en une avec +, ou trouvez-en une dans Parcourir.",
   "tabs.disconnected": "Déconnecté",

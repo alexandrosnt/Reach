@@ -1,4 +1,10 @@
 {
+  "security.prompt_title": "Master-Passwort festlegen",
+  "security.prompt_desc": "Derzeit kann nur der Schlüsselbund dieses Computers Ihren Tresor öffnen. Geht er verloren, sind auch Ihre gespeicherten Passwörter und Schlüssel verloren. Ein Master-Passwort ist ein Weg zurück.",
+  "security.prompt_later": "Nicht jetzt",
+  "security.prompt_done": "Master-Passwort festgelegt",
+  "settings.window_mica": "Mica",
+  "settings.window_mica_desc": "Die Farbe des Desktops, sanft verschwommen, unter Titelleiste, Tabs und Seitenleiste, wie in den Apps von Windows 11. Terminals bleiben deckend.",
   "recipes.empty_title": "Noch keine Rezepte",
   "recipes.empty_hint": "Mit + eines erstellen oder unter Durchsuchen finden.",
   "tabs.disconnected": "Getrennt",

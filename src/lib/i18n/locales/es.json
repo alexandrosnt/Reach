@@ -1,4 +1,10 @@
 {
+  "security.prompt_title": "Establece una contraseña maestra",
+  "security.prompt_desc": "Ahora mismo solo el llavero de este ordenador puede abrir tu bóveda. Si se pierde, se pierden también tus contraseñas y claves guardadas. Una contraseña maestra es una forma de volver a entrar.",
+  "security.prompt_later": "Ahora no",
+  "security.prompt_done": "Contraseña maestra establecida",
+  "settings.window_mica": "Mica",
+  "settings.window_mica_desc": "El color del escritorio, suavemente difuminado, bajo la barra de título, las pestañas y la barra lateral, como en las apps de Windows 11. Los terminales siguen opacos.",
   "recipes.empty_title": "Aún no hay recetas",
   "recipes.empty_hint": "Crea una con +, o busca una en Explorar.",
   "tabs.disconnected": "Desconectado",

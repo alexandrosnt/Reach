@@ -1,4 +1,10 @@
 {
+  "security.prompt_title": "Imposta una password principale",
+  "security.prompt_desc": "Al momento solo il portachiavi di questo computer può aprire la tua cassaforte. Se va perso, si perdono anche le password e le chiavi salvate. Una password principale è un modo per rientrare.",
+  "security.prompt_later": "Non ora",
+  "security.prompt_done": "Password principale impostata",
+  "settings.window_mica": "Mica",
+  "settings.window_mica_desc": "Il colore del desktop, leggermente sfocato, sotto barra del titolo, schede e barra laterale, come nelle app di Windows 11. I terminali restano opachi.",
   "recipes.empty_title": "Ancora nessuna ricetta",
   "recipes.empty_hint": "Creane una con +, o trovane una in Sfoglia.",
   "tabs.disconnected": "Disconnesso",
