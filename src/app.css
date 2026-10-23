@@ -104,6 +104,19 @@ body {
   user-select: none;
 }
 
+/* Even line lengths in headings, and no word left alone on a paragraph's
+   last line ("protect / it."). Engines without these ignore them. */
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
 /* Native controls, scrollbars and select fields drawn dark or light to match
    the theme; without it the engine draws them light under a dark theme. */
 .dark {
