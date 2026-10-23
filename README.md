@@ -48,10 +48,13 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 ### Core
 
 - **SSH Terminal** · Full interactive shell with WebGL rendering. Tabs, split views, and resize that actually works.
+- **Command palette** · Ctrl+Shift+P (or Search in the title bar) reaches any session, open tab, page or action: type a few letters of a name or host and press Enter.
+- **Tab groups** · Name and colour a run of tabs, as in a browser. Fold a group to put it out of the way without ending its sessions.
+- **A start screen that connects** · With no tab open: type `user@host` and connect, pick a session you used lately, or open a local shell.
 - **SFTP File Explorer** · Browse remote filesystems, drag-and-drop transfers, inline editing. Feels like a local file manager.
 - **Compress and extract in place** · Right-click to make a `.tar.gz`, `.zip` and the rest, or unpack one, with the work done on the remote machine. Falls back through whatever archiver it actually has, so it still works on a stripped container.
 - **Drag a file out to your desktop** · On Windows nothing is downloaded until you drop it, and the bytes land where you dropped them.
-- **Session Manager** · Save connections with folders and tags. Credentials are encrypted at rest, not stored in plaintext configs.
+- **Session Manager** · Save connections with folders and tags. Credentials are encrypted at rest, not stored in plaintext configs. A shared vault's folders sync to every device and member along with its sessions.
 - **Jump Host (ProxyJump)** · Connect through bastion servers with multi-hop SSH tunneling. Import hosts directly from `~/.ssh/config`.
 
 ### Productivity
@@ -62,11 +65,12 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 
 ### DevOps — switch on what you use
 
-> **Where are Ansible, OpenTofu and Databases?** They are switched on in **Settings → DevOps**, one switch per tool. On a fresh install all three are off, so Reach opens as a plain remote-access app. If you are updating from 0.6.7 or earlier, Ansible and OpenTofu stay on exactly as before; Databases is new and waits for you to switch it on. A tool that is off disappears from the tab bar and its commands are refused, and nothing it saved is deleted — switch it back on and everything is where you left it.
+> **Where are Ansible, OpenTofu, Databases, Containers and Kubernetes?** They are switched on in **Settings → DevOps**, one switch per tool. On a fresh install all of them are off, so Reach opens as a plain remote-access app. If you are updating from 0.6.7 or earlier, Ansible and OpenTofu stay on exactly as before; Databases is new and waits for you to switch it on. A tool that is off disappears from the page menu and its commands are refused, and nothing it saved is deleted — switch it back on and everything is where you left it.
 
 - **Databases** · PostgreSQL, MySQL, MariaDB, SQL Server, SQLite and Redis in one workspace. Browse databases and tables, edit rows in a grid, write SQL with autocomplete from the live schema, and design tables the way Navicat does — fields, indexes, foreign keys, checks and triggers, with the exact `ALTER` shown before it runs. Connect directly or **through an SSH session you already have**, and let Reach **find the databases running on a server you have a terminal open to**. Every change goes through a review: statements that drop, truncate or touch every row ask first, and a connection marked *production* asks before any change at all; *read-only* connections refuse writes outright. Backup and restore to plain SQL, CSV import and export, a server monitor with cancel and end-session, and for Redis a key browser, value editors and a console.
 - **Ansible** · Run one command across a whole inventory, or a full playbook. Manage playbooks, inventories, roles, and collections. Run playbooks and ad-hoc commands with streaming output. Encrypts/decrypts files with ansible-vault. On Windows, automatically runs through WSL.
 - **OpenTofu** · Plan, apply, and destroy infrastructure. Browse state, manage providers and modules. Full workspace with file editor and streaming command output.
+- **Containers and Kubernetes** · Docker, Podman and Compose stacks, and Kubernetes with Helm, on the servers you already have sessions to: logs, shells, restarts and rollouts, with a typed confirmation before anything destructive and a production tag that asks every time.
 
 ### Working with others — people and AI
 
@@ -85,6 +89,7 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 - **Password managers** · Point a session's password at an entry in Passbolt instead of keeping a copy. Reach fetches it through go-passbolt-cli when you connect and never shows it to the window. Off by default, in Settings → Password managers.
 - **Lua Plugins** · Extend Reach with sandboxed Lua scripts. Access SSH, storage, and UI hooks through the host API.
 - **Auto-Updates** · The app checks for updates on startup and periodically while running. No manual downloads.
+- **On a phone** · The Android app has the terminal's missing keys (Esc, Ctrl, Alt, arrows) above the keyboard, pinch to change the text size, and a layout that keeps clear of the camera, the status bar and the keyboard in either orientation, up to the phone's larger text sizes.
 - **Nine languages** · English, German, Spanish, French, Italian, Greek, Bulgarian, Russian and Chinese. Translations are plain JSON under `src/lib/i18n/locales`, and a missing key fails CI rather than shipping.
 
 ## Tech
