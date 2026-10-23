@@ -10,6 +10,9 @@ export interface Settings {
 	/** Id of an installed theme. Overrides `theme` when set. */
 	themeId?: string;
 	fontSize: number;
+	/** The whole interface's size on a desktop, as a browser's zoom: 1 is 100%.
+	 *  See $lib/state/ui-zoom. */
+	uiZoom: number;
 	fontFamily: string;
 	defaultShell: string;
 	openLastSession: boolean;
@@ -110,6 +113,7 @@ const defaults: Settings = {
 	theme: 'dark',
 	themeId: undefined,
 	fontSize: 14,
+	uiZoom: 1,
 	fontFamily: 'monospace',
 	defaultShell: '/bin/bash',
 	openLastSession: false,
@@ -200,6 +204,7 @@ export function loadSettings(): void {
 			if (parsed.pendingTursoApiToken) queueMicrotask(saveSettings);
 			settings.theme = parsed.theme ?? defaults.theme;
 			settings.fontSize = parsed.fontSize ?? defaults.fontSize;
+			settings.uiZoom = parsed.uiZoom ?? defaults.uiZoom;
 			settings.fontFamily = parsed.fontFamily ?? defaults.fontFamily;
 			settings.defaultShell = parsed.defaultShell ?? defaults.defaultShell;
 			settings.openLastSession = parsed.openLastSession ?? defaults.openLastSession;

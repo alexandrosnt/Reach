@@ -1,4 +1,7 @@
 {
+  "settings.ui_zoom": "Μέγεθος περιβάλλοντος",
+  "settings.ui_zoom_hint": "Όλο το παράθυρο, όχι μόνο το τερματικό. Το αλλάζουν και τα {{in}} και {{out}}· το {{reset}} επιστρέφει στο 100%.",
+  "settings.ui_zoom_reset": "Επιστροφή στο 100%",
   "toast.copy_failed": "Η αντιγραφή απέτυχε",
   "toast.copy_failed_err": "Η αντιγραφή απέτυχε: {{error}}",
   "toast.joined_vault": "Συμμετοχή στο θησαυροφυλάκιο: {{name}}",

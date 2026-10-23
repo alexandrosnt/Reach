@@ -1,4 +1,7 @@
 {
+  "settings.ui_zoom": "界面大小",
+  "settings.ui_zoom_hint": "整个窗口，而不仅是终端。{{in}} 和 {{out}} 也可调整；{{reset}} 恢复到 100%。",
+  "settings.ui_zoom_reset": "恢复到 100%",
   "toast.copy_failed": "复制失败",
   "toast.copy_failed_err": "复制失败：{{error}}",
   "toast.joined_vault": "已加入保管库：{{name}}",

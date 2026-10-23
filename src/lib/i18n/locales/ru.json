@@ -1,4 +1,7 @@
 {
+  "settings.ui_zoom": "Размер интерфейса",
+  "settings.ui_zoom_hint": "Всё окно, а не только терминал. {{in}} и {{out}} тоже его меняют; {{reset}} возвращает 100%.",
+  "settings.ui_zoom_reset": "Вернуть 100%",
   "toast.copy_failed": "Не удалось скопировать",
   "toast.copy_failed_err": "Не удалось скопировать: {{error}}",
   "toast.joined_vault": "Вы присоединились к хранилищу: {{name}}",

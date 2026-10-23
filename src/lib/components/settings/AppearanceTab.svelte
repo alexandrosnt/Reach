@@ -9,12 +9,15 @@
 	import { t } from '$lib/state/i18n.svelte';
 	import { matchesQuery } from '$lib/utils/search';
 	import { isMobile } from '$lib/platform';
+	import { stepUiZoom, UI_ZOOM_STEPS } from '$lib/state/ui-zoom';
+	import { shortcutLabel } from '$lib/state/shortcuts.svelte';
 	import { sessionLogDefaultDir } from '$lib/ipc/ssh';
 	import { open as pickFolder } from '@tauri-apps/plugin-dialog';
 
 	const settings = getSettings();
 	let currentFont = $derived(settings.fontFamily || 'monospace');
 	let currentSize = $derived(settings.fontSize || 14);
+	let uiZoom = $derived(settings.uiZoom || 1);
 
 	/** The terminal's text size, here too, as a phone has no Ctrl+wheel; open
 	 *  terminals follow the setting. Same 8 to 32 px as the terminal's zoom. */
@@ -311,6 +314,22 @@
 			<button class="size-btn" aria-label={t('keys.larger')} disabled={currentSize >= 32} onclick={() => stepFontSize(1)}>A+</button>
 		</div>
 	</div>
+
+	<!-- The whole interface, not only the terminal: a laptop screen or a 4K
+	     one at the wrong scale. A phone follows its own text size instead. -->
+	{#if !isMobile()}
+		<div class="setting-row">
+			<div class="setting-info">
+				<span class="setting-label">{t('settings.ui_zoom')}</span>
+				<span class="setting-description">{t('settings.ui_zoom_hint', { in: shortcutLabel('=', { ctrl: true }), out: shortcutLabel('-', { ctrl: true }), reset: shortcutLabel('0', { ctrl: true }) })}</span>
+			</div>
+			<div class="setting-control size-stepper">
+				<button class="size-btn" aria-label={t('keys.smaller')} disabled={uiZoom <= UI_ZOOM_STEPS[0]} onclick={() => stepUiZoom(-1)}>−</button>
+				<button class="font-size-badge zoom-reset" title={t('settings.ui_zoom_reset')} onclick={() => stepUiZoom(0)}>{Math.round(uiZoom * 100)}%</button>
+				<button class="size-btn" aria-label={t('keys.larger')} disabled={uiZoom >= UI_ZOOM_STEPS[UI_ZOOM_STEPS.length - 1]} onclick={() => stepUiZoom(1)}>+</button>
+			</div>
+		</div>
+	{/if}
 
 	<div class="setting-row font-row">
 		<div class="setting-info">
@@ -791,6 +810,22 @@
 		font-weight: 600;
 		color: var(--color-accent);
 		font-variant-numeric: tabular-nums;
+	}
+
+	/* The percentage is the reset: clicking 125% puts it back to 100%. */
+	.zoom-reset {
+		min-width: 3.5em;
+		padding: 4px 2px;
+		border: none;
+		border-radius: var(--radius-sm);
+		background: none;
+		font-family: inherit;
+		text-align: center;
+		cursor: pointer;
+	}
+
+	.zoom-reset:hover {
+		background: var(--color-surface-hover);
 	}
 
 	.size-stepper {

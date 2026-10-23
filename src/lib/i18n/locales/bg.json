@@ -1,4 +1,7 @@
 {
+  "settings.ui_zoom": "Размер на интерфейса",
+  "settings.ui_zoom_hint": "Всичко в прозореца, не само терминалът. {{in}} и {{out}} също го променят; {{reset}} връща 100%.",
+  "settings.ui_zoom_reset": "Обратно на 100%",
   "toast.copy_failed": "Копирането не бе успешно",
   "toast.copy_failed_err": "Неуспешно копиране: {{error}}",
   "toast.joined_vault": "Присъединихте се към трезор: {{name}}",

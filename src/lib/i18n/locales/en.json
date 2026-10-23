@@ -1,4 +1,7 @@
 {
+  "settings.ui_zoom": "Interface size",
+  "settings.ui_zoom_hint": "Everything in the window, not only the terminal. {{in}} and {{out}} change it too; {{reset}} goes back to 100%.",
+  "settings.ui_zoom_reset": "Back to 100%",
   "toast.copy_failed": "Copy failed",
   "toast.copy_failed_err": "Failed to copy: {{error}}",
   "toast.joined_vault": "Joined vault: {{name}}",

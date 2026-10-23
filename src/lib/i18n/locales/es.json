@@ -1,4 +1,7 @@
 {
+  "settings.ui_zoom": "Tamaño de la interfaz",
+  "settings.ui_zoom_hint": "Todo lo que hay en la ventana, no solo el terminal. {{in}} y {{out}} también lo cambian; {{reset}} vuelve al 100 %.",
+  "settings.ui_zoom_reset": "Volver al 100 %",
   "toast.copy_failed": "No se pudo copiar",
   "toast.copy_failed_err": "No se pudo copiar: {{error}}",
   "toast.joined_vault": "Te uniste a la bóveda: {{name}}",

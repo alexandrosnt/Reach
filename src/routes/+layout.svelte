@@ -8,6 +8,7 @@
 	import LockScreen from '$lib/components/shared/LockScreen.svelte';
 	import CommandPalette from '$lib/components/shared/CommandPalette.svelte';
 	import AskHost from '$lib/components/shared/AskHost.svelte';
+	import { applyUiZoom } from '$lib/state/ui-zoom';
 	import { startAutoLock } from '$lib/state/autolock.svelte';
 	import { loadSettings, getSettings, syncTraySettings, recordLaunch, markFeaturesSeen } from '$lib/state/settings.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
@@ -31,6 +32,8 @@
 
 	onMount(() => {
 		loadSettings();
+		// The interface size chosen last time, before anything is laid out.
+		applyUiZoom();
 		startAutoLock();
 		// After loadSettings, or the count read back as zero and reset itself
 		// every launch, which would hold the community prompt off forever.

@@ -1,6 +1,8 @@
 import { createTab, closeTab, getActiveTab, getTabs, activateTab } from './tabs.svelte';
 import { toggleAIPanel } from './ai-chat.svelte';
 import { togglePalette, requestSessionAction } from './palette.svelte';
+import { stepUiZoom } from './ui-zoom';
+import { isMobile } from '$lib/platform';
 
 export interface Shortcut {
 	key: string;
@@ -99,7 +101,18 @@ const shortcuts: Shortcut[] = [
 	{ key: 'Tab', ctrl: true, shift: true, action: 'Previous tab', handler: previousTab },
 	{ key: ',', ctrl: true, action: 'Open settings', handler: openSettings },
 	{ key: 'p', ctrl: true, shift: true, action: 'Command palette', handler: openCommandPalette },
-	{ key: 'a', ctrl: true, shift: true, action: 'Toggle AI panel', handler: toggleAIPanel }
+	{ key: 'a', ctrl: true, shift: true, action: 'Toggle AI panel', handler: toggleAIPanel },
+	// The interface's size, as in a browser. Plus is Shift+= on most layouts
+	// and plain + on the number pad. Not on a phone: it follows the system.
+	...(isMobile()
+		? []
+		: [
+				{ key: '=', ctrl: true, action: 'Zoom in', handler: () => stepUiZoom(1) },
+				{ key: '+', ctrl: true, action: 'Zoom in', handler: () => stepUiZoom(1) },
+				{ key: '+', ctrl: true, shift: true, action: 'Zoom in', handler: () => stepUiZoom(1) },
+				{ key: '-', ctrl: true, action: 'Zoom out', handler: () => stepUiZoom(-1) },
+				{ key: '0', ctrl: true, action: 'Reset zoom', handler: () => stepUiZoom(0) }
+			])
 ];
 
 function matchesShortcut(e: KeyboardEvent, shortcut: Shortcut): boolean {
