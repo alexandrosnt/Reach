@@ -606,6 +606,16 @@
 		gap: var(--space-2);
 	}
 
+	/* The label keeps its gap to the rows below; Refresh lines up with it
+	   instead of with that margin. */
+	.section-head {
+		margin-bottom: 12px;
+	}
+
+	.section-head .section-label {
+		margin-bottom: 0;
+	}
+
 	.link-btn {
 		padding: 0;
 		font-family: var(--font-sans);
@@ -724,9 +734,15 @@
 		cursor: pointer;
 	}
 
+	/* Tinted, not filled: one solid accent button per row made a list of
+	   themes a column of competing calls to action. */
 	.row-btn.primary {
-		color: #fff;
-		background: var(--color-accent);
+		color: var(--color-accent);
+		background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+	}
+
+	.row-btn.primary:hover:not(:disabled) {
+		background: color-mix(in srgb, var(--color-accent) 20%, transparent);
 	}
 
 	.row-btn:disabled {
