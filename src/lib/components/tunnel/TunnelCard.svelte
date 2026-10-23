@@ -18,6 +18,17 @@
 				: 'D'
 	);
 
+	/** The kind of forward in the person's language, not the English type name. */
+	let typeName = $derived(
+		t(
+			tunnel.tunnel_type === 'Local'
+				? 'tunnel.local_forward'
+				: tunnel.tunnel_type === 'Remote'
+					? 'tunnel.remote_forward'
+					: 'tunnel.dynamic'
+		)
+	);
+
 	let typeColor = $derived(
 		tunnel.tunnel_type === 'Local'
 			? 'var(--color-accent)'
@@ -33,7 +44,7 @@
 			class="type-badge"
 			style:color={typeColor}
 			style:border-color={typeColor}
-			title={t('tunnel.type_title', { type: tunnel.tunnel_type })}
+			title={typeName}
 		>
 			{typeLabel}
 		</span>
@@ -46,7 +57,7 @@
 				</svg>
 				{tunnel.remote_host}:{tunnel.remote_port}
 			</span>
-			<span class="tunnel-type">{t('tunnel.type_tunnel', { type: tunnel.tunnel_type })}</span>
+			<span class="tunnel-type">{typeName}</span>
 		</div>
 
 		<div class="tunnel-status">
