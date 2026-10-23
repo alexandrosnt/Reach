@@ -1237,7 +1237,7 @@
 					<FaIcon icon={faPlus} size={13} />
 				</button>
 				{#if showAddMenu}
-					<div class="add-menu" role="menu">
+					<div class="add-menu pop-in" role="menu">
 						<button class="menu-item" role="menuitem" onclick={() => fromMenu(handleNewSession)}>
 							<FaIcon icon={faServer} size={12} />
 							<span>{t('session.new_session')}</span>
@@ -1344,7 +1344,7 @@
 	{/if}
 	{#if contextMenu}
 		<ContextMenuBackdrop onclose={closeContextMenu} />
-		<div class="context-menu" use:positionMenu={{ x: contextMenu.x, y: contextMenu.y }}>
+		<div class="context-menu pop-in" use:positionMenu={{ x: contextMenu.x, y: contextMenu.y }}>
 			{#if contextMenu.session}
 				<button class="context-item" onclick={() => { if (contextMenu?.session) handleConnect(contextMenu.session); closeContextMenu(); }} type="button">
 					{t('session.connect')}

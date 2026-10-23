@@ -260,9 +260,27 @@ select:not([multiple]):disabled {
   }
 }
 
+/* A menu or popover fades in as the select menus do, so every menu in the
+ app opens the same way. */
+.pop-in {
+  animation: select-menu-in 120ms var(--ease-default);
+}
+
+/* Asked for less motion: menus appear, and every transition is instant.
+ Looping animations are left alone here — a spinner says something is
+ still working — and dialogs, the palette and toasts drop their own
+ entrances in their components. */
 @media (prefers-reduced-motion: reduce) {
-  .select-menu {
+  .select-menu,
+  .pop-in {
     animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
 }
 

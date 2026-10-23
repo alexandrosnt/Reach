@@ -162,4 +162,15 @@
 			transform: translateY(-20px);
 		}
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.toast {
+			animation: none;
+		}
+
+		.toast.dismissing {
+			animation: none;
+			opacity: 0;
+		}
+	}
 </style>

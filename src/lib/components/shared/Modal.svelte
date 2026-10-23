@@ -195,4 +195,11 @@
 			transform: scale(1);
 		}
 	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.backdrop,
+		.modal {
+			animation: none;
+		}
+	}
 </style>

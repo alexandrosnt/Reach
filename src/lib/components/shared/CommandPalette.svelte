@@ -380,6 +380,12 @@
 		color: var(--color-text-tertiary);
 	}
 
+	@media (prefers-reduced-motion: reduce) {
+		.palette {
+			animation: none;
+		}
+	}
+
 	/* A phone has no keyboard hints to give. */
 	@media (pointer: coarse) {
 		.foot,

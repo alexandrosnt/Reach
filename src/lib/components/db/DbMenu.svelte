@@ -64,7 +64,7 @@
 
 <svelte:window {onkeydown} onpointerdowncapture={onpointerdown} />
 <ContextMenuBackdrop {onclose} />
-<div class="menu" role="menu" bind:this={menu} style:left="{pos.left}px" style:top="{pos.top}px">
+<div class="menu pop-in" role="menu" bind:this={menu} style:left="{pos.left}px" style:top="{pos.top}px">
 	{#each items as item, i (i)}
 		{#if item.separator}
 			<div class="sep" role="separator"></div>

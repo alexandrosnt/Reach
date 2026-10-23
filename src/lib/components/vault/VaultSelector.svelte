@@ -332,7 +332,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 	</button>
 
 	{#if open}
-		<div class="pop" role="listbox" aria-label={t('vault.vaults')}>
+		<div class="pop pop-in" role="listbox" aria-label={t('vault.vaults')}>
 			<input
 				class="pop-search"
 				type="text"

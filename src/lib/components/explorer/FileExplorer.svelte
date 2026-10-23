@@ -1208,7 +1208,7 @@
 {#if contextMenu}
 	<ContextMenuBackdrop onclose={closeContextMenu} />
 	<div
-		class="context-menu"
+		class="context-menu pop-in"
 		use:positionMenu={{ x: contextMenu.x, y: contextMenu.y }}
 	>
 		{#if contextMenu.entry}
