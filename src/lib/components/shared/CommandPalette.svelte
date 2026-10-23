@@ -298,6 +298,7 @@
 		color: var(--color-text-primary);
 		font-family: var(--font-sans);
 		font-size: var(--text-md);
+		text-overflow: ellipsis;
 	}
 
 	.search input::placeholder {

@@ -37,8 +37,11 @@
 	.toast-container {
 		position: fixed;
 		top: calc(80px + var(--safe-top));
-		left: 50%;
-		transform: translateX(-50%);
+		/* Full width, the toasts centred in it: at left: 50% the box could only
+		   be as wide as the half of the window to its right, and on a phone a
+		   warning wrapped into a column half the screen wide. */
+		left: 0;
+		right: 0;
 		z-index: 200;
 		display: flex;
 		flex-direction: column;
@@ -67,7 +70,7 @@
 	}
 
 	.toast.detailed {
-		max-width: 520px;
+		max-width: min(520px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
 		align-items: flex-start;
 		border-radius: var(--radius-card);
 	}
