@@ -375,9 +375,10 @@
 					<RemoteTerminal />
 				{/if}
 				</div>
-				<!-- A remote desktop has no server stats to show: under one, the bar
-				     only said "Not connected" about a desktop that was. -->
-				{#if activeTab?.type !== 'rdp' && activeTab?.type !== 'vnc'}
+				<!-- Server stats come from an SSH or WSL session: under a desktop or a
+				     local shell the bar only said "Not connected" about something that
+				     was. It stays where it has the sharing controls to hold. -->
+				{#if activeTab?.type === 'ssh' || activeTab?.wslDistro || (share.isEnabled() && activeTab?.type !== 'rdp' && activeTab?.type !== 'vnc')}
 					<MonitoringBar
 						connectionId={activeTab?.connectionId}
 						sshUser={activeTab?.title?.split('@')[0]}
