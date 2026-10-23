@@ -232,6 +232,8 @@ jobs:
           # init generates the project with Tauri's placeholder icon; Reach's
           # launcher icons (adaptive included) replace it.
           cp -r src-tauri/icons/android/. src-tauri/gen/android/app/src/main/res/
+          # Its activity also makes room for the phone keyboard (#127).
+          cp src-tauri/android/MainActivity.kt src-tauri/gen/android/app/src/main/java/com/reach/desktop/MainActivity.kt
 
       - name: Make a throwaway signing key
         run: keytool -genkeypair -keystore "$RUNNER_TEMP/check.keystore" -alias reach -keyalg RSA -keysize 2048 -validity 1 -storepass checkcheck -keypass checkcheck -dname "CN=Build check"
