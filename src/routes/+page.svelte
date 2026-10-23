@@ -529,7 +529,10 @@
 	.terminal-area {
 		flex: 1;
 		position: relative;
-		overflow: hidden;
+		/* Not hidden: that can still be scrolled, and a phone keyboard
+		   opening scrolled the terminal's input into view, leaving the
+		   terminal half off the top and a gap under it (#127). */
+		overflow: clip;
 	}
 
 	.terminal-wrapper {

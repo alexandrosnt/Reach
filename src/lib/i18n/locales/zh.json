@@ -1771,6 +1771,8 @@
   "keys.up": "上",
   "keys.down": "下",
   "keys.right": "右",
+  "keys.smaller": "缩小文字",
+  "keys.larger": "放大文字",
   "settings.login_message": "显示登录消息",
   "settings.login_message_desc": "连接后保留服务器的欢迎消息（MOTD、上次登录、系统状态），与其他 SSH 客户端一致。",
   "ssh.key_refused_agent": "已使用 SSH agent 中的密钥登录 {{host}}：服务器拒绝了此会话自己的密钥（{{fingerprint}}）。在没有该 agent 的设备（例如手机）上，此会话将无法登录。请将此会话的公钥加入服务器的 authorized_keys，或导入服务器信任的密钥。",

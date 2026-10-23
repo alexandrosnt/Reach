@@ -1771,6 +1771,8 @@
   "keys.up": "Su",
   "keys.down": "Giù",
   "keys.right": "Destra",
+  "keys.smaller": "Testo più piccolo",
+  "keys.larger": "Testo più grande",
   "settings.login_message": "Mostra il messaggio di accesso",
   "settings.login_message_desc": "Mantieni a schermo il messaggio di benvenuto del server (MOTD, ultimo accesso, stato del sistema) dopo la connessione, come fanno gli altri client SSH.",
   "ssh.key_refused_agent": "Accesso a {{host}} con una chiave del tuo agente SSH: il server ha rifiutato la chiave di questa sessione ({{fingerprint}}). La sessione fallirà sui dispositivi senza quell'agente, come un telefono. Aggiungi la chiave pubblica della sessione all'authorized_keys del server o importa la chiave di cui il server si fida.",
