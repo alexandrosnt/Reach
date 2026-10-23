@@ -73,7 +73,7 @@ jobs:
         # something, and with warnings as errors the build breaks overnight
         # with no change of ours (1.99 renamed fetch_update). Rust is moved
         # forward on purpose, here and in release.yml together.
-        uses: dtolnay/rust-toolchain@1.99.0
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
@@ -329,7 +329,7 @@ jobs:
         # something, and with warnings as errors the build breaks overnight
         # with no change of ours (1.99 renamed fetch_update). Rust is moved
         # forward on purpose, here and in release.yml together.
-        uses: dtolnay/rust-toolchain@1.99.0
+        uses: dtolnay/rust-toolchain@1.120.0
         with:
           # Phones only: x86 builds serve emulators, and each target added a
           # full copy of the app to the APK and to the build time.
