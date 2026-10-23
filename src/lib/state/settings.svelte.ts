@@ -176,6 +176,11 @@ export function loadSettings(): void {
 	if (typeof localStorage === 'undefined') return;
 
 	try {
+		// Reach 0.1.0 kept the passwords "Remember password" saved here, in
+		// the clear. 0.1.1 moved them to the vault and stopped reading this
+		// key, but left what was in it; nothing uses it, so it goes.
+		localStorage.removeItem('reach_saved_passwords');
+
 		const stored = localStorage.getItem(STORAGE_KEY);
 
 		// No stored settings at all means this is a first run. Everything in the
