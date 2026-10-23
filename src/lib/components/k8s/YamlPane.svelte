@@ -9,6 +9,7 @@
 	 * shown hidden, and revealed on request; Secrets are not edited here.
 	 */
 	import { onDestroy, untrack } from 'svelte';
+	import { ask } from '$lib/state/ask.svelte';
 	import { writeText } from '@tauri-apps/plugin-clipboard-manager';
 	import ErrorHelp from '$lib/components/devops/ErrorHelp.svelte';
 	import ActionButton from './ActionButton.svelte';
@@ -91,8 +92,8 @@
 		setEditing(true);
 	}
 
-	function cancel(): void {
-		if (draft !== yaml && !confirm(t('k8s.yaml_discard'))) return;
+	async function cancel(): Promise<void> {
+		if (draft !== yaml && !await ask(t('k8s.yaml_discard'))) return;
 		setEditing(false);
 	}
 

@@ -7,6 +7,7 @@
 	import CommunityPrompt from '$lib/components/shared/CommunityPrompt.svelte';
 	import LockScreen from '$lib/components/shared/LockScreen.svelte';
 	import CommandPalette from '$lib/components/shared/CommandPalette.svelte';
+	import AskHost from '$lib/components/shared/AskHost.svelte';
 	import { startAutoLock } from '$lib/state/autolock.svelte';
 	import { loadSettings, getSettings, syncTraySettings, recordLaunch, markFeaturesSeen } from '$lib/state/settings.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
@@ -147,6 +148,7 @@
 	{#if settings.setupComplete}
 		<CommandPalette />
 		<CommunityPrompt />
+		<AskHost />
 		<LockScreen />
 	{/if}
 {/if}

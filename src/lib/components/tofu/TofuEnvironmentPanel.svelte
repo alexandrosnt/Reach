@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { ask } from '$lib/state/ask.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import {
 		getActiveEnvironments,
@@ -64,9 +65,9 @@
 		newEnvName = '';
 	}
 
-	function handleDeleteEnvironment() {
+	async function handleDeleteEnvironment() {
 		if (!selectedEnvName) return;
-		if (!confirm(t('tofu.delete_environment_confirm'))) return;
+		if (!await ask(t('tofu.delete_environment_confirm'))) return;
 
 		const updated = environments.filter((e) => e.name !== selectedEnvName);
 		const newActive = activeEnvName === selectedEnvName ? null : activeEnvName;
