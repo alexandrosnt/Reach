@@ -14,6 +14,7 @@
 	import MonitoringBar from '$lib/components/terminal/MonitoringBar.svelte';
 	import RemoteTerminal from '$lib/components/share/RemoteTerminal.svelte';
 	import * as share from '$lib/state/share.svelte';
+	import { monitorBarShown } from '$lib/state/monitor-bar.svelte';
 	import AnsiblePage from '$lib/components/ansible/AnsiblePage.svelte';
 	import TofuPage from '$lib/components/tofu/TofuPage.svelte';
 	import DbPage from '$lib/components/db/DbPage.svelte';
@@ -378,7 +379,7 @@
 				<!-- Server stats come from an SSH or WSL session: under a desktop or a
 				     local shell the bar only said "Not connected" about something that
 				     was. It stays where it has the sharing controls to hold. -->
-				{#if activeTab?.type === 'ssh' || activeTab?.wslDistro || (share.isEnabled() && activeTab?.type !== 'rdp' && activeTab?.type !== 'vnc')}
+				{#if monitorBarShown()}
 					<MonitoringBar
 						connectionId={activeTab?.connectionId}
 						sshUser={activeTab?.title?.split('@')[0]}

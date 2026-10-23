@@ -10,6 +10,7 @@
 	import TabBar from './TabBar.svelte';
 	import Sidebar from './Sidebar.svelte';
 	import StatusBar from './StatusBar.svelte';
+	import { monitorBarShown } from '$lib/state/monitor-bar.svelte';
 	import Toast from '$lib/components/shared/Toast.svelte';
 	import UpdateBanner from '$lib/components/shared/UpdateBanner.svelte';
 	import UpdateDialog from '$lib/components/shared/UpdateDialog.svelte';
@@ -213,7 +214,7 @@
 	}
 </script>
 
-<div class="app-shell">
+<div class="app-shell" class:monitor-bottom={monitorBarShown()}>
 	<TitleBar />
 	<TabBar />
 
@@ -231,7 +232,9 @@
 		/>
 	</div>
 
-	<StatusBar />
+	{#if !monitorBarShown()}
+		<StatusBar />
+	{/if}
 	<Toast />
 	<UpdateBanner />
 	<UpdateDialog open={updater.startupBlocking} />
@@ -296,6 +299,12 @@
 		min-width: 0;
 		overflow: auto;
 		background-color: var(--color-bg-primary);
+	}
+
+	/* The session monitor bar is the window's bottom row and says what the
+	   status bar would (monitor-bar.svelte.ts), so the status bar's row goes. */
+	.app-shell.monitor-bottom {
+		--statusbar-h: 0px;
 	}
 
 	/* Phones in landscape, and short desktop windows, have very little vertical

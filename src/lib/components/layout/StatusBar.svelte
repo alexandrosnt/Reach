@@ -1,32 +1,9 @@
 <script lang="ts">
 	import { getActiveTab } from '$lib/state/tabs.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import Clock from './Clock.svelte';
 
 	let activeTab = $derived(getActiveTab());
-
-	let currentTime = $state('');
-
-	/** Hours and minutes: a seconds count ticking in the corner was movement
-	 *  beside the terminal all day, for nothing anyone reads. */
-	function formatTime(): string {
-		const now = new Date();
-		return now.toLocaleTimeString(undefined, {
-			hour: '2-digit',
-			minute: '2-digit'
-		});
-	}
-
-	$effect(() => {
-		currentTime = formatTime();
-
-		const interval = setInterval(() => {
-			currentTime = formatTime();
-		}, 1000);
-
-		return () => {
-			clearInterval(interval);
-		};
-	});
 
 	// The tab's own link state, as its mark in the tab bar shows it: an SSH
 	// tab whose connection dropped is not "Connected to" anything.
@@ -57,7 +34,7 @@
 	<div class="statusbar-center"></div>
 
 	<div class="statusbar-right">
-		<span>{currentTime}</span>
+		<Clock />
 	</div>
 </footer>
 
@@ -100,10 +77,7 @@
 
 	.statusbar-right {
 		flex: 1;
-		white-space: nowrap;
 		text-align: right;
-		font-family: var(--font-mono);
-		font-size: 0.625rem;
 	}
 
 	.status-indicator {
