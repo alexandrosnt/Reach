@@ -292,8 +292,10 @@ select:not([multiple]):disabled {
   -webkit-backdrop-filter: blur(20px);
 }
 
+/* Dimmed, not washed out: a white veil left a white dialog with no edge
+   against what it covers, and the app behind it unreadable as context. */
 .light .glass {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(15, 18, 24, 0.28);
 }
 
 /* ─── Scrollbar ─── */
