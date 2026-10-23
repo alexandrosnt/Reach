@@ -54,6 +54,7 @@
 	} from '$lib/ipc/vnc';
 	import { keysymForChar, keysymForCode, keysymForEvent } from '$lib/vnc/keysym';
 	import { t } from '$lib/state/i18n.svelte';
+	import { untrustedRefsFromError } from '$lib/ipc/sessions';
 	import { getSettings } from '$lib/state/settings.svelte';
 	import { isMobile } from '$lib/platform';
 	import MobileKeyBar, { type BarKey } from '$lib/components/shared/MobileKeyBar.svelte';
@@ -731,7 +732,9 @@
 			}
 		} catch (err) {
 			phase = 'error';
-			message = String(err);
+			// Unapproved password manager entries are asked about from the
+			// session list, which this panel is not.
+			message = untrustedRefsFromError(err) ? t('pwmanager.untrusted_reopen') : String(err);
 			return;
 		}
 

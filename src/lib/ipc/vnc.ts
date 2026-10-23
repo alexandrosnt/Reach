@@ -1,5 +1,6 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
 import type { MouseAction, RdpStatus } from '$lib/ipc/rdp';
+import type { SecretRef } from '$lib/ipc/pwmanager';
 
 /**
  * Remote desktop over VNC. The backend sends frames in the RDP wire format
@@ -13,6 +14,10 @@ export interface VncConnectParams {
 	port: number;
 	/** The VNC password; empty for a server that asks for none. */
 	password: string;
+	/** A password-manager entry, resolved by the backend at connect; wins over `password`. */
+	passwordRef?: SecretRef | null;
+	/** The saved session this desktop is for; required with `passwordRef` (the backend takes the entry from it). */
+	sessionId?: string | null;
 	/** A saved SSH session to reach the server through. */
 	viaSessionId?: string | null;
 }
@@ -31,7 +36,8 @@ export async function vncConnect(params: VncConnectParams, onFrame: (frame: Arra
 		new Uint8Array(copy).set(bytes);
 		onFrame(copy);
 	};
-	await invoke('vnc_connect', { params, onFrame: onFrameChannel });
+	const { sessionId, ...rest } = params;
+	await invoke('vnc_connect', { params: rest, sessionId: sessionId ?? null, onFrame: onFrameChannel });
 }
 
 export async function vncDisconnect(id: string): Promise<void> {

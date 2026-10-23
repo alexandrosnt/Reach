@@ -170,3 +170,16 @@ mod memory_scan {
         n == buf.len() as isize
     }
 }
+
+#[test]
+fn dropping_a_shielded_secret_wipes_its_salt_and_sealed_bytes() {
+    let mut slot = std::mem::ManuallyDrop::new(Shielded::new([7u8; 32]));
+    assert_ne!(slot.salt, [0u8; 32]);
+    assert!(!slot.sealed.is_empty());
+    // SAFETY: dropped exactly once; ManuallyDrop keeps the struct's own
+    // storage, and afterwards only the inline salt and the vector's length
+    // are read, never its (freed) buffer.
+    unsafe { std::ptr::drop_in_place(&mut *slot) };
+    assert_eq!(slot.salt, [0u8; 32], "the salt is wiped");
+    assert!(slot.sealed.is_empty(), "the sealed bytes are wiped (zeroize clears the vector)");
+}

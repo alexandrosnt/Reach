@@ -92,10 +92,19 @@ fn sealing_key(salt: &[u8; 32]) -> Zeroizing<[u8; 32]> {
 /// never used twice under one key (the same reasoning as Sequoia's).
 const NONCE: [u8; 24] = [0u8; 24];
 
-/// `N` secret bytes, held only encrypted.
+/// `N` secret bytes, held only encrypted. The salt and the sealed bytes are
+/// wiped when it is dropped: without the prekey they open nothing, but there
+/// is no reason to leave them in freed memory either.
 pub struct Shielded<const N: usize> {
     salt: [u8; 32],
     sealed: Vec<u8>,
+}
+
+impl<const N: usize> Drop for Shielded<N> {
+    fn drop(&mut self) {
+        self.salt.zeroize();
+        self.sealed.zeroize();
+    }
 }
 
 /// A secret opened for one call: locked into RAM, wiped and unlocked on drop.

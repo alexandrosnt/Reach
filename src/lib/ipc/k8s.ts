@@ -5,6 +5,7 @@
  */
 
 import { invoke, Channel } from '@tauri-apps/api/core';
+import { explainUntrustedRefs } from './sessions';
 import type { Environment, Route } from '$lib/ipc/containers';
 
 export interface ContextInfo {
@@ -128,7 +129,7 @@ export const k8sClusterSave = (c: {
 }) => invoke<ClusterView>('k8s_cluster_save', c);
 export const k8sClusterDelete = (id: string) => invoke<void>('k8s_cluster_delete', { id });
 
-export const k8sOpen = (clusterId: string) => invoke<OpenedCluster>('k8s_open', { clusterId });
+export const k8sOpen = (clusterId: string) => explainUntrustedRefs(invoke<OpenedCluster>('k8s_open', { clusterId }));
 export const k8sClose = (key: string) => invoke<void>('k8s_close', { key });
 
 export const k8sNamespaces = (key: string) => invoke<string[]>('k8s_namespaces', { key });

@@ -116,16 +116,24 @@ pub struct ProxyConfig {
     /// Optional proxy password
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub password: Option<String>,
+    /// The proxy password from a password manager, fetched at connect time.
+    /// Wins over `password` when set.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub password_ref: Option<crate::pwmanager::SecretRef>,
 }
 
 /// Authentication method for an SSH session.
 /// Credentials (password, passphrase, key_content) are stored encrypted in the vault.
+/// A `*_ref` points at a password manager entry instead; it is resolved at
+/// connect time and wins over the plaintext field (see `crate::pwmanager`).
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum AuthMethod {
     Password {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         password: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        password_ref: Option<crate::pwmanager::SecretRef>,
     },
     Key {
         /// A key file on this machine. Set when the user browsed to one.
@@ -140,6 +148,9 @@ pub enum AuthMethod {
         /// on a machine that has no copy of the key file (issue #46).
         #[serde(default, skip_serializing_if = "Option::is_none")]
         key_id: Option<String>,
+        /// The key's passphrase from a password manager.
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        passphrase_ref: Option<crate::pwmanager::SecretRef>,
     },
     Agent,
 }
