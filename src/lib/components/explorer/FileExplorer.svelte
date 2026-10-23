@@ -573,7 +573,7 @@
 			await navigator.clipboard.writeText(text);
 			addToast(t('explorer.copied'), 'success');
 		} catch {
-			addToast('Copy failed', 'error');
+			addToast(t('toast.copy_failed'), 'error');
 		}
 	}
 

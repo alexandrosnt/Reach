@@ -35,7 +35,7 @@
 			await refreshVaults();
 			onrefresh?.();
 		} catch (e) {
-			addToast(`Failed to refresh: ${e}`, 'error');
+			addToast(t('toast.refresh_failed', { error: String(e) }), 'error');
 		} finally {
 			refreshing = false;
 		}

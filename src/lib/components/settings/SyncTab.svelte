@@ -150,7 +150,7 @@
 
 		try {
 			const vaultInfo = await acceptInvite(inviteSyncUrl.trim(), inviteToken.trim());
-			addToast(`Joined vault: ${vaultInfo.name}`, 'success');
+			addToast(t('toast.joined_vault', { name: vaultInfo.name }), 'success');
 			inviteSyncUrl = '';
 			inviteToken = '';
 		} catch (e) {

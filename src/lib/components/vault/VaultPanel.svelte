@@ -140,7 +140,7 @@
 			await refreshVaults();
 			addToast(t('vault.vaults_refreshed_toast'), 'success');
 		} catch (err) {
-			addToast(`Failed to refresh: ${err}`, 'error');
+			addToast(t('toast.refresh_failed', { error: String(err) }), 'error');
 		} finally {
 			refreshing = false;
 		}
@@ -151,7 +151,7 @@
 			await lock();
 			addToast(t('vault.locked_toast'), 'info');
 		} catch (err) {
-			addToast(`Failed to lock: ${err}`, 'error');
+			addToast(t('toast.lock_failed', { error: String(err) }), 'error');
 		}
 	}
 
@@ -169,7 +169,7 @@
 			showCreateVault = false;
 			addToast(t('vault.vault_created_toast'), 'success');
 		} catch (err) {
-			addToast(`Failed to create vault: ${err}`, 'error');
+			addToast(t('toast.vault_create_failed', { error: String(err) }), 'error');
 		} finally {
 			creatingVault = false;
 		}
@@ -179,7 +179,7 @@
 		try {
 			await setActiveVault(vault.id);
 		} catch (err) {
-			addToast(`Failed to open vault: ${err}`, 'error');
+			addToast(t('toast.vault_open_failed', { error: String(err) }), 'error');
 		}
 	}
 

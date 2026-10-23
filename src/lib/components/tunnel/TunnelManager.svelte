@@ -89,7 +89,7 @@
 			showForm = false;
 			addToast(t('tunnel.created_toast', { port: localPort }), 'success');
 		} catch (err) {
-			addToast(`Failed to create tunnel: ${err}`, 'error');
+			addToast(t('toast.tunnel_create_failed', { error: String(err) }), 'error');
 		} finally {
 			creating = false;
 		}
@@ -104,7 +104,7 @@
 			}
 			addToast(t('tunnel.started_toast', { port: tunnel.local_port }), 'success');
 		} catch (err) {
-			addToast(`Failed to start tunnel: ${err}`, 'error');
+			addToast(t('toast.tunnel_start_failed', { error: String(err) }), 'error');
 		}
 	}
 
@@ -117,7 +117,7 @@
 			}
 			addToast(t('tunnel.stopped_toast', { port: tunnel.local_port }), 'info');
 		} catch (err) {
-			addToast(`Failed to stop tunnel: ${err}`, 'error');
+			addToast(t('toast.tunnel_stop_failed', { error: String(err) }), 'error');
 		}
 	}
 
