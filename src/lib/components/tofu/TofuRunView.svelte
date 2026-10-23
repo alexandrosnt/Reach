@@ -330,7 +330,6 @@
 		border-radius: var(--radius-btn);
 		background: var(--color-bg-primary);
 		border: 1px solid var(--color-border);
-		scrollbar-width: thin;
 	}
 
 	.summary {

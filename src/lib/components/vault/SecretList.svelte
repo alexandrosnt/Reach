@@ -540,7 +540,6 @@
 		flex-direction: column;
 		gap: 1px;
 		padding: 0 var(--space-2, 8px);
-		scrollbar-width: thin;
 	}
 
 	/* A row, not a card: the sidebar is 250px and a secret's name is the

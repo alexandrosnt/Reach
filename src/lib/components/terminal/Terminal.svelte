@@ -1035,13 +1035,20 @@
 
 	.terminal-container :global(.xterm) {
 		height: 100%;
-		padding: 4px;
+		/* Room between the text and the sidebar and window edges, as a terminal
+		   app gives it; the fit addon takes the padding off the grid it sizes. */
+		padding: 8px 12px;
+	}
+
+	/* A phone keeps every column it can. */
+	@media (max-width: 640px) {
+		.terminal-container :global(.xterm) {
+			padding: 4px;
+		}
 	}
 
 	.terminal-container :global(.xterm-viewport) {
 		background-color: var(--term-bg);
-		scrollbar-width: thin;
-		scrollbar-color: var(--color-surface-strong) transparent;
 	}
 
 	.terminal-container :global(.xterm-viewport::-webkit-scrollbar) {

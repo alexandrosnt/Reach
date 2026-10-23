@@ -895,7 +895,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1px;
-		scrollbar-width: thin;
 	}
 
 	.group-label {

@@ -723,7 +723,6 @@ Go to Settings > Sync > Accept Vault Invite`;
 		max-height: min(46vh, 380px);
 		overflow-y: auto;
 		margin-top: 4px;
-		scrollbar-width: thin;
 	}
 
 	.group-label {

@@ -845,7 +845,6 @@
 
 	.font-list {
 		max-height: min(280px, 40vh); overflow-y: auto; padding: 4px 0;
-		scrollbar-width: thin; scrollbar-color: var(--color-surface-active) transparent;
 	}
 
 	.font-group-label {

@@ -324,7 +324,6 @@
 		gap: 2px;
 		max-height: 360px;
 		overflow-y: auto;
-		scrollbar-width: thin;
 	}
 
 	.pick-row {

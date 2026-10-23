@@ -305,10 +305,15 @@ select:not([multiple]):disabled {
    remove. --color-surface-strong is the token that exists for this. */
 
 /* Firefox has no ::-webkit pseudo-elements and was left with the default
-   full-width bar; these two properties are all it supports, and all it needs. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-surface-strong) transparent;
+   full-width bar; these two properties are all it supports, and all it needs.
+ Only there: since Chromium 121 an element with either property set loses
+ its ::-webkit-scrollbar styling, and WebView2 drew the system scrollbar,
+ arrow buttons and all, in every list and the terminal. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-strong) transparent;
+  }
 }
 
 ::-webkit-scrollbar {

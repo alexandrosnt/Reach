@@ -1951,8 +1951,6 @@
 	.context-folders {
 		max-height: 150px;
 		overflow-y: auto;
-		scrollbar-width: thin;
-		scrollbar-color: var(--color-surface-strong) transparent;
 	}
 
 	.context-item {

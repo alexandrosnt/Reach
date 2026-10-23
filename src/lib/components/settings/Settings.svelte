@@ -125,7 +125,6 @@
 		width: 188px;
 		flex-shrink: 0;
 		overflow-y: auto;
-		scrollbar-width: thin;
 		border-right: 1px solid var(--color-border);
 		background-color: var(--color-bg-secondary);
 		border-radius: 0 0 0 var(--radius-modal, 12px);
@@ -199,7 +198,6 @@
 		padding: 20px 24px 24px;
 		overflow-y: auto;
 		min-width: 0;
-		scrollbar-width: thin;
 		/* A tab that scrolls must not sit 10px left of one that does not. */
 		scrollbar-gutter: stable;
 	}

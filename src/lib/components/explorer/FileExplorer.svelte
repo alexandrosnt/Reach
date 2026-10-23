@@ -1573,8 +1573,6 @@
 		flex: 1;
 		overflow-y: auto;
 		position: relative;
-		scrollbar-width: thin;
-		scrollbar-color: var(--color-surface-strong) transparent;
 		transition: border-color 0.15s ease;
 	}
 
