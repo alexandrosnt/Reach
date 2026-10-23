@@ -302,4 +302,33 @@
 		line-height: 1;
 		color: var(--color-text-secondary);
 	}
+
+	/* A phone's width cannot hold the gauges: they shrank into one another
+	   and the figures were drawn over each other (#127). Figures only, then,
+	   at their own width, and the bar scrolls sideways if they still do not
+	   fit. */
+	@media (max-width: 640px) {
+		.monitoring-bar {
+			gap: 12px;
+			overflow-x: auto;
+			scrollbar-width: none;
+		}
+
+		.monitoring-bar::-webkit-scrollbar {
+			display: none;
+		}
+
+		.gauge,
+		.users {
+			flex-shrink: 0;
+		}
+
+		.gauge-track {
+			display: none;
+		}
+
+		.gauge-value {
+			min-width: 0;
+		}
+	}
 </style>
