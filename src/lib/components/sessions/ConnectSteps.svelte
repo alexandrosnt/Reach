@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { listen } from '@tauri-apps/api/event';
 	import { t } from '$lib/state/i18n.svelte';
+	import { CONNECT_STEPS as STEPS, connectStep, type ConnectStep as Step } from '$lib/state/connect-stages.svelte';
 
 	interface Props {
 		/** The connection being made; its steps are the ones shown. */
@@ -13,9 +13,6 @@
 
 	let { id, active, failed }: Props = $props();
 
-	/** The backend's steps (ConnectStage in ssh/client.rs), in order. */
-	const STEPS = ['connect', 'kex', 'hostkey', 'auth', 'shell'] as const;
-	type Step = (typeof STEPS)[number];
 	const LABELS: Record<Step, string> = {
 		connect: 'connect.step_connect',
 		kex: 'connect.step_kex',
@@ -24,27 +21,9 @@
 		shell: 'connect.step_shell'
 	};
 
-	let reached = $state<Step | null>(null);
-
-	// A new connection starts from nothing; one that sends no steps (through
-	// jump hosts) keeps the plain "Connecting…" on the button.
-	$effect(() => {
-		const watching = id;
-		reached = null;
-		if (!watching) return;
-		let stop: (() => void) | undefined;
-		let gone = false;
-		void listen<{ id: string; stage: Step }>('ssh-connect-stage', (e) => {
-			if (e.payload.id === watching && STEPS.includes(e.payload.stage)) reached = e.payload.stage;
-		}).then((un) => {
-			if (gone) un();
-			else stop = un;
-		});
-		return () => {
-			gone = true;
-			stop?.();
-		};
-	});
+	// A connection that sends no steps (through jump hosts) keeps the plain
+	// "Connecting…" on the button.
+	let reached = $derived(connectStep(id));
 
 	let at = $derived(reached ? STEPS.indexOf(reached) : -1);
 	let shown = $derived(at >= 0 && (active || failed));
