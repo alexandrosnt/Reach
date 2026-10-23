@@ -139,7 +139,14 @@
 		</button>
 	</div>
 
-	<input class="search" type="text" placeholder={t('recipes.search')} bind:value={search} />
+	<!-- The session list's search field, icon and all. -->
+	<label class="search">
+		<svg class="search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+			<circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+			<path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+		</svg>
+		<input type="text" placeholder={t('recipes.search')} aria-label={t('recipes.search')} bind:value={search} />
+	</label>
 
 	{#if !canRun && view === 'installed'}
 		<!-- Said once, up front, rather than discovered at the moment of running.
@@ -295,32 +302,66 @@
 		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 0 0 1px var(--color-border);
 	}
 
+	/* The session list's + button. */
 	.icon-btn {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 24px;
-		height: 24px;
+		align-self: stretch;
+		width: 30px;
 		flex-shrink: 0;
-		color: var(--color-text-secondary);
-		background: none;
+		padding: 0;
+		color: var(--color-accent);
+		background: transparent;
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
+		border-radius: 6px;
 		cursor: pointer;
+		transition:
+			background-color var(--duration-default) var(--ease-default),
+			border-color var(--duration-default) var(--ease-default);
 	}
 
 	.icon-btn:hover {
-		color: var(--color-text-primary);
+		background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+		border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
 	}
 
 	.search {
-		padding: 5px 8px;
-		font-family: inherit;
-		font-size: var(--text-xs);
-		color: var(--color-text-primary);
-		background: var(--color-surface-sunken);
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 8px;
+		background: var(--color-bg-primary);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
+		border-radius: 6px;
+		cursor: text;
+	}
+
+	.search:focus-within {
+		border-color: var(--color-accent);
+	}
+
+	.search-icon {
+		flex-shrink: 0;
+		color: var(--color-text-secondary);
+		opacity: 0.5;
+	}
+
+	.search input {
+		flex: 1;
+		min-width: 0;
+		padding: 3px 0;
+		border: none;
+		background: transparent;
+		color: var(--color-text-primary);
+		font-family: var(--font-sans);
+		font-size: var(--text-sm);
+		outline: none;
+	}
+
+	.search input::placeholder {
+		color: var(--color-text-secondary);
+		opacity: 0.5;
 	}
 
 	.hint,
