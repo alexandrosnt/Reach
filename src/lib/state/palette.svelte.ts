@@ -9,11 +9,14 @@
  * the request out the way a click on the session would.
  */
 
+import type { TypedAddress } from '$lib/utils/address';
+
 export type SessionRequest =
 	/** `shell` opens the session with another login shell (a container's). */
 	| { kind: 'connect'; sessionId: string; shell?: string }
 	| { kind: 'new-session' }
-	| { kind: 'quick-connect' };
+	/** `prefill`: an address someone typed, to start the dialog from. */
+	| { kind: 'quick-connect'; prefill?: TypedAddress };
 
 let open = $state(false);
 let request = $state<SessionRequest | null>(null);

@@ -10,6 +10,8 @@
 		icon?: string;
 		/** The current choice, marked with a tick. */
 		checked?: boolean;
+		/** The icon's colour (a tab group's, say); the text's otherwise. */
+		iconColor?: string;
 	}
 </script>
 
@@ -77,8 +79,8 @@
 			>
 				<span class="lead">
 					{#if item.icon}
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-							<path d={item.icon} stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true" style:color={item.iconColor}>
+							<path d={item.icon} stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" fill={item.iconColor ? 'currentColor' : 'none'} />
 						</svg>
 					{/if}
 					<span>{item.label}</span>

@@ -1,6 +1,12 @@
 <script lang="ts">
-	import { getTabs, getActiveTab, createTab, closeTab, activateTab, getSplit, splitWith, unsplit, getDraggedTab, setDraggedTab, type Tab } from '$lib/state/tabs.svelte';
+	import {
+		getTabs, getActiveTab, createTab, closeTab, activateTab, getSplit, splitWith, unsplit, getDraggedTab, setDraggedTab, type Tab,
+		getGroups, createGroup, addToGroup, removeFromGroup, renameGroup, setGroupColor, toggleGroup, groupHidden, ungroup, closeGroup,
+		GROUP_COLORS, type GroupColor, type TabGroup
+	} from '$lib/state/tabs.svelte';
 	import DbMenu, { type MenuItem } from '$lib/components/db/DbMenu.svelte';
+	import Modal from '$lib/components/shared/Modal.svelte';
+	import Button from '$lib/components/shared/Button.svelte';
 	import { getActivePage, setActivePage, type Page } from '$lib/state/navigation.svelte';
 	import { getEnabledDevopsTools } from '$lib/state/devops.svelte';
 	import { t } from '$lib/state/i18n.svelte';
@@ -101,8 +107,90 @@
 			{ label: t('split.down'), hint: `${mod}O`, disabled: tabs.length < 2 && id !== activeTab?.id, action: () => splitWith(id, 'down') }
 		];
 		if (split) items.push({ label: t('split.unsplit'), hint: `${mod}U`, action: unsplit });
+
+		// Groups: a new one, any other there is, or out of the one it is in.
+		const tab = tabs.find((x) => x.id === id);
+		items.push({ label: '', separator: true }, { label: t('tabs.group_new'), icon: GROUP_ICON, action: () => startGroupFrom(id) });
+		for (const g of groups) {
+			if (g.id === tab?.groupId) continue;
+			items.push({ label: t('tabs.group_add', { name: g.name }), icon: DOT_ICON, iconColor: groupColor(g.color), action: () => addToGroup(id, g.id) });
+		}
+		if (tab?.groupId) items.push({ label: t('tabs.group_remove'), action: () => removeFromGroup(id) });
+
 		items.push({ label: '', separator: true }, { label: t('common.close'), action: () => closeTab(id) });
 		return items;
+	}
+
+	// ---- Tab groups ---------------------------------------------------------
+
+	let groups = $derived(getGroups());
+	let groupMenu = $state<{ x: number; y: number; id: string } | null>(null);
+	let renaming = $state<string | null>(null);
+	let renameValue = $state('');
+	let confirmClose = $state<TabGroup | null>(null);
+
+	const GROUP_ICON = 'M4 6h7v5H4zM13 6h7v5h-7zM4 13h16v5H4z';
+	const DOT_ICON = 'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z';
+	const HEX: Record<GroupColor, string> = {
+		blue: '#3b82f6',
+		green: '#22c55e',
+		yellow: '#eab308',
+		red: '#ef4444',
+		purple: '#a855f7',
+		cyan: '#06b6d4',
+		orange: '#f97316',
+		pink: '#ec4899',
+		grey: '#9ca3af'
+	};
+
+	function groupColor(c: GroupColor): string {
+		return HEX[c];
+	}
+
+	/** First tab of its group in the bar: the group's label goes before it. */
+	function startsGroup(i: number): boolean {
+		const g = tabs[i].groupId;
+		return !!g && (i === 0 || tabs[i - 1].groupId !== g);
+	}
+
+	function startGroupFrom(tabId: string): void {
+		const g = createGroup(tabId);
+		if (g) beginRename(g);
+	}
+
+	function beginRename(g: TabGroup): void {
+		renaming = g.id;
+		renameValue = g.name;
+	}
+
+	function finishRename(): void {
+		if (renaming) renameGroup(renaming, renameValue);
+		renaming = null;
+	}
+
+	function groupMenuItems(id: string): MenuItem[] {
+		const g = groups.find((x) => x.id === id);
+		if (!g) return [];
+		const count = tabs.filter((x) => x.groupId === id).length;
+		return [
+			{ label: g.collapsed ? t('tabs.group_expand') : t('tabs.group_collapse'), action: () => toggleGroup(id) },
+			{ label: t('tabs.group_rename'), action: () => beginRename(g) },
+			{ label: '', separator: true },
+			...GROUP_COLORS.map((c) => ({
+				label: t(`tabs.color_${c}`),
+				icon: DOT_ICON,
+				iconColor: HEX[c],
+				checked: g.color === c,
+				action: () => setGroupColor(id, c)
+			})),
+			{ label: '', separator: true },
+			{ label: t('tabs.group_ungroup'), action: () => ungroup(id) },
+			{
+				label: t('tabs.group_close'),
+				danger: true,
+				action: () => (count > 1 ? (confirmClose = g) : closeGroup(id))
+			}
+		];
 	}
 
 	/** Each page's icon, 24×24 and stroked, for the page button and menu. */
@@ -160,10 +248,45 @@
 		<div class="divider"></div>
 
 		<div class="tabs-scroll">
-			{#each tabs as tab (tab.id)}
+			{#each tabs as tab, i (tab.id)}
+				{#if startsGroup(i)}
+					{@const g = groups.find((x) => x.id === tab.groupId)}
+					{#if g}
+						{#if renaming === g.id}
+							<!-- svelte-ignore a11y_autofocus -->
+							<input
+								class="group-chip group-rename"
+								style:--group={groupColor(g.color)}
+								bind:value={renameValue}
+								aria-label={t('tabs.group_name')}
+								autofocus
+								onblur={finishRename}
+								onkeydown={(e) => { if (e.key === 'Enter') finishRename(); else if (e.key === 'Escape') renaming = null; }}
+							/>
+						{:else}
+							<button
+								class="group-chip"
+								class:collapsed={g.collapsed}
+								style:--group={groupColor(g.color)}
+								aria-expanded={!g.collapsed}
+								title={g.collapsed ? t('tabs.group_expand') : t('tabs.group_collapse')}
+								onclick={() => toggleGroup(g.id)}
+								ondblclick={() => beginRename(g)}
+								oncontextmenu={(e) => { e.preventDefault(); groupMenu = { x: e.clientX, y: e.clientY, id: g.id }; }}
+							>
+								<span class="group-dot"></span>
+								<span class="group-name">{g.name}</span>
+								{#if g.collapsed}<span class="group-count">{tabs.filter((x) => x.groupId === g.id).length}</span>{/if}
+							</button>
+						{/if}
+					{/if}
+				{/if}
+				{#if !groupHidden(tab)}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div
 					class="tab"
+					class:grouped={!!tab.groupId}
+					style:--group={tab.groupId ? groupColor(groups.find((x) => x.id === tab.groupId)?.color ?? 'grey') : undefined}
 					class:active={tab.id === activeTab?.id}
 					class:in-split={inSplit(tab.id)}
 					class:dragging={dragged === tab.id}
@@ -230,6 +353,7 @@
 						</svg>
 					</button>
 				</div>
+				{/if}
 			{/each}
 		</div>
 
@@ -255,8 +379,101 @@
 		}}
 	/>
 {/if}
+{#if groupMenu}
+	<DbMenu x={groupMenu.x} y={groupMenu.y} items={groupMenuItems(groupMenu.id)} onclose={() => (groupMenu = null)} />
+{/if}
+
+<Modal open={confirmClose !== null} onclose={() => (confirmClose = null)} title={t('tabs.group_close')} maxWidth="420px">
+	{#if confirmClose}
+		<p class="confirm-text">
+			{t('tabs.group_close_confirm', { name: confirmClose.name, count: String(tabs.filter((x) => x.groupId === confirmClose?.id).length) })}
+		</p>
+	{/if}
+	{#snippet actions()}
+		<Button variant="secondary" onclick={() => (confirmClose = null)}>{t('common.cancel')}</Button>
+		<Button
+			variant="danger"
+			onclick={() => {
+				if (confirmClose) closeGroup(confirmClose.id);
+				confirmClose = null;
+			}}>{t('tabs.group_close')}</Button
+		>
+	{/snippet}
+</Modal>
 
 <style>
+	/* ---- Tab groups ---- */
+
+	.group-chip {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex-shrink: 0;
+		align-self: center;
+		max-width: 140px;
+		height: 22px;
+		margin: 0 2px 0 6px;
+		padding: 0 8px;
+		border: none;
+		border-radius: 999px;
+		background: color-mix(in srgb, var(--group) 18%, transparent);
+		color: var(--group);
+		font-family: var(--font-sans);
+		font-size: var(--text-2xs);
+		font-weight: 600;
+		cursor: pointer;
+		transition: background-color var(--duration-default) var(--ease-default);
+	}
+
+	.group-chip:hover {
+		background: color-mix(in srgb, var(--group) 28%, transparent);
+	}
+
+	/* Folded, the chip stands for its tabs: solid, with how many. */
+	.group-chip.collapsed {
+		background: var(--group);
+		color: var(--color-bg-primary);
+	}
+
+	.group-dot {
+		flex-shrink: 0;
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background: currentColor;
+	}
+
+	.group-name {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.group-count {
+		font-variant-numeric: tabular-nums;
+		opacity: 0.85;
+	}
+
+	.group-rename {
+		width: 120px;
+		outline: 1px solid var(--group);
+		cursor: text;
+	}
+
+	/* A grouped tab carries the group's colour along its top edge; the bottom
+	   one is the selected tab's. */
+	.tab.grouped {
+		box-shadow: inset 0 2px 0 color-mix(in srgb, var(--group) 80%, transparent);
+		background-color: color-mix(in srgb, var(--group) 5%, transparent);
+	}
+
+	.confirm-text {
+		margin: 0;
+		font-size: var(--text-sm);
+		line-height: 1.5;
+		color: var(--color-text-primary);
+	}
+
 	.tabbar {
 		display: flex;
 		align-items: stretch;

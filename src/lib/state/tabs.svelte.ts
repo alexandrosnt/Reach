@@ -31,7 +31,9 @@ export interface Tab {
 	 *  (a shell inside a container on this computer, say). */
 	localCommand?: { program: string; args: string[] };
 	/** The WSL distribution name if this tab is a WSL session. */
-	wslDistro?: string
+	wslDistro?: string;
+	/** The tab group it is in, if any (see TabGroup). */
+	groupId?: string;
 }
 
 let tabs = $state<Tab[]>([]);
@@ -135,6 +137,7 @@ export function closeTab(id: string): void {
 	split = after.split;
 
 	tabs.splice(index, 1);
+	dropEmptyGroups();
 
 	if (after.focus) {
 		activateTab(after.focus);
@@ -146,6 +149,9 @@ export function closeTab(id: string): void {
 }
 
 export function activateTab(id: string): void {
+	// A tab shown is never hidden in a folded group.
+	const g = groupOfTab(id);
+	if (g?.collapsed) g.collapsed = false;
 	// In a split, a tab other than the two takes the focused pane.
 	split = splits.activate(split, activeTab?.id, id);
 	for (const tab of tabs) {
@@ -187,4 +193,128 @@ export function reorderTab(fromIndex: number, toIndex: number): void {
 
 	const [moved] = tabs.splice(fromIndex, 1);
 	tabs.splice(toIndex, 0, moved);
+}
+
+// ---- Tab groups ---------------------------------------------------------
+//
+// A named, coloured run of tabs in the bar, as in a browser: its tabs stay
+// side by side, and folding the group hides them (their sessions keep
+// running). Groups last while their tabs are open; nothing is saved.
+
+// Blue last: it is the selected tab's colour, and a group must not look selected.
+export const GROUP_COLORS = ['green', 'purple', 'orange', 'cyan', 'pink', 'yellow', 'red', 'grey', 'blue'] as const;
+export type GroupColor = (typeof GROUP_COLORS)[number];
+
+export interface TabGroup {
+	id: string;
+	name: string;
+	color: GroupColor;
+	collapsed: boolean;
+}
+
+let groups = $state<TabGroup[]>([]);
+
+export function getGroups(): TabGroup[] {
+	return groups;
+}
+
+export function groupOfTab(tabId: string): TabGroup | undefined {
+	const id = tabs.find((t) => t.id === tabId)?.groupId;
+	return id ? groups.find((g) => g.id === id) : undefined;
+}
+
+/** Index just past the last tab of `groupId`, or -1 if it has none. */
+function groupEnd(groupId: string): number {
+	let end = -1;
+	tabs.forEach((t, i) => {
+		if (t.groupId === groupId) end = i + 1;
+	});
+	return end;
+}
+
+/** Move a tab to `to` (an index into the bar as it is before the move). */
+function moveTab(tabId: string, to: number): void {
+	const from = tabs.findIndex((t) => t.id === tabId);
+	if (from === -1) return;
+	const [tab] = tabs.splice(from, 1);
+	tabs.splice(from < to ? to - 1 : to, 0, tab);
+}
+
+/** A new group holding `tabId`, named after it, in the next unused colour. */
+export function createGroup(tabId: string, name?: string): TabGroup | undefined {
+	const tab = tabs.find((t) => t.id === tabId);
+	if (!tab) return undefined;
+	if (tab.groupId) removeFromGroup(tabId);
+	const used = new Set(groups.map((g) => g.color));
+	const color = GROUP_COLORS.find((c) => !used.has(c)) ?? GROUP_COLORS[groups.length % GROUP_COLORS.length];
+	const group: TabGroup = { id: crypto.randomUUID(), name: name ?? (tab.sessionName || tab.title), color, collapsed: false };
+	groups.push(group);
+	tab.groupId = group.id;
+	return groups[groups.length - 1];
+}
+
+/** Put a tab in a group, after the group's last tab so its tabs stay together. */
+export function addToGroup(tabId: string, groupId: string): void {
+	const tab = tabs.find((t) => t.id === tabId);
+	if (!tab || !groups.some((g) => g.id === groupId) || tab.groupId === groupId) return;
+	const end = groupEnd(groupId);
+	tab.groupId = groupId;
+	if (end !== -1) moveTab(tabId, end);
+	dropEmptyGroups();
+}
+
+/** Take a tab out of its group, placing it just after the group. */
+export function removeFromGroup(tabId: string): void {
+	const tab = tabs.find((t) => t.id === tabId);
+	const groupId = tab?.groupId;
+	if (!tab || !groupId) return;
+	tab.groupId = undefined;
+	const end = groupEnd(groupId);
+	if (end !== -1) moveTab(tabId, end);
+	dropEmptyGroups();
+}
+
+export function renameGroup(groupId: string, name: string): void {
+	const g = groups.find((x) => x.id === groupId);
+	if (g && name.trim()) g.name = name.trim();
+}
+
+export function setGroupColor(groupId: string, color: GroupColor): void {
+	const g = groups.find((x) => x.id === groupId);
+	if (g) g.color = color;
+}
+
+/** Fold or unfold a group. Folding the group of the tab in front shows the
+ *  nearest tab outside it instead, if there is one. */
+export function toggleGroup(groupId: string): void {
+	const g = groups.find((x) => x.id === groupId);
+	if (!g) return;
+	g.collapsed = !g.collapsed;
+	if (g.collapsed && activeTab?.groupId === groupId) {
+		const outside = tabs.find((t) => t.groupId !== groupId && !groupHidden(t));
+		if (outside) activateTab(outside.id);
+	}
+}
+
+/** Whether a tab is hidden in a folded group. */
+export function groupHidden(tab: Tab): boolean {
+	if (!tab.groupId) return false;
+	return groups.find((g) => g.id === tab.groupId)?.collapsed ?? false;
+}
+
+/** Undo a group; its tabs stay open where they are. */
+export function ungroup(groupId: string): void {
+	for (const t of tabs) if (t.groupId === groupId) t.groupId = undefined;
+	groups = groups.filter((g) => g.id !== groupId);
+}
+
+/** Close every tab in a group. */
+export function closeGroup(groupId: string): void {
+	for (const t of tabs.filter((x) => x.groupId === groupId)) closeTab(t.id);
+	groups = groups.filter((g) => g.id !== groupId);
+}
+
+function dropEmptyGroups(): void {
+	const used = new Set(tabs.map((t) => t.groupId).filter(Boolean));
+	if (groups.some((g) => !used.has(g.id))) groups = groups.filter((g) => used.has(g.id));
 }
