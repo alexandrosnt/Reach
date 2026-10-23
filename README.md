@@ -48,7 +48,7 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 ### Core
 
 - **SSH Terminal** · Full interactive shell with WebGL rendering. Tabs, split views, and resize that actually works.
-- **Command palette** · Ctrl+Shift+P (or Search in the title bar) reaches any session, open tab, page or action: type a few letters of a name or host and press Enter.
+- **Command palette** · Ctrl+Shift+P (or Search in the title bar) reaches any session, open tab, page, snippet or action: type a few letters of a name or host and press Enter. A snippet is typed into the open terminal, for you to run.
 - **Tab groups** · Name and colour a run of tabs, as in a browser. Fold a group to put it out of the way without ending its sessions.
 - **A start screen that connects** · With no tab open: type `user@host` and connect, pick a session you used lately, or open a local shell.
 - **SFTP File Explorer** · Browse remote filesystems, drag-and-drop transfers, inline editing. Feels like a local file manager.
