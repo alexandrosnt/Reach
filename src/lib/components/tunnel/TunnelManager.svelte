@@ -65,12 +65,15 @@
 			return;
 		}
 
-		if (isNaN(remotePort) || remotePort < 1 || remotePort > 65535) {
+		// A SOCKS proxy has no destination of its own: each connection names one.
+		const dynamic = formType === 'Dynamic';
+
+		if (!dynamic && (isNaN(remotePort) || remotePort < 1 || remotePort > 65535)) {
 			addToast(t('tunnel.invalid_remote_port'), 'error');
 			return;
 		}
 
-		if (!formRemoteHost.trim()) {
+		if (!dynamic && !formRemoteHost.trim()) {
 			addToast(t('tunnel.remote_host_required'), 'error');
 			return;
 		}
@@ -80,8 +83,8 @@
 			const tunnel = await tunnelCreate(
 				formType,
 				localPort,
-				formRemoteHost.trim(),
-				remotePort,
+				dynamic ? '' : formRemoteHost.trim(),
+				dynamic ? 0 : remotePort,
 				connectionId
 			);
 			tunnels.push(tunnel);
@@ -131,10 +134,12 @@
 	});
 
 	/** The kinds of forward, labelled in the person's language (the buttons
-	    showed the English type names). */
+	    showed the English type names). Remote is left out: the server's
+	    connections back arrive at the forward table the session was opened
+	    with, which a tunnel started here does not reach yet, so it could only
+	    fail. A RemoteForward in the session's ssh_config works meanwhile. */
 	const TUNNEL_TYPES = [
 		{ type: 'Local', label: 'tunnel.local_forward' },
-		{ type: 'Remote', label: 'tunnel.remote_forward' },
 		{ type: 'Dynamic', label: 'tunnel.dynamic' }
 	] as const;
 </script>
@@ -179,9 +184,8 @@
 				</div>
 
 				<Input label={t('tunnel.local_port')} bind:value={formLocalPort} type="number" placeholder="8080" />
-				<Input label={t('tunnel.remote_host')} bind:value={formRemoteHost} placeholder="localhost" />
-
 				{#if formType !== 'Dynamic'}
+					<Input label={t('tunnel.remote_host')} bind:value={formRemoteHost} placeholder="localhost" />
 					<Input label={t('tunnel.remote_port')} bind:value={formRemotePort} type="number" placeholder="80" />
 				{/if}
 
