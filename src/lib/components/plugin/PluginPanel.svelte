@@ -170,7 +170,7 @@
 				onclick={() => (activeTab = 'marketplace')}
 			>
 				{t('plugin.tab_marketplace')}
-				<span class="new-badge">NEW</span>
+				<span class="new-badge">{t('common.new')}</span>
 			</button>
 		</div>
 		<!-- Reload sits with the tabs: a second PLUGINS heading under the panel's
@@ -304,6 +304,7 @@
 		padding: 1px 4px;
 		font-size: 0.5rem;
 		font-weight: 700;
+		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		color: #fff;
 		background-color: var(--color-accent);
