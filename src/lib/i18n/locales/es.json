@@ -1,4 +1,5 @@
 {
+  "start.actions": "Empezar",
   "palette.group_snippets": "Fragmentos",
   "common.reenter_password": "Vuelve a escribir la contraseña",
   "common.export_password_hint": "Contraseña usada al exportar",

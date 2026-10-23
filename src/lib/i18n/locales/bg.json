@@ -1,4 +1,5 @@
 {
+  "start.actions": "Начало",
   "palette.group_snippets": "Фрагменти",
   "common.reenter_password": "Въведете паролата отново",
   "common.export_password_hint": "Паролата, използвана при експорта",

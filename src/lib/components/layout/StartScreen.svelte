@@ -84,22 +84,36 @@
 			</section>
 		{/if}
 
-		<div class="actions">
-			{#if localShell}
-				<button class="action" onclick={() => createTab('local')}>
-					<span>{t('start.local')}</span>
-					<kbd>{shortcutLabel('T', { ctrl: true })}</kbd>
-				</button>
-			{/if}
-			<button class="action" onclick={() => requestSessionAction({ kind: 'new-session' })}>
-				<span>{t('session.new_session')}</span>
-				<kbd>{shortcutLabel('N', { ctrl: true })}</kbd>
-			</button>
-			<button class="action" onclick={openPalette}>
-				<span>{t('palette.title')}</span>
-				<kbd>{shortcutLabel('P', { ctrl: true, shift: true })}</kbd>
-			</button>
-		</div>
+		<!-- A list like Recent above it, not a row of buttons that wrapped one
+		     onto a line of its own: every action whole, its shortcut at the end. -->
+		<section>
+			<h2>{t('start.actions')}</h2>
+			<ul>
+				{#if localShell}
+					<li>
+						<button class="action" onclick={() => createTab('local')}>
+							<svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="icon" aria-hidden="true"><path d="M5 8l4 4-4 4M12 16h7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+							<span class="label">{t('start.local')}</span>
+							<kbd>{shortcutLabel('T', { ctrl: true })}</kbd>
+						</button>
+					</li>
+				{/if}
+				<li>
+					<button class="action" onclick={() => requestSessionAction({ kind: 'new-session' })}>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="icon" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+						<span class="label">{t('session.new_session')}</span>
+						<kbd>{shortcutLabel('N', { ctrl: true })}</kbd>
+					</button>
+				</li>
+				<li>
+					<button class="action" onclick={openPalette}>
+						<svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="icon" aria-hidden="true"><circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" /><path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" /></svg>
+						<span class="label">{t('palette.title')}</span>
+						<kbd>{shortcutLabel('P', { ctrl: true, shift: true })}</kbd>
+					</button>
+				</li>
+			</ul>
+		</section>
 	</div>
 </div>
 
@@ -271,31 +285,40 @@
 		opacity: 1;
 	}
 
-	.actions {
-		display: flex;
-		flex-wrap: wrap;
-		gap: var(--space-2);
-	}
-
 	.action {
 		display: flex;
 		align-items: center;
-		gap: var(--space-2);
-		height: 32px;
-		padding: 0 var(--space-3);
-		border: 1px solid var(--color-border);
-		border-radius: var(--radius-btn);
+		gap: var(--space-3);
+		width: 100%;
+		min-height: 40px;
+		padding: 0 var(--space-4);
+		border: none;
 		background: transparent;
-		color: var(--color-text-secondary);
+		color: var(--color-text-primary);
 		font-family: var(--font-sans);
-		font-size: var(--text-xs);
+		font-size: var(--text-sm);
+		text-align: left;
 		cursor: pointer;
-		transition: color var(--duration-default) var(--ease-default), border-color var(--duration-default) var(--ease-default);
+		transition: background-color var(--duration-default) var(--ease-default);
 	}
 
-	.action:hover {
-		color: var(--color-text-primary);
-		border-color: var(--color-surface-active);
+	.action:hover,
+	.action:focus-visible {
+		background: var(--color-surface-hover);
+		outline: none;
+	}
+
+	.icon {
+		flex-shrink: 0;
+		color: var(--color-text-tertiary);
+	}
+
+	.label {
+		flex: 1;
+		min-width: 0;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
 	}
 
 	kbd {
@@ -311,7 +334,7 @@
 		}
 
 		.action {
-			height: 40px;
+			min-height: 48px;
 		}
 
 		.go {

@@ -1,4 +1,5 @@
 {
+  "start.actions": "开始",
   "palette.group_snippets": "代码片段",
   "common.reenter_password": "再次输入密码",
   "common.export_password_hint": "导出时使用的密码",
