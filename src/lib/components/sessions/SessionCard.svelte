@@ -3,6 +3,7 @@
 	import type { VaultInfo } from '$lib/state/vault.svelte';
 	import DistroIcon from './DistroIcon.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import { sessionAddress } from '$lib/utils/address';
 	import { isWindows } from '$lib/platform';
 
 	interface Props {
@@ -34,9 +35,6 @@
 			onconnect();
 		}
 	}
-
-	/** The port a session of this kind uses unless told otherwise. */
-	let defaultPort = $derived(session.kind === 'rdp' ? 3389 : session.kind === 'vnc' ? 5900 : 22);
 
 	/** A lock for a password, a key for a key, a link for the agent. */
 	let authIcon = $derived(
@@ -108,7 +106,7 @@
 				<span class="session-meta">
 					<!-- The port only when it is not ssh's own: ":22" on every row
 					     said nothing. -->
-					<span class="session-detail">{session.username ? `${session.username}@` : ''}{session.host}{session.port && session.port !== defaultPort ? `:${session.port}` : ''}</span>
+					<span class="session-detail">{sessionAddress(session)}</span>
 					{#each session.tags.slice(0, 2) as tag (tag)}
 						<span class="tag-chip">{tag}</span>
 					{/each}

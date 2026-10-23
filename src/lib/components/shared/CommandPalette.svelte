@@ -17,6 +17,7 @@
 	import { lock, vaultState } from '$lib/state/vault.svelte';
 	import { sessionList, type SessionConfig } from '$lib/ipc/sessions';
 	import { t } from '$lib/state/i18n.svelte';
+	import { sessionAddress } from '$lib/utils/address';
 
 	interface Item {
 		id: string;
@@ -58,7 +59,7 @@
 				id: `session:${s.id}`,
 				group: t('palette.group_sessions'),
 				label: s.name,
-				detail: `${s.username ? s.username + '@' : ''}${s.host}`,
+				detail: sessionAddress(s),
 				keywords: s.tags.join(' '),
 				run: () => requestSessionAction({ kind: 'connect', sessionId: s.id })
 			});

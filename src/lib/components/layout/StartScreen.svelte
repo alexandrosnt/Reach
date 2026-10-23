@@ -5,6 +5,7 @@
 	 * button and a sentence in the middle of the window.
 	 */
 	import { createTab } from '$lib/state/tabs.svelte';
+	import { sessionAddress } from '$lib/utils/address';
 	import { requestSessionAction, openPalette } from '$lib/state/palette.svelte';
 	import { recentSessionIds } from '$lib/state/recents.svelte';
 	import { shortcutLabel } from '$lib/state/shortcuts.svelte';
@@ -73,7 +74,7 @@
 						<li>
 							<button class="session" onclick={() => requestSessionAction({ kind: 'connect', sessionId: s.id })}>
 								<span class="name">{s.name}</span>
-								<span class="addr">{s.username ? `${s.username}@` : ''}{s.host}</span>
+								<span class="addr">{sessionAddress(s)}</span>
 								<svg width="14" height="14" viewBox="0 0 24 24" fill="none" class="go" aria-hidden="true">
 									<path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
 								</svg>

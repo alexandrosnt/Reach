@@ -34,3 +34,16 @@ export function parseAddress(raw: string): TypedAddress | null {
 	const unmistakable = username !== undefined || port !== undefined || IPV4.test(rest) || /\.[a-z]{2,}$/i.test(rest);
 	return unmistakable ? { host: rest, username, port } : null;
 }
+
+/** The port a session of this kind uses unless told otherwise. */
+export function defaultPort(kind: string | undefined): number {
+	return kind === 'rdp' ? 3389 : kind === 'vnc' ? 5900 : 22;
+}
+
+/** `user@host`, with `:port` only when it is not the protocol's own, as the
+ *  session list, the start screen and the palette all show a session. */
+export function sessionAddress(s: { username?: string | null; host: string; port?: number | null; kind?: string }): string {
+	const user = s.username ? `${s.username}@` : '';
+	const port = s.port && s.port !== defaultPort(s.kind) ? `:${s.port}` : '';
+	return `${user}${s.host}${port}`;
+}
