@@ -92,6 +92,16 @@ export function getActiveTab(): Tab | undefined {
 	return activeTab;
 }
 
+/** "Local", then "Local 2", "Local 3": three tabs all called Local could not
+ *  be told apart in the tab bar, the palette or the status bar. */
+function numbered(base: string): string {
+	const taken = new Set(tabs.map((t) => t.title));
+	if (!taken.has(base)) return base;
+	for (let n = 2; ; n++) {
+		if (!taken.has(`${base} ${n}`)) return `${base} ${n}`;
+	}
+}
+
 export function createTab(type: TabType, title?: string, connectionId?: string, sessionName?: string, detectedOs?: string | null, localCommand?: { program: string; args: string[] }, wslDistro?: string): Tab {
 	const id = crypto.randomUUID();
 
@@ -105,7 +115,7 @@ export function createTab(type: TabType, title?: string, connectionId?: string, 
 
 	const tab: Tab = {
 		id,
-		title: title ?? (type === 'local' ? 'Local' : type === 'rdp' ? 'RDP' : type === 'vnc' ? 'VNC' : 'SSH'),
+		title: title ?? numbered(type === 'local' ? 'Local' : type === 'rdp' ? 'RDP' : type === 'vnc' ? 'VNC' : 'SSH'),
 		type,
 		connectionId,
 		active: true,
