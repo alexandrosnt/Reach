@@ -1,4 +1,10 @@
 {
+  "connect.steps": "Connection steps",
+  "connect.step_connect": "Reach",
+  "connect.step_kex": "Encrypt",
+  "connect.step_hostkey": "Verify",
+  "connect.step_auth": "Log in",
+  "connect.step_shell": "Shell",
   "security.prompt_title": "Set a master password",
   "security.prompt_desc": "Right now only this computer's keychain can open your vault. If that is ever lost, so are your saved passwords and keys. A master password is a way back in.",
   "security.prompt_later": "Not now",

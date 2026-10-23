@@ -40,6 +40,7 @@
 	import { getSettings, sessionLogConfig } from '$lib/state/settings.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { promptForMasterPassword } from '$lib/state/password-prompt.svelte';
+	import ConnectSteps from './ConnectSteps.svelte';
 	import { hasMasterPassword } from '$lib/ipc/credentials';
 	import { t } from '$lib/state/i18n.svelte';
 	import { providerName } from '$lib/state/pwmanager.svelte';
@@ -822,6 +823,8 @@
 
 	async function doConnect(): Promise<void> {
 		if (!connectSession) return;
+		// A new attempt: the last one's steps, and the step it broke at, go.
+		connectingId = undefined;
 		// Don't submit an empty password while in fallback mode — that just
 		// burns another round-trip with the same failure.
 		if (passwordFallback && !fallbackPassword) {
@@ -1530,6 +1533,9 @@
 						<span class="remember-text">{hasSavedPassword ? t('session.password_saved') : t('session.remember_password')}</span>
 					</label>
 				{/if}
+
+				<!-- Where the connection has got to, and on a failure, which step broke. -->
+				<ConnectSteps id={connectingId} active={connecting} failed={!connecting && !!connectError} />
 
 				{#if connectError}
 					<div class="prompt-error">{connectError}</div>

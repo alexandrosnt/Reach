@@ -1,4 +1,10 @@
 {
+  "connect.steps": "Стъпки на връзката",
+  "connect.step_connect": "Връзка",
+  "connect.step_kex": "Шифроване",
+  "connect.step_hostkey": "Проверка",
+  "connect.step_auth": "Вход",
+  "connect.step_shell": "Обвивка",
   "security.prompt_title": "Задайте главна парола",
   "security.prompt_desc": "В момента само ключодържателят на този компютър може да отвори трезора ви. Ако той се загуби, губят се и запазените ви пароли и ключове. Главната парола е начин да влезете отново.",
   "security.prompt_later": "Не сега",

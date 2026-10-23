@@ -1056,10 +1056,12 @@ impl SshManager {
             t.prepare_x11().await;
         }
         let timeout_duration = opts.connect_limit(std::time::Duration::from_secs(15));
+        let stage = ConnectStage::new(app_handle.clone(), id);
         let connect_future = async {
-            let handle = Self::handshake_direct(host, port, username, &auth, proxy.as_ref(), app_handle.clone(), &opts, true).await?;
+            let handle = Self::handshake_direct(host, port, username, &auth, proxy.as_ref(), app_handle.clone(), &opts, true, Some(&stage)).await?;
             tracing::info!("SSH authenticated for {}@{}:{}", username, host, port);
 
+            stage.begin("shell");
             let (channel, tty) = open_session(&handle, &opts, cols, rows, shell.as_deref()).await?;
 
             tracing::info!("SSH shell opened for {}@{}:{}", username, host, port);
@@ -1089,13 +1091,24 @@ impl SshManager {
         app_handle: tauri::AppHandle,
         opts: &HopOptions,
         interactive: bool,
+        stage: Option<&ConnectStage>,
     ) -> Result<russh::client::Handle<SshClientHandler>, SshError> {
         let config = opts.engine_config(host).await;
-        let handler = SshClientHandler::new(host, port, Some(app_handle.clone())).with_hostkeys(opts.hostkeys.clone()).with_forwards(opts.forwards.clone());
+        let handler = SshClientHandler::new(host, port, Some(app_handle.clone()))
+            .with_hostkeys(opts.hostkeys.clone())
+            .with_forwards(opts.forwards.clone())
+            .with_stage(stage.cloned());
+        let begin = |s: &str| {
+            if let Some(stage) = stage {
+                stage.begin(s);
+            }
+        };
 
+        begin("connect");
         let mut handle = if let Some(proxy) = proxy {
             tracing::info!("SSH connecting via {} proxy {}:{}", proxy.proxy_type, proxy.host, proxy.port);
             let stream = Self::connect_via_proxy(proxy, host, port).await?;
+            begin("kex");
             russh::client::connect_stream(config, stream, handler)
                 .await
                 .map_err(|e| SshError::ConnectionFailed(format!("Proxy SSH handshake failed: {}", e)))?
@@ -1105,9 +1118,11 @@ impl SshManager {
             let failed = |e: String| SshError::ConnectionFailed(format!("ProxyCommand: {e}"));
             if pc.use_fdpass {
                 let stream = crate::ssh::proxycmd::fdpass(&cmd).await.map_err(|e| failed(e.to_string()))?;
+                begin("kex");
                 russh::client::connect_stream(config, stream, handler).await.map_err(|e| failed(e.to_string()))?
             } else {
                 let stream = crate::ssh::proxycmd::spawn(&cmd).map_err(|e| failed(e.to_string()))?;
+                begin("kex");
                 russh::client::connect_stream(config, stream, handler).await.map_err(|e| failed(e.to_string()))?
             }
         } else {
@@ -1118,9 +1133,11 @@ impl SshManager {
                 .await
                 .map_err(|e| describe(russh::Error::IO(e)))?;
             crate::ssh::hostbased::remember_socket(opts.auth.as_ref(), &stream);
+            begin("kex");
             russh::client::connect_stream(config, stream, handler).await.map_err(describe)?
         };
 
+        begin("auth");
         // Authenticate using a cascading strategy: configured key → agent → password.
         // The first method the server accepts wins. Mirrors OpenSSH's progressive auth.
         let outcome = login(&mut handle, username, auth, opts, Some(&app_handle as &dyn crate::ssh::prompt::Asker), host, port).await?;
@@ -1502,7 +1519,7 @@ impl SshManager {
         let timeout = jump_chain.first().map_or(&opts, |j| &j.opts).connect_limit(base);
         let connect = async {
             if jump_chain.is_empty() {
-                let handle = Self::handshake_direct(host, port, username, &auth, proxy.as_ref(), app_handle, &opts, false).await?;
+                let handle = Self::handshake_direct(host, port, username, &auth, proxy.as_ref(), app_handle, &opts, false, None).await?;
                 Ok::<_, SshError>((handle, Vec::new()))
             } else {
                 Self::handshake_via_jump(host, port, username, &auth, &jump_chain, app_handle, &opts).await
@@ -1931,6 +1948,27 @@ struct HostKeyPrompt {
     dns_match: Option<bool>,
 }
 
+/// Where a connection the user is waiting on has got to, for the connect
+/// dialog's steps: `connect` (reaching the server, or the proxy), `kex`
+/// (agreeing on keys), `hostkey` (checking who the server is, where a trust
+/// question can come up), `auth` (logging in) and `shell`. Each is sent as
+/// it begins, so a failure belongs to the last one sent.
+#[derive(Debug, Clone)]
+pub(crate) struct ConnectStage {
+    app: tauri::AppHandle,
+    id: String,
+}
+
+impl ConnectStage {
+    pub(crate) fn new(app: tauri::AppHandle, id: impl Into<String>) -> Self {
+        Self { app, id: id.into() }
+    }
+
+    fn begin(&self, stage: &str) {
+        let _ = self.app.emit("ssh-connect-stage", serde_json::json!({ "id": self.id, "stage": stage }));
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct SshClientHandler {
     host: String,
@@ -1941,11 +1979,19 @@ pub struct SshClientHandler {
     /// VerifyHostKeyDNS's finding for the host-key question.
     dns_match: Option<bool>,
     hostkey_update: crate::ssh::hostkey_update::UpdateState,
+    /// Reports the host-key step of a connection someone is watching.
+    stage: Option<ConnectStage>,
 }
 
 impl SshClientHandler {
     pub fn new(host: impl Into<String>, port: u16, app_handle: Option<tauri::AppHandle>) -> Self {
-        Self { host: host.into(), port, app_handle, hostkeys: None, forwards: None, dns_match: None, hostkey_update: Default::default() }
+        Self { host: host.into(), port, app_handle, hostkeys: None, forwards: None, dns_match: None, hostkey_update: Default::default(), stage: None }
+    }
+
+    /// Report the host-key step to the connect dialog (see `ConnectStage`).
+    pub(crate) fn with_stage(mut self, stage: Option<ConnectStage>) -> Self {
+        self.stage = stage;
+        self
     }
 
     /// Answer channels the server opens for forwards (see `forwarding`).
@@ -2111,6 +2157,9 @@ impl russh::client::Handler for SshClientHandler {
         &mut self,
         server_public_key: &russh::keys::PublicKeyOrCertificate,
     ) -> Result<bool, Self::Error> {
+        if let Some(stage) = &self.stage {
+            stage.begin("hostkey");
+        }
         let host_id = format!("{}:{}", self.host, self.port);
         let key = server_public_key.public_key();
         let fingerprint = host_key_fingerprint(&key);

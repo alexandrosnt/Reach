@@ -1,4 +1,10 @@
 {
+  "connect.steps": "连接步骤",
+  "connect.step_connect": "连接",
+  "connect.step_kex": "加密",
+  "connect.step_hostkey": "验证",
+  "connect.step_auth": "登录",
+  "connect.step_shell": "Shell",
   "security.prompt_title": "设置主密码",
   "security.prompt_desc": "目前只有这台电脑的钥匙串能打开你的保管库。一旦它丢失，保存的密码和密钥也会随之丢失。主密码是重新进入的途径。",
   "security.prompt_later": "以后再说",

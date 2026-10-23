@@ -1,4 +1,10 @@
 {
+  "connect.steps": "Этапы подключения",
+  "connect.step_connect": "Связь",
+  "connect.step_kex": "Шифрование",
+  "connect.step_hostkey": "Проверка",
+  "connect.step_auth": "Вход",
+  "connect.step_shell": "Оболочка",
   "security.prompt_title": "Задайте мастер-пароль",
   "security.prompt_desc": "Сейчас открыть хранилище может только связка ключей этого компьютера. Если она потеряется, пропадут и сохранённые пароли и ключи. Мастер-пароль — способ вернуть доступ.",
   "security.prompt_later": "Не сейчас",

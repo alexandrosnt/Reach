@@ -1,4 +1,10 @@
 {
+  "connect.steps": "Verbindungsschritte",
+  "connect.step_connect": "Erreichen",
+  "connect.step_kex": "Verschlüsseln",
+  "connect.step_hostkey": "Prüfen",
+  "connect.step_auth": "Anmelden",
+  "connect.step_shell": "Shell",
   "security.prompt_title": "Master-Passwort festlegen",
   "security.prompt_desc": "Derzeit kann nur der Schlüsselbund dieses Computers Ihren Tresor öffnen. Geht er verloren, sind auch Ihre gespeicherten Passwörter und Schlüssel verloren. Ein Master-Passwort ist ein Weg zurück.",
   "security.prompt_later": "Nicht jetzt",

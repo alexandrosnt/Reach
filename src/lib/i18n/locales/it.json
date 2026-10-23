@@ -1,4 +1,10 @@
 {
+  "connect.steps": "Passaggi della connessione",
+  "connect.step_connect": "Raggiungere",
+  "connect.step_kex": "Cifrare",
+  "connect.step_hostkey": "Verificare",
+  "connect.step_auth": "Accesso",
+  "connect.step_shell": "Shell",
   "security.prompt_title": "Imposta una password principale",
   "security.prompt_desc": "Al momento solo il portachiavi di questo computer può aprire la tua cassaforte. Se va perso, si perdono anche le password e le chiavi salvate. Una password principale è un modo per rientrare.",
   "security.prompt_later": "Non ora",

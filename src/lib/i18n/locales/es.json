@@ -1,4 +1,10 @@
 {
+  "connect.steps": "Pasos de la conexión",
+  "connect.step_connect": "Alcanzar",
+  "connect.step_kex": "Cifrar",
+  "connect.step_hostkey": "Verificar",
+  "connect.step_auth": "Entrar",
+  "connect.step_shell": "Shell",
   "security.prompt_title": "Establece una contraseña maestra",
   "security.prompt_desc": "Ahora mismo solo el llavero de este ordenador puede abrir tu bóveda. Si se pierde, se pierden también tus contraseñas y claves guardadas. Una contraseña maestra es una forma de volver a entrar.",
   "security.prompt_later": "Ahora no",

@@ -1,4 +1,10 @@
 {
+  "connect.steps": "Étapes de la connexion",
+  "connect.step_connect": "Joindre",
+  "connect.step_kex": "Chiffrer",
+  "connect.step_hostkey": "Vérifier",
+  "connect.step_auth": "Connexion",
+  "connect.step_shell": "Shell",
   "security.prompt_title": "Définir un mot de passe maître",
   "security.prompt_desc": "Pour l’instant, seul le trousseau de cet ordinateur peut ouvrir votre coffre. S’il est perdu, vos mots de passe et clés enregistrés le sont aussi. Un mot de passe maître permet d’y revenir.",
   "security.prompt_later": "Plus tard",
