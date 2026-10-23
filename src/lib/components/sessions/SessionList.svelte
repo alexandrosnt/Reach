@@ -1314,7 +1314,8 @@
 				<span>{searchQuery.trim() ? t('session.matches_n', { count: String(filteredSessions.length) }) : ''}</span>
 				<span class="match-actions">
 					<button class="match-select" type="button" onclick={() => { selectMode = true; }}>{t('session.select_sessions')}</button>
-					<button class="match-select" type="button" onclick={selectAllShown}>{t('session.select_all')}</button>
+					<!-- Select all only for a search: at rest the row stays one quiet link. -->
+					{#if searchQuery.trim()}<button class="match-select" type="button" onclick={selectAllShown}>{t('session.select_all')}</button>{/if}
 				</span>
 			</div>
 		{/if}
@@ -1905,8 +1906,19 @@
 	}
 
 	.folder-header:hover .folder-menu-btn,
-	.folder-header:hover .folder-delete-btn {
+	.folder-header:hover .folder-delete-btn,
+	.folder-header:focus-within .folder-menu-btn,
+	.folder-header:focus-within .folder-delete-btn {
 		opacity: 1;
+	}
+
+	/* With a mouse, a folder's buttons are not shown until it is pointed at:
+	   faint on every row they were noise down the whole list. */
+	@media (pointer: fine) {
+		.folder-menu-btn,
+		.folder-delete-btn {
+			opacity: 0;
+		}
 	}
 
 	.folder-menu-btn:hover {
@@ -2432,8 +2444,14 @@
 		background: none;
 		padding: 2px 4px;
 		font: inherit;
-		color: var(--color-accent);
+		color: var(--color-text-tertiary);
 		cursor: pointer;
+		transition: color var(--duration-default) var(--ease-default);
+	}
+
+	.match-select:hover,
+	.match-select:focus-visible {
+		color: var(--color-accent);
 	}
 
 	.bulk-bar {

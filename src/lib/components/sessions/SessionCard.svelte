@@ -175,6 +175,17 @@
 		opacity: 0.4;
 	}
 
+	/* With a mouse, the grip shows on the row pointed at only. */
+	@media (pointer: fine) {
+		.drag-handle {
+			opacity: 0;
+		}
+
+		.session-card:hover .drag-handle {
+			opacity: 0.4;
+		}
+	}
+
 	.session-card {
 		position: relative;
 		display: flex;

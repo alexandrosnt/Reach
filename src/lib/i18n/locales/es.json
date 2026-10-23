@@ -1,4 +1,5 @@
 {
+  "settings.font_size_hint": "Ctrl+rueda del ratón o pellizcar en la terminal también lo cambian.",
   "tabs.group_new": "Añadir a un grupo nuevo",
   "tabs.group_add": "Añadir a {{name}}",
   "tabs.group_remove": "Quitar del grupo",

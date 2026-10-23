@@ -1,4 +1,5 @@
 {
+  "settings.font_size_hint": "Strg+Mausrad oder ein Zusammenziehen im Terminal ändert sie auch.",
   "tabs.group_new": "Zu neuer Gruppe hinzufügen",
   "tabs.group_add": "Zu {{name}} hinzufügen",
   "tabs.group_remove": "Aus Gruppe entfernen",

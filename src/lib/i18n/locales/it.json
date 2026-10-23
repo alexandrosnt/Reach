@@ -1,4 +1,5 @@
 {
+  "settings.font_size_hint": "Anche Ctrl+rotellina o un pizzico nel terminale la cambiano.",
   "tabs.group_new": "Aggiungi a un nuovo gruppo",
   "tabs.group_add": "Aggiungi a {{name}}",
   "tabs.group_remove": "Rimuovi dal gruppo",

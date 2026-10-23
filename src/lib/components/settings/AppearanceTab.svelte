@@ -121,7 +121,11 @@
 		...themeState.all.map((th) => ({ id: th.id, name: th.name, swatch: th }))
 	]);
 
-	let selectedId = $derived(settings.themeId ?? (settings.theme === 'system' ? SYSTEM : null));
+	// Settings from before themes had ids say only dark or light: that is
+	// Reach's own, and its card is the one marked.
+	let selectedId = $derived(
+		settings.themeId ?? (settings.theme === 'system' ? SYSTEM : settings.theme === 'light' ? LIGHT.id : DARK.id)
+	);
 
 	function selectTheme(id: string) {
 		if (id === SYSTEM) {
@@ -299,7 +303,7 @@
 	<div class="setting-row">
 		<div class="setting-info">
 			<span class="setting-label">{t('settings.font_size')}</span>
-			<span class="setting-description">{t('settings.font_size_desc', { size: String(currentSize) })}</span>
+			<span class="setting-description">{t('settings.font_size_hint')}</span>
 		</div>
 		<div class="setting-control size-stepper">
 			<button class="size-btn" aria-label={t('keys.smaller')} disabled={currentSize <= 8} onclick={() => stepFontSize(-1)}>A−</button>

@@ -122,7 +122,7 @@
 		flex-direction: column;
 		gap: 2px;
 		padding: 8px;
-		width: 160px;
+		width: 188px;
 		flex-shrink: 0;
 		overflow-y: auto;
 		scrollbar-width: thin;

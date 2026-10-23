@@ -1,4 +1,5 @@
 {
+  "settings.font_size_hint": "Ctrl+molette ou un pincement dans le terminal la change aussi.",
   "tabs.group_new": "Ajouter à un nouveau groupe",
   "tabs.group_add": "Ajouter à {{name}}",
   "tabs.group_remove": "Retirer du groupe",

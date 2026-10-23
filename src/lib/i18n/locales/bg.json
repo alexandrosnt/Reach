@@ -1,4 +1,5 @@
 {
+  "settings.font_size_hint": "Ctrl+колелцето на мишката или щипване в терминала също го променят.",
   "tabs.group_new": "Добавяне в нова група",
   "tabs.group_add": "Добавяне в {{name}}",
   "tabs.group_remove": "Премахване от групата",

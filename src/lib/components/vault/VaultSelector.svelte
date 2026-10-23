@@ -110,8 +110,9 @@
 		selected === ALL_VAULTS ? t('vault.all_vaults') : current ? current.name : t('vault.private')
 	);
 	let triggerMeta = $derived.by(() => {
+		// With no vaults of their own, "0 vaults · 0 shared" says nothing.
 		if (selected === ALL_VAULTS) {
-			return t('vault.vaults_summary', { count: userVaults.length, shared: sharedVaults.length });
+			return userVaults.length ? t('vault.vaults_summary', { count: userVaults.length, shared: sharedVaults.length }) : '';
 		}
 		if (!current) return t('vault.this_device');
 		if (current.unreachable) return t('vault.unreachable');
@@ -323,7 +324,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 		{/if}
 		<span class="trigger-text">
 			<span class="trigger-name">{triggerName}</span>
-			<span class="trigger-meta" class:unreachable={current?.unreachable}>{triggerMeta}</span>
+			{#if triggerMeta}<span class="trigger-meta" class:unreachable={current?.unreachable}>{triggerMeta}</span>{/if}
 		</span>
 		<svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 			<path d="M6 9l6 6 6-6"/>

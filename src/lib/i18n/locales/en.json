@@ -1,4 +1,5 @@
 {
+  "settings.font_size_hint": "Ctrl+mouse wheel or a pinch in the terminal changes it too.",
   "tabs.group_new": "Add to new group",
   "tabs.group_add": "Add to {{name}}",
   "tabs.group_remove": "Remove from group",
