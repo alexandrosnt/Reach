@@ -1,4 +1,5 @@
 {
+  "palette.group_snippets": "Snippet",
   "common.reenter_password": "Reinserisci la password",
   "common.export_password_hint": "Password usata per l’esportazione",
   "common.tls_init_hint": "Lascia vuoto se hai usato l’inizializzazione in stile TLS",

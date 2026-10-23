@@ -20,6 +20,7 @@
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { invoke } from '@tauri-apps/api/core';
 	import { trieMatch } from '$lib/state/snippets.svelte';
+	import { terminalFocusRequests } from '$lib/state/palette.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { readText as clipboardReadText, writeText as clipboardWriteText } from '@tauri-apps/plugin-clipboard-manager';
 	import { openUrl } from '@tauri-apps/plugin-opener';
@@ -919,6 +920,12 @@
 			focusNow();
 			queueMicrotask(focusNow);
 		});
+	});
+
+	// The command palette typed into this terminal: it takes the keyboard back.
+	$effect(() => {
+		if (terminalFocusRequests() === 0 || !active || !shown) return;
+		untrack(() => terminal?.focus());
 	});
 
 </script>

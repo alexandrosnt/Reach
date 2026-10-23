@@ -1,10 +1,7 @@
 <script lang="ts">
-	import { getSnippets, loadSnippets, addSnippet, removeSnippet, editSnippet } from '$lib/state/snippets.svelte';
+	import { getSnippets, loadSnippets, addSnippet, removeSnippet, editSnippet, pasteSnippet } from '$lib/state/snippets.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
 	import { t } from '$lib/state/i18n.svelte';
-	import { getActiveTab } from '$lib/state/tabs.svelte';
-	import { sshSend } from '$lib/ipc/ssh';
-	import { ptyWrite } from '$lib/ipc/pty';
 	import { onMount } from 'svelte';
 
 	interface Props {
@@ -14,7 +11,6 @@
 	let { connectionId }: Props = $props();
 
 	let snippets = $derived(getSnippets());
-	let activeTab = $derived(getActiveTab());
 
 	let search = $state('');
 	let showAdd = $state(false);
@@ -35,15 +31,7 @@
 	});
 
 	function pasteToTerminal(command: string): void {
-		if (!activeTab) return;
-		const connId = activeTab.connectionId;
-		if (!connId) return;
-		const data = Array.from(new TextEncoder().encode(command));
-		if (activeTab.type === 'ssh') {
-			sshSend(connId, data);
-		} else {
-			ptyWrite(connId, data);
-		}
+		if (!pasteSnippet(command)) return;
 		addToast(t('snippets.pasted', { command: command.length > 40 ? command.slice(0, 40) + '…' : command }), 'success');
 	}
 

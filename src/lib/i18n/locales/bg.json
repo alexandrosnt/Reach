@@ -1,4 +1,5 @@
 {
+  "palette.group_snippets": "Фрагменти",
   "common.reenter_password": "Въведете паролата отново",
   "common.export_password_hint": "Паролата, използвана при експорта",
   "common.tls_init_hint": "Оставете празно, ако сте използвали инициализация в стил TLS",

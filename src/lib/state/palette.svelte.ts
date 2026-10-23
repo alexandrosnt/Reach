@@ -52,3 +52,15 @@ export function takeSessionAction(): SessionRequest | null {
 	request = null;
 	return r;
 }
+
+let focusRequests = $state(0);
+
+/** Gives the keyboard back to the active terminal: after the palette has
+ *  typed a snippet into it, Enter should go there and not to the page. */
+export function requestTerminalFocus(): void {
+	focusRequests++;
+}
+
+export function terminalFocusRequests(): number {
+	return focusRequests;
+}

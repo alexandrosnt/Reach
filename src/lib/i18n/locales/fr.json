@@ -1,4 +1,5 @@
 {
+  "palette.group_snippets": "Extraits",
   "common.reenter_password": "Saisissez à nouveau le mot de passe",
   "common.export_password_hint": "Mot de passe utilisé lors de l’export",
   "common.tls_init_hint": "Laissez vide si vous avez utilisé l’initialisation de type TLS",

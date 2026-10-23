@@ -1,4 +1,7 @@
 import { snippetList, snippetCreate, snippetUpdate, snippetDelete, type Snippet } from '$lib/ipc/snippets';
+import { getActiveTab } from '$lib/state/tabs.svelte';
+import { sshSend } from '$lib/ipc/ssh';
+import { ptyWrite } from '$lib/ipc/pty';
 
 let snippets = $state<Snippet[]>([]);
 
@@ -51,6 +54,36 @@ function findFirst(node: TrieNode): Snippet | null {
 }
 
 // --- Public API ---
+
+/** The active terminal's channel: an SSH tab's connection, or a local tab's
+    pty, which is keyed by the tab's own id (it has no connectionId — the
+    reason a snippet's Paste did nothing in a local terminal). */
+function terminalTarget(): { ssh: boolean; id: string } | null {
+	const tab = getActiveTab();
+	if (tab?.type === 'ssh') return tab.connectionId ? { ssh: true, id: tab.connectionId } : null;
+	if (tab?.type === 'local') return { ssh: false, id: tab.id };
+	return null;
+}
+
+/** Whether there is a terminal for a snippet to go into. */
+export function canPasteSnippet(): boolean {
+	return terminalTarget() !== null;
+}
+
+/** Types `command` into the active terminal, without pressing Enter: the
+    snippet panel's Paste and the command palette both use it. False when
+    there is no terminal to type into. */
+export function pasteSnippet(command: string): boolean {
+	const target = terminalTarget();
+	if (!target) return false;
+	const data = Array.from(new TextEncoder().encode(command));
+	if (target.ssh) {
+		sshSend(target.id, data);
+	} else {
+		ptyWrite(target.id, data);
+	}
+	return true;
+}
 
 export function getSnippets(): Snippet[] {
 	return snippets;

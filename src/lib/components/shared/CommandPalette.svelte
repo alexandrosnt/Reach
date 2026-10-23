@@ -8,8 +8,9 @@
 	 * every prompt and check a click on the session would have still applies.
 	 */
 	import { tick } from 'svelte';
-	import { isPaletteOpen, closePalette, requestSessionAction } from '$lib/state/palette.svelte';
+	import { isPaletteOpen, closePalette, requestSessionAction, requestTerminalFocus } from '$lib/state/palette.svelte';
 	import { getTabs, activateTab, createTab } from '$lib/state/tabs.svelte';
+	import { getSnippets, loadSnippets, pasteSnippet, canPasteSnippet } from '$lib/state/snippets.svelte';
 	import { getActivePage, setActivePage } from '$lib/state/navigation.svelte';
 	import { getEnabledDevopsTools } from '$lib/state/devops.svelte';
 	import { openSettings, shortcutLabel } from '$lib/state/shortcuts.svelte';
@@ -46,6 +47,7 @@
 		void sessionList()
 			.then((s) => (sessions = s))
 			.catch(() => (sessions = []));
+		void loadSnippets();
 		void tick().then(() => input?.focus());
 	});
 
@@ -72,6 +74,23 @@
 					activateTab(tab.id);
 				}
 			});
+		}
+		// Snippets, as Termius has them in its palette: typed into the open
+		// terminal, not run — Enter there is still the person's to press.
+		if (canPasteSnippet()) {
+			for (const sn of getSnippets()) {
+				out.push({
+					id: `snippet:${sn.id}`,
+					group: t('palette.group_snippets'),
+					label: sn.name,
+					detail: sn.command.split('\n')[0],
+					keywords: [sn.description ?? '', ...sn.tags].join(' '),
+					run: () => {
+						setActivePage('terminal');
+						if (pasteSnippet(sn.command)) requestTerminalFocus();
+					}
+				});
+			}
 		}
 		const pages = [
 			{ id: 'terminal' as const, label: () => t('nav.terminal') },
@@ -146,9 +165,14 @@
 		const q = query.trim().toLowerCase();
 		if (!q) {
 			// Without a query, what people reach for most: tabs, actions,
-			// pages, and a first few sessions.
-			const tabsEtc = items.filter((i) => !i.id.startsWith('session:'));
-			return [...tabsEtc.filter((i) => i.id.startsWith('tab:')), ...items.filter((i) => i.id.startsWith('session:')).slice(0, 6), ...tabsEtc.filter((i) => !i.id.startsWith('tab:'))];
+			// pages, and a first few sessions and snippets.
+			const tabsEtc = items.filter((i) => !i.id.startsWith('session:') && !i.id.startsWith('snippet:'));
+			return [
+				...tabsEtc.filter((i) => i.id.startsWith('tab:')),
+				...items.filter((i) => i.id.startsWith('session:')).slice(0, 6),
+				...items.filter((i) => i.id.startsWith('snippet:')).slice(0, 4),
+				...tabsEtc.filter((i) => !i.id.startsWith('tab:'))
+			];
 		}
 		return items
 			.map((i) => ({ i, s: Math.max(score(i.label, q), i.detail ? score(i.detail, q) - 20 : -1, i.keywords ? score(i.keywords, q) - 30 : -1) }))

@@ -1,4 +1,5 @@
 {
+  "palette.group_snippets": "Сниппеты",
   "common.reenter_password": "Введите пароль ещё раз",
   "common.export_password_hint": "Пароль, использованный при экспорте",
   "common.tls_init_hint": "Оставьте пустым, если использовали инициализацию в стиле TLS",
