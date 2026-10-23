@@ -18,6 +18,8 @@
  * fight it.
  */
 
+import { safeInsets } from '$lib/edges';
+
 /** One row of the list: an option, or the heading of an <optgroup>. */
 export interface MenuRow {
 	label: string;
@@ -138,12 +140,14 @@ export function installSelectMenus(): () => void {
 	function place() {
 		if (!menu || !select) return;
 		const r = select.getBoundingClientRect();
-		const vw = window.innerWidth;
-		const vh = window.innerHeight;
+		// The window less a phone's status bar, camera cutout and gesture bar.
+		const safe = safeInsets();
+		const vw = window.innerWidth - safe.right;
+		const vh = window.innerHeight - safe.bottom;
 		const below = vh - r.bottom - GAP - MARGIN;
-		const above = r.top - GAP - MARGIN;
+		const above = r.top - safe.top - GAP - MARGIN;
 		menu.style.minWidth = `${Math.round(r.width)}px`;
-		menu.style.maxWidth = `${vw - MARGIN * 2}px`;
+		menu.style.maxWidth = `${vw - safe.left - MARGIN * 2}px`;
 		menu.style.maxHeight = '';
 		const natural = Math.min(menu.scrollHeight, MAX_HEIGHT);
 		// Downward unless it would not fit there and there is more room above.
@@ -153,7 +157,7 @@ export function installSelectMenus(): () => void {
 		const h = Math.min(natural, room);
 		menu.style.top = `${down ? r.bottom + GAP : r.top - GAP - h}px`;
 		const w = menu.offsetWidth;
-		menu.style.left = `${Math.min(Math.max(MARGIN, r.left), Math.max(MARGIN, vw - w - MARGIN))}px`;
+		menu.style.left = `${Math.min(Math.max(safe.left + MARGIN, r.left), Math.max(safe.left + MARGIN, vw - w - MARGIN))}px`;
 	}
 
 	function open(s: HTMLSelectElement) {

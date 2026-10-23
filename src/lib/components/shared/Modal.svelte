@@ -94,7 +94,7 @@
 		position: fixed;
 		inset: 0;
 		/* Clear of the phone's status and navigation bars (0 on a desktop). */
-		padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+		padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 		z-index: 100;
 		display: flex;
 		align-items: center;
@@ -107,7 +107,9 @@
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-modal);
 		box-shadow: var(--shadow-elevated);
-		min-width: 320px;
+		/* Never wider than the window: a phone with a large display size is
+		   narrower than 320px. */
+		min-width: min(320px, calc(100vw - 16px));
 		max-width: 520px;
 		width: 90%;
 		max-height: 85vh;
@@ -191,6 +193,13 @@
 		to {
 			opacity: 1;
 			transform: scale(1);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.backdrop,
+		.modal {
+			animation: none;
 		}
 	}
 </style>

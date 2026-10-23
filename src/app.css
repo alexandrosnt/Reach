@@ -1,5 +1,16 @@
 @import 'tailwindcss';
 
+/* The parts of a phone's screen the system draws over: status bar, camera
+   cutout, navigation or gesture bar. The WebView reports the cutout alone
+   (env), so Android tells the page about the rest (--edge-*, set by
+   lib/edges.ts); whichever is larger is kept clear. 0 on a desktop. */
+:root {
+  --safe-top: max(env(safe-area-inset-top), var(--edge-top, 0px));
+  --safe-right: max(env(safe-area-inset-right), var(--edge-right, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom), var(--edge-bottom, 0px));
+  --safe-left: max(env(safe-area-inset-left), var(--edge-left, 0px));
+}
+
 /* ─── Reach Design Tokens ─── */
 
 @theme {
@@ -91,6 +102,19 @@ body {
   margin: 0;
   overflow: hidden;
   user-select: none;
+}
+
+/* Even line lengths in headings, and no word left alone on a paragraph's
+   last line ("protect / it."). Engines without these ignore them. */
+h1,
+h2,
+h3,
+h4 {
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
 }
 
 /* Native controls, scrollbars and select fields drawn dark or light to match
@@ -236,9 +260,27 @@ select:not([multiple]):disabled {
   }
 }
 
+/* A menu or popover fades in as the select menus do, so every menu in the
+ app opens the same way. */
+.pop-in {
+  animation: select-menu-in 120ms var(--ease-default);
+}
+
+/* Asked for less motion: menus appear, and every transition is instant.
+ Looping animations are left alone here — a spinner says something is
+ still working — and dialogs, the palette and toasts drop their own
+ entrances in their components. */
 @media (prefers-reduced-motion: reduce) {
-  .select-menu {
+  .select-menu,
+  .pop-in {
     animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
   }
 }
 
@@ -250,8 +292,10 @@ select:not([multiple]):disabled {
   -webkit-backdrop-filter: blur(20px);
 }
 
+/* Dimmed, not washed out: a white veil left a white dialog with no edge
+   against what it covers, and the app behind it unreadable as context. */
 .light .glass {
-  background: rgba(255, 255, 255, 0.72);
+  background: rgba(15, 18, 24, 0.28);
 }
 
 /* ─── Scrollbar ─── */
@@ -263,10 +307,15 @@ select:not([multiple]):disabled {
    remove. --color-surface-strong is the token that exists for this. */
 
 /* Firefox has no ::-webkit pseudo-elements and was left with the default
-   full-width bar; these two properties are all it supports, and all it needs. */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: var(--color-surface-strong) transparent;
+   full-width bar; these two properties are all it supports, and all it needs.
+ Only there: since Chromium 121 an element with either property set loses
+ its ::-webkit-scrollbar styling, and WebView2 drew the system scrollbar,
+ arrow buttons and all, in every list and the terminal. */
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-surface-strong) transparent;
+  }
 }
 
 ::-webkit-scrollbar {
@@ -397,8 +446,14 @@ select:not([multiple]):disabled {
 .settings-content .setting-control > .dropdown,
 .settings-content .setting-control > .select,
 .settings-content .setting-control > select,
-.settings-content .setting-control > input {
+.settings-content .setting-control > input:not([type="number"]) {
   width: 100%;
+}
+
+/* A number is a few digits: a field the width of the dropdowns above it read
+   as a text box. */
+.settings-content .setting-control > input[type="number"] {
+  width: 96px;
 }
 
 .settings-content .section {
@@ -418,8 +473,11 @@ select:not([multiple]):disabled {
 
 /* A row of buttons under a section sits on the control side, where every
    other action in the window sits. */
+/* Wraps: kept on one line and right-aligned, a row too wide for a phone ran
+   off the left edge. */
 .settings-content .action-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: 8px;

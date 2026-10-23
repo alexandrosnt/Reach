@@ -6,6 +6,10 @@
 	import WelcomeScreen from '$lib/components/setup/WelcomeScreen.svelte';
 	import CommunityPrompt from '$lib/components/shared/CommunityPrompt.svelte';
 	import LockScreen from '$lib/components/shared/LockScreen.svelte';
+	import CommandPalette from '$lib/components/shared/CommandPalette.svelte';
+	import AskHost from '$lib/components/shared/AskHost.svelte';
+	import PasswordPrompt from '$lib/components/shared/PasswordPrompt.svelte';
+	import { applyUiZoom } from '$lib/state/ui-zoom';
 	import { startAutoLock } from '$lib/state/autolock.svelte';
 	import { loadSettings, getSettings, syncTraySettings, recordLaunch, markFeaturesSeen } from '$lib/state/settings.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
@@ -19,6 +23,7 @@
 	import * as mcp from '$lib/state/mcp.svelte';
 	import * as share from '$lib/state/share.svelte';
 	import { installSelectMenus } from '$lib/utils/selectMenu';
+	import { initScreenEdges } from '$lib/edges';
 	import { onMount } from 'svelte';
 
 	let { children }: { children: Snippet } = $props();
@@ -28,6 +33,8 @@
 
 	onMount(() => {
 		loadSettings();
+		// The interface size chosen last time, before anything is laid out.
+		applyUiZoom();
 		startAutoLock();
 		// After loadSettings, or the count read back as zero and reset itself
 		// every launch, which would hold the community prompt off forever.
@@ -54,6 +61,8 @@
 		initShortcuts();
 		// Every <select> opens a theme-drawn list, not the platform popup (#110).
 		const stopSelectMenus = installSelectMenus();
+		// Android's status bar, navigation bar and camera cutout, for --safe-*.
+		initScreenEdges();
 		startupUpdateCheck();
 		startPeriodicChecks();
 
@@ -141,7 +150,10 @@
 	<!-- Below the welcome screen's stacking order on purpose: a first-run user
 	     is setting the app up, and must never meet this on top of that. -->
 	{#if settings.setupComplete}
+		<CommandPalette />
 		<CommunityPrompt />
+		<PasswordPrompt />
+		<AskHost />
 		<LockScreen />
 	{/if}
 {/if}

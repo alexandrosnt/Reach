@@ -6,6 +6,7 @@
 	 * the statements first and runs them as one transaction.
 	 */
 	import { onMount } from 'svelte';
+	import { ask } from '$lib/state/ask.svelte';
 	import FaIcon from '$lib/components/shared/FaIcon.svelte';
 	import { faRotate, faPlus, faFilter, faFloppyDisk, faRotateLeft, faPenRuler, faChevronLeft, faChevronRight } from '@fortawesome/free-solid-svg-icons';
 	import DataGrid, { type GridRow } from './DataGrid.svelte';
@@ -60,7 +61,7 @@
 	});
 
 	async function load(): Promise<void> {
-		if (dirty && !confirm(t('db.discard_confirm'))) return;
+		if (dirty && !await ask(t('db.discard_confirm'))) return;
 		loading = true;
 		error = null;
 		try {

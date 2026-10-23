@@ -4,6 +4,7 @@
 	import { getActivePage } from '$lib/state/navigation.svelte';
 	import { isDevopsEnabled } from '$lib/state/devops.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import StartScreen from '$lib/components/layout/StartScreen.svelte';
 	import { ptySpawn, ptyClose } from '$lib/ipc/pty';
 	import { sshDisconnect } from '$lib/ipc/ssh';
 	import { monitoringStart, monitoringStop, monitoringGetStats, monitoringStartWsl } from '$lib/ipc/monitoring';
@@ -13,6 +14,7 @@
 	import MonitoringBar from '$lib/components/terminal/MonitoringBar.svelte';
 	import RemoteTerminal from '$lib/components/share/RemoteTerminal.svelte';
 	import * as share from '$lib/state/share.svelte';
+	import { monitorBarShown } from '$lib/state/monitor-bar.svelte';
 	import AnsiblePage from '$lib/components/ansible/AnsiblePage.svelte';
 	import TofuPage from '$lib/components/tofu/TofuPage.svelte';
 	import DbPage from '$lib/components/db/DbPage.svelte';
@@ -307,28 +309,7 @@
 	<div class="page-container">
 		<div class="page-view" class:active={activePage === 'terminal'}>
 			{#if tabs.length === 0}
-				<div class="empty-state">
-					<svg width="48" height="48" viewBox="0 0 24 24" fill="none" class="empty-icon">
-						<path
-							d="M4 17l6-5-6-5"
-							stroke="currentColor"
-							stroke-width="1.5"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-						<path
-							d="M12 19h8"
-							stroke="currentColor"
-							stroke-width="1.5"
-							stroke-linecap="round"
-						/>
-					</svg>
-					<h2 class="empty-title">{t('terminal.title')}</h2>
-					<p class="empty-subtitle">{t('terminal.empty_hint')}</p>
-					<button class="empty-action" onclick={() => createTab('local')}>
-						{t('terminal.new_tab')}
-					</button>
-				</div>
+				<StartScreen />
 			{:else}
 				<!-- Side by side with the other person's terminal while a share is
 				     connected and they are sharing one. Left is always mine. -->
@@ -395,9 +376,10 @@
 					<RemoteTerminal />
 				{/if}
 				</div>
-				<!-- A remote desktop has no server stats to show: under one, the bar
-				     only said "Not connected" about a desktop that was. -->
-				{#if activeTab?.type !== 'rdp' && activeTab?.type !== 'vnc'}
+				<!-- Server stats come from an SSH or WSL session: under a desktop or a
+				     local shell the bar only said "Not connected" about something that
+				     was. It stays where it has the sharing controls to hold. -->
+				{#if monitorBarShown()}
 					<MonitoringBar
 						connectionId={activeTab?.connectionId}
 						sshUser={activeTab?.title?.split('@')[0]}
@@ -457,73 +439,6 @@
 
 	.page-view.active {
 		display: flex;
-	}
-
-	.empty-state {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		justify-content: center;
-		gap: var(--space-3);
-		padding: var(--space-6);
-		flex: 1;
-	}
-
-	.empty-icon {
-		color: var(--color-text-tertiary);
-	}
-
-	/* Was --color-text-secondary at 40%/60% opacity: a grey heading on a grey
-	   ground, which reads as disabled rather than as a title. */
-	.empty-title {
-		margin: 0;
-		font-size: var(--text-xl);
-		font-weight: 600;
-		color: var(--color-text-primary);
-		letter-spacing: -0.01em;
-	}
-
-	.empty-subtitle {
-		margin: 0;
-		font-size: var(--text-sm);
-		color: var(--color-text-secondary);
-		text-align: center;
-	}
-
-	.empty-action {
-		margin-top: var(--space-1);
-		padding: var(--space-2) var(--space-4);
-		font-family: var(--font-sans);
-		font-size: var(--text-sm);
-		font-weight: 500;
-		color: #fff;
-		background-color: var(--color-accent);
-		border: none;
-		border-radius: var(--radius-btn);
-		cursor: pointer;
-		transition: background-color var(--duration-default) var(--ease-default);
-	}
-
-	.empty-action:hover {
-		background-color: var(--color-accent-hover);
-	}
-
-	/* A 48px icon plus a 20px heading is most of a phone's terminal pane. Shrink
-	   the decoration and keep the action. */
-	@media (max-width: 600px), (max-height: 480px) {
-		.empty-state {
-			gap: var(--space-2);
-			padding: var(--space-4);
-		}
-
-		.empty-icon {
-			width: 32px;
-			height: 32px;
-		}
-
-		.empty-title {
-			font-size: var(--text-lg);
-		}
 	}
 
 	.terminal-area {

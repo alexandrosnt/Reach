@@ -10,6 +10,7 @@
 	import TabBar from './TabBar.svelte';
 	import Sidebar from './Sidebar.svelte';
 	import StatusBar from './StatusBar.svelte';
+	import { monitorBarShown } from '$lib/state/monitor-bar.svelte';
 	import Toast from '$lib/components/shared/Toast.svelte';
 	import UpdateBanner from '$lib/components/shared/UpdateBanner.svelte';
 	import UpdateDialog from '$lib/components/shared/UpdateDialog.svelte';
@@ -213,7 +214,7 @@
 	}
 </script>
 
-<div class="app-shell">
+<div class="app-shell" class:monitor-bottom={monitorBarShown()}>
 	<TitleBar />
 	<TabBar />
 
@@ -231,7 +232,9 @@
 		/>
 	</div>
 
-	<StatusBar />
+	{#if !monitorBarShown()}
+		<StatusBar />
+	{/if}
 	<Toast />
 	<UpdateBanner />
 	<UpdateDialog open={updater.startupBlocking} />
@@ -260,7 +263,11 @@
 <style>
 	.app-shell {
 		display: grid;
-		grid-template-rows: var(--titlebar-h, 38px) var(--tabbar-h, 36px) 1fr var(--statusbar-h, 24px);
+		grid-template-rows: var(--titlebar-h, 38px) var(--tabbar-h, 36px) minmax(0, 1fr) var(--statusbar-h, 24px);
+		/* One column the window's width. Left implicit, it grew to the widest
+		   row (a few tabs, a long status) and the shell cut the right side of
+		   everything off on a narrow phone. */
+		grid-template-columns: minmax(0, 1fr);
 		width: 100vw;
 		height: 100vh;
 		/* dvh tracks the *visible* viewport, so the status bar is not pushed
@@ -270,8 +277,13 @@
 		/* Keep the title/status bars clear of the device status & navigation
 		   bars on mobile. `env(safe-area-inset-*)` is 0 on desktop, so this is
 		   a no-op there (requires viewport-fit=cover, set in app.html). */
-		padding-top: env(safe-area-inset-top);
-		padding-bottom: env(safe-area-inset-bottom);
+		padding-top: var(--safe-top);
+		padding-bottom: var(--safe-bottom);
+		/* And the sides: turned on its side, a phone has its camera cutout
+		   and navigation bar there, and Reach was drawn under them. */
+		padding-left: var(--safe-left);
+		padding-right: var(--safe-right);
+		box-sizing: border-box;
 		overflow: hidden;
 		background-color: var(--color-bg-primary);
 	}
@@ -289,6 +301,12 @@
 		background-color: var(--color-bg-primary);
 	}
 
+	/* The session monitor bar is the window's bottom row and says what the
+	   status bar would (monitor-bar.svelte.ts), so the status bar's row goes. */
+	.app-shell.monitor-bottom {
+		--statusbar-h: 0px;
+	}
+
 	/* Phones in landscape, and short desktop windows, have very little vertical
 	   room. Trim the fixed chrome so the terminal keeps a usable number of rows. */
 	@media (max-height: 480px) {
@@ -296,6 +314,18 @@
 			--titlebar-h: 32px;
 			--tabbar-h: 30px;
 			--statusbar-h: 20px;
+		}
+	}
+
+	/* A phone on its side: every line goes to the terminal. The status bar
+	   only repeats the tab and the server stats, so it goes. */
+	@media (max-height: 480px) and (pointer: coarse) {
+		.app-shell {
+			--statusbar-h: 0px;
+		}
+
+		.app-shell :global(.statusbar) {
+			display: none;
 		}
 	}
 </style>

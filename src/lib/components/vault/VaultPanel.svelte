@@ -140,7 +140,7 @@
 			await refreshVaults();
 			addToast(t('vault.vaults_refreshed_toast'), 'success');
 		} catch (err) {
-			addToast(`Failed to refresh: ${err}`, 'error');
+			addToast(t('toast.refresh_failed', { error: String(err) }), 'error');
 		} finally {
 			refreshing = false;
 		}
@@ -151,7 +151,7 @@
 			await lock();
 			addToast(t('vault.locked_toast'), 'info');
 		} catch (err) {
-			addToast(`Failed to lock: ${err}`, 'error');
+			addToast(t('toast.lock_failed', { error: String(err) }), 'error');
 		}
 	}
 
@@ -169,7 +169,7 @@
 			showCreateVault = false;
 			addToast(t('vault.vault_created_toast'), 'success');
 		} catch (err) {
-			addToast(`Failed to create vault: ${err}`, 'error');
+			addToast(t('toast.vault_create_failed', { error: String(err) }), 'error');
 		} finally {
 			creatingVault = false;
 		}
@@ -179,7 +179,7 @@
 		try {
 			await setActiveVault(vault.id);
 		} catch (err) {
-			addToast(`Failed to open vault: ${err}`, 'error');
+			addToast(t('toast.vault_open_failed', { error: String(err) }), 'error');
 		}
 	}
 
@@ -368,13 +368,16 @@
 		<!-- Vault List -->
 		<div class="vault-list-view">
 			<div class="list-tools">
-				<input
-					class="list-search"
-					type="text"
-					placeholder={t('vault.search_vaults')}
-					aria-label={t('vault.search_vaults')}
-					bind:value={listQuery}
-				/>
+				<!-- Nothing to search before the first vault. -->
+				{#if userVaults.length > 0}
+					<input
+						class="list-search"
+						type="text"
+						placeholder={t('vault.search_vaults')}
+						aria-label={t('vault.search_vaults')}
+						bind:value={listQuery}
+					/>
+				{/if}
 				<button class="header-btn" onclick={handleRefresh} disabled={refreshing} title={t('vault.refresh_vaults')}>
 					<svg class:spinning={refreshing} width="14" height="14" viewBox="0 0 24 24" fill="none">
 						<path d="M1 4v6h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -458,7 +461,7 @@
 	<div class="create-vault-form">
 		<Input
 			label={t('vault.vault_name')}
-			placeholder="My Secrets"
+			placeholder={t('vault.name_example')}
 			bind:value={newVaultName}
 			disabled={creatingVault}
 		/>
@@ -544,7 +547,7 @@
 				<Input
 					type="password"
 					label={t('vault.export_password')}
-					placeholder="Password used during export"
+					placeholder={t('common.export_password_hint')}
 					bind:value={importExportPassword}
 					disabled={importVerifying || importLoading}
 				/>
@@ -584,7 +587,7 @@
 				<Input
 					type="password"
 					label={t('vault.master_password_optional')}
-					placeholder="Leave blank if you used TLS-style init"
+					placeholder={t('common.tls_init_hint')}
 					bind:value={importMasterPassword}
 					disabled={importLoading}
 				/>
@@ -620,6 +623,14 @@
 		flex-direction: column;
 		height: 100%;
 		overflow: hidden;
+	}
+
+	/* A short window (a phone on its side): the panel scrolls as one rather
+	   than cutting off what does not fit. */
+	@media (max-height: 480px) {
+		.vault-panel {
+			overflow-y: auto;
+		}
 	}
 
 	/* Lock Screen */
@@ -774,6 +785,7 @@
 	.list-tools {
 		display: flex;
 		align-items: center;
+		justify-content: flex-end;
 		gap: 2px;
 	}
 
@@ -887,7 +899,6 @@
 		display: flex;
 		flex-direction: column;
 		gap: 1px;
-		scrollbar-width: thin;
 	}
 
 	.group-label {

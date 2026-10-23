@@ -20,6 +20,8 @@
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { invoke } from '@tauri-apps/api/core';
 	import { trieMatch } from '$lib/state/snippets.svelte';
+	import { terminalFocusRequests } from '$lib/state/palette.svelte';
+	import { setTabLink } from '$lib/state/tabs.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { readText as clipboardReadText, writeText as clipboardWriteText } from '@tauri-apps/plugin-clipboard-manager';
 	import { openUrl } from '@tauri-apps/plugin-opener';
@@ -921,6 +923,18 @@
 		});
 	});
 
+	// The tab shows whether this SSH session is still connected.
+	$effect(() => {
+		if (termType !== 'ssh') return;
+		setTabLink(ptyId, reconnecting ? 'reconnecting' : disconnected ? 'down' : undefined);
+	});
+
+	// The command palette typed into this terminal: it takes the keyboard back.
+	$effect(() => {
+		if (terminalFocusRequests() === 0 || !active || !shown) return;
+		untrack(() => terminal?.focus());
+	});
+
 </script>
 
 <div
@@ -1035,13 +1049,20 @@
 
 	.terminal-container :global(.xterm) {
 		height: 100%;
-		padding: 4px;
+		/* Room between the text and the sidebar and window edges, as a terminal
+		   app gives it; the fit addon takes the padding off the grid it sizes. */
+		padding: 8px 12px;
+	}
+
+	/* A phone keeps every column it can. */
+	@media (max-width: 640px) {
+		.terminal-container :global(.xterm) {
+			padding: 4px;
+		}
 	}
 
 	.terminal-container :global(.xterm-viewport) {
 		background-color: var(--term-bg);
-		scrollbar-width: thin;
-		scrollbar-color: var(--color-surface-strong) transparent;
 	}
 
 	.terminal-container :global(.xterm-viewport::-webkit-scrollbar) {

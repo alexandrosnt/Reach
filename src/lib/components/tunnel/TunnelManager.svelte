@@ -65,12 +65,15 @@
 			return;
 		}
 
-		if (isNaN(remotePort) || remotePort < 1 || remotePort > 65535) {
+		// A SOCKS proxy has no destination of its own: each connection names one.
+		const dynamic = formType === 'Dynamic';
+
+		if (!dynamic && (isNaN(remotePort) || remotePort < 1 || remotePort > 65535)) {
 			addToast(t('tunnel.invalid_remote_port'), 'error');
 			return;
 		}
 
-		if (!formRemoteHost.trim()) {
+		if (!dynamic && !formRemoteHost.trim()) {
 			addToast(t('tunnel.remote_host_required'), 'error');
 			return;
 		}
@@ -80,8 +83,8 @@
 			const tunnel = await tunnelCreate(
 				formType,
 				localPort,
-				formRemoteHost.trim(),
-				remotePort,
+				dynamic ? '' : formRemoteHost.trim(),
+				dynamic ? 0 : remotePort,
 				connectionId
 			);
 			tunnels.push(tunnel);
@@ -89,7 +92,7 @@
 			showForm = false;
 			addToast(t('tunnel.created_toast', { port: localPort }), 'success');
 		} catch (err) {
-			addToast(`Failed to create tunnel: ${err}`, 'error');
+			addToast(t('toast.tunnel_create_failed', { error: String(err) }), 'error');
 		} finally {
 			creating = false;
 		}
@@ -104,7 +107,7 @@
 			}
 			addToast(t('tunnel.started_toast', { port: tunnel.local_port }), 'success');
 		} catch (err) {
-			addToast(`Failed to start tunnel: ${err}`, 'error');
+			addToast(t('toast.tunnel_start_failed', { error: String(err) }), 'error');
 		}
 	}
 
@@ -117,7 +120,7 @@
 			}
 			addToast(t('tunnel.stopped_toast', { port: tunnel.local_port }), 'info');
 		} catch (err) {
-			addToast(`Failed to stop tunnel: ${err}`, 'error');
+			addToast(t('toast.tunnel_stop_failed', { error: String(err) }), 'error');
 		}
 	}
 
@@ -129,6 +132,16 @@
 	$effect(() => {
 		untrack(() => loadTunnels());
 	});
+
+	/** The kinds of forward, labelled in the person's language (the buttons
+	    showed the English type names). Remote is left out: the server's
+	    connections back arrive at the forward table the session was opened
+	    with, which a tunnel started here does not reach yet, so it could only
+	    fail. A RemoteForward in the session's ssh_config works meanwhile. */
+	const TUNNEL_TYPES = [
+		{ type: 'Local', label: 'tunnel.local_forward' },
+		{ type: 'Dynamic', label: 'tunnel.dynamic' }
+	] as const;
 </script>
 
 <div class="tunnel-manager">
@@ -159,21 +172,20 @@
 
 			<div class="form-body">
 				<div class="type-selector">
-					{#each ['Local', 'Remote', 'Dynamic'] as tunnelType}
+					{#each TUNNEL_TYPES as tt (tt.type)}
 						<button
 							class="type-option"
-							class:selected={formType === tunnelType}
-							onclick={() => (formType = tunnelType as 'Local' | 'Remote' | 'Dynamic')}
+							class:selected={formType === tt.type}
+							onclick={() => (formType = tt.type)}
 						>
-							{tunnelType}
+							{t(tt.label)}
 						</button>
 					{/each}
 				</div>
 
 				<Input label={t('tunnel.local_port')} bind:value={formLocalPort} type="number" placeholder="8080" />
-				<Input label={t('tunnel.remote_host')} bind:value={formRemoteHost} placeholder="localhost" />
-
 				{#if formType !== 'Dynamic'}
+					<Input label={t('tunnel.remote_host')} bind:value={formRemoteHost} placeholder="localhost" />
 					<Input label={t('tunnel.remote_port')} bind:value={formRemotePort} type="number" placeholder="80" />
 				{/if}
 
@@ -312,17 +324,23 @@
 		padding: 10px;
 	}
 
+	/* The app's segmented control: a recessed track, the choice raised out
+	   of it. Labels wrap rather than being cut in a narrow sidebar. */
 	.type-selector {
 		display: flex;
-		gap: 4px;
-		background-color: var(--color-surface-hover);
+		gap: 2px;
+		padding: 2px;
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
 		border-radius: var(--radius-btn);
-		padding: 3px;
 	}
 
 	.type-option {
 		flex: 1;
-		padding: 5px 8px;
+		min-width: 0;
+		padding: 5px 6px;
+		line-height: 1.2;
+		text-wrap: balance;
 		font-family: var(--font-sans);
 		font-size: 0.75rem;
 		font-weight: 500;
@@ -341,8 +359,9 @@
 	}
 
 	.type-option.selected {
-		background-color: var(--color-accent);
-		color: #fff;
+		background-color: var(--color-bg-elevated);
+		color: var(--color-accent);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 0 0 1px var(--color-border);
 	}
 
 	.form-actions {

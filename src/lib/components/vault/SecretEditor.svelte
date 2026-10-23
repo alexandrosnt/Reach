@@ -90,7 +90,7 @@
 		try {
 			value = await readSecret(secretId);
 		} catch (err) {
-			addToast(`Failed to load secret: ${err}`, 'error');
+			addToast(t('toast.secret_load_failed', { error: String(err) }), 'error');
 		} finally {
 			loading = false;
 		}
@@ -112,7 +112,7 @@
 			onsave();
 			onclose();
 		} catch (err) {
-			addToast(`Failed to save secret: ${err}`, 'error');
+			addToast(t('toast.secret_save_failed', { error: String(err) }), 'error');
 		} finally {
 			saving = false;
 		}
@@ -138,7 +138,7 @@
 			await navigator.clipboard.writeText(value);
 			addToast(t('vault.copied_toast'), 'success');
 		} catch (err) {
-			addToast(`Failed to copy: ${err}`, 'error');
+			addToast(t('toast.copy_failed_err', { error: String(err) }), 'error');
 		}
 	}
 
@@ -151,7 +151,7 @@
 	<form class="form" onsubmit={(e) => { e.preventDefault(); handleSave(); }}>
 		<Input
 			label={t('vault.secret_name')}
-			placeholder="My Secret"
+			placeholder={t('vault.secret_example')}
 			bind:value={name}
 			disabled={isEditMode || saving}
 		/>

@@ -11,6 +11,7 @@ import { ctrShellCommand } from '$lib/ipc/containers';
 import { sshConnect } from '$lib/ipc/ssh';
 import { createTab, getTabs } from '$lib/state/tabs.svelte';
 import { setActivePage } from '$lib/state/navigation.svelte';
+import { requestSessionAction } from '$lib/state/palette.svelte';
 
 /** bash if the image has it, sh otherwise. */
 const PICK_SHELL = 'if command -v bash >/dev/null 2>&1; then exec bash; else exec sh; fi';
@@ -27,7 +28,9 @@ export async function openContainerShell(route: Route, engine: Engine, container
 
 	const command = await ctrShellCommand(engine, containerId);
 	if (route.kind === 'session') {
-		window.dispatchEvent(new CustomEvent('reach:connect-session', { detail: { sessionId: route.sessionId, shell: command } }));
+		// The session list connects it, and is shown for it if another panel
+		// was open (an event to a list not on screen did nothing).
+		requestSessionAction({ kind: 'connect', sessionId: route.sessionId, shell: command });
 		return;
 	}
 

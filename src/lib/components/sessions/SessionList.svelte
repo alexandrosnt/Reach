@@ -16,6 +16,9 @@
 		faFolderOpen
 	} from '@fortawesome/free-solid-svg-icons';
 	import { registerSessionActions, shortcutLabel } from '$lib/state/shortcuts.svelte';
+	import { pendingSessionAction, takeSessionAction } from '$lib/state/palette.svelte';
+	import { parseAddress } from '$lib/utils/address';
+	import { noteSessionUsed, forgetSession } from '$lib/state/recents.svelte';
 	import { onMount, tick } from 'svelte';
 	import { listen } from '@tauri-apps/api/event';
 	import SessionEditor from './SessionEditor.svelte';
@@ -36,6 +39,7 @@
 	import { createTab, updateTabOs } from '$lib/state/tabs.svelte';
 	import { getSettings, sessionLogConfig } from '$lib/state/settings.svelte';
 	import { addToast } from '$lib/state/toasts.svelte';
+	import { promptForMasterPassword } from '$lib/state/password-prompt.svelte';
 	import { hasMasterPassword } from '$lib/ipc/credentials';
 	import { t } from '$lib/state/i18n.svelte';
 	import { providerName } from '$lib/state/pwmanager.svelte';
@@ -72,32 +76,7 @@
 	// Type a name and the list filters. Type something that reads as an
 	// address and a "Connect to …" suggestion appears; Enter takes it when no
 	// saved session matched. The detection is deliberately conservative: a
-	// session called "a.b" must filter, never connect.
-
-	const IPV4 = /^\d{1,3}(\.\d{1,3}){3}$/;
-
-	function parseAddress(raw: string): QuickConnectPrefill | null {
-		const text = raw.trim();
-		if (!text || /\s/.test(text)) return null;
-		let username: string | undefined;
-		let rest = text;
-		const at = text.lastIndexOf('@');
-		if (at > 0) {
-			username = text.slice(0, at);
-			rest = text.slice(at + 1);
-		}
-		let port: number | undefined;
-		const withPort = rest.match(/^(.+):(\d{1,5})$/);
-		if (withPort) {
-			rest = withPort[1];
-			port = Number(withPort[2]);
-		}
-		if (!rest || !/^[a-z0-9][a-z0-9.-]*$/i.test(rest)) return null;
-		// Needs one unmistakable sign of an address: a user, a port, an IP, or
-		// a dotted name ending in something TLD-shaped.
-		const unmistakable = username !== undefined || port !== undefined || IPV4.test(rest) || /\.[a-z]{2,}$/i.test(rest);
-		return unmistakable ? { host: rest, username, port } : null;
-	}
+	// session called "a.b" must filter, never connect (see utils/address).
 
 	let addressSuggestion = $derived(parseAddress(searchQuery));
 	let quickPrefill = $state<QuickConnectPrefill | null>(null);
@@ -150,21 +129,30 @@
 		return () => window.removeEventListener('reach:sessions-changed', reload);
 	});
 
-	// Another workspace asks for a session to be opened, with every prompt a
-	// normal connect has (password, passphrase): a shell inside a container
-	// opens this way, as the session with a different login shell.
+	// The command palette, or another workspace, asks for a session to be
+	// opened, with every prompt a normal connect has (password, passphrase):
+	// a shell inside a container opens this way, as the session with a
+	// different login shell. The sidebar shows this list for it, so it runs
+	// whichever panel was open.
 	$effect(() => {
-		const open = (e: Event) => {
-			const { sessionId, shell } = (e as CustomEvent<{ sessionId: string; shell?: string }>).detail;
-			void sessionGet(sessionId)
-				.then((s) => {
-					setActivePage('terminal');
-					return handleConnect(shell ? { ...s, shell } : s);
-				})
-				.catch((err) => addToast(String(err), 'error'));
-		};
-		window.addEventListener('reach:connect-session', open);
-		return () => window.removeEventListener('reach:connect-session', open);
+		const r = pendingSessionAction();
+		if (!r) return;
+		untrack(() => {
+			takeSessionAction();
+			if (r.kind === 'new-session') {
+				handleNewSession();
+			} else if (r.kind === 'quick-connect') {
+				quickPrefill = r.prefill ?? null;
+				showQuickConnect = true;
+			} else {
+				void sessionGet(r.sessionId)
+					.then((s) => {
+						setActivePage('terminal');
+						return handleConnect(r.shell ? { ...s, shell: r.shell } : s);
+					})
+					.catch((err) => addToast(String(err), 'error'));
+			}
+		});
 	});
 
 	onMount(() => {
@@ -607,15 +595,16 @@
 	// Identities created before the issue-25 fix never persisted a
 	// password-encrypted copy of the secret key, so the OS keychain is the only
 	// thing that can open them. If that entry is ever lost the vault is
-	// unrecoverable — the failure reported in issue #30. Say so while the vault
-	// is still open and the user can still act on it. Once per launch.
+	// unrecoverable — the failure reported in issue #30. Ask for one while the
+	// vault is still open and it can be set, in a window that sets it rather
+	// than a notice that points to Settings. Once per launch.
 	let warnedNoPassword = false;
 	async function warnIfNoMasterPassword(): Promise<void> {
 		if (warnedNoPassword) return;
 		try {
 			if (!(await hasMasterPassword())) {
 				warnedNoPassword = true;
-				addToast(t('vault.no_password_warning'), 'error');
+				promptForMasterPassword();
 			}
 		} catch {
 			// A diagnostic must never break loading the session list.
@@ -769,6 +758,7 @@
 
 	async function handleConnect(session: SessionConfig): Promise<void> {
 		if (!(await approveRefsFirst(session))) return;
+		noteSessionUsed(session.id);
 		if (sessionKind(session) === 'vnc') {
 			openVnc(session);
 			return;
@@ -1021,6 +1011,7 @@
 
 		try {
 			await sessionDelete(session.id);
+			forgetSession(session.id);
 			deleteConfirm = null;
 			await loadSessions();
 		} catch (err) {
@@ -1248,7 +1239,7 @@
 					<FaIcon icon={faPlus} size={13} />
 				</button>
 				{#if showAddMenu}
-					<div class="add-menu" role="menu">
+					<div class="add-menu pop-in" role="menu">
 						<button class="menu-item" role="menuitem" onclick={() => fromMenu(handleNewSession)}>
 							<FaIcon icon={faServer} size={12} />
 							<span>{t('session.new_session')}</span>
@@ -1320,9 +1311,11 @@
 					<button class="bulk-btn danger" type="button" disabled={selected.size === 0} onclick={() => (bulkDeleteConfirm = true)}>{t('common.delete')}</button>
 				</div>
 			</div>
-		{:else if filteredSessions.length > 1}
+		{:else if filteredSessions.length > 1 && searchQuery.trim()}
+			<!-- Only for a search: at rest it repeated the + menu's Select sessions on
+			     a row of its own, above the list it pushed down. -->
 			<div class="match-row">
-				<span>{searchQuery.trim() ? t('session.matches_n', { count: String(filteredSessions.length) }) : ''}</span>
+				<span>{t('session.matches_n', { count: String(filteredSessions.length) })}</span>
 				<span class="match-actions">
 					<button class="match-select" type="button" onclick={() => { selectMode = true; }}>{t('session.select_sessions')}</button>
 					<button class="match-select" type="button" onclick={selectAllShown}>{t('session.select_all')}</button>
@@ -1354,7 +1347,7 @@
 	{/if}
 	{#if contextMenu}
 		<ContextMenuBackdrop onclose={closeContextMenu} />
-		<div class="context-menu" use:positionMenu={{ x: contextMenu.x, y: contextMenu.y }}>
+		<div class="context-menu pop-in" use:positionMenu={{ x: contextMenu.x, y: contextMenu.y }}>
 			{#if contextMenu.session}
 				<button class="context-item" onclick={() => { if (contextMenu?.session) handleConnect(contextMenu.session); closeContextMenu(); }} type="button">
 					{t('session.connect')}
@@ -1619,6 +1612,9 @@
 		top: calc(100% + 4px);
 		z-index: 30;
 		min-width: 200px;
+		/* Scrolls within a short window, as a phone on its side is. */
+		max-height: calc(100dvh - 120px);
+		overflow-y: auto;
 		padding: 4px;
 		background: var(--color-bg-elevated);
 		border: 1px solid var(--color-border);
@@ -1778,15 +1774,19 @@
 		color: var(--color-text-secondary);
 	}
 
+	/* The input gives way, not the row: at its own width it pushed Save and
+	   Cancel off a phone's screen. */
 	.new-folder-form {
 		display: flex;
 		align-items: center;
 		gap: 4px;
 		flex: 1;
+		min-width: 0;
 	}
 
 	.new-folder-input {
 		flex: 1;
+		width: 0;
 		min-width: 0;
 		padding: 5px 10px;
 		border: 1px solid var(--color-border);
@@ -1909,8 +1909,19 @@
 	}
 
 	.folder-header:hover .folder-menu-btn,
-	.folder-header:hover .folder-delete-btn {
+	.folder-header:hover .folder-delete-btn,
+	.folder-header:focus-within .folder-menu-btn,
+	.folder-header:focus-within .folder-delete-btn {
 		opacity: 1;
+	}
+
+	/* With a mouse, a folder's buttons are not shown until it is pointed at:
+	   faint on every row they were noise down the whole list. */
+	@media (pointer: fine) {
+		.folder-menu-btn,
+		.folder-delete-btn {
+			opacity: 0;
+		}
 	}
 
 	.folder-menu-btn:hover {
@@ -1943,8 +1954,6 @@
 	.context-folders {
 		max-height: 150px;
 		overflow-y: auto;
-		scrollbar-width: thin;
-		scrollbar-color: var(--color-surface-strong) transparent;
 	}
 
 	.context-item {
@@ -2029,6 +2038,21 @@
 		overflow-x: hidden;
 		flex: 1;
 		min-height: 60px;
+	}
+
+	/* A short window (a phone on its side): the whole panel scrolls as one.
+	   Split between a fixed header and a list that would not go under 60px,
+	   the sessions ran off the bottom where nothing could reach them. */
+	@media (max-height: 480px) {
+		.session-list {
+			overflow-y: auto;
+		}
+
+		.sessions-scroll {
+			flex: none;
+			min-height: auto;
+			overflow: visible;
+		}
 	}
 
 	.drop-active {
@@ -2142,7 +2166,7 @@
 		position: fixed;
 		inset: 0;
 		/* Clear of the phone's status and navigation bars (0 on a desktop). */
-		padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+		padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 		z-index: 200;
 		display: flex;
 		align-items: center;
@@ -2421,8 +2445,14 @@
 		background: none;
 		padding: 2px 4px;
 		font: inherit;
-		color: var(--color-accent);
+		color: var(--color-text-tertiary);
 		cursor: pointer;
+		transition: color var(--duration-default) var(--ease-default);
+	}
+
+	.match-select:hover,
+	.match-select:focus-visible {
+		color: var(--color-accent);
 	}
 
 	.bulk-bar {

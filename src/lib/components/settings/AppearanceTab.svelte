@@ -9,12 +9,21 @@
 	import { t } from '$lib/state/i18n.svelte';
 	import { matchesQuery } from '$lib/utils/search';
 	import { isMobile } from '$lib/platform';
+	import { stepUiZoom, UI_ZOOM_STEPS } from '$lib/state/ui-zoom';
+	import { shortcutLabel } from '$lib/state/shortcuts.svelte';
 	import { sessionLogDefaultDir } from '$lib/ipc/ssh';
 	import { open as pickFolder } from '@tauri-apps/plugin-dialog';
 
 	const settings = getSettings();
 	let currentFont = $derived(settings.fontFamily || 'monospace');
 	let currentSize = $derived(settings.fontSize || 14);
+	let uiZoom = $derived(settings.uiZoom || 1);
+
+	/** The terminal's text size, here too, as a phone has no Ctrl+wheel; open
+	 *  terminals follow the setting. Same 8 to 32 px as the terminal's zoom. */
+	function stepFontSize(step: 1 | -1): void {
+		updateSetting('fontSize', Math.min(Math.max(currentSize + step, 8), 32));
+	}
 
 	let registry = $state<ThemeEntry[]>([]);
 	let registryError = $state<string | null>(null);
@@ -115,7 +124,11 @@
 		...themeState.all.map((th) => ({ id: th.id, name: th.name, swatch: th }))
 	]);
 
-	let selectedId = $derived(settings.themeId ?? (settings.theme === 'system' ? SYSTEM : null));
+	// Settings from before themes had ids say only dark or light: that is
+	// Reach's own, and its card is the one marked.
+	let selectedId = $derived(
+		settings.themeId ?? (settings.theme === 'system' ? SYSTEM : settings.theme === 'light' ? LIGHT.id : DARK.id)
+	);
 
 	function selectTheme(id: string) {
 		if (id === SYSTEM) {
@@ -293,12 +306,30 @@
 	<div class="setting-row">
 		<div class="setting-info">
 			<span class="setting-label">{t('settings.font_size')}</span>
-			<span class="setting-description">Current: {settings.fontSize}px — Use Ctrl + Mouse Wheel in terminal to adjust</span>
+			<span class="setting-description">{t('settings.font_size_hint')}</span>
 		</div>
-		<div class="setting-control">
-			<span class="font-size-badge">{settings.fontSize}px</span>
+		<div class="setting-control size-stepper">
+			<button class="size-btn" aria-label={t('keys.smaller')} disabled={currentSize <= 8} onclick={() => stepFontSize(-1)}>A−</button>
+			<span class="font-size-badge">{currentSize}px</span>
+			<button class="size-btn" aria-label={t('keys.larger')} disabled={currentSize >= 32} onclick={() => stepFontSize(1)}>A+</button>
 		</div>
 	</div>
+
+	<!-- The whole interface, not only the terminal: a laptop screen or a 4K
+	     one at the wrong scale. A phone follows its own text size instead. -->
+	{#if !isMobile()}
+		<div class="setting-row">
+			<div class="setting-info">
+				<span class="setting-label">{t('settings.ui_zoom')}</span>
+				<span class="setting-description">{t('settings.ui_zoom_hint', { in: shortcutLabel('=', { ctrl: true }), out: shortcutLabel('-', { ctrl: true }), reset: shortcutLabel('0', { ctrl: true }) })}</span>
+			</div>
+			<div class="setting-control size-stepper">
+				<button class="size-btn" aria-label={t('keys.smaller')} disabled={uiZoom <= UI_ZOOM_STEPS[0]} onclick={() => stepUiZoom(-1)}>−</button>
+				<button class="font-size-badge zoom-reset" title={t('settings.ui_zoom_reset')} onclick={() => stepUiZoom(0)}>{Math.round(uiZoom * 100)}%</button>
+				<button class="size-btn" aria-label={t('keys.larger')} disabled={uiZoom >= UI_ZOOM_STEPS[UI_ZOOM_STEPS.length - 1]} onclick={() => stepUiZoom(1)}>+</button>
+			</div>
+		</div>
+	{/if}
 
 	<div class="setting-row font-row">
 		<div class="setting-info">
@@ -323,7 +354,7 @@
 						<input
 							class="font-search"
 							type="text"
-							placeholder="Search fonts..."
+							placeholder={t('settings.search_fonts')}
 							bind:value={fontSearch}
 						/>
 						<div class="font-list">
@@ -594,6 +625,16 @@
 		gap: var(--space-2);
 	}
 
+	/* The label keeps its gap to the rows below; Refresh lines up with it
+	   instead of with that margin. */
+	.section-head {
+		margin-bottom: 12px;
+	}
+
+	.section-head .section-label {
+		margin-bottom: 0;
+	}
+
 	.link-btn {
 		padding: 0;
 		font-family: var(--font-sans);
@@ -712,9 +753,15 @@
 		cursor: pointer;
 	}
 
+	/* Tinted, not filled: one solid accent button per row made a list of
+	   themes a column of competing calls to action. */
 	.row-btn.primary {
-		color: #fff;
-		background: var(--color-accent);
+		color: var(--color-accent);
+		background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+	}
+
+	.row-btn.primary:hover:not(:disabled) {
+		background: color-mix(in srgb, var(--color-accent) 20%, transparent);
 	}
 
 	.row-btn:disabled {
@@ -724,7 +771,7 @@
 
 	.theme-cards {
 		display: grid;
-		grid-template-columns: repeat(3, 1fr);
+		grid-template-columns: repeat(3, minmax(0, 1fr));
 		gap: 10px;
 	}
 
@@ -765,6 +812,50 @@
 		font-variant-numeric: tabular-nums;
 	}
 
+	/* The percentage is the reset: clicking 125% puts it back to 100%. */
+	.zoom-reset {
+		min-width: 3.5em;
+		padding: 4px 2px;
+		border: none;
+		border-radius: var(--radius-sm);
+		background: none;
+		font-family: inherit;
+		text-align: center;
+		cursor: pointer;
+	}
+
+	.zoom-reset:hover {
+		background: var(--color-surface-hover);
+	}
+
+	.size-stepper {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+	}
+
+	.size-btn {
+		min-width: 40px;
+		height: 32px;
+		padding: 0 8px;
+		font-family: var(--font-mono);
+		font-size: 0.8125rem;
+		color: var(--color-text-primary);
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		cursor: pointer;
+	}
+
+	.size-btn:hover:not(:disabled) {
+		background: var(--color-surface-hover);
+	}
+
+	.size-btn:disabled {
+		opacity: 0.4;
+		cursor: default;
+	}
+
 	/* Font picker */
 	.font-picker { position: relative; }
 
@@ -781,8 +872,10 @@
 	.chevron { transition: transform 0.15s ease; flex-shrink: 0; color: var(--color-text-secondary); }
 	.chevron.open { transform: rotate(180deg); }
 
+	/* Opens under the button, within the window: right-aligned it went off
+	   the left edge of a phone, where the button sits at the left. */
 	.font-dropdown {
-		position: absolute; top: calc(100% + 4px); right: 0; width: 260px;
+		position: absolute; top: calc(100% + 4px); right: 0; width: min(260px, calc(100vw - 64px));
 		background: var(--color-bg-elevated); border: 1px solid var(--color-border);
 		border-radius: 8px; box-shadow: var(--shadow-elevated);
 		z-index: 100; overflow: hidden;
@@ -797,9 +890,12 @@
 	}
 	.font-search::placeholder { color: var(--color-text-secondary); opacity: 0.5; }
 
+	@media (max-width: 640px) {
+		.font-dropdown { left: 0; right: auto; }
+	}
+
 	.font-list {
-		max-height: 280px; overflow-y: auto; padding: 4px 0;
-		scrollbar-width: thin; scrollbar-color: var(--color-surface-active) transparent;
+		max-height: min(280px, 40vh); overflow-y: auto; padding: 4px 0;
 	}
 
 	.font-group-label {

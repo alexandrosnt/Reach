@@ -154,54 +154,56 @@
 
 <div class="plugin-panel">
 	<div class="tab-bar">
-		<button
-			type="button"
-			class="tab-btn"
-			class:active={activeTab === 'installed'}
-			onclick={() => (activeTab = 'installed')}
-		>
-			{t('plugin.tab_installed')}
-		</button>
-		<button
-			type="button"
-			class="tab-btn"
-			class:active={activeTab === 'marketplace'}
-			onclick={() => (activeTab = 'marketplace')}
-		>
-			{t('plugin.tab_marketplace')}
-			<span class="new-badge">NEW</span>
-		</button>
+		<div class="seg">
+			<button
+				type="button"
+				class="tab-btn"
+				class:active={activeTab === 'installed'}
+				onclick={() => (activeTab = 'installed')}
+			>
+				{t('plugin.tab_installed')}
+			</button>
+			<button
+				type="button"
+				class="tab-btn"
+				class:active={activeTab === 'marketplace'}
+				onclick={() => (activeTab = 'marketplace')}
+			>
+				{t('plugin.tab_marketplace')}
+				<span class="new-badge">{t('common.new')}</span>
+			</button>
+		</div>
+		<!-- Reload sits with the tabs: a second PLUGINS heading under the panel's
+		     own was there only to hold it. -->
+		{#if activeTab === 'installed'}
+			<button
+				class="toolbar-btn"
+				onclick={discoverPlugins}
+				disabled={discovering}
+				title={t('plugin.reload')}
+				aria-label={t('plugin.reload')}
+			>
+				<svg class:spinning={discovering} width="14" height="14" viewBox="0 0 24 24" fill="none">
+					<path
+						d="M23 4v6h-6M1 20v-6h6"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+					<path
+						d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+				</svg>
+			</button>
+		{/if}
 	</div>
 
 	{#if activeTab === 'installed'}
-		<div class="toolbar">
-			<span class="toolbar-title">{t('plugin.title')}</span>
-			<div class="toolbar-actions">
-				<button
-					class="toolbar-btn"
-					onclick={discoverPlugins}
-					disabled={discovering}
-					title={t('plugin.reload')}
-				>
-					<svg class:spinning={discovering} width="14" height="14" viewBox="0 0 24 24" fill="none">
-						<path
-							d="M23 4v6h-6M1 20v-6h6"
-							stroke="currentColor"
-							stroke-width="1.5"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-						<path
-							d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"
-							stroke="currentColor"
-							stroke-width="1.5"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-					</svg>
-				</button>
-			</div>
-		</div>
 
 		{#if loading}
 			<div class="loading-indicator">
@@ -246,75 +248,82 @@
 		overflow: hidden;
 	}
 
+	/* A short window (a phone on its side): the panel scrolls as one rather
+	   than cutting off what does not fit. */
+	@media (max-height: 480px) {
+		.plugin-panel {
+			overflow-y: auto;
+		}
+	}
+
+	/* Recipes' and the session editor's segmented control: a recessed track,
+	   the open view raised out of it. */
 	.tab-bar {
 		display: flex;
-		border-bottom: 1px solid var(--color-border);
+		align-items: center;
+		gap: var(--space-2);
+		padding: var(--space-2);
+	}
+
+	.seg {
+		display: flex;
+		flex: 1;
+		gap: 2px;
+		min-width: 0;
+		padding: 2px;
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-btn);
 	}
 
 	.tab-btn {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 5px;
+		/* Shares the panel's width, wrapping the badge under the label rather
+		   than running off a narrow screen. */
+		flex-wrap: wrap;
+		gap: 2px 5px;
 		flex: 1;
-		padding: 7px 10px;
+		min-width: 0;
+		padding: 4px 8px;
 		font-family: var(--font-sans);
-		font-size: 0.6875rem;
+		font-size: var(--text-xs);
 		font-weight: 500;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
 		color: var(--color-text-secondary);
 		background: transparent;
 		border: none;
-		border-bottom: 2px solid transparent;
+		border-radius: var(--radius-sm);
 		cursor: pointer;
 		transition:
-			color var(--duration-default) var(--ease-default),
-			border-color var(--duration-default) var(--ease-default);
+			background-color var(--duration-default) var(--ease-default),
+			color var(--duration-default) var(--ease-default);
 	}
 
 	.new-badge {
 		padding: 1px 4px;
 		font-size: 0.5rem;
 		font-weight: 700;
+		text-transform: uppercase;
 		letter-spacing: 0.04em;
 		color: #fff;
 		background-color: var(--color-accent);
 		border-radius: 3px;
 	}
 
-	.tab-btn:hover {
+	.tab-btn:hover:not(.active) {
 		color: var(--color-text-primary);
 	}
 
 	.tab-btn.active {
-		color: var(--color-text-primary);
-		border-bottom-color: var(--color-accent);
-	}
-
-	.toolbar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 8px 10px;
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.toolbar-title {
-		font-size: 0.6875rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
-	}
-
-	.toolbar-actions {
-		display: flex;
-		align-items: center;
-		gap: 2px;
+		color: var(--color-accent);
+		background: var(--color-bg-elevated);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 0 0 1px var(--color-border);
 	}
 
 	.toolbar-btn {
+		flex-shrink: 0;
+		align-self: center;
 		display: flex;
 		align-items: center;
 		justify-content: center;

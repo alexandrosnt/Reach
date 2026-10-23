@@ -39,119 +39,107 @@
 
 ## Why Reach?
 
-Most SSH tools feel like they were designed in 2005, because they were. MobaXterm is Windows-only and bloated, PuTTY hasn't changed in decades, and Termius wants a subscription for basic features.
+PuTTY hasn't changed in decades, MobaXterm is Windows-only, and Termius charges a subscription for the basics. Reach is an SSH client built from scratch: native Rust networking, a fast UI, encrypted storage, and the same app on Windows, macOS, Linux and Android. No Electron, no subscription, no account.
 
-Reach is what happens when you build an SSH client from scratch with a native UI, proper encryption, and the kind of workflow you'd actually want to use every day. No Electron. No subscription. Just a fast, clean tool that runs everywhere.
+## Features
 
-## What's inside
+### Connect
 
-### Core
+- **SSH** with tabs, split panes and tab groups, rendered with WebGL.
+- **Your `~/.ssh/config`, all of it.** ProxyJump, ProxyCommand, ControlMaster, Kerberos (GSSAPI), X11 forwarding, PKCS#11 and FIDO2 keys, and the rest of the 104 keywords.
+- **Remote Desktop (RDP) and VNC** in a tab. RDP shares the clipboard, files and a local folder as a drive.
+- **WSL distros and local shells** next to your servers, plus a **serial console** for routers and switches.
+- **Host keys checked properly.** Trust on first use, a loud stop when a key changes, and never a silent accept.
 
-- **SSH Terminal** · Full interactive shell with WebGL rendering. Tabs, split views, and resize that actually works.
-- **SFTP File Explorer** · Browse remote filesystems, drag-and-drop transfers, inline editing. Feels like a local file manager.
-- **Compress and extract in place** · Right-click to make a `.tar.gz`, `.zip` and the rest, or unpack one, with the work done on the remote machine. Falls back through whatever archiver it actually has, so it still works on a stripped container.
-- **Drag a file out to your desktop** · On Windows nothing is downloaded until you drop it, and the bytes land where you dropped them.
-- **Session Manager** · Save connections with folders and tags. Credentials are encrypted at rest, not stored in plaintext configs.
-- **Jump Host (ProxyJump)** · Connect through bastion servers with multi-hop SSH tunneling. Import hosts directly from `~/.ssh/config`.
+### Work
 
-### Productivity
+- **Command palette** (Ctrl+Shift+P): any session, tab, page, snippet or action in a few keystrokes.
+- **SFTP explorer**: drag and drop, edit in place, compress and extract on the server, drag files straight to your desktop.
+- **Port forwarding**: local and SOCKS proxies from the Tunnels panel, plus everything your ssh_config forwards.
+- **Snippets** with Tab completion, and **Recipes**: parameterised scripts with a declared risk level, checked before they run.
+- **Live server stats** (CPU, memory, disk, network, who's logged in) without installing an agent.
+- **Session logging** to plain text files.
 
-- **Port Tunneling** · Local, remote, and dynamic SOCKS forwarding. Set it up once, save it with the session.
-- **Snippets** · Save the commands you keep retyping and complete them with Tab. Prefix-matched, so a hundred of them feel like three.
-- **System Monitoring** · Live CPU, memory, and disk stats from connected hosts without installing agents.
+### Stay safe
 
-### DevOps — switch on what you use
+- **Encrypted vault** for sessions, passwords and keys (XChaCha20-Poly1305, Argon2id), with optional encrypted cloud sync.
+- **Master password**, plus unlock with Windows Hello, Touch ID, Android biometrics or a FIDO2 security key. Auto-lock when idle or when your computer locks.
+- **Password managers**: point a session at a Passbolt entry instead of keeping a copy.
+- **Backups** of your sessions and settings, optionally password-protected.
+- **Zero-trust defaults**: anything that opens a door, like session sharing or the MCP server, stays off until you switch it on.
 
-> **Where are Ansible, OpenTofu and Databases?** They are switched on in **Settings → DevOps**, one switch per tool. On a fresh install all three are off, so Reach opens as a plain remote-access app. If you are updating from 0.6.7 or earlier, Ansible and OpenTofu stay on exactly as before; Databases is new and waits for you to switch it on. A tool that is off disappears from the tab bar and its commands are refused, and nothing it saved is deleted — switch it back on and everything is where you left it.
+### DevOps (opt-in, in Settings → DevOps)
 
-- **Databases** · PostgreSQL, MySQL, MariaDB, SQL Server, SQLite and Redis in one workspace. Browse databases and tables, edit rows in a grid, write SQL with autocomplete from the live schema, and design tables the way Navicat does — fields, indexes, foreign keys, checks and triggers, with the exact `ALTER` shown before it runs. Connect directly or **through an SSH session you already have**, and let Reach **find the databases running on a server you have a terminal open to**. Every change goes through a review: statements that drop, truncate or touch every row ask first, and a connection marked *production* asks before any change at all; *read-only* connections refuse writes outright. Backup and restore to plain SQL, CSV import and export, a server monitor with cancel and end-session, and for Redis a key browser, value editors and a console.
-- **Ansible** · Run one command across a whole inventory, or a full playbook. Manage playbooks, inventories, roles, and collections. Run playbooks and ad-hoc commands with streaming output. Encrypts/decrypts files with ansible-vault. On Windows, automatically runs through WSL.
-- **OpenTofu** · Plan, apply, and destroy infrastructure. Browse state, manage providers and modules. Full workspace with file editor and streaming command output.
+- **Databases**: PostgreSQL, MySQL, MariaDB, SQL Server, SQLite and Redis. A data grid, a schema-aware SQL editor, a table designer that shows the `ALTER` before it runs, and confirmations scaled to the risk. Connect directly or through an SSH session.
+- **Containers and Kubernetes**: Docker, Podman, Compose, Kubernetes and Helm on the servers you already reach.
+- **Ansible** and **OpenTofu**: run playbooks and plans with streaming output. On Windows, Ansible runs through WSL.
 
-### Working with others — people and AI
+Each tool is off on a fresh install. Switching one off hides it without deleting anything it saved.
 
-- **Session Sharing** · Your terminal and someone else's side by side, peer to peer over WebRTC with no server in between, encrypted end to end on top of DTLS. Each side decides whether the other may only watch or also type, enforced on the machine that owns the terminal. Off by default — and off means the code is never loaded.
-- **MCP Server** · Hand a session you choose to Claude Code, Cursor, Gemini CLI or any MCP client. Loopback only, off by default. A guard enforces the rules: read before write, no typing while you enter a password, no secrets in either direction. Pick an agent that decides which tools the AI gets, and a mode that decides how much you are asked.
-- **Recipes** · Reusable bash scripts with parameters and a declared risk level, run against the terminal you have open. Every script is analysed before it runs and anything above *mutating* needs a typed confirmation. Share them through a [registry](https://github.com/alexandrosnt/reach-recipes-registry) where each one is pinned by SHA-256.
+### Collaborate
 
-### Extras
+- **Session sharing**: two terminals side by side, peer to peer and end-to-end encrypted. The owner decides whether the other side can type.
+- **MCP server**: hand a session to Claude Code, Cursor or any MCP client. Loopback only, with guards against writing blind or reading secrets.
+- **AI assistant** with your own API key.
 
-- **Serial Console** · Talk to routers, switches, and embedded devices over COM/TTY.
-- **Remote Desktop (RDP)** · A Windows desktop in a tab, on every platform Reach runs on. Clipboard and files go both ways, a local folder can be shared in as a drive, and the server's certificate goes through the same trust-on-first-use prompt as an SSH host key.
-- **AI Assistant** · Optional AI integration for command suggestions and troubleshooting (bring your own API key).
-- **Host Key Verification** · Trust on first use, and a loud stop when a known key changes. Never accepts one silently, and refuses rather than connecting if it cannot ask.
-- **Themes** · Colour tokens the whole app reads, not just the terminal. Install more from a registry, pinned by SHA-256.
-- **Encrypted Vault** · Store secrets, credentials, and SSH keys in an encrypted vault with cloud sync support.
-- **Password managers** · Point a session's password at an entry in Passbolt instead of keeping a copy. Reach fetches it through go-passbolt-cli when you connect and never shows it to the window. Off by default, in Settings → Password managers.
-- **Lua Plugins** · Extend Reach with sandboxed Lua scripts. Access SSH, storage, and UI hooks through the host API.
-- **Auto-Updates** · The app checks for updates on startup and periodically while running. No manual downloads.
-- **Nine languages** · English, German, Spanish, French, Italian, Greek, Bulgarian, Russian and Chinese. Translations are plain JSON under `src/lib/i18n/locales`, and a missing key fails CI rather than shipping.
+### Make it yours
 
-## Tech
+- **Themes** that colour the whole app, not just the terminal, from a registry pinned by SHA-256.
+- **Interface size** (Ctrl+= / Ctrl+-) for the whole window, separate from the terminal's text size.
+- **Lua plugins** in a sandbox.
+- **Nine languages**: English, German, Spanish, French, Italian, Greek, Bulgarian, Russian and Chinese.
+- **A real phone app**: Esc, Ctrl, Alt and arrow keys above the keyboard, pinch to zoom, and a layout that respects notches and large text.
 
-Reach is a [Tauri v2](https://v2.tauri.app) app with a Rust backend and Svelte 5 frontend. The entire SSH stack runs natively in Rust through [russh](https://github.com/warp-tech/russh), with no OpenSSH dependency. The UI is rendered in a system webview (not bundled Chromium), so the final binary is small and memory usage stays low.
+## Download
+
+Get the current release from the [download page](https://reachssh.com/download/):
+
+- Windows: `.exe`, `.msi`
+- macOS: `.dmg`, Apple silicon and Intel
+- Linux: `.AppImage`, `.deb`, `.rpm`
+- Android: `.apk`
+
+Reach is also on Scoop and in apt/dnf repositories, and updates itself once installed. On Android, [Obtainium](https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/alexandrosnt/Reach) installs new releases straight from GitHub.
+
+## Built with
+
+[Tauri 2](https://v2.tauri.app), Rust and Svelte 5. The SSH stack is pure Rust ([russh](https://github.com/warp-tech/russh)), with no OpenSSH dependency, and the UI uses the system webview instead of a bundled Chromium, so Reach stays small and light.
 
 | | |
 |---|---|
 | **Backend** | Rust, Tokio, russh |
-| **Frontend** | Svelte 5, SvelteKit, TypeScript |
-| **Styling** | Tailwind CSS v4 |
-| **Terminal** | xterm.js with WebGL addon |
+| **Frontend** | Svelte 5, SvelteKit, TypeScript, Tailwind CSS 4 |
+| **Terminal** | xterm.js with WebGL |
 | **Crypto** | XChaCha20-Poly1305, Argon2id, X25519 |
-| **Platforms** | Windows, macOS, Linux, Android |
 
-## Getting started
+### Build from source
 
-Head to the [download page](https://reachssh.com/download/), which always points at the current release: Windows (`.exe`, `.msi`), macOS (`.dmg`, Apple silicon and Intel), Linux (`.AppImage`, `.deb`, `.rpm`) and Android (`.apk`). Every build is on the [Releases page](https://github.com/alexandrosnt/Reach/releases) too, and Reach updates itself once installed.
-
-On Android, [add Reach to Obtainium](https://apps.obtainium.imranr.dev/redirect.html?r=obtainium://add/https://github.com/alexandrosnt/Reach) and it installs new releases straight from GitHub as they come out.
-
-## Building from source
-
-You'll need [Rust](https://rustup.rs), [Node.js 22+](https://nodejs.org), and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS.
+You'll need [Rust](https://rustup.rs), [Node.js 22+](https://nodejs.org) and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS.
 
 ```bash
 git clone https://github.com/alexandrosnt/Reach.git
 cd Reach
 npm install
-npm run tauri dev
+npm run tauri dev     # run it
+npm run tauri build   # package it
 ```
-
-For a production build:
-
-```bash
-npm run tauri build
-```
-
-## Changelog
-
-See [CHANGELOG.md](CHANGELOG.md) for the full release history.
 
 ## Community
 
-Reach has a Discord: **[discord.gg/CSbEybvDVV](https://discord.gg/CSbEybvDVV)**. Releases and repository activity post there automatically, so it is the quickest way to hear about a new build or a fix that landed. Bring questions, bug reports you are not sure are bugs yet, and the recipe you wrote that others might want.
+- **[Discord](https://discord.gg/CSbEybvDVV)**: questions, ideas, and release announcements.
+- **[Issues](https://github.com/alexandrosnt/Reach/issues)**: bug reports and feature requests. For a larger change, open an issue first so we can agree on the approach.
+- **[Changelog](CHANGELOG.md)**: what changed in each release.
 
-## Support the project
+Pull requests, translations and recipes for the [registry](https://github.com/alexandrosnt/reach-recipes-registry) are all welcome.
 
-Reach is free, MIT licensed, and stays that way. It is built on no budget at all, in spare time — which is why the installers are not code-signed yet and every platform is tested on whatever machine can be borrowed. Sponsorship is what would change that: a signing certificate so installers stop getting flagged, a server to build and test on, and time that goes into Reach instead of around it.
+## Support
 
-If Reach saves you time, you can support it through **[GitHub Sponsors](https://github.com/sponsors/alexandrosnt)** — the **Sponsor** button at the top of this page, or **Settings → General → Support Reach** inside the app. One-off or monthly, whatever fits. Nothing is gated behind it and nothing ever will be; it just decides how much of the evenings go to Reach.
-
-Not in a position to give money? A bug report with a reproduction, a translation, a recipe in the registry, or telling a colleague are all worth as much.
-
-## Contributors
+Reach is free and MIT licensed, and it stays that way: nothing is or ever will be paywalled. It's built in spare time with no budget, which is why the installers aren't code-signed yet. If Reach saves you time, **[GitHub Sponsors](https://github.com/sponsors/alexandrosnt)** helps pay for a signing certificate, test hardware, and more evenings spent on Reach. A good bug report or telling a colleague helps just as much.
 
 <a href="https://github.com/alexandrosnt/Reach/graphs/contributors">
   <img src="https://contrib.rocks/image?repo=alexandrosnt/Reach" alt="Contributors to Reach" />
 </a>
 
-Generated from the repository, so it is right without anyone remembering to
-update it. Names link through to what each person actually changed.
-
-## Contributing
-
-Contributions are welcome. Bug reports, feature ideas, and pull requests all help. If you're picking up a larger feature, open an issue first so we can talk about the approach.
-
 ## License
-### Licensed under the MIT License.
-This project is free software: you are allowed to use, modify, and redistribute it for personal, academic, or commercial purposes under the terms of the MIT license. See the [LICENSE](LICENSE) file for full details.
+
+[MIT](LICENSE)

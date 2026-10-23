@@ -134,7 +134,7 @@
 						id="recipient-key"
 						type="text"
 						bind:value={recipientPublicKey}
-						placeholder="X25519 public key in base64"
+						placeholder={t('share.pubkey_placeholder')}
 						disabled={sharing}
 					/>
 				</div>
@@ -145,7 +145,7 @@
 						id="expires"
 						type="number"
 						bind:value={expiresInHours}
-						placeholder="Never expires"
+						placeholder={t('share.never_expires')}
 						min="1"
 						disabled={sharing}
 					/>
@@ -171,7 +171,7 @@
 		position: fixed;
 		inset: 0;
 		/* Clear of the phone's status and navigation bars (0 on a desktop). */
-		padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+		padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 		background: var(--color-surface-sunken);
 		backdrop-filter: blur(4px);
 		display: flex;

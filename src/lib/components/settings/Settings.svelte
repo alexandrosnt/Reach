@@ -122,8 +122,9 @@
 		flex-direction: column;
 		gap: 2px;
 		padding: 8px;
-		width: 160px;
+		width: 188px;
 		flex-shrink: 0;
+		overflow-y: auto;
 		border-right: 1px solid var(--color-border);
 		background-color: var(--color-bg-secondary);
 		border-radius: 0 0 0 var(--radius-modal, 12px);
@@ -197,14 +198,14 @@
 		padding: 20px 24px 24px;
 		overflow-y: auto;
 		min-width: 0;
-		scrollbar-width: thin;
 		/* A tab that scrolls must not sit 10px left of one that does not. */
 		scrollbar-gutter: stable;
 	}
 
-	/* A phone: the menu becomes a row of tabs across the top that scrolls
-	   sideways, and the settings get the full width below it. */
-	@media (max-width: 640px) {
+	/* A phone, upright or on its side: the menu becomes a row of tabs across
+	   the top that scrolls sideways, and the settings get the full width
+	   below it. */
+	@media (max-width: 640px), (max-height: 480px) {
 		.settings-layout {
 			flex-direction: column;
 		}

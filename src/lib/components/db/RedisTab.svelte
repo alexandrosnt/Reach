@@ -7,6 +7,7 @@
 	 * spaces or quotes needs no escaping.
 	 */
 	import { onMount, tick } from 'svelte';
+	import { ask } from '$lib/state/ask.svelte';
 	import FaIcon from '$lib/components/shared/FaIcon.svelte';
 	import { faRotate, faPlus, faTrash, faMagnifyingGlass, faFloppyDisk } from '@fortawesome/free-solid-svg-icons';
 	import * as db from '$lib/ipc/db';
@@ -105,7 +106,7 @@
 		try {
 			let out = await db.redisCommand(tab.connId, dbIndex, { args }, false);
 			if (out.status === 'confirm') {
-				if (!confirm(`${out.reason}.\n\n${t('db.run_anyway')}?`)) return null;
+				if (!await ask(`${out.reason}.\n\n${t('db.run_anyway')}?`)) return null;
 				out = await db.redisCommand(tab.connId, dbIndex, { args }, true);
 			}
 			if (out.status === 'done') {
@@ -136,7 +137,7 @@
 	}
 
 	async function deleteKey(): Promise<void> {
-		if (!value || !confirm(t('db.delete_key_confirm', { key: value.key }))) return;
+		if (!value || !await ask(t('db.delete_key_confirm', { key: value.key }))) return;
 		if (await cmd(['DEL', value.key])) {
 			keys = keys.filter((k) => k.key !== value!.key);
 			value = null;
@@ -197,7 +198,7 @@
 		try {
 			let out = await db.redisCommand(tab.connId, dbIndex, { line }, false);
 			if (out.status === 'confirm') {
-				if (!confirm(`${out.reason}.\n\n${t('db.run_anyway')}?`)) {
+				if (!await ask(`${out.reason}.\n\n${t('db.run_anyway')}?`)) {
 					lines = [...lines, { cmd: line, reply: { text: t('db.not_run'), isError: true } }];
 					return;
 				}
@@ -235,7 +236,7 @@
 	}
 
 	async function killClient(id: string): Promise<void> {
-		if (!confirm(t('db.kill_client_confirm', { id }))) return;
+		if (!await ask(t('db.kill_client_confirm', { id }))) return;
 		if (await cmd(['CLIENT', 'KILL', 'ID', id])) showView('clients');
 	}
 

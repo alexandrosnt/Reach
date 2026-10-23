@@ -9,6 +9,7 @@
 	import NewIndicator from '$lib/components/shared/NewIndicator.svelte';
 	import { sidebarHasNew, markSidebarSeen, newSince } from '$lib/state/whats-new.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import { pendingSessionAction } from '$lib/state/palette.svelte';
 
 	type Section = 'sessions' | 'vault' | 'explorer' | 'tunnels' | 'snippets' | 'recipes' | 'plugins';
 
@@ -31,6 +32,15 @@
 	let { collapsed = $bindable(false), connectionId }: Props = $props();
 
 	let activeSection = $state<Section>('sessions');
+
+	// A request for the session list (the command palette's, a container
+	// shell's): show the list so it can carry it out, and its prompts, which
+	// live inside it, can be seen.
+	$effect(() => {
+		if (!pendingSessionAction()) return;
+		activeSection = 'sessions';
+		collapsed = false;
+	});
 	let sidebarWidth = $state(loadWidth());
 	let dragging = $state(false);
 
@@ -296,6 +306,10 @@
 		gap: var(--space-1);
 		padding: var(--space-2) 0;
 		border-right: 1px solid var(--color-border);
+		/* Scrolls when the window is shorter than its buttons, as a phone on
+		   its side is: the last ones were cut off. */
+		overflow-y: auto;
+		scrollbar-width: none;
 	}
 
 	.rail-toggle {

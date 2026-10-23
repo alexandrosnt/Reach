@@ -75,7 +75,7 @@
 	</button>
 
 	{#if isOpen}
-		<ul class="dropdown-list" role="listbox">
+		<ul class="dropdown-list pop-in" role="listbox">
 			{#each options as option (option.value)}
 				<li
 					class="dropdown-item"

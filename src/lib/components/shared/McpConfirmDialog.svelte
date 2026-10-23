@@ -141,7 +141,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		padding: max(var(--space-4), env(safe-area-inset-top)) max(var(--space-4), env(safe-area-inset-right)) max(var(--space-4), env(safe-area-inset-bottom)) max(var(--space-4), env(safe-area-inset-left));
+		padding: max(var(--space-4), var(--safe-top)) max(var(--space-4), var(--safe-right)) max(var(--space-4), var(--safe-bottom)) max(var(--space-4), var(--safe-left));
 		background: var(--color-surface-sunken);
 		backdrop-filter: blur(16px);
 		-webkit-backdrop-filter: blur(16px);

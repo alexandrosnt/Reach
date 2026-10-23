@@ -35,7 +35,7 @@
 			await refreshVaults();
 			onrefresh?.();
 		} catch (e) {
-			addToast(`Failed to refresh: ${e}`, 'error');
+			addToast(t('toast.refresh_failed', { error: String(e) }), 'error');
 		} finally {
 			refreshing = false;
 		}
@@ -110,8 +110,9 @@
 		selected === ALL_VAULTS ? t('vault.all_vaults') : current ? current.name : t('vault.private')
 	);
 	let triggerMeta = $derived.by(() => {
+		// With no vaults of their own, "0 vaults · 0 shared" says nothing.
 		if (selected === ALL_VAULTS) {
-			return t('vault.vaults_summary', { count: userVaults.length, shared: sharedVaults.length });
+			return userVaults.length ? t('vault.vaults_summary', { count: userVaults.length, shared: sharedVaults.length }) : '';
 		}
 		if (!current) return t('vault.this_device');
 		if (current.unreachable) return t('vault.unreachable');
@@ -323,7 +324,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 		{/if}
 		<span class="trigger-text">
 			<span class="trigger-name">{triggerName}</span>
-			<span class="trigger-meta" class:unreachable={current?.unreachable}>{triggerMeta}</span>
+			{#if triggerMeta}<span class="trigger-meta" class:unreachable={current?.unreachable}>{triggerMeta}</span>{/if}
 		</span>
 		<svg class="chevron" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 			<path d="M6 9l6 6 6-6"/>
@@ -331,7 +332,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 	</button>
 
 	{#if open}
-		<div class="pop" role="listbox" aria-label={t('vault.vaults')}>
+		<div class="pop pop-in" role="listbox" aria-label={t('vault.vaults')}>
 			<input
 				class="pop-search"
 				type="text"
@@ -439,7 +440,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 					id="vault-name"
 					type="text"
 					bind:value={newVaultName}
-					placeholder="DevOps Team"
+					placeholder={t('vault.team_example')}
 					disabled={creating}
 				/>
 			</div>
@@ -722,7 +723,6 @@ Go to Settings > Sync > Accept Vault Invite`;
 		max-height: min(46vh, 380px);
 		overflow-y: auto;
 		margin-top: 4px;
-		scrollbar-width: thin;
 	}
 
 	.group-label {
@@ -947,7 +947,7 @@ Go to Settings > Sync > Accept Vault Invite`;
 		position: fixed;
 		inset: 0;
 		/* Clear of the phone's status and navigation bars (0 on a desktop). */
-		padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+		padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 		background: var(--color-surface-sunken);
 		backdrop-filter: blur(4px);
 		display: flex;

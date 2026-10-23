@@ -823,21 +823,32 @@
 		color: var(--color-text-secondary);
 	}
 
+	/* A segmented control: a recessed track, the choice raised out of it.
+	   A solid accent fill on two of these stacked was the loudest thing in
+	   the dialog, louder than Save. */
 	.auth-toggle {
 		display: flex;
-		gap: 0;
+		gap: 2px;
+		padding: 3px;
+		background: var(--color-bg-primary);
 		border: 1px solid var(--color-border);
 		border-radius: var(--radius-btn);
-		overflow: hidden;
 	}
 
+	/* Sized to its label first, so a long one ("Remote desktop (RDP)") is
+	   whole where there is room, then cut only where there is not. */
 	.auth-btn {
-		flex: 1;
-		padding: 7px 12px;
+		flex: 1 1 auto;
+		min-width: 0;
+		padding: 6px 10px;
 		font-family: var(--font-sans);
 		font-size: 0.8125rem;
 		font-weight: 500;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 		border: none;
+		border-radius: 6px;
 		background: transparent;
 		color: var(--color-text-secondary);
 		cursor: pointer;
@@ -846,22 +857,19 @@
 			color var(--duration-default) var(--ease-default);
 	}
 
-	.auth-btn:hover:not(:disabled) {
-		background-color: var(--color-surface-hover);
+	.auth-btn:hover:not(:disabled):not(.active) {
+		color: var(--color-text-primary);
 	}
 
 	.auth-btn.active {
-		background-color: var(--color-accent);
-		color: #fff;
+		background-color: var(--color-bg-elevated);
+		color: var(--color-accent);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 0 0 1px var(--color-border);
 	}
 
 	.auth-btn:disabled {
 		opacity: 0.4;
 		cursor: not-allowed;
-	}
-
-	.auth-btn + .auth-btn {
-		border-left: 1px solid var(--color-border);
 	}
 
 	.error-message {

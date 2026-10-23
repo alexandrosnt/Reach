@@ -88,14 +88,52 @@ impl TunnelManager {
                 ));
             }
             TunnelType::Dynamic => {
-                tracing::warn!("Dynamic (SOCKS) forwarding not yet implemented");
-                return Err(TunnelError::NotImplemented(
-                    "Dynamic (SOCKS) forwarding".to_string(),
-                ));
+                self.start_dynamic_forward(tunnel, handle).await?;
             }
         }
 
         tunnel.active = true;
+        Ok(())
+    }
+
+    /// Start a SOCKS proxy on this machine (ssh -D): each connection says
+    /// where it goes, and goes there through the SSH connection. It is the
+    /// same forwarder `~C -D` and DynamicForward use, and it listens on
+    /// 127.0.0.1 only, as a local forward does.
+    async fn start_dynamic_forward(
+        &mut self,
+        tunnel: &TunnelConfig,
+        handle: &SharedHandle,
+    ) -> Result<(), TunnelError> {
+        use crate::ssh::forwarding::{ForwardTable, Forwarder};
+
+        let port = tunnel.local_port;
+        let fwd = crate::ssh::sshconf::forward::parse(&format!("127.0.0.1:{port}"), true, false)
+            .ok_or_else(|| TunnelError::CreationFailed(format!("Bad port {port}")))?;
+        let (forwarder, _) = Forwarder::start(handle.clone(), ForwardTable::new(Default::default()))
+            .await
+            .map_err(TunnelError::CreationFailed)?;
+        forwarder.add_local(fwd).await.map_err(|e| {
+            if is_addr_in_use(&e) {
+                TunnelError::PortInUse(port)
+            } else {
+                TunnelError::IoError(e)
+            }
+        })?;
+
+        tracing::info!("Tunnel {}: SOCKS proxy on 127.0.0.1:{}", tunnel.id, port);
+
+        // The forwarder lives as long as this task: stopping the tunnel
+        // closes the listener.
+        let (shutdown_tx, mut shutdown_rx) = mpsc::channel::<()>(1);
+        let tunnel_id = tunnel.id.clone();
+        let task = tokio::spawn(async move {
+            let _ = shutdown_rx.recv().await;
+            forwarder.cancel_local(port).await;
+            tracing::info!("Tunnel {}: SOCKS proxy stopped", tunnel_id);
+        });
+
+        self.active.insert(tunnel.id.clone(), ActiveTunnel { shutdown_tx, task });
         Ok(())
     }
 
@@ -211,6 +249,13 @@ impl TunnelManager {
     }
 }
 
+/// The forwarder reports a failed bind as text; a port taken by another
+/// program is worth its own message.
+fn is_addr_in_use(err: &str) -> bool {
+    let e = err.to_ascii_lowercase();
+    e.contains("in use") || e.contains("os error 10048") || e.contains("os error 98")
+}
+
 impl Default for TunnelManager {
     fn default() -> Self {
         Self::new()
@@ -292,4 +337,17 @@ pub(crate) async fn relay_connection(
 
     tracing::debug!("Tunnel relay: connection closed");
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_addr_in_use;
+
+    #[test]
+    fn a_taken_port_is_told_apart_from_other_bind_errors() {
+        // As the forwarder words them, on Windows and on Linux.
+        assert!(is_addr_in_use("cannot listen on 127.0.0.1:1080: Only one usage of each socket address (protocol/network address/port) is normally permitted. (os error 10048)"));
+        assert!(is_addr_in_use("cannot listen on 127.0.0.1:1080: Address already in use (os error 98)"));
+        assert!(!is_addr_in_use("cannot listen on 127.0.0.1:80: Permission denied (os error 13)"));
+    }
 }

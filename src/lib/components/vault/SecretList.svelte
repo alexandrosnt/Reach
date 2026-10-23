@@ -94,7 +94,7 @@
 			showAddModal = false;
 			addToast(t('vault.secret_created_toast'), 'success');
 		} catch (err) {
-			addToast(`Failed to create secret: ${err}`, 'error');
+			addToast(t('toast.secret_create_failed', { error: String(err) }), 'error');
 		} finally {
 			creating = false;
 		}
@@ -118,7 +118,7 @@
 			secretValue = await readSecret(selectedSecret.id);
 			showSecretValue = true;
 		} catch (err) {
-			addToast(`Failed to read secret: ${err}`, 'error');
+			addToast(t('toast.secret_read_failed', { error: String(err) }), 'error');
 		} finally {
 			loadingSecret = false;
 		}
@@ -136,7 +136,7 @@
 			await navigator.clipboard.writeText(value);
 			addToast(t('vault.copied_toast'), 'success');
 		} catch (err) {
-			addToast(`Failed to copy: ${err}`, 'error');
+			addToast(t('toast.copy_failed_err', { error: String(err) }), 'error');
 		}
 	}
 
@@ -149,7 +149,7 @@
 			showViewModal = false;
 			showEditModal = true;
 		} catch (err) {
-			addToast(`Failed to read secret: ${err}`, 'error');
+			addToast(t('toast.secret_read_failed', { error: String(err) }), 'error');
 		}
 	}
 
@@ -169,7 +169,7 @@
 			editValue = '';
 			addToast(t('vault.secret_updated_toast'), 'success');
 		} catch (err) {
-			addToast(`Failed to update secret: ${err}`, 'error');
+			addToast(t('toast.secret_update_failed', { error: String(err) }), 'error');
 		} finally {
 			updating = false;
 		}
@@ -193,7 +193,7 @@
 			selectedSecret = null;
 			addToast(t('vault.secret_deleted_toast'), 'success');
 		} catch (err) {
-			addToast(`Failed to delete secret: ${err}`, 'error');
+			addToast(t('toast.secret_delete_failed', { error: String(err) }), 'error');
 		} finally {
 			deleting = false;
 		}
@@ -295,7 +295,7 @@
 	<div class="form">
 		<Input
 			label={t('vault.secret_name')}
-			placeholder="My API Key"
+			placeholder={t('vault.api_key_example')}
 			bind:value={newName}
 			disabled={creating}
 		/>
@@ -540,7 +540,6 @@
 		flex-direction: column;
 		gap: 1px;
 		padding: 0 var(--space-2, 8px);
-		scrollbar-width: thin;
 	}
 
 	/* A row, not a card: the sidebar is 250px and a secret's name is the

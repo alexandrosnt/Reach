@@ -3,6 +3,8 @@
 	import { t } from '$lib/state/i18n.svelte';
 	import McpSessionBar from './McpSessionBar.svelte';
 	import ShareBar from '$lib/components/share/ShareBar.svelte';
+	import Clock from '$lib/components/layout/Clock.svelte';
+	import { getActiveTab } from '$lib/state/tabs.svelte';
 
 	interface Props {
 		connectionId?: string;
@@ -14,6 +16,21 @@
 	let { connectionId, sshUser, sessionId }: Props = $props();
 
 	let stats = $derived(connectionId ? getStats(connectionId) : undefined);
+
+	// This bar is the window's bottom row while it shows (monitor-bar.svelte.ts),
+	// so it carries what the status bar said: the connection's state, as the
+	// tab's mark shows it, and the time.
+	let tab = $derived(getActiveTab());
+	let link = $derived(tab?.type === 'ssh' ? tab.link : undefined);
+	let linkLabel = $derived(
+		link === 'down'
+			? t('tabs.disconnected')
+			: link === 'reconnecting'
+				? t('terminal.reconnecting')
+				: tab?.type === 'ssh' && tab.connectionId
+					? t('statusbar.connected_to', { title: tab.title })
+					: t('statusbar.local')
+	);
 
 	let cpuColor = $derived.by(() => {
 		if (!stats) return 'var(--color-text-secondary)';
@@ -66,8 +83,31 @@
 	let showTooltip = $state(false);
 </script>
 
+<!-- Sized by its own width, not the window's: beside an open sidebar, at a
+     larger interface size, or in a split, the pane is narrower than the
+     window says. -->
+<div class="monitoring-wrap">
+{#snippet linkState()}
+	<span
+		class="link"
+		class:connected={tab?.type === 'ssh' && !link}
+		class:down={link === 'down'}
+		class:reconnecting={link === 'reconnecting'}
+		role="status"
+		title={linkLabel}
+		aria-label={linkLabel}
+	>
+		<span class="link-dot"></span>
+		<!-- Said in words only when something is wrong: green needs no caption. -->
+		{#if link}<span class="link-text">{linkLabel}</span>{/if}
+	</span>
+{/snippet}
+
 {#if stats}
-	<div class="monitoring-bar">
+	<!-- Dimmed while the connection is down: the figures are the last ones
+	     read, not the server's now. -->
+	<div class="monitoring-bar" class:stale={link === 'down'}>
+		{@render linkState()}
 		<div class="gauge">
 			<span class="gauge-label">{t('monitoring.cpu')}</span>
 			<div class="gauge-track">
@@ -143,17 +183,25 @@
 				</div>
 			{/if}
 		</div>
+		<Clock />
 	</div>
 {:else}
 	<!-- No stats means no SSH monitoring, not no session: a local shell has
 	     nothing to monitor and is still something you might share. -->
 	<div class="monitoring-bar disconnected">
+		{@render linkState()}
 		<span class="disconnected-text">{t('monitoring.not_connected')}</span>
 		<ShareBar />
+		<Clock />
 	</div>
 {/if}
+</div>
 
 <style>
+	.monitoring-wrap {
+		container-type: inline-size;
+	}
+
 	.monitoring-bar {
 		display: flex;
 		flex-direction: row;
@@ -298,17 +346,74 @@
 	}
 
 	.disconnected-text {
+		flex: 1;
+		min-width: 0;
+		text-align: center;
 		font-size: 11px;
 		line-height: 1;
 		color: var(--color-text-secondary);
 	}
 
-	/* A phone's width cannot hold the gauges: they shrank into one another
+	.link {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		flex-shrink: 0;
+		font-size: 11px;
+		line-height: 1;
+		white-space: nowrap;
+		color: var(--color-text-secondary);
+	}
+
+	.link-dot {
+		width: 6px;
+		height: 6px;
+		border-radius: 50%;
+		background-color: var(--color-text-secondary);
+		transition: background-color var(--duration-default) var(--ease-default);
+	}
+
+	.link.connected .link-dot {
+		background-color: var(--color-success);
+	}
+
+	.link.down .link-dot {
+		background-color: var(--color-danger);
+	}
+
+	.link.down .link-text {
+		color: var(--color-danger);
+	}
+
+	.link.reconnecting .link-dot {
+		background-color: var(--color-warning);
+	}
+
+	.monitoring-bar.stale .gauge,
+	.monitoring-bar.stale .net-stats,
+	.monitoring-bar.stale .users {
+		opacity: 0.4;
+		filter: grayscale(1);
+	}
+
+	.monitoring-bar > :global(.clock) {
+		flex-shrink: 0;
+	}
+
+	/* A short screen (a phone on its side) gets the shorter bar. */
+	@media (max-height: 480px) {
+		.monitoring-bar {
+			height: 26px;
+		}
+	}
+
+	/* A narrow pane cannot hold the gauges: they shrank into one another
 	   and the figures were drawn over each other (#127). Figures only, then,
 	   at their own width, and the bar scrolls sideways if they still do not
-	   fit. */
-	@media (max-width: 640px) {
+	   fit. The full row needs about 640px. */
+	@container (max-width: 640px) {
 		.monitoring-bar {
+			height: 26px;
 			gap: 12px;
 			overflow-x: auto;
 			scrollbar-width: none;

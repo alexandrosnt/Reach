@@ -139,7 +139,14 @@
 		</button>
 	</div>
 
-	<input class="search" type="text" placeholder={t('recipes.search')} bind:value={search} />
+	<!-- The session list's search field, icon and all. -->
+	<label class="search">
+		<svg class="search-icon" width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+			<circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+			<path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+		</svg>
+		<input type="text" placeholder={t('recipes.search')} aria-label={t('recipes.search')} bind:value={search} />
+	</label>
 
 	{#if !canRun && view === 'installed'}
 		<!-- Said once, up front, rather than discovered at the moment of running.
@@ -149,7 +156,15 @@
 
 	{#if view === 'installed'}
 		{#if filteredRecipes.length === 0}
-			<p class="empty">{search ? t('recipes.no_matches') : t('recipes.none_yet')}</p>
+			{#if search}
+				<p class="empty">{t('recipes.no_matches')}</p>
+			{:else}
+				<!-- As the other panels' empty states: what is missing, then how to add it. -->
+				<div class="empty-state">
+					<p class="empty-text">{t('recipes.empty_title')}</p>
+					<p class="empty-hint">{t('recipes.empty_hint')}</p>
+				</div>
+			{/if}
 		{:else}
 			<ul class="list">
 				{#each filteredRecipes as r (r.id)}
@@ -252,58 +267,109 @@
 		gap: var(--space-2);
 	}
 
+	/* The session editor's segmented control, sized for the sidebar: a
+	   recessed track with the current view raised out of it. */
 	.tabs {
 		display: flex;
 		flex: 1;
 		gap: 2px;
 		min-width: 0;
+		padding: 2px;
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-btn);
 	}
 
 	.tabs button {
 		flex: 1;
+		min-width: 0;
 		padding: 4px 8px;
 		font-family: inherit;
 		font-size: var(--text-xs);
+		font-weight: 500;
 		color: var(--color-text-secondary);
 		background: none;
-		border: 1px solid transparent;
+		border: none;
 		border-radius: var(--radius-sm);
 		cursor: pointer;
 		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		transition:
+			background-color var(--duration-default) var(--ease-default),
+			color var(--duration-default) var(--ease-default);
+	}
+
+	.tabs button:hover:not(.active) {
+		color: var(--color-text-primary);
 	}
 
 	.tabs button.active {
-		color: var(--color-text-primary);
-		background: var(--color-surface-active);
-		border-color: var(--color-border);
+		color: var(--color-accent);
+		background: var(--color-bg-elevated);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 0 0 1px var(--color-border);
 	}
 
+	/* The session list's + button. */
 	.icon-btn {
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 24px;
-		height: 24px;
+		align-self: stretch;
+		width: 30px;
 		flex-shrink: 0;
-		color: var(--color-text-secondary);
-		background: none;
+		padding: 0;
+		color: var(--color-accent);
+		background: transparent;
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
+		border-radius: 6px;
 		cursor: pointer;
+		transition:
+			background-color var(--duration-default) var(--ease-default),
+			border-color var(--duration-default) var(--ease-default);
 	}
 
 	.icon-btn:hover {
-		color: var(--color-text-primary);
+		background-color: color-mix(in srgb, var(--color-accent) 10%, transparent);
+		border-color: color-mix(in srgb, var(--color-accent) 55%, var(--color-border));
 	}
 
 	.search {
-		padding: 5px 8px;
-		font-family: inherit;
-		font-size: var(--text-xs);
-		color: var(--color-text-primary);
-		background: var(--color-surface-sunken);
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 8px;
+		background: var(--color-bg-primary);
 		border: 1px solid var(--color-border);
-		border-radius: var(--radius-sm);
+		border-radius: 6px;
+		cursor: text;
+	}
+
+	.search:focus-within {
+		border-color: var(--color-accent);
+	}
+
+	.search-icon {
+		flex-shrink: 0;
+		color: var(--color-text-secondary);
+		opacity: 0.5;
+	}
+
+	.search input {
+		flex: 1;
+		min-width: 0;
+		padding: 3px 0;
+		border: none;
+		background: transparent;
+		color: var(--color-text-primary);
+		font-family: var(--font-sans);
+		font-size: var(--text-sm);
+		outline: none;
+	}
+
+	.search input::placeholder {
+		color: var(--color-text-secondary);
+		opacity: 0.5;
 	}
 
 	.hint,
@@ -317,6 +383,25 @@
 
 	.error {
 		color: var(--color-danger);
+	}
+
+	.empty-state {
+		padding: 32px 16px;
+		text-align: center;
+	}
+
+	.empty-text {
+		margin: 0 0 4px;
+		font-size: 0.8125rem;
+		color: var(--color-text-secondary);
+	}
+
+	.empty-hint {
+		margin: 0;
+		font-size: 0.6875rem;
+		color: var(--color-text-secondary);
+		opacity: 0.7;
+		line-height: 1.5;
 	}
 
 	.list {

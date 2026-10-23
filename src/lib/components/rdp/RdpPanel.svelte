@@ -805,7 +805,7 @@
 		width="1024"
 		height="768"
 		tabindex="0"
-		aria-label="Remote desktop"
+		aria-label={t('settings.rdp_section')}
 		onmousemove={onMove}
 		onmousedown={(e) => onButton(e, 'down')}
 		onmouseup={(e) => onButton(e, 'up')}
@@ -998,7 +998,7 @@
 		background: #000;
 		/* The desktop stays clear of a phone's status and navigation bars;
 		   the screen area inside is what gets measured, so scaling follows. */
-		padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+		padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 	}
 
 	.fs-button {

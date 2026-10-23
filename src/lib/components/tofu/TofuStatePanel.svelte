@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { ask } from '$lib/state/ask.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import {
 		getStateResources,
@@ -40,8 +41,8 @@
 		stateShowResource(target, address);
 	}
 
-	function handleRemove(address: string) {
-		if (!confirm(t('tofu.state_remove_confirm'))) return;
+	async function handleRemove(address: string) {
+		if (!await ask(t('tofu.state_remove_confirm'))) return;
 		stateRemoveResource(target, address);
 	}
 

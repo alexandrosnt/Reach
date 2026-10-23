@@ -7,6 +7,7 @@
 	 * for them without knowing about each other.
 	 */
 	import { onMount } from 'svelte';
+	import { ask } from '$lib/state/ask.svelte';
 	import { save as saveDialog } from '@tauri-apps/plugin-dialog';
 	import FaIcon from '$lib/components/shared/FaIcon.svelte';
 	import { faXmark, faBars, faDatabase, faPlus, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
@@ -60,7 +61,7 @@
 	}
 
 	async function onDelete(c: DbConnectionView): Promise<void> {
-		if (!confirm(t('db.delete_connection_confirm', { name: c.name }))) return;
+		if (!await ask(t('db.delete_connection_confirm', { name: c.name }))) return;
 		try {
 			await st.remove(c.id);
 		} catch (e) {
@@ -134,8 +135,8 @@
 		}
 	}
 
-	function closeTab(id: string): void {
-		if (st.isDirty(id) && !confirm(t('db.close_dirty_confirm'))) return;
+	async function closeTab(id: string): Promise<void> {
+		if (st.isDirty(id) && !await ask(t('db.close_dirty_confirm'))) return;
 		st.closeTab(id);
 	}
 

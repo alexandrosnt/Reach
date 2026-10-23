@@ -1043,7 +1043,29 @@ impl VaultManager {
         let Ok(stored) = serde_json::from_str::<StoredIdentity>(&data) else {
             return false;
         };
-        !stored.encrypted_key.is_empty() && !stored.nonce.is_empty()
+        if stored.encrypted_key.is_empty() || stored.nonce.is_empty() {
+            return false;
+        }
+        // Set up without a password, the key is sealed with an empty one: that
+        // is no password. Saying otherwise made a lock ask for one nobody set.
+        !Self::opens_with(&stored, "")
+    }
+
+    /// Whether `password` opens the key sealed in `stored`.
+    fn opens_with(stored: &StoredIdentity, password: &str) -> bool {
+        let (Ok(salt), Ok(encrypted_key), Ok(nonce)) = (
+            BASE64.decode(&stored.salt),
+            BASE64.decode(&stored.encrypted_key),
+            BASE64.decode(&stored.nonce),
+        ) else {
+            return false;
+        };
+        let Ok(salt) = <[u8; 32]>::try_from(salt.as_slice()) else {
+            return false;
+        };
+        derive_kek_from_password(password.as_bytes(), &salt)
+            .and_then(|kek| decrypt_with_password(&kek, &encrypted_key, &nonce))
+            .is_ok()
     }
 
     /// Get public key (base64).

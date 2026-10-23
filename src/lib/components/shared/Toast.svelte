@@ -36,9 +36,12 @@
 <style>
 	.toast-container {
 		position: fixed;
-		top: calc(80px + env(safe-area-inset-top));
-		left: 50%;
-		transform: translateX(-50%);
+		top: calc(80px + var(--safe-top));
+		/* Full width, the toasts centred in it: at left: 50% the box could only
+		   be as wide as the half of the window to its right, and on a phone a
+		   warning wrapped into a column half the screen wide. */
+		left: 0;
+		right: 0;
 		z-index: 200;
 		display: flex;
 		flex-direction: column;
@@ -53,7 +56,7 @@
 		align-items: center;
 		gap: 8px;
 		padding: 8px 16px;
-		max-width: 360px;
+		max-width: min(360px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
 		background-color: var(--color-bg-elevated);
 		border: 1px solid var(--color-border);
 		border-radius: 20px;
@@ -67,7 +70,7 @@
 	}
 
 	.toast.detailed {
-		max-width: 520px;
+		max-width: min(520px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
 		align-items: flex-start;
 		border-radius: var(--radius-card);
 	}
@@ -86,6 +89,15 @@
 		-webkit-line-clamp: 4;
 		line-clamp: 4;
 		-webkit-box-orient: vertical;
+	}
+
+	/* A phone has no pointer to hover for the rest, and a narrow toast fits
+	   less in four lines: twice that, before it is cut. */
+	@media (max-width: 480px) {
+		.toast.detailed .toast-message {
+			-webkit-line-clamp: 8;
+			line-clamp: 8;
+		}
 	}
 
 	.toast.dismissing {
@@ -148,6 +160,17 @@
 		to {
 			opacity: 0;
 			transform: translateY(-20px);
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.toast {
+			animation: none;
+		}
+
+		.toast.dismissing {
+			animation: none;
+			opacity: 0;
 		}
 	}
 </style>

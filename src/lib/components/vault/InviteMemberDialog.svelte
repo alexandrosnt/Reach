@@ -59,7 +59,7 @@
 		try {
 			members = await listMembers(vaultId);
 		} catch (e) {
-			addToast(`Failed to load members: ${e}`, 'error');
+			addToast(t('toast.members_load_failed', { error: String(e) }), 'error');
 		} finally {
 			loadingMembers = false;
 		}
@@ -102,7 +102,7 @@
 			addToast(t('vault.member_removed_toast'), 'success');
 			await loadMembers();
 		} catch (e) {
-			addToast(`Failed to remove member: ${e}`, 'error');
+			addToast(t('toast.member_remove_failed', { error: String(e) }), 'error');
 		}
 	}
 
@@ -236,7 +236,7 @@ To accept this invite, go to Settings > Vault > Accept Invite and paste the sync
 						<div class="form-field">
 							<Input
 								label={t('vault.invitee_public_key')}
-								placeholder="Base64 encoded public key"
+								placeholder={t('vault.pubkey_placeholder')}
 								bind:value={inviteePublicKey}
 								disabled={inviting}
 							/>

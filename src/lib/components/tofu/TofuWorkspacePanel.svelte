@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
+	import { ask } from '$lib/state/ask.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import {
 		getWorkspaceInfo,
@@ -31,9 +32,9 @@
 		selectWorkspace(target, name);
 	}
 
-	function handleDelete(name: string) {
+	async function handleDelete(name: string) {
 		if (name === 'default') return;
-		if (!confirm(t('tofu.workspace_delete_confirm'))) return;
+		if (!await ask(t('tofu.workspace_delete_confirm'))) return;
 		deleteWorkspace(target, name);
 	}
 

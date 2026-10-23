@@ -364,7 +364,7 @@
 				<Input
 					label={t('security.new_password')}
 					type="password"
-					placeholder="Enter new password"
+					placeholder={t('settings.new_password_placeholder')}
 					bind:value={newPassword}
 				/>
 			</div>
@@ -373,7 +373,7 @@
 				<Input
 					label={t('security.confirm_password')}
 					type="password"
-					placeholder="Re-enter password"
+					placeholder={t('common.reenter_password')}
 					bind:value={confirmPassword}
 				/>
 			</div>

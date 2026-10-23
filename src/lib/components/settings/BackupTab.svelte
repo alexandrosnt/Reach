@@ -163,7 +163,7 @@
 			<Input
 				label={t('backup.export_password')}
 				type="password"
-				placeholder="Minimum 8 characters"
+				placeholder={t('vault.min_chars')}
 				bind:value={exportPassword}
 				disabled={exporting}
 			/>
@@ -173,7 +173,7 @@
 			<Input
 				label={t('backup.confirm_password')}
 				type="password"
-				placeholder="Re-enter password"
+				placeholder={t('common.reenter_password')}
 				bind:value={exportConfirmPassword}
 				disabled={exporting}
 			/>
@@ -215,7 +215,7 @@
 				<Input
 					label={t('backup.export_password')}
 					type="password"
-					placeholder="Password used during export"
+					placeholder={t('common.export_password_hint')}
 					bind:value={importExportPassword}
 					disabled={verifying || importing}
 				/>
@@ -256,10 +256,10 @@
 				<div class="setting-row">
 					<div class="setting-info">
 						<span class="setting-label">{t('backup.preview_sync')}</span>
-						<span class="setting-description">{preview.hasSyncConfig ? 'Included' : 'None'}</span>
+						<span class="setting-description">{preview.hasSyncConfig ? t('backup.included') : t('backup.none')}</span>
 					</div>
 					<div class="status-badge" class:enabled={preview.hasSyncConfig}>
-						{preview.hasSyncConfig ? 'Yes' : 'No'}
+						{preview.hasSyncConfig ? t('common.yes') : t('common.no')}
 					</div>
 				</div>
 			</div>
@@ -268,7 +268,7 @@
 				<Input
 					label={t('backup.master_password_optional')}
 					type="password"
-					placeholder="Leave blank if you used TLS-style init"
+					placeholder={t('common.tls_init_hint')}
 					bind:value={importMasterPassword}
 					disabled={importing}
 				/>

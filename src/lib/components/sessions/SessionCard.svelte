@@ -3,6 +3,7 @@
 	import type { VaultInfo } from '$lib/state/vault.svelte';
 	import DistroIcon from './DistroIcon.svelte';
 	import { t } from '$lib/state/i18n.svelte';
+	import { sessionAddress } from '$lib/utils/address';
 	import { isWindows } from '$lib/platform';
 
 	interface Props {
@@ -35,6 +36,15 @@
 		}
 	}
 
+	/** A lock for a password, a key for a key, a link for the agent. */
+	let authIcon = $derived(
+		session.auth_method.type === 'Password'
+			? 'M6 11h12v10H6zM8 11V8a4 4 0 0 1 8 0v3'
+			: session.auth_method.type === 'Key'
+				? 'M15 7a4 4 0 1 1-3.9 4.9L4 19v2h3v-2h2v-2h2l1.1-1.1A4 4 0 0 1 15 7zM16 9.5h.01'
+				: 'M10 13a5 5 0 0 0 7.5.5l3-3a5 5 0 0 0-7-7l-1.7 1.7M14 11a5 5 0 0 0-7.5-.5l-3 3a5 5 0 0 0 7 7l1.7-1.7'
+	);
+
 	let authLabel = $derived(
 		session.kind === 'wsl' ? 'WSL' :
 		session.auth_method.type === 'Password' ? t('session.auth_pw_label') :
@@ -56,7 +66,7 @@
 	<span
 		class="drag-handle"
 		role="img"
-		aria-label="Drag to reorder"
+		aria-label={t('common.drag_to_reorder')}
 		onpointerdown={(e) => { if (ondragstart) { e.stopPropagation(); ondragstart(e); } }}
 	>
 		<svg width="8" height="12" viewBox="0 0 8 12" fill="currentColor">
@@ -93,10 +103,29 @@
 					{/if}
 				</span>
 			{:else}
-				<span class="session-detail">{session.username ? `${session.username}@` : ''}{session.host}:{session.port}</span>
+				<span class="session-meta">
+					<!-- The port only when it is not ssh's own: ":22" on every row
+					     said nothing. -->
+					<span class="session-detail">{sessionAddress(session)}</span>
+					{#each session.tags.slice(0, 2) as tag (tag)}
+						<span class="tag-chip">{tag}</span>
+					{/each}
+					{#if session.tags.length > 2}
+						<span class="tag-chip more" title={session.tags.slice(2).join(', ')}>+{session.tags.length - 2}</span>
+					{/if}
+				</span>
 			{/if}
 		</div>
-		<span class="auth-badge" title={t('session.auth_type', { type: session.auth_method.type })}>{authLabel}</span>
+		<!-- How it logs in, as a quiet mark rather than a label on every row. -->
+		{#if session.kind === 'wsl'}
+			<span class="auth-badge">WSL</span>
+		{:else}
+			<span class="auth-mark" title={`${t('session.auth_type', { type: session.auth_method.type })} · ${authLabel}`} aria-label={authLabel}>
+				<svg width="13" height="13" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<path d={authIcon} stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+				</svg>
+			</span>
+		{/if}
 	</button>
 
 	<div class="session-actions">
@@ -142,6 +171,17 @@
 
 	.session-card:hover .drag-handle {
 		opacity: 0.4;
+	}
+
+	/* With a mouse, the grip shows on the row pointed at only. */
+	@media (pointer: fine) {
+		.drag-handle {
+			opacity: 0;
+		}
+
+		.session-card:hover .drag-handle {
+			opacity: 0.4;
+		}
 	}
 
 	.session-card {
@@ -255,6 +295,47 @@
 		font-family: var(--font-mono, monospace);
 	}
 
+	.session-meta {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		min-width: 0;
+	}
+
+	.session-meta .session-detail {
+		flex: 0 1 auto;
+		min-width: 0;
+	}
+
+	/* Tags: the words people file sessions under, small enough not to compete
+	   with the name. */
+	.tag-chip {
+		flex-shrink: 0;
+		max-width: 80px;
+		padding: 0 5px;
+		border-radius: 999px;
+		background: var(--color-surface-hover);
+		color: var(--color-text-secondary);
+		font-size: 10px;
+		line-height: 16px;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.tag-chip.more {
+		background: transparent;
+		color: var(--color-text-tertiary);
+	}
+
+	.auth-mark {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		color: var(--color-text-tertiary);
+		opacity: 0.8;
+	}
+
 	.auth-badge {
 		flex-shrink: 0;
 		padding: 2px 6px;
@@ -352,7 +433,8 @@
 	@media (max-width: 700px) {
 		.drag-handle,
 		.session-actions,
-		.auth-badge {
+		.auth-badge,
+		.auth-mark {
 			display: none;
 		}
 

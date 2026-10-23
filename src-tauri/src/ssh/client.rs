@@ -49,9 +49,11 @@ pub fn expand_tilde(path: &str) -> PathBuf {
 /// `stty -echo` followed by twenty `echo` lines in a single write, five runs
 /// each, on a real PTY:
 ///
-///     ksh93   12/20 survived, the SAME first 8 lines lost every run
-///     BusyBox ash, dash, bash, zsh, mksh, posh   20/20
-///     every one of the seven   20/20 with no stty at all
+/// ```text
+/// ksh93   12/20 survived, the SAME first 8 lines lost every run
+/// BusyBox ash, dash, bash, zsh, mksh, posh   20/20
+/// every one of the seven   20/20 with no stty at all
+/// ```
 ///
 /// Only ksh93 loses lines here, but it loses them silently and reproducibly,
 /// and a shell that swallows the middle of its own init is the exact failure
@@ -64,7 +66,9 @@ pub fn expand_tilde(path: &str) -> PathBuf {
 /// `CONFIG_FEATURE_EDITING_MAX_LEN`, and silently drops every character past it
 /// — `libbb/lineedit.c` breaks out of the insert with no beep and no error:
 ///
-///     if ((int)command_len >= (maxsize - 2)) { /* no space for char and EOL */ break; }
+/// ```c
+/// if ((int)command_len >= (maxsize - 2)) { /* no space for char and EOL */ break; }
+/// ```
 ///
 /// OpenWrt ships that cap at 512 (its own ticket #18844 is titled "/bin/sh in
 /// some cases needed command prompt more than 512 bytes"), so 510 bytes of the

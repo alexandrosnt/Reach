@@ -6,6 +6,7 @@
 	 * query, the other drops someone's connection.
 	 */
 	import { onDestroy, onMount } from 'svelte';
+	import { ask } from '$lib/state/ask.svelte';
 	import FaIcon from '$lib/components/shared/FaIcon.svelte';
 	import { faRotate, faPause, faPlay } from '@fortawesome/free-solid-svg-icons';
 	import * as db from '$lib/ipc/db';
@@ -64,7 +65,7 @@
 
 	async function kill(r: ServerSession, onlyQuery: boolean): Promise<void> {
 		const question = onlyQuery ? t('db.cancel_query_confirm', { id: r.id }) : t('db.kill_session_confirm', { id: r.id, user: r.user ?? '?' });
-		if (!confirm(question)) return;
+		if (!await ask(question)) return;
 		try {
 			await db.kill(tab.connId, Number(r.id), onlyQuery);
 			addToast(onlyQuery ? t('db.query_cancelled') : t('db.session_ended'), 'success');

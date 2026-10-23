@@ -128,7 +128,7 @@
 			{#if matches.length === 0}
 				<p class="no-results">{t('settings.language_no_match')}</p>
 			{/if}
-			<ul class="options" role="listbox" aria-label="Language">
+			<ul class="options" role="listbox" aria-label={t('settings.language')}>
 				{#each matches as lang, i (lang.code)}
 				<li>
 					<button

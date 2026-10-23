@@ -573,7 +573,7 @@
 			await navigator.clipboard.writeText(text);
 			addToast(t('explorer.copied'), 'success');
 		} catch {
-			addToast('Copy failed', 'error');
+			addToast(t('toast.copy_failed'), 'error');
 		}
 	}
 
@@ -976,7 +976,7 @@
 					bind:value={fileSearch}
 				/>
 				{#if fileSearch}
-					<button class="explorer-search-clear" onclick={() => (fileSearch = '')} type="button" aria-label="Clear search">
+					<button class="explorer-search-clear" onclick={() => (fileSearch = '')} type="button" aria-label={t('common.clear_search')}>
 						<svg width="8" height="8" viewBox="0 0 10 10" fill="none">
 							<path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
 						</svg>
@@ -1194,7 +1194,7 @@
 			<div class="preview-header">
 				<span class="preview-filename">{previewFile.name}</span>
 				<span class="preview-path">{previewFile.path}</span>
-				<button class="preview-close" onclick={() => (previewFile = undefined)} type="button" aria-label="Close preview">
+				<button class="preview-close" onclick={() => (previewFile = undefined)} type="button" aria-label={t('explorer.close_preview')}>
 					<svg width="12" height="12" viewBox="0 0 10 10" fill="none">
 						<path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
 					</svg>
@@ -1208,7 +1208,7 @@
 {#if contextMenu}
 	<ContextMenuBackdrop onclose={closeContextMenu} />
 	<div
-		class="context-menu"
+		class="context-menu pop-in"
 		use:positionMenu={{ x: contextMenu.x, y: contextMenu.y }}
 	>
 		{#if contextMenu.entry}
@@ -1573,8 +1573,6 @@
 		flex: 1;
 		overflow-y: auto;
 		position: relative;
-		scrollbar-width: thin;
-		scrollbar-color: var(--color-surface-strong) transparent;
 		transition: border-color 0.15s ease;
 	}
 
@@ -1753,7 +1751,7 @@
 		position: fixed;
 		inset: 0;
 		/* Clear of the phone's status and navigation bars (0 on a desktop). */
-		padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+		padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 		z-index: 500;
 		display: flex;
 		align-items: center;

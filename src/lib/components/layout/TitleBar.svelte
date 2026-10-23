@@ -2,7 +2,8 @@
 	import Settings from '$lib/components/settings/Settings.svelte';
 	import NewIndicator from '$lib/components/shared/NewIndicator.svelte';
 	import { settingsHaveNew, newSince } from '$lib/state/whats-new.svelte';
-	import { registerSettingsOpener } from '$lib/state/shortcuts.svelte';
+	import { registerSettingsOpener, shortcutLabel } from '$lib/state/shortcuts.svelte';
+	import { togglePalette } from '$lib/state/palette.svelte';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { getAISettings } from '$lib/state/ai.svelte';
 	import { __APP_VERSION__ } from '$lib/version';
@@ -76,6 +77,17 @@
 		{/if}
 	</div>
 
+	<!-- The command palette's way in, where a search box is looked for; the
+	     shortcut is printed on it so it is learnt. -->
+	<button class="search-pill" onclick={togglePalette} aria-label={t('palette.title')}>
+		<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+			<circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2" />
+			<path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+		</svg>
+		<span class="search-text">{t('palette.search')}</span>
+		<kbd class="search-key">{shortcutLabel('P', { ctrl: true, shift: true })}</kbd>
+	</button>
+
 	{#if !isMobile() && !macWindow}
 	<div class="titlebar-right">
 		<button class="window-btn" onclick={minimize} aria-label={t('titlebar.minimize')}>
@@ -106,8 +118,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		height: 38px;
-		min-height: 38px;
+		height: var(--titlebar-h, 38px);
+		min-height: var(--titlebar-h, 38px);
 		padding: 0 12px;
 		background-color: var(--color-bg-secondary);
 		border-bottom: 1px solid var(--color-border);
@@ -118,6 +130,78 @@
 	/* Room for the traffic lights, which sit over the bar's left end. */
 	.titlebar.mac {
 		padding-left: 78px;
+	}
+
+	.titlebar {
+		position: relative;
+	}
+
+	/* The search field sits in the middle of the bar, as in an editor or a
+	   browser; on a narrow screen it is a button at the right. */
+	.search-pill {
+		position: absolute;
+		left: 50%;
+		transform: translateX(-50%);
+		display: flex;
+		align-items: center;
+		gap: var(--space-2);
+		width: min(360px, 40vw);
+		height: 26px;
+		padding: 0 var(--space-2) 0 var(--space-3);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-btn);
+		background: var(--color-bg-primary);
+		color: var(--color-text-tertiary);
+		font-family: var(--font-sans);
+		font-size: var(--text-xs);
+		cursor: pointer;
+		-webkit-app-region: no-drag;
+		transition: border-color var(--duration-default) var(--ease-default), color var(--duration-default) var(--ease-default);
+	}
+
+	.search-pill:hover {
+		border-color: var(--color-surface-active);
+		color: var(--color-text-secondary);
+	}
+
+	.search-text {
+		flex: 1;
+		text-align: left;
+	}
+
+	.search-key {
+		padding: 0 5px;
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-sm);
+		font-family: var(--font-mono);
+		font-size: var(--text-2xs);
+	}
+
+	/* No keyboard shortcut to learn on a touch screen. */
+	@media (pointer: coarse) {
+		.search-key {
+			display: none;
+		}
+	}
+
+	@media (max-width: 640px) {
+		.search-pill {
+			position: static;
+			transform: none;
+			width: 32px;
+			height: 32px;
+			margin-left: auto;
+			padding: 0;
+			justify-content: center;
+			border-color: transparent;
+			background: transparent;
+			color: var(--color-text-secondary);
+		}
+
+		.search-text,
+		.search-key {
+			display: none;
+		}
 	}
 
 	.titlebar-left {

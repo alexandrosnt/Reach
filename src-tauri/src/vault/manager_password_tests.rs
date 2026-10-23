@@ -339,6 +339,29 @@ async fn has_password_is_false_when_no_password_material_was_persisted() {
     let _ = std::fs::remove_dir_all(&dir);
 }
 
+/// Set up without a password (the welcome screen's default), the key is
+/// still sealed, with an empty password. That is no password: has_password()
+/// said there was one, so a lock asked for a password nobody had set, its
+/// field would not take an empty one, and the one-click unlock was refused.
+#[tokio::test]
+async fn an_identity_made_without_a_password_has_none() {
+    let dir = tmp_dir("no-password");
+
+    let mut mgr = VaultManager::new(dir.clone());
+    mgr.init_identity("").await.unwrap();
+    assert!(!mgr.has_password().await, "an empty password is not a password");
+
+    // So a lock is undone with one click, as for any vault without a password.
+    mgr.hold();
+    assert!(mgr.resume().await.unwrap(), "the unlock button opens it again");
+
+    // Once one is set, it counts, and a lock asks for it.
+    mgr.change_password("a-real-password").await.unwrap();
+    assert!(mgr.has_password().await);
+
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
 /// Changing the password requires an unlocked manager.
 #[tokio::test]
 async fn change_password_requires_unlock() {

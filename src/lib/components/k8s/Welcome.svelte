@@ -125,9 +125,18 @@
 
 	dl {
 		display: grid;
-		grid-template-columns: max-content 1fr;
+		/* minmax(0, 1fr): a long command wraps instead of widening the list
+		   past a phone's screen. */
+		grid-template-columns: max-content minmax(0, 1fr);
 		gap: 6px 12px;
 		margin: 8px 0 0;
+	}
+
+	/* One column on a narrow screen, each name above its paths. */
+	@media (max-width: 480px) {
+		dl {
+			grid-template-columns: minmax(0, 1fr);
+		}
 	}
 
 	dt {
