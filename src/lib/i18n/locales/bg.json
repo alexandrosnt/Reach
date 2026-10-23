@@ -1,4 +1,5 @@
 {
+  "tabs.disconnected": "Връзката е прекъсната",
   "settings.ui_zoom": "Размер на интерфейса",
   "settings.ui_zoom_hint": "Всичко в прозореца, не само терминалът. {{in}} и {{out}} също го променят; {{reset}} връща 100%.",
   "settings.ui_zoom_reset": "Обратно на 100%",

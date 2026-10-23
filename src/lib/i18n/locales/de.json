@@ -1,4 +1,5 @@
 {
+  "tabs.disconnected": "Getrennt",
   "settings.ui_zoom": "Größe der Oberfläche",
   "settings.ui_zoom_hint": "Alles im Fenster, nicht nur das Terminal. {{in}} und {{out}} ändern sie ebenfalls; {{reset}} setzt auf 100 % zurück.",
   "settings.ui_zoom_reset": "Zurück auf 100 %",

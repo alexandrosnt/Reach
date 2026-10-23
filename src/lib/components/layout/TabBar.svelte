@@ -317,6 +317,16 @@
 					{/if}
 
 					<span class="tab-title">{tab.sessionName || tab.title}</span>
+					{#if tab.link}
+						<!-- Seen from any tab: this session dropped, or is coming back. -->
+						<span
+							class="link-mark"
+							class:reconnecting={tab.link === 'reconnecting'}
+							role="img"
+							aria-label={tab.link === 'reconnecting' ? t('terminal.reconnecting') : t('tabs.disconnected')}
+							title={tab.link === 'reconnecting' ? t('terminal.reconnecting') : t('tabs.disconnected')}
+						></span>
+					{/if}
 
 					{#if mcpStatus.enabled && shareIdOf(tab)}
 						{@const sid = shareIdOf(tab) as string}
@@ -592,6 +602,34 @@
 
 	.tab.active .tab-icon {
 		opacity: 1;
+	}
+
+	/* Shape as well as colour: a solid red dot is a dropped connection, an
+	   amber ring one being made again. */
+	.link-mark {
+		flex-shrink: 0;
+		width: 7px;
+		height: 7px;
+		border-radius: 50%;
+		background: var(--color-danger);
+	}
+
+	.link-mark.reconnecting {
+		background: transparent;
+		box-shadow: inset 0 0 0 1.5px var(--color-warning);
+		animation: link-pulse 1.2s ease-in-out infinite;
+	}
+
+	@keyframes link-pulse {
+		50% {
+			opacity: 0.35;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.link-mark.reconnecting {
+			animation: none;
+		}
 	}
 
 	.tab-title {

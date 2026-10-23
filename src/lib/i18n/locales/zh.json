@@ -1,4 +1,5 @@
 {
+  "tabs.disconnected": "已断开连接",
   "settings.ui_zoom": "界面大小",
   "settings.ui_zoom_hint": "整个窗口，而不仅是终端。{{in}} 和 {{out}} 也可调整；{{reset}} 恢复到 100%。",
   "settings.ui_zoom_reset": "恢复到 100%",

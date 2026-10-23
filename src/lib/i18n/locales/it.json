@@ -1,4 +1,5 @@
 {
+  "tabs.disconnected": "Disconnesso",
   "settings.ui_zoom": "Dimensione dell’interfaccia",
   "settings.ui_zoom_hint": "Tutto ciò che è nella finestra, non solo il terminale. Anche {{in}} e {{out}} la cambiano; {{reset}} torna al 100%.",
   "settings.ui_zoom_reset": "Torna al 100%",

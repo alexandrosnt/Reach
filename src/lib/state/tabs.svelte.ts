@@ -34,6 +34,9 @@ export interface Tab {
 	wslDistro?: string;
 	/** The tab group it is in, if any (see TabGroup). */
 	groupId?: string;
+	/** An SSH tab whose connection dropped, or is being made again: shown on
+	 *  the tab, so a dead session is seen from any tab, not only its own. */
+	link?: 'down' | 'reconnecting';
 }
 
 let tabs = $state<Tab[]>([]);
@@ -174,6 +177,12 @@ export function updateTabTitle(id: string, title: string): void {
 	if (tab) {
 		tab.title = title;
 	}
+}
+
+/** Set by the tab's terminal; undefined when the connection is up. */
+export function setTabLink(id: string, link: Tab['link']): void {
+	const tab = tabs.find((t) => t.id === id);
+	if (tab && tab.link !== link) tab.link = link;
 }
 
 export function updateTabOs(connectionId: string, os: string): void {

@@ -21,6 +21,7 @@
 	import { invoke } from '@tauri-apps/api/core';
 	import { trieMatch } from '$lib/state/snippets.svelte';
 	import { terminalFocusRequests } from '$lib/state/palette.svelte';
+	import { setTabLink } from '$lib/state/tabs.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { readText as clipboardReadText, writeText as clipboardWriteText } from '@tauri-apps/plugin-clipboard-manager';
 	import { openUrl } from '@tauri-apps/plugin-opener';
@@ -920,6 +921,12 @@
 			focusNow();
 			queueMicrotask(focusNow);
 		});
+	});
+
+	// The tab shows whether this SSH session is still connected.
+	$effect(() => {
+		if (termType !== 'ssh') return;
+		setTabLink(ptyId, reconnecting ? 'reconnecting' : disconnected ? 'down' : undefined);
 	});
 
 	// The command palette typed into this terminal: it takes the keyboard back.
