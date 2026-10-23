@@ -68,8 +68,9 @@
 			out.push({
 				id: `tab:${tab.id}`,
 				group: t('palette.group_tabs'),
-				label: tab.title,
-				detail: tab.sessionName && tab.sessionName !== tab.title ? tab.sessionName : undefined,
+				// Named as the tab bar names it, with the address after, as a session.
+				label: tab.sessionName || tab.title,
+				detail: tab.sessionName && tab.sessionName !== tab.title ? tab.title : undefined,
 				run: () => {
 					setActivePage('terminal');
 					activateTab(tab.id);
