@@ -82,6 +82,7 @@ Reach is what happens when you build an SSH client from scratch with a native UI
 - **Host Key Verification** · Trust on first use, and a loud stop when a known key changes. Never accepts one silently, and refuses rather than connecting if it cannot ask.
 - **Themes** · Colour tokens the whole app reads, not just the terminal. Install more from a registry, pinned by SHA-256.
 - **Encrypted Vault** · Store secrets, credentials, and SSH keys in an encrypted vault with cloud sync support.
+- **Password managers** · Point a session's password at an entry in Passbolt instead of keeping a copy. Reach fetches it through go-passbolt-cli when you connect and never shows it to the window. Off by default, in Settings → Password managers.
 - **Lua Plugins** · Extend Reach with sandboxed Lua scripts. Access SSH, storage, and UI hooks through the host API.
 - **Auto-Updates** · The app checks for updates on startup and periodically while running. No manual downloads.
 - **Nine languages** · English, German, Spanish, French, Italian, Greek, Bulgarian, Russian and Chinese. Translations are plain JSON under `src/lib/i18n/locales`, and a missing key fails CI rather than shipping.

@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { SshOptions } from './sessions';
+import type { SecretRef } from './pwmanager';
 
 export interface JumpHostConnectParams {
   host: string;
@@ -11,6 +12,9 @@ export interface JumpHostConnectParams {
   keyPassphrase?: string;
   /** An imported key, used instead of keyPath. See ipc/sshkeys. */
   keyId?: string;
+  /** Password-manager entries, resolved by the backend at connect; they win over the plaintext. */
+  passwordRef?: SecretRef;
+  keyPassphraseRef?: SecretRef;
 }
 
 export interface ProxyConfig {
@@ -19,6 +23,8 @@ export interface ProxyConfig {
   port: number;
   username?: string;
   password?: string;
+  /** A password-manager entry for the proxy password. */
+  password_ref?: SecretRef;
 }
 
 export interface SshConnectParams {
@@ -32,6 +38,9 @@ export interface SshConnectParams {
   keyPassphrase?: string;
   /** An imported key, used instead of keyPath. See ipc/sshkeys. */
   keyId?: string;
+  /** Password-manager entries, resolved by the backend at connect; they win over the plaintext. */
+  passwordRef?: SecretRef;
+  keyPassphraseRef?: SecretRef;
   cols: number;
   rows: number;
   jumpChain?: JumpHostConnectParams[];
@@ -48,6 +57,12 @@ export interface SshConnectParams {
   tryAgentKeys?: boolean;
   /** The session's ssh_config settings, applied by the backend at connect. */
   sshOptions?: SshOptions | null;
+  /**
+   * The saved session this connect is for. Required with any password-manager
+   * entry: the backend takes the entries from the stored session, and only
+   * those the user approved for it.
+   */
+  sessionId?: string | null;
 }
 
 export interface ConnectionInfo {
@@ -83,6 +98,8 @@ export async function sshConnect(params: SshConnectParams): Promise<string> {
     keyPath: params.keyPath,
     keyPassphrase: params.keyPassphrase,
     keyId: params.keyId ?? null,
+    passwordRef: params.passwordRef ?? null,
+    keyPassphraseRef: params.keyPassphraseRef ?? null,
     cols: params.cols,
     rows: params.rows,
     jumpChain: params.jumpChain ?? null,
@@ -93,6 +110,7 @@ export async function sshConnect(params: SshConnectParams): Promise<string> {
     sessionLog: params.sessionLog ?? null,
     tryAgentKeys: params.tryAgentKeys ?? null,
     sshOptions: params.sshOptions ?? null,
+    sessionId: params.sessionId ?? null,
   });
 }
 

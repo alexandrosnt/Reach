@@ -10,6 +10,7 @@
 	import DevopsTab from './DevopsTab.svelte';
 	import PluginsTab from './PluginsTab.svelte';
 	import SharingTab from './SharingTab.svelte';
+	import PasswordManagersTab from './PasswordManagersTab.svelte';
 	import NewIndicator from '$lib/components/shared/NewIndicator.svelte';
 	import { settingsTabHasNew, markSettingsTabSeen, newSince } from '$lib/state/whats-new.svelte';
 	import { t } from '$lib/state/i18n.svelte';
@@ -21,12 +22,13 @@
 
 	let { open, onclose }: Props = $props();
 
-	type TabId = 'general' | 'appearance' | 'security' | 'sync' | 'backup' | 'ai' | 'mcp' | 'devops' | 'plugins' | 'sharing';
+	type TabId = 'general' | 'appearance' | 'security' | 'sync' | 'backup' | 'ai' | 'mcp' | 'devops' | 'plugins' | 'sharing' | 'pwmanagers';
 
 	let tabs = $derived([
 		{ id: 'general' as TabId, label: t('settings.general'), icon: 'M12 15a3 3 0 100-6 3 3 0 000 6zM19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 01-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z' },
 		{ id: 'appearance' as TabId, label: t('settings.appearance'), icon: 'M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z' },
 		{ id: 'security' as TabId, label: t('settings.security'), icon: 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z' },
+		{ id: 'pwmanagers' as TabId, label: t('settings.password_managers'), icon: 'M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4' },
 		{ id: 'ai' as TabId, label: t('settings.ai'), icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z' },
 		{ id: 'mcp' as TabId, label: t('settings.mcp'), icon: 'M9 3v2m6-2v2M4 7h16M6 7v11a2 2 0 002 2h8a2 2 0 002-2V7M9.5 12l2 2-2 2M13.5 16h2' },
 		{ id: 'devops' as TabId, label: t('settings.devops'), icon: 'M4 4h16v6H4zM4 14h16v6H4zM8 7h.01M8 17h.01' },
@@ -97,6 +99,8 @@
 					<PluginsTab />
 				{:else if activeTabId === 'sharing'}
 					<SharingTab />
+				{:else if activeTabId === 'pwmanagers'}
+					<PasswordManagersTab />
 				{/if}
 			</div>
 		</div>

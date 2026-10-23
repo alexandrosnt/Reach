@@ -1,4 +1,5 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
+import type { SecretRef } from '$lib/ipc/pwmanager';
 
 /**
  * Remote desktop over RDP.
@@ -14,6 +15,10 @@ export interface RdpConnectParams {
 	port: number;
 	username: string;
 	password: string;
+	/** A password-manager entry, resolved by the backend at connect; wins over `password`. */
+	passwordRef?: SecretRef | null;
+	/** The saved session this desktop is for; required with `passwordRef` (the backend takes the entry from it). */
+	sessionId?: string | null;
 	domain?: string;
 	/** A local folder to show inside the desktop as a drive. */
 	sharePath?: string;
@@ -75,7 +80,8 @@ export async function rdpConnect(
 		new Uint8Array(copy).set(bytes);
 		onFrame(copy);
 	};
-	await invoke('rdp_connect', { params, onFrame: onFrameChannel });
+	const { sessionId, ...rest } = params;
+	await invoke('rdp_connect', { params: rest, sessionId: sessionId ?? null, onFrame: onFrameChannel });
 }
 
 export async function rdpDisconnect(id: string): Promise<void> {

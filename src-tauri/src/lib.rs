@@ -1,5 +1,6 @@
 pub mod ansible;
 pub mod plugin;
+pub mod pwmanager;
 pub mod ipc;
 pub mod mcp;
 pub mod monitoring;
@@ -75,6 +76,7 @@ use ipc::editor_commands::*;
 use ipc::snippet_commands::*;
 use ipc::recipe_commands::*;
 use ipc::share_commands::*;
+use ipc::pwmanager_commands::*;
 
 use std::path::PathBuf;
 use std::sync::OnceLock;
@@ -127,6 +129,9 @@ fn get_close_to_tray(state: tauri::State<'_, AppState>) -> bool {
 /// "Quit" → `app-quit-requested` flow in `AppShell.svelte`.
 #[tauri::command]
 fn quit_app(app: tauri::AppHandle) {
+    // A password manager passphrase kept in memory goes before the process
+    // does (it is encrypted there, but there is no reason to leave it).
+    pwmanager::forget_passphrase();
     app.exit(0);
 }
 
@@ -463,6 +468,8 @@ pub fn run() {
             session_create,
             wsl_list_distros,
             session_update,
+            session_untrusted_secret_refs,
+            session_approve_secret_refs,
             session_delete,
             session_move_to_folder,
             session_list_folders,
@@ -682,6 +689,15 @@ pub fn run() {
             share_set_ice_servers,
             share_reset_ice_servers,
             share_load,
+            // Password managers. Off until the user turns them on; nothing
+            // here returns a secret.
+            pwmanager_get_config,
+            pwmanager_save_config,
+            pwmanager_status,
+            pwmanager_test,
+            pwmanager_list,
+            pwmanager_passphrase_response,
+            pwmanager_forget_passphrase,
             devops::devops_set_enabled,
             devops::devops_save_text,
             // Databases
@@ -689,6 +705,7 @@ pub fn run() {
             db_save_connection,
             db_delete_connection,
             db_test_connection,
+            db_route_preview,
             db_connect,
             db_disconnect,
             db_databases,
@@ -863,6 +880,8 @@ pub fn run() {
             session_create,
             wsl_list_distros,
             session_update,
+            session_untrusted_secret_refs,
+            session_approve_secret_refs,
             session_delete,
             session_move_to_folder,
             session_list_folders,
@@ -1073,6 +1092,15 @@ pub fn run() {
             share_set_ice_servers,
             share_reset_ice_servers,
             share_load,
+            // Password managers. Off until the user turns them on; nothing
+            // here returns a secret.
+            pwmanager_get_config,
+            pwmanager_save_config,
+            pwmanager_status,
+            pwmanager_test,
+            pwmanager_list,
+            pwmanager_passphrase_response,
+            pwmanager_forget_passphrase,
             devops::devops_set_enabled,
             devops::devops_save_text,
             // Databases
@@ -1080,6 +1108,7 @@ pub fn run() {
             db_save_connection,
             db_delete_connection,
             db_test_connection,
+            db_route_preview,
             db_connect,
             db_disconnect,
             db_databases,
@@ -1368,10 +1397,14 @@ pub fn run() {
             }
 
             // When the computer locks or sleeps, tell the interface, which locks
-            // Reach too if the user asked for that (Settings → Security).
+            // Reach too if the user asked for that (Settings → Security). A
+            // password manager passphrase kept in memory goes in any case,
+            // whatever that setting says, and any passphrase question still
+            // open is cancelled: nobody is at the keyboard to have typed it.
             {
                 let handle = app.handle().clone();
                 system_lock::watch(std::sync::Arc::new(move || {
+                    pwmanager::forget_passphrase();
                     let _ = tauri::Emitter::emit(&handle, "system-locked", ());
                 }));
             }

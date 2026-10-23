@@ -8,6 +8,12 @@ fn main() {
     let msvc = std::env::var("CARGO_CFG_TARGET_ENV").as_deref() == Ok("msvc");
     if msvc {
         println!("cargo:rustc-link-arg=/MANIFEST:EMBED");
+        // The main thread runs Tauri's command dispatch: one function with an
+        // arm per command, where a release build places each async command's
+        // future on the stack before spawning it. Windows gives the main
+        // thread 1 MB, which the dispatch outgrew (a stack overflow on any
+        // connect); 8 MB is what Linux and macOS give it.
+        println!("cargo:rustc-link-arg-bins=/STACK:8388608");
         println!(
             "cargo:rustc-link-arg=/MANIFESTDEPENDENCY:type='win32' name='Microsoft.Windows.Common-Controls' version='6.0.0.0' processorArchitecture='*' publicKeyToken='6595b64144ccf1df' language='*'"
         );

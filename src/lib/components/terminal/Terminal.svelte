@@ -8,6 +8,7 @@
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { ptyWrite, ptyResize } from '$lib/ipc/pty';
 	import { sshSend, sshResize, sshConnect, sshReady, type SshConnectParams } from '$lib/ipc/ssh';
+	import { untrustedRefsFromError } from '$lib/ipc/sessions';
 	import { registerBufferReader, unregisterBufferReader } from '$lib/state/terminal-buffer.svelte';
 	import { themeState } from '$lib/state/theme.svelte';
 	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
@@ -629,7 +630,8 @@
 			term.write(`\r\n\x1b[32m[${t('terminal.reconnected')}]\x1b[0m\r\n`);
 			onReconnected?.(newId);
 		} catch (err) {
-			term.write(`\r\n\x1b[31m[${t('terminal.reconnect_failed')}: ${err}]\x1b[0m\r\n`);
+			const reason = untrustedRefsFromError(err) ? t('pwmanager.untrusted_reopen') : String(err);
+			term.write(`\r\n\x1b[31m[${t('terminal.reconnect_failed')}: ${reason}]\x1b[0m\r\n`);
 			disconnected = true;
 		} finally {
 			reconnecting = false;

@@ -47,7 +47,10 @@ async fn complete(state: &State<'_, AppState>, mut conn: DbConnection, keep_pass
     if conn.id.is_empty() {
         conn.id = uuid::Uuid::new_v4().to_string();
     }
-    if keep_password && conn.password.as_deref().is_none_or(str::is_empty) {
+    if conn.password_ref.is_some() {
+        // A password manager holds it: no plaintext copy is kept or used.
+        conn.password = None;
+    } else if keep_password && conn.password.as_deref().is_none_or(str::is_empty) {
         let mut vault = state.vault_manager.lock().await;
         let mut db = state.db.lock().await;
         db.store.ensure_loaded(&mut vault).await?;
@@ -72,12 +75,133 @@ pub async fn db_save_connection(
     if matches!(connection.route, Route::Live { .. }) {
         return Err("A terminal tab's connection ends with the tab. Save it through its saved session instead.".into());
     }
-    let conn = complete(&state, connection, keep_password).await?;
+    let mut conn = complete(&state, connection, keep_password).await?;
+    // Saving is the user's word that the password may go through the route
+    // session as it now is: signed here, checked on every open.
+    conn.route_approval = None;
+    if let Some((r, session_id)) = ref_through_session(&conn).map(|(r, s)| (r.clone(), s.to_owned())) {
+        let s = crate::ipc::session_commands::stored_session(&state, &session_id).await?;
+        require_ssh_route(&s)?;
+        check_route_shown(&conn, &s)?;
+        let vault = state.vault_manager.lock().await;
+        let (key, who) = (vault.approval_key(), vault.get_user_uuid());
+        if let (Some(k), Some(w)) = (key.as_deref(), who.as_deref()) {
+            conn.route_approval = Some(sign_route(k, w, &conn.id, &r, &s));
+        }
+    }
     let mut vault = state.vault_manager.lock().await;
     let mut db = state.db.lock().await;
     db.store.ensure_loaded(&mut vault).await?;
     db.store.save(conn.clone(), &mut vault).await?;
     Ok(DbConnectionView::from(&conn))
+}
+
+// ---------------------------------------------------------------------------
+// A password manager entry through a saved session.
+//
+// A connection's own password manager entry needs no approval (see
+// `open_live`), but the route session it goes through may sit in a shared
+// vault, where another member can point it at a server of theirs. So the
+// user's saving of the connection is signed against that session as it was
+// (its `approval_context`, the same one its own approvals use), and a
+// saved connection opens only while that still holds.
+
+/// The entry and the route session of a connection whose password manager
+/// entry goes through a saved session; `None` for every other connection. A
+/// direct route depends on nothing shared, and a terminal tab's route is a
+/// connection the user opened themselves and is never saved.
+fn ref_through_session(conn: &DbConnection) -> Option<(&crate::pwmanager::SecretRef, &str)> {
+    match (conn.password_ref.as_ref(), &conn.route) {
+        (Some(r), Route::Session { session_id }) => Some((r, session_id.as_str())),
+        _ => None,
+    }
+}
+
+/// What the user said yes to: this connection sending this entry.
+fn route_what(conn_id: &str, r: &crate::pwmanager::SecretRef) -> String {
+    format!("db:{conn_id}\t{}\t{}", r.provider, r.entry_id)
+}
+
+/// The signature stored in `DbConnection::route_approval`.
+pub(crate) fn sign_route(
+    key: &[u8; 32],
+    who: &str,
+    conn_id: &str,
+    r: &crate::pwmanager::SecretRef,
+    route_session: &crate::state::SessionConfig,
+) -> String {
+    use crate::ssh::sshconf::approvals::{sign, Kind};
+    let context = crate::ipc::session_commands::approval_context(route_session);
+    sign(key, who, Kind::SecretRef, &context, &route_what(conn_id, r))
+}
+
+/// The message a saved connection is refused with once its route session
+/// changed. The frontend recognises the code before the colon and shows its
+/// own translation.
+pub const ROUTE_CHANGED: &str = "DB_ROUTE_CHANGED: The session this connection goes through has changed since you saved it. Open the connection in the database editor and save it again to confirm.";
+
+/// A saved connection's password may go through its route session as that
+/// session now is: the user's own signature from saving it still holds.
+pub(crate) fn check_route_approval(
+    key: Option<&[u8; 32]>,
+    who: Option<&str>,
+    conn: &DbConnection,
+    r: &crate::pwmanager::SecretRef,
+    route_session: &crate::state::SessionConfig,
+) -> Result<(), String> {
+    use crate::ssh::sshconf::approvals::{verified, Kind};
+    let context = crate::ipc::session_commands::approval_context(route_session);
+    let what = route_what(&conn.id, r);
+    let ok = match (key, who, conn.route_approval.as_ref()) {
+        (Some(k), Some(w), Some(a)) => verified(std::slice::from_ref(a), k, w, Kind::SecretRef, &context).contains(&what),
+        _ => false,
+    };
+    if ok { Ok(()) } else { Err(ROUTE_CHANGED.to_string()) }
+}
+
+/// The message Save, Test or Connect from the form is refused with when the
+/// route session is not, or no longer, what the form showed. The frontend
+/// recognises the code before the colon, shows its own translation and
+/// reads the route again.
+pub const ROUTE_UNCONFIRMED: &str = "DB_ROUTE_UNCONFIRMED: The session this connection goes through is not what the editor showed; check where it goes and try again.";
+
+/// The form showed the route session as it now is: the user saw where the
+/// password would go (host, jump hosts, proxy, ssh_config lines) before
+/// choosing it. Picking a session by its name is not enough, since another
+/// member of a shared vault can re-point it.
+pub(crate) fn check_route_shown(conn: &DbConnection, route_session: &crate::state::SessionConfig) -> Result<(), String> {
+    let now = crate::ipc::session_commands::approval_context(route_session);
+    if conn.route_context.as_deref() == Some(now.as_str()) { Ok(()) } else { Err(ROUTE_UNCONFIRMED.to_string()) }
+}
+
+/// Where a session a connection would go through really leads, for the
+/// editor to show; `context` goes back with Save, Test and Connect.
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoutePreview {
+    pub route: crate::ipc::session_commands::ViaRoute,
+    pub context: String,
+}
+
+#[tauri::command]
+pub async fn db_route_preview(state: State<'_, AppState>, session_id: String) -> Result<RoutePreview, String> {
+    devops::require(Tool::Databases)?;
+    let s = crate::ipc::session_commands::stored_session(&state, &session_id).await?;
+    require_ssh_route(&s)?;
+    Ok(RoutePreview {
+        route: crate::ipc::session_commands::via_route(&s),
+        context: crate::ipc::session_commands::approval_context(&s),
+    })
+}
+
+/// Only an SSH session can carry a route: an RDP or VNC session's host and
+/// login are not an SSH server's.
+pub(crate) fn require_ssh_route(s: &crate::state::SessionConfig) -> Result<(), String> {
+    if s.kind == crate::state::SessionKind::Ssh {
+        Ok(())
+    } else {
+        Err(format!("'{}' is not an SSH session, so nothing can go through it. Choose an SSH session to go through.", s.name))
+    }
 }
 
 #[tauri::command]
@@ -105,8 +229,10 @@ struct LoginFor<'a> {
 async fn auth_for(state: &State<'_, AppState>, method: &AuthMethod, try_agent_keys: bool, who: LoginFor<'_>) -> Result<AuthParams, String> {
     use crate::ipc::ssh_commands::{build_auth, resolve_key_source};
     use crate::ssh::prompt::{ask, Field, Kind};
-    match method {
-        AuthMethod::Password { password } => {
+    // A password or passphrase held by a password manager, fetched now.
+    let method = crate::pwmanager::fill_auth_method(state, method).await?;
+    match &method {
+        AuthMethod::Password { password, .. } => {
             // Not saving a password is the safer choice. Ask for it, as a
             // terminal tab does, instead of failing with "Password required"
             // and a Try again that could never work.
@@ -128,7 +254,7 @@ async fn auth_for(state: &State<'_, AppState>, method: &AuthMethod, try_agent_ke
             };
             build_auth("password", Some(password), None, None, false)
         }
-        AuthMethod::Key { path, passphrase, key_content, key_id } => {
+        AuthMethod::Key { path, passphrase, key_content, key_id, .. } => {
             let (source, stored) = match key_content.clone().filter(|k| !k.trim().is_empty()) {
                 Some(k) => (Some(KeySource::Material(k)), None),
                 None => resolve_key_source(state, key_id.clone(), path.clone()).await?,
@@ -139,15 +265,21 @@ async fn auth_for(state: &State<'_, AppState>, method: &AuthMethod, try_agent_ke
     }
 }
 
-/// The SSH leg, if the connection has one.
-async fn forward_for(app: &tauri::AppHandle, state: &State<'_, AppState>, conn: &DbConnection) -> Result<Option<Forward>, String> {
+/// The SSH leg, if the connection has one. `pin` as for [`forward_route`].
+async fn forward_for(
+    app: &tauri::AppHandle,
+    state: &State<'_, AppState>,
+    conn: &DbConnection,
+    pin: Option<&str>,
+) -> Result<Option<Forward>, String> {
     let host = if conn.host.trim().is_empty() { "127.0.0.1".to_string() } else { conn.host.trim().to_string() };
     let port = if conn.port == 0 { conn.engine.default_port() } else { conn.port };
-    forward_route(app, state, &conn.route, host, port).await
+    forward_route_pinned(app, state, &conn.route, host, port, pin).await
 }
 
 /// The SSH leg to `host:port` for a route, if it has one: a loopback port
-/// that reaches it through the SSH server. Shared with VNC sessions.
+/// that reaches it through the SSH server. Shared with containers and
+/// clusters.
 pub(crate) async fn forward_route(
     app: &tauri::AppHandle,
     state: &State<'_, AppState>,
@@ -155,7 +287,23 @@ pub(crate) async fn forward_route(
     host: String,
     port: u16,
 ) -> Result<Option<Forward>, String> {
-    match ssh_for_route(app, state, route).await? {
+    forward_route_pinned(app, state, route, host, port, None).await
+}
+
+/// [`forward_route`] through a route session that must still be what a
+/// secret about to travel through it was approved for: `pin` is that
+/// session's `approval_context` as it was checked. If it changed since, the
+/// login is not made. Used by VNC through an SSH session and by a database
+/// connection's password manager entry.
+pub(crate) async fn forward_route_pinned(
+    app: &tauri::AppHandle,
+    state: &State<'_, AppState>,
+    route: &Route,
+    host: String,
+    port: u16,
+    pin: Option<&str>,
+) -> Result<Option<Forward>, String> {
+    match ssh_for_route_pinned(app, state, route, pin).await? {
         None => Ok(None),
         Some((handle, ssh)) => open_forward(handle, ssh, host, port).await.map(Some),
     }
@@ -168,6 +316,16 @@ pub(crate) async fn ssh_for_route(
     app: &tauri::AppHandle,
     state: &State<'_, AppState>,
     route: &Route,
+) -> Result<Option<(SharedHandle, Option<HeadlessConnection>)>, String> {
+    ssh_for_route_pinned(app, state, route, None).await
+}
+
+/// [`ssh_for_route`]; `pin` as for [`forward_route_pinned`].
+async fn ssh_for_route_pinned(
+    app: &tauri::AppHandle,
+    state: &State<'_, AppState>,
+    route: &Route,
+    pin: Option<&str>,
 ) -> Result<Option<(SharedHandle, Option<HeadlessConnection>)>, String> {
     match route {
         Route::Direct => Ok(None),
@@ -182,20 +340,43 @@ pub(crate) async fn ssh_for_route(
         }
         Route::Session { session_id } => {
             let mut s = crate::ipc::session_commands::session_get(state.clone(), session_id.clone()).await?;
+            require_ssh_route(&s)?;
+            if pin.is_some_and(|p| p != crate::ipc::session_commands::approval_context(&s)) {
+                return Err(format!("The SSH session '{}' changed while connecting. Connect again.", s.name));
+            }
             // Only the approvals of the person connecting count (session_get
             // has checked their signatures).
             s.ssh_options = s.ssh_options.map(|o| o.effective());
-            let who = LoginFor { app, host: &s.host, port: s.port, username: &s.username };
-            let auth = auth_for(state, &s.auth_method, s.try_agent_keys.unwrap_or(false), who).await?;
-            let mut jumps = Vec::new();
-            for j in s.jump_chain.clone().unwrap_or_default() {
-                let opts = crate::ssh::sshconf::session::plan_for(s.ssh_options.as_ref(), &j.host, j.port, &j.username, true).into();
-                let who = LoginFor { app, host: &j.host, port: j.port, username: &j.username };
-                let auth = auth_for(state, &j.auth_method, false, who).await?;
-                jumps.push(JumpHostParams { auth, host: j.host, port: j.port, username: j.username, opts });
-            }
+            // The same for its password manager entries: each must be one
+            // this person approved for this session as it is. The error says
+            // which, for the session list to ask. An SSH session goes
+            // through no other session.
+            crate::ipc::session_commands::require_trusted_refs(&s, None, &crate::ipc::session_commands::slots_in_use(&s))?;
+            // Every entry of the session, its jump hosts and its proxy in one
+            // operation: a password manager passphrase that must be asked
+            // for is asked once (or not at all, inside a connect that already
+            // has it).
+            let reason = crate::pwmanager::Reason::Connect(s.name.clone());
+            let (auth, jumps, proxy) = crate::pwmanager::with_prompt(app, reason, async {
+                let who = LoginFor { app, host: &s.host, port: s.port, username: &s.username };
+                let auth = auth_for(state, &s.auth_method, s.try_agent_keys.unwrap_or(false), who).await?;
+                let mut jumps = Vec::new();
+                for j in s.jump_chain.clone().unwrap_or_default() {
+                    let opts = crate::ssh::sshconf::session::plan_for(s.ssh_options.as_ref(), &j.host, j.port, &j.username, true).into();
+                    let who = LoginFor { app, host: &j.host, port: j.port, username: &j.username };
+                    let auth = auth_for(state, &j.auth_method, false, who).await?;
+                    jumps.push(JumpHostParams { auth, host: j.host, port: j.port, username: j.username, opts });
+                }
+                // The proxy is used only without jump hosts.
+                let mut proxy = s.proxy.clone();
+                if jumps.is_empty() {
+                    crate::pwmanager::fill_proxy(state, &mut proxy).await?;
+                }
+                Ok::<_, String>((auth, jumps, proxy))
+            })
+            .await?;
             let opts = crate::ssh::sshconf::session::plan_for(s.ssh_options.as_ref(), &s.host, s.port, &s.username, false).into();
-            let ssh = SshManager::open_headless(&s.host, s.port, &s.username, auth, jumps, s.proxy.clone(), app.clone(), opts)
+            let ssh = SshManager::open_headless(&s.host, s.port, &s.username, auth, jumps, proxy, app.clone(), opts)
                 .await
                 .map_err(|e| format!("SSH to {}: {e}", s.name))?;
             Ok(Some((ssh.handle.clone(), Some(ssh))))
@@ -203,8 +384,53 @@ pub(crate) async fn ssh_for_route(
     }
 }
 
-async fn open_live(app: &tauri::AppHandle, state: &State<'_, AppState>, conn: DbConnection) -> Result<Live, String> {
-    let forward = forward_for(app, state, &conn).await?;
+/// Where a connection comes from, which decides whether its route needs the
+/// user's saved word (see [`check_route_approval`]).
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Origin {
+    /// Saved, read from the store.
+    Saved,
+    /// The form the user is filling in or just filled in (Test, or Connect
+    /// without saving): the route in it is what they chose, now.
+    Form,
+}
+
+/// Connect. Every connection, tested, opened or reopened, comes through here,
+/// so this is where a password held by a password manager is fetched; the
+/// open connection keeps it in memory for its sessions, as it keeps a stored
+/// one, until it is closed.
+async fn open_live(app: &tauri::AppHandle, state: &State<'_, AppState>, mut conn: DbConnection, origin: Origin) -> Result<Live, String> {
+    // The connection's own reference needs no approval: saved connections
+    // live in the private `__databases__` vault, which only this identity
+    // writes, and an unsaved one comes from the user's own form (see
+    // `pwmanager::resolve_own`). The SSH leg, a saved session that may be in
+    // a shared vault, is checked in `ssh_for_route`: its own entries, and
+    // here, before the password is fetched, that a saved connection's
+    // password may go through it as it now is. The login is then made from
+    // the session exactly as checked (`pin`).
+    let mut pin = None;
+    if let Some((r, session_id)) = ref_through_session(&conn) {
+        let s = crate::ipc::session_commands::stored_session(state, session_id).await?;
+        require_ssh_route(&s)?;
+        if origin == Origin::Saved {
+            let vault = state.vault_manager.lock().await;
+            let (key, who) = (vault.approval_key(), vault.get_user_uuid());
+            check_route_approval(key.as_deref(), who.as_deref(), &conn, r, &s)?;
+        } else {
+            check_route_shown(&conn, &s)?;
+        }
+        pin = Some(crate::ipc::session_commands::approval_context(&s));
+    }
+    // The password and the SSH leg's entries are one operation: a password
+    // manager passphrase that must be asked for is asked once.
+    let reason = crate::pwmanager::Reason::Connect(conn.name.clone());
+    let forward = crate::pwmanager::with_prompt(app, reason, async {
+        if let Some(r) = conn.password_ref.as_ref() {
+            conn.password = Some(crate::pwmanager::resolve_own_to_string(state, r).await?);
+        }
+        forward_for(app, state, &conn, pin.as_deref()).await
+    })
+    .await?;
     Ok(match conn.engine {
         Engine::Redis => Live::Redis(Arc::new(LiveRedis::open(conn, forward).await?)),
         _ => Live::Sql(Arc::new(LiveDb::open(conn, forward).await?)),
@@ -256,7 +482,11 @@ async fn describe_live(live: &Live) -> Result<Connected, String> {
     }
 }
 
-/// Try a connection from the form without saving it.
+/// Try a connection from the form without saving it. Testing is the user's
+/// explicit act on the route the form showed them, so a password manager
+/// entry may go through the route session without the signature saving
+/// makes, as long as the session is still what was shown (see `Origin`);
+/// the session's own entries are still checked.
 #[tauri::command]
 pub async fn db_test_connection(
     app: tauri::AppHandle,
@@ -266,14 +496,17 @@ pub async fn db_test_connection(
 ) -> Result<ServerInfo, String> {
     devops::require(Tool::Databases)?;
     let conn = complete(&state, connection, keep_password).await?;
-    let live = open_live(&app, &state, conn).await?;
+    let live = open_live(&app, &state, conn, Origin::Form).await?;
     let info = describe_live(&live).await.map(|c| c.server);
     close(Some(live)).await;
     info
 }
 
 /// Open a saved connection, or an unsaved one (a database found on a
-/// terminal tab's server). Reconnecting replaces the old connection.
+/// terminal tab's server). Reconnecting replaces the old connection. A
+/// saved one's password manager entry goes through a route session only
+/// while the user's signature from saving it holds; an unsaved one comes
+/// from the form, as for `db_test_connection`.
 #[tauri::command]
 pub async fn db_connect(
     app: tauri::AppHandle,
@@ -281,25 +514,31 @@ pub async fn db_connect(
     id: String,
     connection: Option<DbConnection>,
 ) -> Result<Connected, String> {
-    devops::require(Tool::Databases)?;
-    let conn = match connection {
-        Some(c) => complete(&state, DbConnection { id: id.clone(), ..c }, true).await?,
-        None => {
-            let mut vault = state.vault_manager.lock().await;
-            let mut db = state.db.lock().await;
-            db.store.ensure_loaded(&mut vault).await?;
-            let mut c = db.store.get(&id).cloned().ok_or("That connection no longer exists")?;
-            c.last_used_at = now_ms();
-            let _ = db.store.save(c.clone(), &mut vault).await;
-            c
-        }
-    };
-    let target = format!("{:?} {}@{}:{} via {:?}", conn.engine, conn.username, conn.host, conn.port, conn.route);
-    let live = open_live(&app, &state, conn).await.inspect_err(|e| tracing::warn!("db_connect {target}: {e}"))?;
-    let described = describe_live(&live).await;
-    let old = state.db.lock().await.insert(id, live);
-    close(old).await;
-    described
+    // Boxed: Tauri builds a command's future on the main thread and passes it
+    // by value before spawning it, and the main thread's stack is small
+    // (1 MB on Windows). Only a pointer is left there this way.
+    Box::pin(async move {
+        devops::require(Tool::Databases)?;
+        let (conn, origin) = match connection {
+            Some(c) => (complete(&state, DbConnection { id: id.clone(), ..c }, true).await?, Origin::Form),
+            None => {
+                let mut vault = state.vault_manager.lock().await;
+                let mut db = state.db.lock().await;
+                db.store.ensure_loaded(&mut vault).await?;
+                let mut c = db.store.get(&id).cloned().ok_or("That connection no longer exists")?;
+                c.last_used_at = now_ms();
+                let _ = db.store.save(c.clone(), &mut vault).await;
+                (c, Origin::Saved)
+            }
+        };
+        let target = format!("{:?} {}@{}:{} via {:?}", conn.engine, conn.username, conn.host, conn.port, conn.route);
+        let live = open_live(&app, &state, conn, origin).await.inspect_err(|e| tracing::warn!("db_connect {target}: {e}"))?;
+        let described = describe_live(&live).await;
+        let old = state.db.lock().await.insert(id, live);
+        close(old).await;
+        described
+    })
+    .await
 }
 
 #[tauri::command]
@@ -1158,7 +1397,7 @@ mod tests {
     fn conn(read_only: bool, production: bool) -> DbConnection {
         DbConnection {
             id: "c".into(), name: "c".into(), engine: Engine::Postgres, host: String::new(), port: 0,
-            username: String::new(), password: None, database: None, file_path: None, route: Route::Direct,
+            username: String::new(), password: None, password_ref: None, route_approval: None, route_context: None, database: None, file_path: None, route: Route::Direct,
             tls: TlsMode::Prefer, color: None, read_only, production, last_used_at: 0,
         }
     }
@@ -1177,6 +1416,150 @@ mod tests {
         let held = gate(&conn(false, false), &st, false).unwrap().unwrap();
         assert_eq!(held.len(), 1);
         assert!(gate(&conn(false, false), &st, true).unwrap().is_none());
+    }
+
+    // --- A password manager entry through a saved session -----------------
+
+    const ALICE: [u8; 32] = [7; 32];
+    const MALLORY: [u8; 32] = [9; 32];
+
+    fn route_session(kind: &str) -> crate::state::SessionConfig {
+        serde_json::from_value(serde_json::json!({
+            "id": "s-ssh", "name": "bastion", "host": "bastion.example", "port": 22, "username": "u",
+            "auth_method": { "type": "Agent" }, "folder_id": null, "tags": [], "kind": kind,
+        }))
+        .unwrap()
+    }
+
+    fn through_session() -> DbConnection {
+        DbConnection {
+            password_ref: Some(crate::pwmanager::SecretRef { provider: "passbolt".into(), entry_id: "e-db".into(), ..Default::default() }),
+            route: Route::Session { session_id: "s-ssh".into() },
+            ..conn(false, false)
+        }
+    }
+
+    /// Saved by alice with the route session as `s` is.
+    fn saved_by_alice(s: &crate::state::SessionConfig) -> DbConnection {
+        let mut c = through_session();
+        let (r, _) = ref_through_session(&c).unwrap();
+        c.route_approval = Some(sign_route(&ALICE, "alice", &c.id, r, s));
+        c
+    }
+
+    fn check(c: &DbConnection, s: &crate::state::SessionConfig) -> Result<(), String> {
+        check_route_approval(Some(&ALICE), Some("alice"), c, c.password_ref.as_ref().unwrap(), s)
+    }
+
+    #[test]
+    fn the_form_must_have_shown_the_route_session_as_it_is() {
+        let s = route_session("ssh");
+        let shown = |s: &crate::state::SessionConfig| DbConnection {
+            route_context: Some(crate::ipc::session_commands::approval_context(s)),
+            ..through_session()
+        };
+        assert_eq!(check_route_shown(&shown(&s), &s), Ok(()));
+        // Picked by name only: nothing was shown.
+        assert_eq!(check_route_shown(&through_session(), &s), Err(ROUTE_UNCONFIRMED.to_string()));
+        // Another member re-points the session after the editor showed it.
+        let shown_before = shown(&s);
+        let mut moved = s.clone();
+        moved.host = "mallory.example".into();
+        assert_eq!(check_route_shown(&shown_before, &moved), Err(ROUTE_UNCONFIRMED.to_string()));
+        let mut jumped = s.clone();
+        jumped.jump_chain = serde_json::from_value(serde_json::json!([{ "host": "j.mallory.example", "port": 22, "username": "m", "auth_method": { "type": "Agent" } }])).unwrap();
+        assert_eq!(check_route_shown(&shown_before, &jumped), Err(ROUTE_UNCONFIRMED.to_string()));
+        // What the form sends is never stored with the connection.
+        let stored = serde_json::to_value(shown(&s)).unwrap();
+        assert!(stored.get("routeContext").is_none());
+    }
+
+    #[test]
+    fn a_saved_route_approval_holds_for_the_session_as_saved() {
+        let s = route_session("ssh");
+        let c = saved_by_alice(&s);
+        assert_eq!(check(&c, &s), Ok(()));
+        // A name or a password on the session changes nothing.
+        let mut renamed = s.clone();
+        renamed.name = "bastion (prod)".into();
+        renamed.auth_method = crate::state::AuthMethod::Password { password: Some("pw".into()), password_ref: None };
+        assert_eq!(check(&c, &renamed), Ok(()));
+        // Never stored in the view the webview gets.
+        assert!(DbConnectionView::from(&c).connection.route_approval.is_none());
+    }
+
+    #[test]
+    fn a_re_pointed_route_session_is_refused() {
+        let s = route_session("ssh");
+        let c = saved_by_alice(&s);
+        type Change = Box<dyn Fn(&mut crate::state::SessionConfig)>;
+        let changes: Vec<(&str, Change)> = vec![
+            ("host", Box::new(|s| s.host = "attacker.example".into())),
+            ("port", Box::new(|s| s.port = 2222)),
+            ("user", Box::new(|s| s.username = "other".into())),
+            ("jump", Box::new(|s| {
+                s.jump_chain = Some(vec![crate::state::JumpHostConfig {
+                    host: "attacker.example".into(),
+                    port: 22,
+                    username: "j".into(),
+                    auth_method: crate::state::AuthMethod::Agent,
+                }])
+            })),
+            ("proxy", Box::new(|s| {
+                s.proxy = Some(serde_json::from_value(serde_json::json!({ "proxy_type": "socks5", "host": "attacker.example", "port": 1080 })).unwrap())
+            })),
+            ("ssh_config", Box::new(|s| {
+                s.ssh_options = Some(serde_json::from_value(serde_json::json!({ "lines": ["HostName attacker.example"] })).unwrap())
+            })),
+        ];
+        for (what, change) in changes {
+            let mut moved = s.clone();
+            change(&mut moved);
+            assert_eq!(check(&c, &moved), Err(ROUTE_CHANGED.to_string()), "{what} kept the approval");
+        }
+        // Saving again (the user's word, for the session as it now is)
+        // re-signs it.
+        let mut moved = s.clone();
+        moved.host = "new.example".into();
+        assert_eq!(check(&saved_by_alice(&moved), &moved), Ok(()));
+    }
+
+    #[test]
+    fn only_the_users_own_route_approval_counts() {
+        let s = route_session("ssh");
+        // None at all (saved before this existed, or copied in without one).
+        assert!(check(&through_session(), &s).is_err());
+        // Mallory signs one in alice's name with her own key.
+        let mut forged = through_session();
+        forged.route_approval = Some(sign_route(&MALLORY, "alice", &forged.id, forged.password_ref.as_ref().unwrap(), &s));
+        assert!(check(&forged, &s).is_err());
+        // Alice's signature for another connection, or another entry.
+        let c = saved_by_alice(&s);
+        let other = DbConnection { id: "other".into(), ..c.clone() };
+        assert!(check(&other, &s).is_err());
+        let mut swapped = c.clone();
+        swapped.password_ref.as_mut().unwrap().entry_id = "e-victim".into();
+        assert!(check(&swapped, &s).is_err());
+        // Without the user's key nothing holds.
+        assert!(check_route_approval(None, Some("alice"), &c, c.password_ref.as_ref().unwrap(), &s).is_err());
+    }
+
+    #[test]
+    fn only_a_password_manager_entry_through_a_session_needs_one() {
+        assert!(ref_through_session(&through_session()).is_some());
+        let direct = DbConnection { route: Route::Direct, ..through_session() };
+        assert!(ref_through_session(&direct).is_none());
+        let live = DbConnection { route: Route::Live { connection_id: "c1".into() }, ..through_session() };
+        assert!(ref_through_session(&live).is_none());
+        let typed = DbConnection { password_ref: None, password: Some("pw".into()), ..through_session() };
+        assert!(ref_through_session(&typed).is_none());
+    }
+
+    #[test]
+    fn only_an_ssh_session_carries_a_route() {
+        assert!(require_ssh_route(&route_session("ssh")).is_ok());
+        assert!(require_ssh_route(&route_session("rdp")).is_err());
+        assert!(require_ssh_route(&route_session("vnc")).is_err());
     }
 
     #[test]

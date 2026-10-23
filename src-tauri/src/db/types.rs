@@ -75,6 +75,26 @@ pub struct DbConnection {
     pub username: String,
     #[serde(default)]
     pub password: Option<String>,
+    /// The password from a password manager, fetched each time the
+    /// connection opens. When set, `password` is not stored. Not a secret, so
+    /// the list view keeps it. JSON `passwordRef` (`password_ref` is accepted).
+    #[serde(default, skip_serializing_if = "Option::is_none", alias = "password_ref")]
+    pub password_ref: Option<crate::pwmanager::SecretRef>,
+    /// With `password_ref` and a route through a saved session: the user's
+    /// signature, made when they saved the connection, that the password may
+    /// go through that session as it was then (see
+    /// `ipc::db_commands::route_approval`). The session may sit in a shared
+    /// vault; once another member re-points it, this no longer holds and the
+    /// connection is refused until it is saved again. Never sent to the
+    /// webview, never taken from it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub route_approval: Option<String>,
+    /// The route session as the form showed it to the user (its
+    /// `approval_context`, from `db_route_preview`), sent with Save, Test and
+    /// Connect: a password manager entry goes through the session only if it
+    /// still is that. Taken from the form, never stored.
+    #[serde(default, skip_serializing)]
+    pub route_context: Option<String>,
     /// The database to open first. Empty means the server's default.
     #[serde(default)]
     pub database: Option<String>,
@@ -113,6 +133,7 @@ impl From<&DbConnection> for DbConnectionView {
         let mut connection = c.clone();
         let has_password = connection.password.as_deref().is_some_and(|p| !p.is_empty());
         connection.password = None;
+        connection.route_approval = None;
         Self { connection, has_password }
     }
 }

@@ -1,6 +1,8 @@
 //! Noticing when the computer's own session locks or goes to sleep, so Reach
-//! can lock with it (Settings → Security). Modelled on KeePassXC, which has
-//! done the same for years on the same signals:
+//! can lock with it (Settings → Security). The callback (in `lib.rs`) also
+//! forgets any password manager passphrase kept in memory, every time,
+//! whether or not Reach itself locks. Modelled on KeePassXC, which has done
+//! the same for years on the same signals:
 //!
 //! - Windows: `WM_WTSSESSION_CHANGE` / `WTS_SESSION_LOCK` from
 //!   `WTSRegisterSessionNotification`, and `PBT_APMSUSPEND` from
