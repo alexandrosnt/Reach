@@ -1309,13 +1309,14 @@
 					<button class="bulk-btn danger" type="button" disabled={selected.size === 0} onclick={() => (bulkDeleteConfirm = true)}>{t('common.delete')}</button>
 				</div>
 			</div>
-		{:else if filteredSessions.length > 1}
+		{:else if filteredSessions.length > 1 && searchQuery.trim()}
+			<!-- Only for a search: at rest it repeated the + menu's Select sessions on
+			     a row of its own, above the list it pushed down. -->
 			<div class="match-row">
-				<span>{searchQuery.trim() ? t('session.matches_n', { count: String(filteredSessions.length) }) : ''}</span>
+				<span>{t('session.matches_n', { count: String(filteredSessions.length) })}</span>
 				<span class="match-actions">
 					<button class="match-select" type="button" onclick={() => { selectMode = true; }}>{t('session.select_sessions')}</button>
-					<!-- Select all only for a search: at rest the row stays one quiet link. -->
-					{#if searchQuery.trim()}<button class="match-select" type="button" onclick={selectAllShown}>{t('session.select_all')}</button>{/if}
+					<button class="match-select" type="button" onclick={selectAllShown}>{t('session.select_all')}</button>
 				</span>
 			</div>
 		{/if}
