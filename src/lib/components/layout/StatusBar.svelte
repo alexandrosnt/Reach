@@ -6,12 +6,13 @@
 
 	let currentTime = $state('');
 
+	/** Hours and minutes: a seconds count ticking in the corner was movement
+	 *  beside the terminal all day, for nothing anyone reads. */
 	function formatTime(): string {
 		const now = new Date();
 		return now.toLocaleTimeString(undefined, {
 			hour: '2-digit',
-			minute: '2-digit',
-			second: '2-digit'
+			minute: '2-digit'
 		});
 	}
 
