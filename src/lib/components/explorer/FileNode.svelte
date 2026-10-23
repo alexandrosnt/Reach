@@ -25,8 +25,12 @@
 		ondragout
 	}: Props = $props();
 
+	/** A symbolic link, as `ls -l` marks it. Its "size" is the length of the
+	    path it points to, so it is not shown. */
+	let isLink = $derived(entry.permissions?.startsWith('l') ?? false);
+
 	let sizeText = $derived.by(() => {
-		if (entry.isDirectory) return '';
+		if (entry.isDirectory || isLink) return '';
 		if (entry.size < 1024) return `${entry.size} B`;
 		if (entry.size < 1024 * 1024) return `${(entry.size / 1024).toFixed(1)} KB`;
 		if (entry.size < 1024 * 1024 * 1024) return `${(entry.size / (1024 * 1024)).toFixed(1)} MB`;
@@ -40,6 +44,7 @@
 <div
 	class="file-node"
 	class:active
+	class:downloadable={!entry.isDirectory && !!ondownload}
 	draggable={!entry.isDirectory}
 	onmousedown={() => onpressstart?.()}
 	ondragstart={(e) => {
@@ -63,6 +68,11 @@
 					stroke-linecap="round"
 					stroke-linejoin="round"
 				/>
+			</svg>
+		{:else if isLink}
+			<svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+				<path d="M10 13a5 5 0 007.07 0l3-3a5 5 0 00-7.07-7.07l-1.5 1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+				<path d="M14 11a5 5 0 00-7.07 0l-3 3a5 5 0 007.07 7.07l1.5-1.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
 			</svg>
 		{:else}
 			<svg width="16" height="16" viewBox="0 0 24 24" fill="none">
@@ -107,6 +117,7 @@
 
 <style>
 	.file-node {
+		position: relative;
 		display: flex;
 		align-items: center;
 		gap: 8px;
@@ -171,7 +182,14 @@
 		opacity: 0.7;
 	}
 
+	/* Laid over the row's end rather than in the row: hidden, it still took
+	   its 22px, which made a file's row taller than a folder's and pushed its
+	   permissions out of line with theirs. */
 	.download-btn {
+		position: absolute;
+		top: 50%;
+		right: 6px;
+		transform: translateY(-50%);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -182,13 +200,21 @@
 		background: transparent;
 		color: var(--color-text-secondary);
 		cursor: pointer;
-		flex-shrink: 0;
 		opacity: 0;
 		transition: opacity 0.15s ease, background-color 0.15s ease, color 0.15s ease;
 	}
 
-	.file-node:hover .download-btn {
+	.file-node:hover .download-btn,
+	.file-node:focus-within .download-btn,
+	.file-node:focus-visible .download-btn {
 		opacity: 1;
+	}
+
+	/* The button takes the permissions' place while it shows. */
+	.file-node.downloadable:hover .file-permissions,
+	.file-node.downloadable:focus-within .file-permissions,
+	.file-node.downloadable:focus-visible .file-permissions {
+		visibility: hidden;
 	}
 
 	.download-btn:hover {
