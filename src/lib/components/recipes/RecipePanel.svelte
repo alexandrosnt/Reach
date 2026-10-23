@@ -252,30 +252,47 @@
 		gap: var(--space-2);
 	}
 
+	/* The session editor's segmented control, sized for the sidebar: a
+	   recessed track with the current view raised out of it. */
 	.tabs {
 		display: flex;
 		flex: 1;
 		gap: 2px;
 		min-width: 0;
+		padding: 2px;
+		background: var(--color-bg-primary);
+		border: 1px solid var(--color-border);
+		border-radius: var(--radius-btn);
 	}
 
 	.tabs button {
 		flex: 1;
+		min-width: 0;
 		padding: 4px 8px;
 		font-family: inherit;
 		font-size: var(--text-xs);
+		font-weight: 500;
 		color: var(--color-text-secondary);
 		background: none;
-		border: 1px solid transparent;
+		border: none;
 		border-radius: var(--radius-sm);
 		cursor: pointer;
 		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		transition:
+			background-color var(--duration-default) var(--ease-default),
+			color var(--duration-default) var(--ease-default);
+	}
+
+	.tabs button:hover:not(.active) {
+		color: var(--color-text-primary);
 	}
 
 	.tabs button.active {
-		color: var(--color-text-primary);
-		background: var(--color-surface-active);
-		border-color: var(--color-border);
+		color: var(--color-accent);
+		background: var(--color-bg-elevated);
+		box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), inset 0 0 0 1px var(--color-border);
 	}
 
 	.icon-btn {
