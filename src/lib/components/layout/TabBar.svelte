@@ -356,7 +356,7 @@
 					<button
 						class="tab-close"
 						onclick={(e) => handleCloseTab(e, tab.id)}
-						aria-label={t('common.close_tab', { title: tab.title })}
+						aria-label={t('common.close_tab', { title: tab.sessionName || tab.title })}
 					>
 						<svg width="8" height="8" viewBox="0 0 8 8" fill="none">
 							<path d="M1 1l6 6M7 1L1 7" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
