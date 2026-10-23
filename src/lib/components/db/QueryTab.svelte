@@ -8,6 +8,7 @@
 	 * the script runs until the answer is yes.
 	 */
 	import { onMount, untrack } from 'svelte';
+	import { shortcutLabel } from '$lib/state/shortcuts.svelte';
 	import { save as saveDialog } from '@tauri-apps/plugin-dialog';
 	import FaIcon from '$lib/components/shared/FaIcon.svelte';
 	import { faPlay, faForwardFast, faStop, faDiagramProject, faWandMagicSparkles, faClockRotateLeft, faFileExport, faLightbulb } from '@fortawesome/free-solid-svg-icons';
@@ -206,10 +207,10 @@
 				<option value={d}>{d}</option>
 			{/each}
 		</select>
-		<button class="btn primary" onclick={() => run('current')} disabled={running} title="Ctrl+Enter">
+		<button class="btn primary" onclick={() => run('current')} disabled={running} title={shortcutLabel('Enter', { ctrl: true })}>
 			<FaIcon icon={faPlay} /> <span>{t('db.run')}</span>
 		</button>
-		<button class="btn" onclick={() => run('all')} disabled={running} title="Ctrl+Shift+Enter">
+		<button class="btn" onclick={() => run('all')} disabled={running} title={shortcutLabel('Enter', { ctrl: true, shift: true })}>
 			<FaIcon icon={faForwardFast} /> <span>{t('db.run_all')}</span>
 		</button>
 		{#if running}
