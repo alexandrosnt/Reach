@@ -118,8 +118,8 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		height: 38px;
-		min-height: 38px;
+		height: var(--titlebar-h, 38px);
+		min-height: var(--titlebar-h, 38px);
 		padding: 0 12px;
 		background-color: var(--color-bg-secondary);
 		border-bottom: 1px solid var(--color-border);

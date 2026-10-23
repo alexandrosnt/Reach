@@ -477,8 +477,8 @@
 	.tabbar {
 		display: flex;
 		align-items: stretch;
-		height: 36px;
-		min-height: 36px;
+		height: var(--tabbar-h, 36px);
+		min-height: var(--tabbar-h, 36px);
 		background-color: var(--color-bg-primary);
 		border-bottom: 1px solid var(--color-border);
 		user-select: none;

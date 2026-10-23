@@ -54,8 +54,9 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		height: 24px;
-		min-height: 24px;
+		/* The shell's row: shorter on a short screen (AppShell). */
+		height: var(--statusbar-h, 24px);
+		min-height: var(--statusbar-h, 24px);
 		padding: 0 12px;
 		background-color: var(--color-bg-secondary);
 		border-top: 1px solid var(--color-border);

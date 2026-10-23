@@ -307,4 +307,16 @@
 			--statusbar-h: 20px;
 		}
 	}
+
+	/* A phone on its side: every line goes to the terminal. The status bar
+	   only repeats the tab and the server stats, so it goes. */
+	@media (max-height: 480px) and (pointer: coarse) {
+		.app-shell {
+			--statusbar-h: 0px;
+		}
+
+		.app-shell :global(.statusbar) {
+			display: none;
+		}
+	}
 </style>

@@ -309,6 +309,7 @@
 	   fit. */
 	@media (max-width: 640px), (max-height: 480px) {
 		.monitoring-bar {
+			height: 26px;
 			gap: 12px;
 			overflow-x: auto;
 			scrollbar-width: none;

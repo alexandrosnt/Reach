@@ -119,8 +119,8 @@
 		scrollbar-width: none;
 		background: var(--color-bg-secondary);
 		border-top: 1px solid var(--color-border);
-		/* Clear of the gesture bar on phones that draw one. */
-		padding-bottom: max(4px, var(--safe-bottom));
+		/* No room for the gesture bar here: the app keeps clear of it below
+		   everything (AppShell), and this bar is never the last thing on screen. */
 		flex-shrink: 0;
 		touch-action: pan-x;
 	}

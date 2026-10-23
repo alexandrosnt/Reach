@@ -53,7 +53,7 @@
 		align-items: center;
 		gap: 8px;
 		padding: 8px 16px;
-		max-width: 360px;
+		max-width: min(360px, calc(100vw - var(--safe-left) - var(--safe-right) - 24px));
 		background-color: var(--color-bg-elevated);
 		border: 1px solid var(--color-border);
 		border-radius: 20px;
@@ -86,6 +86,15 @@
 		-webkit-line-clamp: 4;
 		line-clamp: 4;
 		-webkit-box-orient: vertical;
+	}
+
+	/* A phone has no pointer to hover for the rest, and a narrow toast fits
+	   less in four lines: twice that, before it is cut. */
+	@media (max-width: 480px) {
+		.toast.detailed .toast-message {
+			-webkit-line-clamp: 8;
+			line-clamp: 8;
+		}
 	}
 
 	.toast.dismissing {
