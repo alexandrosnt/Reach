@@ -5,6 +5,7 @@
 	import Input from '$lib/components/shared/Input.svelte';
 	import KeyPathInput from '$lib/components/sessions/KeyPathInput.svelte';
 	import KeyPicker from '$lib/components/sessions/KeyPicker.svelte';
+	import ConnectSteps from '$lib/components/sessions/ConnectSteps.svelte';
 	import { sshConnect, type JumpHostConnectParams } from '$lib/ipc/ssh';
 	import { createTab } from '$lib/state/tabs.svelte';
 	import { getSettings, sessionLogConfig } from '$lib/state/settings.svelte';
@@ -49,6 +50,8 @@
 	let proxyPassword = $state('');
 	let connecting = $state(false);
 	let error = $state<string | undefined>();
+	/** The connection being made, for its steps (ConnectSteps). */
+	let attemptId = $state<string | undefined>();
 
 	let port = $derived(parseInt(portStr, 10) || 22);
 
@@ -70,6 +73,7 @@
 		error = undefined;
 
 		const id = crypto.randomUUID();
+		attemptId = id;
 
 		try {
 			const jumpChain: JumpHostConnectParams[] | undefined = jumpEnabled && jumpHost.trim()
@@ -279,6 +283,8 @@
 				</div>
 			{/if}
 		</div>
+
+		<ConnectSteps id={attemptId} active={connecting} failed={!connecting && !!error} />
 
 		{#if error}
 			<div class="error-message">{error}</div>
