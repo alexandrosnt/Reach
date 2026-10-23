@@ -246,6 +246,14 @@
 		overflow: hidden;
 	}
 
+	/* A short window (a phone on its side): the panel scrolls as one rather
+	   than cutting off what does not fit. */
+	@media (max-height: 480px) {
+		.plugin-panel {
+			overflow-y: auto;
+		}
+	}
+
 	.tab-bar {
 		display: flex;
 		border-bottom: 1px solid var(--color-border);
@@ -255,9 +263,13 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 5px;
+		/* Shares the panel's width, wrapping the badge under the label rather
+		   than running off a narrow screen. */
+		flex-wrap: wrap;
+		gap: 2px 5px;
 		flex: 1;
-		padding: 7px 10px;
+		min-width: 0;
+		padding: 7px 6px;
 		font-family: var(--font-sans);
 		font-size: 0.6875rem;
 		font-weight: 500;

@@ -260,7 +260,11 @@
 <style>
 	.app-shell {
 		display: grid;
-		grid-template-rows: var(--titlebar-h, 38px) var(--tabbar-h, 36px) 1fr var(--statusbar-h, 24px);
+		grid-template-rows: var(--titlebar-h, 38px) var(--tabbar-h, 36px) minmax(0, 1fr) var(--statusbar-h, 24px);
+		/* One column the window's width. Left implicit, it grew to the widest
+		   row (a few tabs, a long status) and the shell cut the right side of
+		   everything off on a narrow phone. */
+		grid-template-columns: minmax(0, 1fr);
 		width: 100vw;
 		height: 100vh;
 		/* dvh tracks the *visible* viewport, so the status bar is not pushed
@@ -270,8 +274,13 @@
 		/* Keep the title/status bars clear of the device status & navigation
 		   bars on mobile. `env(safe-area-inset-*)` is 0 on desktop, so this is
 		   a no-op there (requires viewport-fit=cover, set in app.html). */
-		padding-top: env(safe-area-inset-top);
-		padding-bottom: env(safe-area-inset-bottom);
+		padding-top: var(--safe-top);
+		padding-bottom: var(--safe-bottom);
+		/* And the sides: turned on its side, a phone has its camera cutout
+		   and navigation bar there, and Reach was drawn under them. */
+		padding-left: var(--safe-left);
+		padding-right: var(--safe-right);
+		box-sizing: border-box;
 		overflow: hidden;
 		background-color: var(--color-bg-primary);
 	}

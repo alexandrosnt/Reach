@@ -56,6 +56,10 @@
 	let split = $derived(getSplit());
 	let dragged = $derived(getDraggedTab());
 	let menu = $state<{ x: number; y: number; id: string } | null>(null);
+	let pageMenu = $state<{ x: number; y: number } | null>(null);
+	// When the page menu last closed: a press on its button closes it, and the
+	// click that follows must not open it again.
+	let pageMenuClosedAt = 0;
 	/** A drag ended on this tab's own pointerup: that is not a click. */
 	let swallowClick = false;
 	const isMac = typeof navigator !== 'undefined' && /Mac/.test(navigator.platform);
@@ -101,11 +105,22 @@
 		return items;
 	}
 
+	/** Each page's icon, 24×24 and stroked, for the page button and menu. */
+	const PAGE_ICONS: Record<string, string> = {
+		terminal: 'M4 17l6-5-6-5M12 19h8',
+		ansible: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM8.5 16.5 12 7l3.5 9.5M9.6 13.5h4.8',
+		tofu: 'M12 2.5l8.2 4.75v9.5L12 21.5l-8.2-4.75v-9.5z',
+		databases: 'M4 6c0-1.7 3.6-3 8-3s8 1.3 8 3-3.6 3-8 3-8-1.3-8-3zM4 6v12c0 1.7 3.6 3 8 3s8-1.3 8-3V6M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3',
+		containers: 'M3 7.5 12 3l9 4.5v9L12 21l-9-4.5zM3 7.5 12 12l9-4.5M12 12v9',
+		kubernetes: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM12 7v3M12 14v3M7 12h3M14 12h3M8.5 8.5l2 2M13.5 13.5l2 2M15.5 8.5l-2 2M10.5 13.5l-2 2'
+	};
+
 	// The terminal always, then whichever DevOps tools are switched on.
-	let pages = $derived<{ id: Page; label: () => string }[]>([
-		{ id: 'terminal', label: () => t('nav.terminal') },
-		...getEnabledDevopsTools().map((tool) => ({ id: tool.page, label: tool.label })),
+	let pages = $derived<{ id: Page; label: () => string; icon: string }[]>([
+		{ id: 'terminal', label: () => t('nav.terminal'), icon: PAGE_ICONS.terminal },
+		...getEnabledDevopsTools().map((tool) => ({ id: tool.page, label: tool.label, icon: PAGE_ICONS[tool.page] })),
 	]);
+	let currentPage = $derived(pages.find((p) => p.id === activePage) ?? pages[0]);
 
 	// SVG icon paths
 	const terminalIcon = 'M4 17l6-5-6-5M12 19h8';
@@ -115,16 +130,30 @@
 </script>
 
 <nav class="tabbar">
+	<!-- One button for the current page and a menu of the others: side by
+	     side, Terminal, Ansible, OpenTofu and the rest took 550px, more than
+	     a phone's screen and room the session tabs need on a desktop. -->
 	<div class="page-switcher">
-		{#each pages as page (page.id)}
+		{#if pages.length > 1}
 			<button
-				class="page-btn"
-				class:active={activePage === page.id}
-				onclick={() => setActivePage(page.id)}
+				class="page-btn active page-pick"
+				aria-haspopup="menu"
+				aria-expanded={pageMenu !== null}
+				onclick={(e) => {
+					const r = e.currentTarget.getBoundingClientRect();
+					if (performance.now() - pageMenuClosedAt < 400) return;
+					pageMenu = { x: r.left, y: r.bottom + 4 };
+				}}
 			>
-				{page.label()}
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+					<path d={currentPage.icon} stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+				</svg>
+				{currentPage.label()}
+				<svg width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true"><path d="M2 4l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
 			</button>
-		{/each}
+		{:else}
+			<button class="page-btn active" onclick={() => setActivePage('terminal')}>{t('nav.terminal')}</button>
+		{/if}
 	</div>
 
 	{#if activePage === 'terminal'}
@@ -215,6 +244,17 @@
 {#if menu}
 	<DbMenu x={menu.x} y={menu.y} items={menuItems(menu.id)} onclose={() => (menu = null)} />
 {/if}
+{#if pageMenu}
+	<DbMenu
+		x={pageMenu.x}
+		y={pageMenu.y}
+		items={pages.map((p) => ({ label: p.label(), icon: p.icon, checked: p.id === activePage, action: () => setActivePage(p.id) }))}
+		onclose={() => {
+			pageMenu = null;
+			pageMenuClosedAt = performance.now();
+		}}
+	/>
+{/if}
 
 <style>
 	.tabbar {
@@ -233,6 +273,10 @@
 		gap: 2px;
 		padding: 0 8px;
 		flex-shrink: 0;
+	}
+
+	.page-btn.page-pick {
+		gap: 6px;
 	}
 
 	.page-btn {
@@ -268,9 +312,12 @@
 		flex-shrink: 0;
 	}
 
+	/* Scrolls its tabs: without min-width 0 it grew to fit them instead and
+	   made the whole window wider than a phone's screen. */
 	.tabs-scroll {
 		display: flex;
 		flex: 1;
+		min-width: 0;
 		overflow-x: auto;
 		overflow-y: hidden;
 		scrollbar-width: none;

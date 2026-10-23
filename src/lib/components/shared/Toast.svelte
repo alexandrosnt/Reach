@@ -36,7 +36,7 @@
 <style>
 	.toast-container {
 		position: fixed;
-		top: calc(80px + env(safe-area-inset-top));
+		top: calc(80px + var(--safe-top));
 		left: 50%;
 		transform: translateX(-50%);
 		z-index: 200;

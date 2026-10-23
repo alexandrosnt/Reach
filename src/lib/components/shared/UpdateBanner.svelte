@@ -81,9 +81,9 @@
 	.update-banner {
 		position: fixed;
 		/* Below a phone's status bar, where it can be tapped (0 on a desktop). */
-		top: env(safe-area-inset-top);
-		left: env(safe-area-inset-left);
-		right: env(safe-area-inset-right);
+		top: var(--safe-top);
+		left: var(--safe-left);
+		right: var(--safe-right);
 		z-index: 150;
 		height: 40px;
 		background: linear-gradient(135deg, var(--color-accent) 0%, #0070e0 100%);

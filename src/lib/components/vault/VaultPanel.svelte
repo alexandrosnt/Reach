@@ -622,6 +622,14 @@
 		overflow: hidden;
 	}
 
+	/* A short window (a phone on its side): the panel scrolls as one rather
+	   than cutting off what does not fit. */
+	@media (max-height: 480px) {
+		.vault-panel {
+			overflow-y: auto;
+		}
+	}
+
 	/* Lock Screen */
 	.lock-screen {
 		display: flex;

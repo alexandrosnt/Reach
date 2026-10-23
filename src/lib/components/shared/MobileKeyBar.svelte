@@ -120,7 +120,7 @@
 		background: var(--color-bg-secondary);
 		border-top: 1px solid var(--color-border);
 		/* Clear of the gesture bar on phones that draw one. */
-		padding-bottom: max(4px, env(safe-area-inset-bottom));
+		padding-bottom: max(4px, var(--safe-bottom));
 		flex-shrink: 0;
 		touch-action: pan-x;
 	}

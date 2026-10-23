@@ -39,7 +39,7 @@
 <footer class="statusbar">
 	<div class="statusbar-left">
 		<div class="status-indicator" class:connected={activeTab?.type === 'ssh'}></div>
-		<span>{connectionStatus}</span>
+		<span class="status-text">{connectionStatus}</span>
 	</div>
 
 	<div class="statusbar-center"></div>
@@ -64,11 +64,20 @@
 		user-select: none;
 	}
 
+	/* One line, whatever the width: wrapped, the status grew the bar past
+	   its 24px and pushed the window's bottom off a phone's screen. */
 	.statusbar-left {
 		display: flex;
 		align-items: center;
 		gap: 6px;
 		flex: 1;
+		min-width: 0;
+	}
+
+	.status-text {
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
 	}
 
 	.statusbar-center {
@@ -78,6 +87,7 @@
 
 	.statusbar-right {
 		flex: 1;
+		white-space: nowrap;
 		text-align: right;
 		font-family: var(--font-mono);
 		font-size: 0.625rem;

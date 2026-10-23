@@ -72,7 +72,7 @@
 		background: var(--color-surface-sunken);
 		backdrop-filter: blur(24px);
 		-webkit-backdrop-filter: blur(24px);
-		padding: max(20px, env(safe-area-inset-top)) 16px max(20px, env(safe-area-inset-bottom));
+		padding: max(20px, var(--safe-top)) 16px max(20px, var(--safe-bottom));
 	}
 
 	.welcome-container {
@@ -93,7 +93,7 @@
 		 * the page) keeps the wizard usable at any height. `dvh` rather than
 		 * `vh` so mobile browser chrome is accounted for.
 		 */
-		max-height: calc(100dvh - 2 * max(20px, env(safe-area-inset-top)));
+		max-height: calc(100dvh - 2 * max(20px, var(--safe-top)));
 		min-height: 0;
 		background: var(--color-bg-secondary);
 		border: 1px solid var(--color-border);

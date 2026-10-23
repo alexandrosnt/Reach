@@ -651,10 +651,16 @@
 		user-select: all;
 	}
 
+	/* Wraps on a narrow screen instead of running past it. */
 	.field-row {
 		display: flex;
+		flex-wrap: wrap;
 		align-items: center;
 		gap: 8px;
+	}
+
+	.field-row > .select {
+		max-width: 100%;
 	}
 
 	.grow {
@@ -798,6 +804,7 @@
 
 	.secret-actions {
 		display: flex;
+		flex-wrap: wrap;
 		gap: 8px;
 	}
 

@@ -16,6 +16,7 @@
 		faFolderOpen
 	} from '@fortawesome/free-solid-svg-icons';
 	import { registerSessionActions, shortcutLabel } from '$lib/state/shortcuts.svelte';
+	import { pendingSessionAction, takeSessionAction } from '$lib/state/palette.svelte';
 	import { onMount, tick } from 'svelte';
 	import { listen } from '@tauri-apps/api/event';
 	import SessionEditor from './SessionEditor.svelte';
@@ -150,21 +151,30 @@
 		return () => window.removeEventListener('reach:sessions-changed', reload);
 	});
 
-	// Another workspace asks for a session to be opened, with every prompt a
-	// normal connect has (password, passphrase): a shell inside a container
-	// opens this way, as the session with a different login shell.
+	// The command palette, or another workspace, asks for a session to be
+	// opened, with every prompt a normal connect has (password, passphrase):
+	// a shell inside a container opens this way, as the session with a
+	// different login shell. The sidebar shows this list for it, so it runs
+	// whichever panel was open.
 	$effect(() => {
-		const open = (e: Event) => {
-			const { sessionId, shell } = (e as CustomEvent<{ sessionId: string; shell?: string }>).detail;
-			void sessionGet(sessionId)
-				.then((s) => {
-					setActivePage('terminal');
-					return handleConnect(shell ? { ...s, shell } : s);
-				})
-				.catch((err) => addToast(String(err), 'error'));
-		};
-		window.addEventListener('reach:connect-session', open);
-		return () => window.removeEventListener('reach:connect-session', open);
+		const r = pendingSessionAction();
+		if (!r) return;
+		untrack(() => {
+			takeSessionAction();
+			if (r.kind === 'new-session') {
+				handleNewSession();
+			} else if (r.kind === 'quick-connect') {
+				quickPrefill = null;
+				showQuickConnect = true;
+			} else {
+				void sessionGet(r.sessionId)
+					.then((s) => {
+						setActivePage('terminal');
+						return handleConnect(r.shell ? { ...s, shell: r.shell } : s);
+					})
+					.catch((err) => addToast(String(err), 'error'));
+			}
+		});
 	});
 
 	onMount(() => {
@@ -1619,6 +1629,9 @@
 		top: calc(100% + 4px);
 		z-index: 30;
 		min-width: 200px;
+		/* Scrolls within a short window, as a phone on its side is. */
+		max-height: calc(100dvh - 120px);
+		overflow-y: auto;
 		padding: 4px;
 		background: var(--color-bg-elevated);
 		border: 1px solid var(--color-border);
@@ -1778,15 +1791,19 @@
 		color: var(--color-text-secondary);
 	}
 
+	/* The input gives way, not the row: at its own width it pushed Save and
+	   Cancel off a phone's screen. */
 	.new-folder-form {
 		display: flex;
 		align-items: center;
 		gap: 4px;
 		flex: 1;
+		min-width: 0;
 	}
 
 	.new-folder-input {
 		flex: 1;
+		width: 0;
 		min-width: 0;
 		padding: 5px 10px;
 		border: 1px solid var(--color-border);
@@ -2031,6 +2048,21 @@
 		min-height: 60px;
 	}
 
+	/* A short window (a phone on its side): the whole panel scrolls as one.
+	   Split between a fixed header and a list that would not go under 60px,
+	   the sessions ran off the bottom where nothing could reach them. */
+	@media (max-height: 480px) {
+		.session-list {
+			overflow-y: auto;
+		}
+
+		.sessions-scroll {
+			flex: none;
+			min-height: auto;
+			overflow: visible;
+		}
+	}
+
 	.drop-active {
 		outline: 2px dashed rgba(100, 160, 255, 0.5);
 		outline-offset: -2px;
@@ -2142,7 +2174,7 @@
 		position: fixed;
 		inset: 0;
 		/* Clear of the phone's status and navigation bars (0 on a desktop). */
-		padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+		padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
 		z-index: 200;
 		display: flex;
 		align-items: center;

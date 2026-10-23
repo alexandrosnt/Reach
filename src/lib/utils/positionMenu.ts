@@ -11,6 +11,8 @@
  * Usage:
  *   <div class="context-menu" use:positionMenu={{ x: menu.x, y: menu.y }}>…</div>
  */
+import { safeInsets } from '$lib/edges';
+
 export interface MenuPos {
 	x: number;
 	y: number;
@@ -22,17 +24,21 @@ export function positionMenu(node: HTMLElement, pos: MenuPos) {
 	function place({ x, y }: MenuPos) {
 		const w = node.offsetWidth;
 		const h = node.offsetHeight;
-		const vw = window.innerWidth;
-		const vh = window.innerHeight;
+		// The viewport less a phone's status bar, camera cutout and gesture bar.
+		const safe = safeInsets();
+		const minX = safe.left + MARGIN;
+		const minY = safe.top + MARGIN;
+		const vw = window.innerWidth - safe.right;
+		const vh = window.innerHeight - safe.bottom;
 
 		// Horizontal: flip to the left of the cursor if opening right overflows,
 		// then clamp inside the viewport.
 		let left = x + w + MARGIN > vw ? x - w : x;
-		left = Math.min(Math.max(MARGIN, left), Math.max(MARGIN, vw - w - MARGIN));
+		left = Math.min(Math.max(minX, left), Math.max(minX, vw - w - MARGIN));
 
 		// Vertical: flip above the cursor if opening down overflows, then clamp.
 		let top = y + h + MARGIN > vh ? y - h : y;
-		top = Math.min(Math.max(MARGIN, top), Math.max(MARGIN, vh - h - MARGIN));
+		top = Math.min(Math.max(minY, top), Math.max(minY, vh - h - MARGIN));
 
 		node.style.left = `${left}px`;
 		node.style.top = `${top}px`;

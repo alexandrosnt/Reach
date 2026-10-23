@@ -124,6 +124,8 @@
 		padding: 8px;
 		width: 160px;
 		flex-shrink: 0;
+		overflow-y: auto;
+		scrollbar-width: thin;
 		border-right: 1px solid var(--color-border);
 		background-color: var(--color-bg-secondary);
 		border-radius: 0 0 0 var(--radius-modal, 12px);
@@ -202,9 +204,10 @@
 		scrollbar-gutter: stable;
 	}
 
-	/* A phone: the menu becomes a row of tabs across the top that scrolls
-	   sideways, and the settings get the full width below it. */
-	@media (max-width: 640px) {
+	/* A phone, upright or on its side: the menu becomes a row of tabs across
+	   the top that scrolls sideways, and the settings get the full width
+	   below it. */
+	@media (max-width: 640px), (max-height: 480px) {
 		.settings-layout {
 			flex-direction: column;
 		}

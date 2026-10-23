@@ -307,7 +307,7 @@
 	   and the figures were drawn over each other (#127). Figures only, then,
 	   at their own width, and the bar scrolls sideways if they still do not
 	   fit. */
-	@media (max-width: 640px) {
+	@media (max-width: 640px), (max-height: 480px) {
 		.monitoring-bar {
 			gap: 12px;
 			overflow-x: auto;

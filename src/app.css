@@ -1,5 +1,16 @@
 @import 'tailwindcss';
 
+/* The parts of a phone's screen the system draws over: status bar, camera
+   cutout, navigation or gesture bar. The WebView reports the cutout alone
+   (env), so Android tells the page about the rest (--edge-*, set by
+   lib/edges.ts); whichever is larger is kept clear. 0 on a desktop. */
+:root {
+  --safe-top: max(env(safe-area-inset-top), var(--edge-top, 0px));
+  --safe-right: max(env(safe-area-inset-right), var(--edge-right, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom), var(--edge-bottom, 0px));
+  --safe-left: max(env(safe-area-inset-left), var(--edge-left, 0px));
+}
+
 /* ─── Reach Design Tokens ─── */
 
 @theme {
@@ -418,8 +429,11 @@ select:not([multiple]):disabled {
 
 /* A row of buttons under a section sits on the control side, where every
    other action in the window sits. */
+/* Wraps: kept on one line and right-aligned, a row too wide for a phone ran
+   off the left edge. */
 .settings-content .action-row {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   align-items: center;
   gap: 8px;
