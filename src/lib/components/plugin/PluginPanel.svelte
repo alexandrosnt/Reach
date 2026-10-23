@@ -171,37 +171,37 @@
 			{t('plugin.tab_marketplace')}
 			<span class="new-badge">NEW</span>
 		</button>
+		<!-- Reload sits with the tabs: a second PLUGINS heading under the panel's
+		     own was there only to hold it. -->
+		{#if activeTab === 'installed'}
+			<button
+				class="toolbar-btn"
+				onclick={discoverPlugins}
+				disabled={discovering}
+				title={t('plugin.reload')}
+				aria-label={t('plugin.reload')}
+			>
+				<svg class:spinning={discovering} width="14" height="14" viewBox="0 0 24 24" fill="none">
+					<path
+						d="M23 4v6h-6M1 20v-6h6"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+					<path
+						d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+					/>
+				</svg>
+			</button>
+		{/if}
 	</div>
 
 	{#if activeTab === 'installed'}
-		<div class="toolbar">
-			<span class="toolbar-title">{t('plugin.title')}</span>
-			<div class="toolbar-actions">
-				<button
-					class="toolbar-btn"
-					onclick={discoverPlugins}
-					disabled={discovering}
-					title={t('plugin.reload')}
-				>
-					<svg class:spinning={discovering} width="14" height="14" viewBox="0 0 24 24" fill="none">
-						<path
-							d="M23 4v6h-6M1 20v-6h6"
-							stroke="currentColor"
-							stroke-width="1.5"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-						<path
-							d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"
-							stroke="currentColor"
-							stroke-width="1.5"
-							stroke-linecap="round"
-							stroke-linejoin="round"
-						/>
-					</svg>
-				</button>
-			</div>
-		</div>
 
 		{#if loading}
 			<div class="loading-indicator">
@@ -256,6 +256,7 @@
 
 	.tab-bar {
 		display: flex;
+		align-items: stretch;
 		border-bottom: 1px solid var(--color-border);
 	}
 
@@ -304,29 +305,10 @@
 		border-bottom-color: var(--color-accent);
 	}
 
-	.toolbar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 8px 10px;
-		border-bottom: 1px solid var(--color-border);
-	}
-
-	.toolbar-title {
-		font-size: 0.6875rem;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		color: var(--color-text-secondary);
-	}
-
-	.toolbar-actions {
-		display: flex;
-		align-items: center;
-		gap: 2px;
-	}
-
 	.toolbar-btn {
+		flex-shrink: 0;
+		align-self: center;
+		margin: 0 4px;
 		display: flex;
 		align-items: center;
 		justify-content: center;
