@@ -177,6 +177,13 @@
 		font-size: var(--text-2xs);
 	}
 
+	/* No keyboard shortcut to learn on a touch screen. */
+	@media (pointer: coarse) {
+		.search-key {
+			display: none;
+		}
+	}
+
 	@media (max-width: 640px) {
 		.search-pill {
 			position: static;
