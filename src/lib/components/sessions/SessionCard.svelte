@@ -2,6 +2,7 @@
 	import type { SessionConfig } from '$lib/ipc/sessions';
 	import type { VaultInfo } from '$lib/state/vault.svelte';
 	import DistroIcon from './DistroIcon.svelte';
+	import { getDistroIcon } from '$lib/data/distro-icons';
 	import { t } from '$lib/state/i18n.svelte';
 	import { sessionAddress } from '$lib/utils/address';
 	import { isWindows } from '$lib/platform';
@@ -76,10 +77,41 @@
 		</svg>
 	</span>
 	<button class="card-main" onclick={onMain} disabled={unavailable && !selecting} aria-pressed={selecting ? selected : undefined} title={unavailable ? t('session.wsl_windows_only') : (selecting ? t('session.select_name', { name: session.name }) : t('session.connect_to', { name: session.name }))} >
-		<DistroIcon osId={session.detected_os} size={18} />
+		<!-- Every row has the icon's place, so names line up whether or not the
+		     OS is known yet: its logo once detected, until then a quiet mark for
+		     the kind of session. -->
+		<span class="os-slot" aria-hidden="true">
+			{#if getDistroIcon(session.detected_os)}
+				<DistroIcon osId={session.detected_os} size={18} />
+			{:else}
+				<svg class="kind-mark" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+					{#if session.kind === 'rdp' || session.kind === 'vnc'}
+						<rect x="3" y="4" width="18" height="12" rx="2" /><path d="M8 20h8M12 16v4" />
+					{:else if session.kind === 'wsl'}
+						<path d="M5 8l4 4-4 4M11 16h7" />
+					{:else}
+						<rect x="3" y="4" width="18" height="7" rx="1.5" /><rect x="3" y="13" width="18" height="7" rx="1.5" /><path d="M7 7.5h.01M7 16.5h.01" />
+					{/if}
+				</svg>
+			{/if}
+		</span>
 		<div class="session-info">
 			<span class="session-name-row">
 				<span class="session-name">{session.name}</span>
+				<!-- Beside the name, which is short, so the address below has the
+				     row's width to itself. -->
+				{#if session.kind !== 'wsl' && session.tags.length > 0}
+					<!-- One line that clips rather than wraps: a second line of tags
+					     made one row taller than its neighbours. All are in the tooltip. -->
+					<span class="tags" title={session.tags.join(', ')}>
+						{#each session.tags.slice(0, 2) as tag (tag)}
+							<span class="tag-chip">{tag}</span>
+						{/each}
+						{#if session.tags.length > 2}
+							<span class="tag-chip more">+{session.tags.length - 2}</span>
+						{/if}
+					</span>
+				{/if}
 				{#if vault}
 					<span class="vault-chip" class:shared={vault.vaultType === 'shared'} title={vault.name}>
 						{#if vault.vaultType === 'shared'}
@@ -107,12 +139,6 @@
 					<!-- The port only when it is not ssh's own: ":22" on every row
 					     said nothing. -->
 					<span class="session-detail">{sessionAddress(session)}</span>
-					{#each session.tags.slice(0, 2) as tag (tag)}
-						<span class="tag-chip">{tag}</span>
-					{/each}
-					{#if session.tags.length > 2}
-						<span class="tag-chip more" title={session.tags.slice(2).join(', ')}>+{session.tags.length - 2}</span>
-					{/if}
 				</span>
 			{/if}
 		</div>
@@ -227,6 +253,20 @@
 		font-family: var(--font-sans);
 	}
 
+	.os-slot {
+		flex-shrink: 0;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 18px;
+		height: 18px;
+	}
+
+	.kind-mark {
+		color: var(--color-text-tertiary, var(--color-text-secondary));
+		opacity: 0.8;
+	}
+
 	.session-info {
 		flex: 1;
 		min-width: 0;
@@ -309,6 +349,16 @@
 
 	/* Tags: the words people file sessions under, small enough not to compete
 	   with the name. */
+	/* A zero basis: it always fits on the name's line and takes what is left. */
+	.tags {
+		flex: 1 1 0;
+		min-width: 0;
+		display: flex;
+		gap: 4px;
+		overflow: hidden;
+		white-space: nowrap;
+	}
+
 	.tag-chip {
 		flex-shrink: 0;
 		max-width: 80px;
