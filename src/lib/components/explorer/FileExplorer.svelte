@@ -999,7 +999,8 @@
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="breadcrumb-segments" ondblclick={startPathEdit}>
 					{#each pathSegments as segment, i (segment.path)}
-						{#if i > 0}
+						<!-- The root is itself "/": a separator after it read "/ / usr". -->
+						{#if i > 0 && pathSegments[i - 1].name !== '/'}
 							<span class="breadcrumb-sep">/</span>
 						{/if}
 						<button
@@ -1106,9 +1107,18 @@
 				</div>
 			{/if}
 
+			<!-- Rows the shape of the ones coming, in place of the folder being
+			     left: with the old list still up and a spinner above it, a click
+			     on a folder looked as if it had done nothing. -->
 			{#if loading}
-				<div class="loading-overlay">
-					<div class="spinner"></div>
+				<div class="skeleton" role="status" aria-label={t('common.loading')}>
+					{#each [62, 48, 70, 40, 56, 66, 44, 52] as w, i (i)}
+						<div class="skeleton-row" aria-hidden="true">
+							<span class="skeleton-icon"></span>
+							<span class="skeleton-bar" style:width="{w}%"></span>
+							<span class="skeleton-perm"></span>
+						</div>
+					{/each}
 				</div>
 			{/if}
 
@@ -1163,7 +1173,7 @@
 				<div class="empty-dir">
 					<span class="empty-dir-text">{t('explorer.empty')}</span>
 				</div>
-			{:else}
+			{:else if !loading}
 				{#each sortedEntries as entry (entry.path)}
 					{#if renaming && renaming.entry.path === entry.path}
 						<div class="rename-row">
@@ -1708,25 +1718,58 @@
 		transition: width 0.2s ease;
 	}
 
-	.loading-overlay {
+	/* Rows as tall and laid out as FileNode's: icon, name, permissions. */
+	.skeleton-row {
 		display: flex;
 		align-items: center;
-		justify-content: center;
-		padding: 24px;
+		gap: 8px;
+		height: 29px;
+		padding: 0 8px;
+		border-bottom: 1px solid var(--color-border);
 	}
 
-	.spinner {
-		width: 18px;
-		height: 18px;
-		border: 2px solid var(--color-border);
-		border-top-color: var(--color-text-secondary);
-		border-radius: 50%;
-		animation: spin 0.6s linear infinite;
+	.skeleton-icon,
+	.skeleton-bar,
+	.skeleton-perm {
+		flex-shrink: 0;
+		border-radius: 4px;
+		background: linear-gradient(90deg, var(--color-surface-hover) 25%, var(--color-surface-active) 50%, var(--color-surface-hover) 75%);
+		background-size: 200% 100%;
+		animation: skeleton-shimmer 1.4s ease-in-out infinite;
 	}
 
-	@keyframes spin {
+	.skeleton-icon {
+		width: 16px;
+		height: 14px;
+	}
+
+	.skeleton-bar {
+		flex: 0 1 auto;
+		height: 9px;
+		max-width: 60%;
+	}
+
+	.skeleton-perm {
+		width: 70px;
+		height: 8px;
+		margin-left: auto;
+		opacity: 0.6;
+	}
+
+	@keyframes skeleton-shimmer {
+		from {
+			background-position: 100% 0;
+		}
 		to {
-			transform: rotate(360deg);
+			background-position: -100% 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.skeleton-icon,
+		.skeleton-bar,
+		.skeleton-perm {
+			animation: none;
 		}
 	}
 
