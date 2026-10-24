@@ -1,4 +1,11 @@
 {
+  "session.stored_encrypted": "Пази се шифровано в трезора",
+  "proxy.connect_via": "Свързване през прокси",
+  "proxy.host": "Прокси хост",
+  "proxy.username_optional": "Потребител (по избор)",
+  "proxy.hint_socks5": "Tor: 127.0.0.1:9050 · Tor Browser: 127.0.0.1:9150",
+  "proxy.hint_http": "HTTP CONNECT прокси, каквото ползват корпоративните мрежи",
+  "proxy.hint_socks4": "SOCKS4 не изпраща потребител и парола",
   "connect.steps": "Стъпки на връзката",
   "connect.step_connect": "Връзка",
   "connect.step_kex": "Шифроване",

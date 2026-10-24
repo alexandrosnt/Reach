@@ -1,4 +1,11 @@
 {
+  "session.stored_encrypted": "Хранится зашифрованным в хранилище",
+  "proxy.connect_via": "Подключаться через прокси",
+  "proxy.host": "Хост прокси",
+  "proxy.username_optional": "Имя пользователя (необязательно)",
+  "proxy.hint_socks5": "Tor: 127.0.0.1:9050 · Tor Browser: 127.0.0.1:9150",
+  "proxy.hint_http": "HTTP CONNECT-прокси, как в корпоративных сетях",
+  "proxy.hint_socks4": "SOCKS4 не передаёт имя пользователя и пароль",
   "connect.steps": "Этапы подключения",
   "connect.step_connect": "Связь",
   "connect.step_kex": "Шифрование",

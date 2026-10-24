@@ -1,4 +1,11 @@
 {
+  "session.stored_encrypted": "Verschlüsselt im Tresor gespeichert",
+  "proxy.connect_via": "Über einen Proxy verbinden",
+  "proxy.host": "Proxy-Host",
+  "proxy.username_optional": "Benutzername (optional)",
+  "proxy.hint_socks5": "Tor: 127.0.0.1:9050 · Tor Browser: 127.0.0.1:9150",
+  "proxy.hint_http": "Ein HTTP-CONNECT-Proxy, wie ihn Firmennetze verwenden",
+  "proxy.hint_socks4": "SOCKS4 sendet weder Benutzername noch Passwort",
   "connect.steps": "Verbindungsschritte",
   "connect.step_connect": "Erreichen",
   "connect.step_kex": "Verschlüsseln",

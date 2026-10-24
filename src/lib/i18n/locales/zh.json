@@ -1,4 +1,11 @@
 {
+  "session.stored_encrypted": "加密存储在保管库中",
+  "proxy.connect_via": "通过代理连接",
+  "proxy.host": "代理主机",
+  "proxy.username_optional": "用户名（可选）",
+  "proxy.hint_socks5": "Tor：127.0.0.1:9050 · Tor Browser：127.0.0.1:9150",
+  "proxy.hint_http": "HTTP CONNECT 代理，企业网络常用",
+  "proxy.hint_socks4": "SOCKS4 不发送用户名和密码",
   "connect.steps": "连接步骤",
   "connect.step_connect": "连接",
   "connect.step_kex": "加密",

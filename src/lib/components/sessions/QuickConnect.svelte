@@ -251,7 +251,7 @@
 		<div class="proxy-section">
 			<label class="proxy-toggle">
 				<input type="checkbox" bind:checked={proxyEnabled} disabled={connecting} />
-				<span class="proxy-toggle-text">Connect via Proxy</span>
+				<span class="proxy-toggle-text">{t('proxy.connect_via')}</span>
 			</label>
 
 			{#if proxyEnabled}
@@ -263,22 +263,22 @@
 					</div>
 					<div class="row">
 						<div class="field-host">
-							<Input label="Proxy Host" bind:value={proxyHost} placeholder="127.0.0.1" disabled={connecting} />
+							<Input label={t('proxy.host')} bind:value={proxyHost} placeholder="127.0.0.1" disabled={connecting} />
 						</div>
 						<div class="field-port">
-							<Input label="Port" bind:value={proxyPort} type="number" placeholder="9050" disabled={connecting} />
+							<Input label={t('session.port')} bind:value={proxyPort} type="number" placeholder="9050" disabled={connecting} />
 						</div>
 					</div>
 					<div class="row">
 						<div class="field-host">
-							<Input label="Username (optional)" bind:value={proxyUsername} disabled={connecting} />
+							<Input label={t('proxy.username_optional')} bind:value={proxyUsername} disabled={connecting} />
 						</div>
 						<div class="field-host">
-							<Input label="Password (optional)" bind:value={proxyPassword} type="password" disabled={connecting} />
+							<Input label={t('session.password_optional')} bind:value={proxyPassword} type="password" disabled={connecting} />
 						</div>
 					</div>
 					<p class="proxy-hint">
-						{#if proxyType === 'socks5'}Tor: 127.0.0.1:9050 | Tor Browser: 127.0.0.1:9150{:else if proxyType === 'http'}HTTP CONNECT proxy{:else}SOCKS4 proxy{/if}
+						{proxyType === 'socks5' ? t('proxy.hint_socks5') : proxyType === 'http' ? t('proxy.hint_http') : t('proxy.hint_socks4')}
 					</p>
 				</div>
 			{/if}

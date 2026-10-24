@@ -467,7 +467,7 @@
 
 		{#if kind === 'rdp'}
 			<div class="shell-field">
-				<SecretRefField approvable label={t('session.password_optional')} bind:value={password} bind:secretRef={passwordRef} placeholder="Stored encrypted in vault" disabled={saving} onpick={(e) => (username = nameFromEntry(username, e))} />
+				<SecretRefField approvable label={t('session.password_optional')} bind:value={password} bind:secretRef={passwordRef} placeholder={t('session.stored_encrypted')} disabled={saving} onpick={(e) => (username = nameFromEntry(username, e))} />
 				<p class="shell-hint">{t('session.rdp_password_hint')}</p>
 			</div>
 			<Input label={t('session.rdp_domain')} bind:value={domain} placeholder="CORP" disabled={saving} />
@@ -491,7 +491,7 @@
 			</div>
 		{:else if kind === 'vnc'}
 			<div class="shell-field">
-				<SecretRefField approvable label={t('session.password_optional')} bind:value={password} bind:secretRef={passwordRef} placeholder="Stored encrypted in vault" disabled={saving} />
+				<SecretRefField approvable label={t('session.password_optional')} bind:value={password} bind:secretRef={passwordRef} placeholder={t('session.stored_encrypted')} disabled={saving} />
 				<p class="shell-hint">{t('session.vnc_password_hint')}</p>
 			</div>
 			<div class="shell-field">
@@ -555,13 +555,13 @@
 		</div>
 
 		{#if authType === 'Password'}
-			<Input label={t('session.password_optional')} type="password" bind:value={password} placeholder="Stored encrypted in vault" disabled={saving} />
+			<Input label={t('session.password_optional')} type="password" bind:value={password} placeholder={t('session.stored_encrypted')} disabled={saving} />
 		{:else if authType === 'Manager'}
 			<SecretRefField approvable refOnly label={t('session.password_from_manager')} bind:value={password} bind:secretRef={passwordRef} disabled={saving} onpick={(e) => (username = nameFromEntry(username, e))} />
 		{:else if authType === 'Key'}
 			<KeyPicker bind:path={keyPath} bind:keyId disabled={saving} />
 			{#if !keyId}
-				<SecretRefField approvable label={t('session.passphrase_optional')} bind:value={keyPassphrase} bind:secretRef={keyPassphraseRef} placeholder="Stored encrypted in vault" disabled={saving} />
+				<SecretRefField approvable label={t('session.passphrase_optional')} bind:value={keyPassphrase} bind:secretRef={keyPassphraseRef} placeholder={t('session.stored_encrypted')} disabled={saving} />
 			{/if}
 			<div class="shell-field">
 				<label class="jump-toggle">
@@ -649,7 +649,7 @@
 		<div class="proxy-section">
 			<label class="proxy-toggle">
 				<input type="checkbox" bind:checked={proxyEnabled} disabled={saving} />
-				<span class="proxy-toggle-text">Connect via Proxy</span>
+				<span class="proxy-toggle-text">{t('proxy.connect_via')}</span>
 			</label>
 
 			{#if proxyEnabled}
@@ -661,27 +661,27 @@
 					</div>
 					<div class="row">
 						<div class="field-host">
-							<Input label="Proxy Host" bind:value={proxyHost} placeholder="127.0.0.1" disabled={saving} />
+							<Input label={t('proxy.host')} bind:value={proxyHost} placeholder="127.0.0.1" disabled={saving} />
 						</div>
 						<div class="field-port">
-							<Input label="Port" bind:value={proxyPort} type="number" placeholder="9050" disabled={saving} />
+							<Input label={t('session.port')} bind:value={proxyPort} type="number" placeholder="9050" disabled={saving} />
 						</div>
 					</div>
 					<div class="row">
 						<div class="field-host">
-							<Input label="Username (optional)" bind:value={proxyUsername} placeholder="" disabled={saving} />
+							<Input label={t('proxy.username_optional')} bind:value={proxyUsername} placeholder="" disabled={saving} />
 						</div>
 						<div class="field-host">
-							<SecretRefField approvable label="Password (optional)" bind:value={proxyPassword} bind:secretRef={proxyPasswordRef} disabled={saving} onpick={(e) => { if (!proxyUsername.trim() && e.username) proxyUsername = e.username; }} />
+							<SecretRefField approvable label={t('session.password_optional')} bind:value={proxyPassword} bind:secretRef={proxyPasswordRef} disabled={saving} onpick={(e) => { if (!proxyUsername.trim() && e.username) proxyUsername = e.username; }} />
 						</div>
 					</div>
 					<p class="proxy-hint">
 						{#if proxyType === 'socks5'}
-							Tor default: 127.0.0.1:9050 | Tor Browser: 127.0.0.1:9150
+							{t('proxy.hint_socks5')}
 						{:else if proxyType === 'http'}
-							HTTP CONNECT proxy for tunneling SSH through corporate proxies
+							{t('proxy.hint_http')}
 						{:else}
-							SOCKS4 proxy (no authentication support)
+							{t('proxy.hint_socks4')}
 						{/if}
 					</p>
 				</div>

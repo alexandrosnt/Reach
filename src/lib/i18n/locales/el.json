@@ -1,4 +1,11 @@
 {
+  "session.stored_encrypted": "Αποθηκεύεται κρυπτογραφημένο στο θησαυροφυλάκιο",
+  "proxy.connect_via": "Σύνδεση μέσω διακομιστή μεσολάβησης",
+  "proxy.host": "Διακομιστής μεσολάβησης",
+  "proxy.username_optional": "Όνομα χρήστη (προαιρετικό)",
+  "proxy.hint_socks5": "Tor: 127.0.0.1:9050 · Tor Browser: 127.0.0.1:9150",
+  "proxy.hint_http": "Διακομιστής HTTP CONNECT, όπως στα εταιρικά δίκτυα",
+  "proxy.hint_socks4": "Το SOCKS4 δεν στέλνει όνομα χρήστη ή κωδικό",
   "connect.steps": "Βήματα σύνδεσης",
   "connect.step_connect": "Σύνδεση",
   "connect.step_kex": "Κρυπτογράφηση",
