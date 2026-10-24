@@ -121,28 +121,52 @@
 		collapsed = !collapsed;
 	}
 
-	function startResize(e: MouseEvent): void {
+	const clampWidth = (w: number) => Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, Math.round(w)));
+
+	// Pointer events, so a pen or a finger on a touch screen drags it too.
+	function startResize(e: PointerEvent): void {
+		if (e.button !== 0) return;
 		e.preventDefault();
 		dragging = true;
 		const startX = e.clientX;
 		const startW = sidebarWidth;
 
-		function onMove(ev: MouseEvent): void {
+		function onMove(ev: PointerEvent): void {
 			// startW is the panel width, and the pointer moves the sidebar's outer
 			// edge, so the delta applies to the panel directly.
-			const w = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startW + ev.clientX - startX));
-			sidebarWidth = w;
+			sidebarWidth = clampWidth(startW + ev.clientX - startX);
 		}
 
 		function onUp(): void {
 			dragging = false;
-			document.removeEventListener('mousemove', onMove);
-			document.removeEventListener('mouseup', onUp);
+			document.removeEventListener('pointermove', onMove);
+			document.removeEventListener('pointerup', onUp);
+			document.removeEventListener('pointercancel', onUp);
 			saveWidth(sidebarWidth);
 		}
 
-		document.addEventListener('mousemove', onMove);
-		document.addEventListener('mouseup', onUp);
+		document.addEventListener('pointermove', onMove);
+		document.addEventListener('pointerup', onUp);
+		document.addEventListener('pointercancel', onUp);
+	}
+
+	// The keyboard's way to the same width, as the split divider has.
+	function onResizeKey(e: KeyboardEvent): void {
+		const next =
+			e.key === 'ArrowLeft' ? sidebarWidth - 16 :
+			e.key === 'ArrowRight' ? sidebarWidth + 16 :
+			e.key === 'Home' ? MIN_WIDTH :
+			e.key === 'End' ? MAX_WIDTH :
+			null;
+		if (next === null) return;
+		e.preventDefault();
+		sidebarWidth = clampWidth(next);
+		saveWidth(sidebarWidth);
+	}
+
+	function resetWidth(): void {
+		sidebarWidth = DEFAULT_WIDTH;
+		saveWidth(sidebarWidth);
 	}
 </script>
 
@@ -215,8 +239,22 @@
 	</div>
 
 	{#if !collapsed}
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="resize-handle" onmousedown={startResize}></div>
+		<!-- A focusable separator is ARIA's window splitter, as the split divider is:
+		     drag it, arrow keys or Home/End; a double click goes back to the default. -->
+		<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
+		<div
+			class="resize-handle"
+			role="separator"
+			aria-orientation="vertical"
+			aria-label={t('sidebar.resize')}
+			aria-valuemin={MIN_WIDTH}
+			aria-valuemax={MAX_WIDTH}
+			aria-valuenow={sidebarWidth}
+			tabindex="0"
+			onpointerdown={startResize}
+			onkeydown={onResizeKey}
+			ondblclick={resetWidth}
+		></div>
 	{/if}
 </aside>
 
@@ -422,12 +460,16 @@
 		height: 100%;
 		cursor: col-resize;
 		z-index: 10;
+		/* A finger's drag moves the edge instead of scrolling the page. */
+		touch-action: none;
 		transition: background-color 0.15s ease;
 	}
 
 	.resize-handle:hover,
-	.resize-handle:active {
+	.resize-handle:active,
+	.resize-handle:focus-visible {
 		background-color: var(--color-accent, var(--color-accent));
+		outline: none;
 	}
 
 	.resize-overlay {

@@ -1,4 +1,5 @@
 {
+  "sidebar.resize": "Изменить ширину боковой панели",
   "security.locked_desc": "Учётные данные заблокированы и зашифрованы",
   "security.unlocked_desc": "Учётные данные сейчас доступны",
   "session.stored_encrypted": "Хранится зашифрованным в хранилище",

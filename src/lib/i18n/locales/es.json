@@ -1,4 +1,5 @@
 {
+  "sidebar.resize": "Cambiar el ancho de la barra lateral",
   "security.locked_desc": "Las credenciales están bloqueadas y cifradas",
   "security.unlocked_desc": "Las credenciales están accesibles ahora",
   "session.stored_encrypted": "Se guarda cifrado en la bóveda",

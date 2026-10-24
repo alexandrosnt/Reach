@@ -1,4 +1,5 @@
 {
+  "sidebar.resize": "Seitenleiste in der Breite ändern",
   "security.locked_desc": "Zugangsdaten sind gesperrt und verschlüsselt",
   "security.unlocked_desc": "Zugangsdaten sind derzeit zugänglich",
   "session.stored_encrypted": "Verschlüsselt im Tresor gespeichert",

@@ -1,4 +1,5 @@
 {
+  "sidebar.resize": "调整侧边栏宽度",
   "security.locked_desc": "凭据已锁定并加密",
   "security.unlocked_desc": "凭据当前可访问",
   "session.stored_encrypted": "加密存储在保管库中",

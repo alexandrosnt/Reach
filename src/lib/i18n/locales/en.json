@@ -1,4 +1,5 @@
 {
+  "sidebar.resize": "Resize the sidebar",
   "security.locked_desc": "Credentials are locked and encrypted",
   "security.unlocked_desc": "Credentials are currently accessible",
   "session.stored_encrypted": "Stored encrypted in the vault",
