@@ -128,8 +128,9 @@
 		</div>
 	</div>
 
+	<!-- Belongs to the switch above, so it sits under it, indented. -->
 	{#if settings.warnOnMultilinePaste}
-		<div class="setting-row">
+		<div class="setting-row sub-setting">
 			<div class="setting-info">
 				<span class="setting-label">{t('settings.paste_threshold')}</span>
 				<span class="setting-description">{t('settings.paste_threshold_desc')}</span>
@@ -271,14 +272,22 @@
 </div>
 
 <style>
+	/* The dropdowns' box: it was the page's black, the one dark well in a
+	   column of grey controls. */
 	.threshold-input {
-		padding: 7px 10px;
+		padding: 9px 12px;
 		border-radius: var(--radius-btn);
 		border: 1px solid var(--color-border);
-		background: var(--color-bg-primary);
+		background: var(--color-bg-elevated);
 		color: var(--color-text-primary);
 		font-family: inherit;
 		font-size: 0.8125rem;
+	}
+
+	.sub-setting {
+		margin-left: 12px;
+		padding-left: 14px;
+		border-left: 2px solid var(--color-border);
 	}
 
 	.threshold-input:focus {
