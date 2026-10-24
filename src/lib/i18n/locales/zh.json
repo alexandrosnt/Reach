@@ -1,4 +1,6 @@
 {
+  "security.locked_desc": "凭据已锁定并加密",
+  "security.unlocked_desc": "凭据当前可访问",
   "session.stored_encrypted": "加密存储在保管库中",
   "proxy.connect_via": "通过代理连接",
   "proxy.host": "代理主机",

@@ -1,4 +1,6 @@
 {
+  "security.locked_desc": "Les identifiants sont verrouillés et chiffrés",
+  "security.unlocked_desc": "Les identifiants sont actuellement accessibles",
   "session.stored_encrypted": "Stocké chiffré dans le coffre",
   "proxy.connect_via": "Se connecter via un proxy",
   "proxy.host": "Hôte du proxy",

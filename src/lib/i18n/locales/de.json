@@ -1,4 +1,6 @@
 {
+  "security.locked_desc": "Zugangsdaten sind gesperrt und verschlüsselt",
+  "security.unlocked_desc": "Zugangsdaten sind derzeit zugänglich",
   "session.stored_encrypted": "Verschlüsselt im Tresor gespeichert",
   "proxy.connect_via": "Über einen Proxy verbinden",
   "proxy.host": "Proxy-Host",

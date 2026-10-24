@@ -1,4 +1,6 @@
 {
+  "security.locked_desc": "Учётные данные заблокированы и зашифрованы",
+  "security.unlocked_desc": "Учётные данные сейчас доступны",
   "session.stored_encrypted": "Хранится зашифрованным в хранилище",
   "proxy.connect_via": "Подключаться через прокси",
   "proxy.host": "Хост прокси",

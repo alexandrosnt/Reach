@@ -1,4 +1,6 @@
 {
+  "security.locked_desc": "Credentials are locked and encrypted",
+  "security.unlocked_desc": "Credentials are currently accessible",
   "session.stored_encrypted": "Stored encrypted in the vault",
   "proxy.connect_via": "Connect through a proxy",
   "proxy.host": "Proxy host",

@@ -1,4 +1,6 @@
 {
+  "security.locked_desc": "Le credenziali sono bloccate e cifrate",
+  "security.unlocked_desc": "Le credenziali sono al momento accessibili",
   "session.stored_encrypted": "Salvato cifrato nella cassaforte",
   "proxy.connect_via": "Connetti tramite un proxy",
   "proxy.host": "Host del proxy",

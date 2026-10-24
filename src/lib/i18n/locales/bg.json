@@ -1,4 +1,6 @@
 {
+  "security.locked_desc": "Данните за достъп са заключени и шифровани",
+  "security.unlocked_desc": "Данните за достъп в момента са достъпни",
   "session.stored_encrypted": "Пази се шифровано в трезора",
   "proxy.connect_via": "Свързване през прокси",
   "proxy.host": "Прокси хост",
