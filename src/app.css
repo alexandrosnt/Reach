@@ -483,3 +483,22 @@ select:not([multiple]):disabled {
   gap: 8px;
   padding: 8px 0 4px;
 }
+
+/* View transitions (the sidebar's section switch): only what is named
+   fades, briefly; the rest of the window, terminals included, stays still
+   instead of the whole page crossfading. */
+::view-transition-group(root),
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+}
+
+::view-transition-old(sidebar-panel),
+::view-transition-new(sidebar-panel) {
+  animation-duration: 150ms;
+  animation-timing-function: ease-out;
+}
+
+::view-transition-group(sidebar-panel) {
+  animation-duration: 150ms;
+}

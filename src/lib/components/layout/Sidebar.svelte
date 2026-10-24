@@ -10,6 +10,7 @@
 	import { sidebarHasNew, markSidebarSeen, newSince } from '$lib/state/whats-new.svelte';
 	import { t } from '$lib/state/i18n.svelte';
 	import { pendingSessionAction } from '$lib/state/palette.svelte';
+	import { flushSync } from 'svelte';
 
 	type Section = 'sessions' | 'vault' | 'explorer' | 'tunnels' | 'snippets' | 'recipes' | 'plugins';
 
@@ -113,8 +114,23 @@
 		} else if (activeSection === sectionId) {
 			collapsed = true;
 		} else {
-			activeSection = sectionId;
+			switchSection(sectionId);
 		}
+	}
+
+	/** One panel fades into the next (the browser's view transition, scoped
+	 *  to the panel in app.css) instead of being swapped in a single frame.
+	 *  Without the API, or with less motion asked for, it is the plain swap. */
+	function switchSection(sectionId: Section): void {
+		const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+		if (!doc.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+			activeSection = sectionId;
+			return;
+		}
+		doc.startViewTransition(() => {
+			activeSection = sectionId;
+			flushSync();
+		});
 	}
 
 	function toggleCollapsed(): void {
@@ -443,6 +459,8 @@
 		flex: 1;
 		overflow-y: auto;
 		padding: 2px 6px;
+		/* What fades when the section changes (switchSection, app.css). */
+		view-transition-name: sidebar-panel;
 	}
 
 
