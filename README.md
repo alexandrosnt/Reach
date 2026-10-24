@@ -136,8 +136,12 @@ Pull requests, translations and recipes for the [registry](https://github.com/al
 
 Reach is free and MIT licensed, and it stays that way: nothing is or ever will be paywalled. It's built in spare time with no budget, which is why the installers aren't code-signed yet. If Reach saves you time, **[GitHub Sponsors](https://github.com/sponsors/alexandrosnt)** helps pay for a signing certificate, test hardware, and more evenings spent on Reach. A good bug report or telling a colleague helps just as much.
 
+## Contributors
+
+Thank you to everyone who has sent code to Reach. The picture is drawn from the repository's own contributor list, so a merged pull request puts you in it (it can take a few days to show).
+
 <a href="https://github.com/alexandrosnt/Reach/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=alexandrosnt/Reach" alt="Contributors to Reach" />
+  <img src="https://contrib.rocks/image?repo=alexandrosnt/Reach&max=100" alt="Contributors to Reach" />
 </a>
 
 ## License
