@@ -295,7 +295,7 @@
 
 			<div class="form-field">
 				<Input
-					label="Token"
+					label={t('vault.token')}
 					type="password"
 					placeholder="eyJhbG..."
 					bind:value={inviteToken}
