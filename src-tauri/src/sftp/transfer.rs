@@ -1,8 +1,8 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 use tauri::Emitter;
 use serde::{Deserialize, Serialize};
-use crate::ssh::client::{SharedHandle, SshError, exec_on_connection};
+use crate::ssh::client::{SharedHandle, SshError, exec_on_connection, exec_on_connection_with_exit_code};
 use base64::Engine;
 
 #[derive(Debug, Error)]
@@ -219,11 +219,27 @@ pub async fn download_file(
     Ok(())
 }
 
-/// Upload a file to the remote host using streaming base64 over a single SSH exec.
+/// Upload a local file or directory to the remote host.
 ///
-/// Opens one channel running `base64 -d > <file>`, streams base64-encoded data
-/// into stdin, then closes the channel. No per-chunk SSH roundtrips — mirrors
-/// the download approach for maximum throughput.
+/// A directory is walked here, recreated on the remote side with `mkdir -p`,
+/// and its files sent one at a time the same way a single file is. It all
+/// reports under the one transfer id, counting bytes across the whole tree,
+/// so one dropped folder shows as one transfer.
+pub async fn upload_path(
+    handle: &SharedHandle,
+    local_path: &str,
+    remote_path: &str,
+    transfer_id: &str,
+    app_handle: &tauri::AppHandle,
+) -> Result<(), TransferError> {
+    if Path::new(local_path).is_dir() {
+        upload_directory(handle, local_path, remote_path, transfer_id, app_handle).await
+    } else {
+        upload_file(handle, local_path, remote_path, transfer_id, app_handle).await
+    }
+}
+
+/// Upload a file to the remote host using streaming base64 over a single SSH exec.
 pub async fn upload_file(
     handle: &SharedHandle,
     local_path: &str,
@@ -231,43 +247,215 @@ pub async fn upload_file(
     transfer_id: &str,
     app_handle: &tauri::AppHandle,
 ) -> Result<(), TransferError> {
-    use russh::ChannelMsg;
-
     tracing::info!("Uploading {} to {}", local_path, remote_path);
 
-    let filename = Path::new(local_path)
-        .file_name()
-        .map(|n| n.to_string_lossy().to_string())
-        .unwrap_or_else(|| local_path.to_string());
-
-    // Read local file
-    let data = std::fs::read(local_path)
-        .map_err(|e| TransferError::IoError(format!("Failed to read local file: {}", e)))?;
-
+    let filename = file_name_of(local_path);
+    let data = read_local(Path::new(local_path))?;
     let total_bytes = data.len() as u64;
+    let emit = |sent: u64| emit_progress(app_handle, transfer_id, &filename, sent, total_bytes);
 
-    // Handle empty files
-    if total_bytes == 0 {
-        let _ = exec_on_connection(
-            handle,
-            &format!(": > {}", shell_escape(remote_path)),
-        ).await?;
-        let _ = app_handle.emit(&format!("transfer-complete-{}", transfer_id), ());
-        tracing::info!("Upload complete: {} (empty file)", remote_path);
-        return Ok(());
+    emit(0);
+    send_bytes(handle, &data, remote_path, emit).await?;
+    emit(total_bytes);
+    let _ = app_handle.emit(&format!("transfer-complete-{}", transfer_id), ());
+
+    tracing::info!("Upload complete: {} ({} bytes)", remote_path, total_bytes);
+    Ok(())
+}
+
+async fn upload_directory(
+    handle: &SharedHandle,
+    local_path: &str,
+    remote_path: &str,
+    transfer_id: &str,
+    app_handle: &tauri::AppHandle,
+) -> Result<(), TransferError> {
+    tracing::info!("Uploading directory {} to {}", local_path, remote_path);
+
+    let name = file_name_of(local_path);
+    let plan = plan_directory(Path::new(local_path), remote_path)
+        .map_err(|e| TransferError::IoError(format!("Failed to read local directory: {}", e)))?;
+    let total_bytes = plan.total_bytes;
+    let emit = |sent: u64| emit_progress(app_handle, transfer_id, &name, sent, total_bytes);
+
+    emit(0);
+    for command in mkdir_commands(&plan.dirs) {
+        let (_, stderr, code) = exec_on_connection_with_exit_code(handle, &command).await?;
+        if code != 0 {
+            let msg = if stderr.trim().is_empty() {
+                format!("Remote mkdir exited with code {}", code)
+            } else {
+                stderr.trim().to_string()
+            };
+            return Err(TransferError::IoError(msg));
+        }
     }
 
-    // Emit initial progress
+    let mut done: u64 = 0;
+    for file in &plan.files {
+        let data = read_local(&file.local)?;
+        send_bytes(handle, &data, &file.remote, |sent| emit(done + sent)).await?;
+        done += data.len() as u64;
+    }
+
+    emit(total_bytes);
+    let _ = app_handle.emit(&format!("transfer-complete-{}", transfer_id), ());
+
+    tracing::info!(
+        "Upload complete: {} ({} files, {} bytes)",
+        remote_path,
+        plan.files.len(),
+        done
+    );
+    Ok(())
+}
+
+/// What uploading a local directory takes: the remote directories to create,
+/// parents before children, and every file with the place it goes.
+#[derive(Debug, Default)]
+struct DirectoryPlan {
+    dirs: Vec<String>,
+    files: Vec<PlannedFile>,
+    total_bytes: u64,
+}
+
+#[derive(Debug)]
+struct PlannedFile {
+    local: PathBuf,
+    remote: String,
+}
+
+/// Walk `local` and map it onto `remote`.
+///
+/// Remote paths are joined with `/` whatever the local separator is. A
+/// symbolic link to a file is uploaded as the file it points to; a link to a
+/// directory is left out, since following it could walk in a circle, and so
+/// is a link that points nowhere. Entries are taken in name order.
+fn plan_directory(local: &Path, remote: &str) -> std::io::Result<DirectoryPlan> {
+    let mut plan = DirectoryPlan::default();
+    let mut pending = vec![(local.to_path_buf(), remote.to_string())];
+
+    while let Some((dir, remote_dir)) = pending.pop() {
+        let mut entries = std::fs::read_dir(&dir)?.collect::<Result<Vec<_>, _>>()?;
+        entries.sort_by_key(|e| e.file_name());
+
+        let mut subdirs = Vec::new();
+        for entry in entries {
+            let path = entry.path();
+            let remote_child = format!(
+                "{}/{}",
+                remote_dir.trim_end_matches('/'),
+                entry.file_name().to_string_lossy()
+            );
+            let file_type = entry.file_type()?;
+            if file_type.is_dir() {
+                subdirs.push((path, remote_child));
+                continue;
+            }
+            match std::fs::metadata(&path) {
+                Ok(meta) if meta.is_file() => {
+                    plan.total_bytes += meta.len();
+                    plan.files.push(PlannedFile { local: path, remote: remote_child });
+                }
+                Ok(_) => {}
+                Err(_) if file_type.is_symlink() => {}
+                Err(e) => return Err(e),
+            }
+        }
+
+        plan.dirs.push(remote_dir);
+        // Reversed, so the stack hands them back in name order.
+        pending.extend(subdirs.into_iter().rev());
+    }
+
+    Ok(plan)
+}
+
+/// `mkdir -p` commands for `dirs`, many directories to a command but none
+/// longer than 16KB, which the small shells on embedded devices still take.
+fn mkdir_commands(dirs: &[String]) -> Vec<String> {
+    const LIMIT: usize = 16 * 1024;
+    let mut commands = Vec::new();
+    let mut current = String::new();
+
+    for dir in dirs {
+        let arg = shell_escape(dir);
+        if !current.is_empty() && current.len() + 1 + arg.len() > LIMIT {
+            commands.push(std::mem::take(&mut current));
+        }
+        if current.is_empty() {
+            current.push_str("mkdir -p --");
+        }
+        current.push(' ');
+        current.push_str(&arg);
+    }
+    if !current.is_empty() {
+        commands.push(current);
+    }
+    commands
+}
+
+fn file_name_of(local_path: &str) -> String {
+    Path::new(local_path)
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| local_path.to_string())
+}
+
+fn read_local(path: &Path) -> Result<Vec<u8>, TransferError> {
+    std::fs::read(path).map_err(|e| {
+        TransferError::IoError(format!("Failed to read local file {}: {}", path.display(), e))
+    })
+}
+
+fn emit_progress(
+    app_handle: &tauri::AppHandle,
+    transfer_id: &str,
+    filename: &str,
+    bytes_transferred: u64,
+    total_bytes: u64,
+) {
+    let percent = if total_bytes == 0 {
+        100.0
+    } else {
+        (bytes_transferred as f64 / total_bytes as f64 * 100.0).min(100.0)
+    };
     let _ = app_handle.emit(
         &format!("transfer-progress-{}", transfer_id),
         &TransferProgress {
             id: transfer_id.to_string(),
-            filename: filename.clone(),
-            bytes_transferred: 0,
+            filename: filename.to_string(),
+            bytes_transferred,
             total_bytes,
-            percent: 0.0,
+            percent,
         },
     );
+}
+
+/// Write `data` to `remote_path` through one `base64 -d` channel.
+///
+/// Streams base64-encoded data into the channel's stdin and closes it. No
+/// per-chunk SSH roundtrips — mirrors the download approach for maximum
+/// throughput. `on_progress` hears how many bytes of `data` have gone out,
+/// about every 64KB.
+async fn send_bytes(
+    handle: &SharedHandle,
+    data: &[u8],
+    remote_path: &str,
+    mut on_progress: impl FnMut(u64),
+) -> Result<(), TransferError> {
+    use russh::ChannelMsg;
+
+    // Handle empty files
+    if data.is_empty() {
+        let _ = exec_on_connection(
+            handle,
+            &format!(": > {}", shell_escape(remote_path)),
+        ).await?;
+        return Ok(());
+    }
+
+    let total_bytes = data.len() as u64;
 
     // Open a single channel: pipe base64 stdin into decoder, write to file
     let mut channel = {
@@ -296,17 +484,7 @@ pub async fn upload_file(
         // Emit progress every ~64KB of raw data
         if bytes_sent - last_progress_bytes >= 65536 || bytes_sent == total_bytes {
             last_progress_bytes = bytes_sent;
-            let percent = (bytes_sent as f64 / total_bytes as f64 * 100.0).min(100.0);
-            let _ = app_handle.emit(
-                &format!("transfer-progress-{}", transfer_id),
-                &TransferProgress {
-                    id: transfer_id.to_string(),
-                    filename: filename.clone(),
-                    bytes_transferred: bytes_sent,
-                    total_bytes,
-                    percent,
-                },
-            );
+            on_progress(bytes_sent);
         }
     }
 
@@ -356,20 +534,6 @@ pub async fn upload_file(
         }
     }
 
-    // Final progress + completion
-    let _ = app_handle.emit(
-        &format!("transfer-progress-{}", transfer_id),
-        &TransferProgress {
-            id: transfer_id.to_string(),
-            filename: filename.clone(),
-            bytes_transferred: total_bytes,
-            total_bytes,
-            percent: 100.0,
-        },
-    );
-    let _ = app_handle.emit(&format!("transfer-complete-{}", transfer_id), ());
-
-    tracing::info!("Upload complete: {} ({} bytes)", remote_path, total_bytes);
     Ok(())
 }
 
@@ -461,4 +625,68 @@ pub async fn stream_file(
     }
 
     Ok(sent)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn scratch(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("reach-upload-{}-{}", name, std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn a_directory_maps_onto_the_remote_side_parents_first() {
+        let root = scratch("tree");
+        std::fs::create_dir_all(root.join("b/deep")).unwrap();
+        std::fs::create_dir_all(root.join("empty")).unwrap();
+        std::fs::write(root.join("z.txt"), b"12345").unwrap();
+        std::fs::write(root.join("a.txt"), b"").unwrap();
+        std::fs::write(root.join("b/deep/c.bin"), b"abc").unwrap();
+
+        let plan = plan_directory(&root, "/home/me/site").unwrap();
+
+        assert_eq!(
+            plan.dirs,
+            ["/home/me/site", "/home/me/site/b", "/home/me/site/b/deep", "/home/me/site/empty"]
+        );
+        let remote: Vec<&str> = plan.files.iter().map(|f| f.remote.as_str()).collect();
+        assert_eq!(remote, ["/home/me/site/a.txt", "/home/me/site/z.txt", "/home/me/site/b/deep/c.bin"]);
+        assert_eq!(plan.files[2].local, root.join("b").join("deep").join("c.bin"));
+        assert_eq!(plan.total_bytes, 8);
+
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_trailing_slash_on_the_target_does_not_double() {
+        let root = scratch("slash");
+        std::fs::write(root.join("f"), b"x").unwrap();
+
+        let plan = plan_directory(&root, "/srv/").unwrap();
+
+        assert_eq!(plan.files[0].remote, "/srv/f");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn mkdir_quotes_each_directory() {
+        let dirs = vec!["/tmp/it's here".to_string(), "/tmp/-x".to_string()];
+        assert_eq!(mkdir_commands(&dirs), [r"mkdir -p -- '/tmp/it'\''s here' '/tmp/-x'"]);
+        assert!(mkdir_commands(&[]).is_empty());
+    }
+
+    #[test]
+    fn mkdir_splits_long_lists() {
+        let dirs: Vec<String> = (0..2000).map(|i| format!("/data/some/fairly/long/path/{i:05}")).collect();
+        let commands = mkdir_commands(&dirs);
+
+        assert!(commands.len() > 1);
+        assert!(commands.iter().all(|c| c.len() <= 16 * 1024 && c.starts_with("mkdir -p -- ")));
+        let count: usize = commands.iter().map(|c| c.matches("'/data/").count()).sum();
+        assert_eq!(count, dirs.len());
+    }
 }

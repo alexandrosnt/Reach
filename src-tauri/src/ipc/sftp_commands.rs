@@ -29,8 +29,9 @@ pub async fn sftp_list_dir(
     Ok(result)
 }
 
-/// Upload a local file to the remote host. Returns the transfer_id immediately
-/// and runs the upload in a background task, emitting progress events.
+/// Upload a local file or directory to the remote host. Returns the
+/// transfer_id immediately and runs the upload in a background task, emitting
+/// progress events.
 #[tauri::command]
 pub async fn sftp_upload(
     app: tauri::AppHandle,
@@ -50,7 +51,7 @@ pub async fn sftp_upload(
     let rpath = remote_path.clone();
 
     tokio::spawn(async move {
-        if let Err(e) = crate::sftp::transfer::upload_file(
+        if let Err(e) = crate::sftp::transfer::upload_path(
             &handle, &local_path, &remote_path, &tid, &app,
         ).await {
             tracing::error!("Upload failed for {}: {}", tid, e);
