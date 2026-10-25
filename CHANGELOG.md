@@ -2,6 +2,16 @@
 
 All notable changes to Reach are documented here.
 
+## v0.8.4
+- **Folders upload** — Dropping a folder on the file explorer failed with *Upload failed*: only files could be dropped. A folder now uploads with everything in it, its subfolders made on the server with `mkdir -p` and its files sent the way a single file is, as one transfer with one progress bar. The server needs nothing new. A link to a file is sent as that file; a link to a folder, or to nothing, is left out. A folder already on the server is merged into, and its files of the same name replaced, as a single file already is. Contributed by @qwerin (#134).
+- **Connecting shows its steps** — The connect dialog and Quick Connect tick off where a connection has got to: reaching the server, agreeing on encryption, checking who the server is, logging in, opening the shell. If it fails, the step that broke is marked in red, so a closed port, a changed host key and a wrong password no longer look the same.
+- **Compact layout** — Settings → Appearance → Compact layout: tighter rows in the session list and file explorer, with a session's name and address on one line, so more fit on the screen. Text stays the same size. Off by default.
+- **Session rows line up** — Every row keeps its icon's place (the server's OS logo once known, a quiet mark for the kind of session until then), and tags sit beside the name, so the address has the row's full width.
+- **The sidebar** — Switching sections fades one panel into the next instead of swapping in a single frame (the plain swap when less motion is asked for). Its edge can be dragged with a pen or a finger as well as a mouse, moved with the arrow keys, Home and End, and a double click puts it back to its default width.
+- **File explorer** — A folder loading shows rows the shape of the ones coming, instead of leaving the old list up so a click seemed to do nothing; the path no longer reads "/ / usr".
+- **Settings read as one** — Labels are sentence case throughout (they were half Title Case), as are English labels across the app; every description ends as a sentence; *Startup behavior* is now *Restore tabs on startup*; the paste threshold sits under its switch.
+- **Translated** — Russian in full (145 strings were still English: the vault, sync, backup, AI settings, plugins, OpenTofu and Ansible); the remote desktop's labels and messages, the proxy settings in Quick Connect and the session editor, the sync invite's token and Security's lock status in all nine languages.
+
 ## v0.8.3
 - **A command palette** — Ctrl+Shift+P, or Search in the title bar, reaches any session, open tab, page, snippet or action: type a few letters of a name or host and press Enter. A snippet is typed into the open terminal for you to run, never run for you.
 - **A start screen** — With no tab open, Reach asks where to: type `user@host` (or `user@host:port`) and connect, pick a session you used lately, or open a local shell, each with its shortcut.
