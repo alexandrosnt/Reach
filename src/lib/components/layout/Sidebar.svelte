@@ -122,12 +122,11 @@
 	 *  to the panel in app.css) instead of being swapped in a single frame.
 	 *  Without the API, or with less motion asked for, it is the plain swap. */
 	function switchSection(sectionId: Section): void {
-		const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
-		if (!doc.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) {
+		if (!('startViewTransition' in document) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
 			activeSection = sectionId;
 			return;
 		}
-		doc.startViewTransition(() => {
+		document.startViewTransition(() => {
 			activeSection = sectionId;
 			flushSync();
 		});

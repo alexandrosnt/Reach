@@ -1756,6 +1756,11 @@
 		opacity: 0.6;
 	}
 
+	/* Compact layout: as short as FileNode's compact rows. */
+	:global(html.compact) .skeleton-row {
+		height: 25px;
+	}
+
 	@keyframes skeleton-shimmer {
 		from {
 			background-position: 100% 0;
