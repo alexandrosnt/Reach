@@ -1,4 +1,6 @@
 {
+  "settings.compact_layout": "紧凑布局",
+  "settings.compact_layout_desc": "行距更紧凑，会话的名称和地址显示在同一行，屏幕上能容纳更多内容。文字大小不变。",
   "sidebar.resize": "调整侧边栏宽度",
   "security.locked_desc": "凭据已锁定并加密。",
   "security.unlocked_desc": "凭据当前可访问。",

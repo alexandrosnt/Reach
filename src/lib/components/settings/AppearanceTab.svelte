@@ -331,6 +331,21 @@
 		</div>
 	{/if}
 
+	<div class="setting-row">
+		<div class="setting-info">
+			<span class="setting-label">{t('settings.compact_layout')}</span>
+			<span class="setting-description">{t('settings.compact_layout_desc')}</span>
+		</div>
+		<div class="setting-control">
+			<Toggle
+				hideLabel
+				checked={settings.compactLayout}
+				label={t('settings.compact_layout')}
+				onchange={(v) => updateSetting('compactLayout', v)}
+			/>
+		</div>
+	</div>
+
 	<div class="setting-row font-row">
 		<div class="setting-info">
 			<span class="setting-label">{t('settings.terminal_font')}</span>

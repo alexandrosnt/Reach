@@ -1,4 +1,6 @@
 {
+  "settings.compact_layout": "Compact layout",
+  "settings.compact_layout_desc": "Tighter rows, with a session's name and address on one line, so more fit on the screen. Text stays the same size.",
   "sidebar.resize": "Resize the sidebar",
   "security.locked_desc": "Credentials are locked and encrypted.",
   "security.unlocked_desc": "Credentials are currently accessible.",

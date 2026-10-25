@@ -1,4 +1,6 @@
 {
+  "settings.compact_layout": "Kompaktes Layout",
+  "settings.compact_layout_desc": "Engere Zeilen, mit Name und Adresse einer Sitzung in einer Zeile, damit mehr auf den Bildschirm passt. Die Schrift bleibt gleich groß.",
   "sidebar.resize": "Seitenleiste in der Breite ändern",
   "security.locked_desc": "Zugangsdaten sind gesperrt und verschlüsselt.",
   "security.unlocked_desc": "Zugangsdaten sind derzeit zugänglich.",

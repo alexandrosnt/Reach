@@ -1,4 +1,6 @@
 {
+  "settings.compact_layout": "Layout compatto",
+  "settings.compact_layout_desc": "Righe più strette, con nome e indirizzo della sessione su una riga, così ne entrano di più sullo schermo. Il testo resta della stessa dimensione.",
   "sidebar.resize": "Ridimensiona la barra laterale",
   "security.locked_desc": "Le credenziali sono bloccate e cifrate.",
   "security.unlocked_desc": "Le credenziali sono al momento accessibili.",

@@ -510,4 +510,26 @@
 		color: var(--color-text-secondary);
 	}
 
+
+	/* Compact layout: the name and the address on one line, as a list of
+	   many servers wants. Text and the row's hit area stay the size they were. */
+	:global(html.compact) .session-card {
+		padding-top: 2px;
+		padding-bottom: 2px;
+	}
+
+	:global(html.compact) .session-info {
+		flex-direction: row;
+		align-items: baseline;
+		gap: 8px;
+	}
+
+	:global(html.compact) .session-name-row {
+		flex: 0 1 auto;
+		flex-wrap: nowrap;
+	}
+
+	:global(html.compact) .session-meta {
+		flex: 1 1 0;
+	}
 </style>

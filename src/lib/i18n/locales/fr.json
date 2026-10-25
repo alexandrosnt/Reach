@@ -1,4 +1,6 @@
 {
+  "settings.compact_layout": "Disposition compacte",
+  "settings.compact_layout_desc": "Des lignes plus serrées, avec le nom et l'adresse d'une session sur une seule ligne, pour en voir davantage à l'écran. Le texte garde sa taille.",
   "sidebar.resize": "Redimensionner la barre latérale",
   "security.locked_desc": "Les identifiants sont verrouillés et chiffrés.",
   "security.unlocked_desc": "Les identifiants sont actuellement accessibles.",

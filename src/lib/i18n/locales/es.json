@@ -1,4 +1,6 @@
 {
+  "settings.compact_layout": "Diseño compacto",
+  "settings.compact_layout_desc": "Filas más ajustadas, con el nombre y la dirección de la sesión en una línea, para que quepan más en pantalla. El texto mantiene su tamaño.",
   "sidebar.resize": "Cambiar el ancho de la barra lateral",
   "security.locked_desc": "Las credenciales están bloqueadas y cifradas.",
   "security.unlocked_desc": "Las credenciales están accesibles ahora.",

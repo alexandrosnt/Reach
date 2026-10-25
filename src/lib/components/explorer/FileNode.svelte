@@ -221,4 +221,10 @@
 		background: var(--color-surface-active);
 		color: var(--color-accent, var(--color-accent));
 	}
+
+	/* Compact layout: shorter rows, the same text. */
+	:global(html.compact) .file-node {
+		padding-top: 3px;
+		padding-bottom: 3px;
+	}
 </style>

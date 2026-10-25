@@ -13,6 +13,8 @@ export interface Settings {
 	/** The whole interface's size on a desktop, as a browser's zoom: 1 is 100%.
 	 *  See $lib/state/ui-zoom. */
 	uiZoom: number;
+	/** Tighter rows (a session on one line): space over air. Text stays its size. */
+	compactLayout: boolean;
 	fontFamily: string;
 	defaultShell: string;
 	openLastSession: boolean;
@@ -114,6 +116,7 @@ const defaults: Settings = {
 	themeId: undefined,
 	fontSize: 14,
 	uiZoom: 1,
+	compactLayout: false,
 	fontFamily: 'monospace',
 	defaultShell: '/bin/bash',
 	openLastSession: false,
@@ -205,6 +208,7 @@ export function loadSettings(): void {
 			settings.theme = parsed.theme ?? defaults.theme;
 			settings.fontSize = parsed.fontSize ?? defaults.fontSize;
 			settings.uiZoom = parsed.uiZoom ?? defaults.uiZoom;
+			settings.compactLayout = parsed.compactLayout ?? defaults.compactLayout;
 			settings.fontFamily = parsed.fontFamily ?? defaults.fontFamily;
 			settings.defaultShell = parsed.defaultShell ?? defaults.defaultShell;
 			settings.openLastSession = parsed.openLastSession ?? defaults.openLastSession;
