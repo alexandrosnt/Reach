@@ -31,6 +31,12 @@
 	const isEditorWindow = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('editor');
 	const settings = getSettings();
 
+	// Compact layout (Settings > Appearance): one class on the page that the
+	// rows read, so it applies the moment it is switched.
+	$effect(() => {
+		document.documentElement.classList.toggle('compact', settings.compactLayout);
+	});
+
 	onMount(() => {
 		loadSettings();
 		// The interface size chosen last time, before anything is laid out.

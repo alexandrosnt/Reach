@@ -1,19 +1,15 @@
-A command palette, a start screen, tab groups and SOCKS tunnels.
+Folder uploads, connection steps and a compact layout.
 
-- Ctrl+Shift+P reaches any session, tab, page, snippet or action.
-- With no tab open, a start screen: type user@host, pick a recent
-  session, or open a local shell.
-- Tab groups, named and coloured, that fold away.
-- Ctrl+= / Ctrl+- / Ctrl+0 size the whole window on a desktop.
-- A dropped SSH connection shows on its tab and in the bottom bar, and
-  the status bar folds into the session's stats bar: more room for the
-  terminal.
-- The Tunnels panel's SOCKS (dynamic) tunnels work.
-- With no master password set, Reach asks for one in a window that
-  sets it.
-- Databases, Kubernetes and OpenTofu ask in Reach's own dialog, with
-  the focus on Cancel.
-- Fits any phone, text size and orientation; a calmer, more consistent
-  interface; translated everywhere.
+- Drop a folder on the file explorer and it uploads with everything in
+  it (contributed by @qwerin).
+- Connecting shows its steps ticking off, and the step that broke in
+  red when it fails.
+- Settings → Appearance → Compact layout fits more sessions and files
+  on the screen.
+- Session rows line up, with tags beside the name.
+- Sidebar sections fade into each other; its edge works with a pen,
+  touch and the keyboard.
+- The file explorer shows the rows coming while a folder loads.
+- Sentence-case labels throughout; Russian translated in full.
 
 Full details: https://github.com/alexandrosnt/Reach/blob/main/CHANGELOG.md

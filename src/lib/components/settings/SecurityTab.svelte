@@ -191,11 +191,7 @@
 		<div class="setting-info">
 			<span class="setting-label">{t('security.lock_status')}</span>
 			<span class="setting-description">
-				{#if locked}
-					Credentials are locked and encrypted
-				{:else}
-					Credentials are currently accessible
-				{/if}
+				{locked ? t('security.locked_desc') : t('security.unlocked_desc')}
 			</span>
 		</div>
 		<div class="setting-control">
