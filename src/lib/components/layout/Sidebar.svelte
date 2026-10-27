@@ -118,6 +118,12 @@
 		}
 	}
 
+	/** The panel carries its view-transition-name only while it fades: the
+	 *  name makes it a stacking context, and a dialog opened from the panel
+	 *  (New session, Connect) is drawn inside it, so with the name always on
+	 *  the dialog sat under the terminal and the start screen (#137-#139). */
+	let fading = $state(false);
+
 	/** One panel fades into the next (the browser's view transition, scoped
 	 *  to the panel in app.css) instead of being swapped in a single frame.
 	 *  Without the API, or with less motion asked for, it is the plain swap. */
@@ -126,9 +132,15 @@
 			activeSection = sectionId;
 			return;
 		}
-		document.startViewTransition(() => {
+		// Named before the old panel is captured, unnamed once the fade is over.
+		fading = true;
+		flushSync();
+		const transition = document.startViewTransition(() => {
 			activeSection = sectionId;
 			flushSync();
+		});
+		void transition.finished.finally(() => {
+			fading = false;
 		});
 	}
 
@@ -234,7 +246,7 @@
 		<div class="section-header">
 			{sections.find((s) => s.id === activeSection)?.label ?? ''}
 		</div>
-		<div class="section-body">
+		<div class="section-body" class:fading>
 			{#if activeSection === 'sessions'}
 				<SessionList />
 			{:else if activeSection === 'explorer'}
@@ -458,7 +470,11 @@
 		flex: 1;
 		overflow-y: auto;
 		padding: 2px 6px;
-		/* What fades when the section changes (switchSection, app.css). */
+	}
+
+	/* What fades when the section changes (switchSection, app.css); only
+	   while it does, since the name makes the panel a stacking context. */
+	.section-body.fading {
 		view-transition-name: sidebar-panel;
 	}
 

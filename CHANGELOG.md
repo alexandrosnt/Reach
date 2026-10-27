@@ -2,6 +2,9 @@
 
 All notable changes to Reach are documented here.
 
+## v0.8.5
+- **Dialogs show on top again** — In 0.8.4, a dialog opened from the sidebar (New session, Quick Connect, Connect, Edit, Import, the file explorer's) opened under the terminal or the start screen, where it could be neither seen nor clicked. The sidebar's new fade between sections kept the panel drawn in a layer of its own all the time, and every dialog inside it stayed in that layer; the panel now takes that layer only for the moment it fades. Reported by @AliceT8d (#137, #138) and @ZZZank (#139).
+
 ## v0.8.4
 - **Folders upload** — Dropping a folder on the file explorer failed with *Upload failed*: only files could be dropped. A folder now uploads with everything in it, its subfolders made on the server with `mkdir -p` and its files sent the way a single file is, as one transfer with one progress bar. The server needs nothing new. A link to a file is sent as that file; a link to a folder, or to nothing, is left out. A folder already on the server is merged into, and its files of the same name replaced, as a single file already is. Contributed by @qwerin (#134).
 - **Connecting shows its steps** — The connect dialog and Quick Connect tick off where a connection has got to: reaching the server, agreeing on encryption, checking who the server is, logging in, opening the shell. If it fails, the step that broke is marked in red, so a closed port, a changed host key and a wrong password no longer look the same.
