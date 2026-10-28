@@ -3,7 +3,7 @@
  *
  * Two rules, both inherited from the MCP server:
  *
- * 1. Off means no code runs. `$lib/share/peer` and everything under it is
+ * 1. Off means no code runs. `#lib/share/peer.js` and everything under it is
  *    reached only by the dynamic import in `makePeer`, which runs only when
  *    the user starts or joins a share. Vite splits that import into its own
  *    chunk, so a user who never touches sharing never downloads it either.
@@ -20,14 +20,14 @@
  */
 
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-import * as ipc from '$lib/ipc/share';
-import type { IceServer, ShareConfig } from '$lib/ipc/share';
-import type { Message, Mode } from '$lib/share/protocol';
-import type { PeerState, ShareFailure, SharePeer } from '$lib/share/peer';
-import { sshSend } from '$lib/ipc/ssh';
-import { ptyWrite } from '$lib/ipc/pty';
-import { getTabs, type Tab } from '$lib/state/tabs.svelte';
-import { readTerminalSize } from '$lib/state/terminal-buffer.svelte';
+import * as ipc from '#lib/ipc/share.js';
+import type { IceServer, ShareConfig } from '#lib/ipc/share.js';
+import type { Message, Mode } from '#lib/share/protocol.js';
+import type { PeerState, ShareFailure, SharePeer } from '#lib/share/peer.js';
+import { sshSend } from '#lib/ipc/ssh.js';
+import { ptyWrite } from '#lib/ipc/pty.js';
+import { getTabs, type Tab } from '#lib/state/tabs.svelte.js';
+import { readTerminalSize } from '#lib/state/terminal-buffer.svelte.js';
 
 export type Role = 'host' | 'guest';
 
@@ -146,7 +146,7 @@ export async function resetIceServers(): Promise<void> {
 
 async function makePeer(role: Role): Promise<SharePeer> {
 	// The only place the sharing code is loaded from. See the module doc.
-	const { SharePeer } = await import('$lib/share/peer');
+	const { SharePeer } = await import('#lib/share/peer.js');
 	return new SharePeer(config.iceServers, role, {
 		onstate: onPeerState,
 		onmessage: onPeerMessage,

@@ -1,11 +1,11 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
-import type { MouseAction, RdpStatus } from '$lib/ipc/rdp';
-import type { SecretRef } from '$lib/ipc/pwmanager';
+import type { MouseAction, RdpStatus } from '#lib/ipc/rdp.js';
+import type { SecretRef } from '#lib/ipc/pwmanager.js';
 
 /**
  * Remote desktop over VNC. The backend sends frames in the RDP wire format
  * (see src-tauri/src/vnc), so the same panel paints both; only the commands
- * differ. Keys go as X11 keysyms; see `$lib/vnc/keysym`.
+ * differ. Keys go as X11 keysyms; see `#lib/vnc/keysym.js`.
  */
 
 export interface VncConnectParams {

@@ -108,7 +108,7 @@
  * which is what CI runs and what should be believed over the other.
  */
 
-import { isWebKit } from '$lib/platform';
+import { isWebKit } from '#lib/platform.js';
 
 /**
  * Keys that are only a modifier. Pressing one produces no character, ever.

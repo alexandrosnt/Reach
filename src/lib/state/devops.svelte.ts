@@ -11,14 +11,14 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
-import { getSettings, updateSetting } from '$lib/state/settings.svelte';
-import { getActivePage, setActivePage, type Page } from '$lib/state/navigation.svelte';
-import { isCommandRunning as isAnsibleRunning } from '$lib/state/ansible.svelte';
-import { isCommandRunning as isTofuRunning } from '$lib/state/tofu.svelte';
-import { isAnyBusy as isDbBusy } from '$lib/state/db.svelte';
-import { isBusy as isContainersBusy } from '$lib/state/containers.svelte';
-import { isBusy as isK8sBusy } from '$lib/state/k8s.svelte';
-import { t } from '$lib/state/i18n.svelte';
+import { getSettings, updateSetting } from '#lib/state/settings.svelte.js';
+import { getActivePage, setActivePage, type Page } from '#lib/state/navigation.svelte.js';
+import { isCommandRunning as isAnsibleRunning } from '#lib/state/ansible.svelte.js';
+import { isCommandRunning as isTofuRunning } from '#lib/state/tofu.svelte.js';
+import { isAnyBusy as isDbBusy } from '#lib/state/db.svelte.js';
+import { isBusy as isContainersBusy } from '#lib/state/containers.svelte.js';
+import { isBusy as isK8sBusy } from '#lib/state/k8s.svelte.js';
+import { t } from '#lib/state/i18n.svelte.js';
 
 export type DevopsToolId = 'ansible' | 'tofu' | 'databases' | 'containers' | 'kubernetes';
 

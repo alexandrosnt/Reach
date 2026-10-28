@@ -12,9 +12,9 @@
 	 * input style passes it as the `input` snippet, bound to the same value.
 	 */
 	import { onMount, type Snippet } from 'svelte';
-	import Input from '$lib/components/shared/Input.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
 	import SecretRefPicker from './SecretRefPicker.svelte';
-	import type { EntrySummary, ProviderStatus, SecretRef } from '$lib/ipc/pwmanager';
+	import type { EntrySummary, ProviderStatus, SecretRef } from '#lib/ipc/pwmanager.js';
 	import {
 		ensurePwManagers,
 		providerName,
@@ -23,8 +23,8 @@
 		pwManagerStatusError,
 		refreshPwManagers,
 		usableProviders
-	} from '$lib/state/pwmanager.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	} from '#lib/state/pwmanager.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		/** The typed secret. Cleared when a reference is picked. */

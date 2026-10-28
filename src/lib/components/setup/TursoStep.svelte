@@ -1,8 +1,8 @@
 <script lang="ts">
-	import Button from '$lib/components/shared/Button.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { updateSetting } from '$lib/state/settings.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { updateSetting } from '#lib/state/settings.svelte.js';
 
 	interface Props {
 		onNext: () => void;

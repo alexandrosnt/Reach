@@ -354,18 +354,17 @@ pub fn pid_file(operation_id: &str) -> String {
 
 /// Wrap a command so it can be stopped later.
 ///
-/// The shell records its own process id and then `exec`s the tool, which
-/// replaces the shell rather than forking, so the recorded id belongs to the
-/// tool itself. Killing it therefore kills the work, not a parent that would
-/// leave the tool running.
+/// The shell records its own process id and then `exec`s a shell running the
+/// whole command, which keeps that id. Cancelling kills the process group, so
+/// the tool and anything it starts (tar's compressor) go with it. The command
+/// is not split at its first `&&` to `exec` the tool alone: extracting runs
+/// `mkdir` first, and an `exec` of that ended the shell before the tool ran,
+/// leaving an empty folder and reporting success.
 pub fn make_cancellable(command: &str, operation_id: &str) -> String {
     let pid = pid_file(operation_id);
     // The pid file path is a shell word containing a parameter expansion, so
     // it is written unquoted on purpose; the id inside it is sanitised above.
-    match command.split_once(" && ") {
-        Some((head, rest)) => format!("{head} && echo $$ > {pid} && exec {rest}"),
-        None => format!("echo $$ > {pid} && exec {command}"),
-    }
+    format!("echo $$ > {pid} && exec sh -c {}", shell_quote(command))
 }
 
 /// Stop a running operation and undo what it produced.
@@ -864,15 +863,87 @@ mod tests {
     }
 
     #[test]
-    fn a_cancellable_command_records_the_tool_not_a_parent_shell() {
+    fn a_cancellable_command_runs_whole_under_the_recorded_pid() {
         let t = tools(&["tar", "gzip", "stdbuf"]);
         let plan = create_command(&t, ArchiveFormat::TarGz, "/srv", &one("d"), "d.tar.gz").unwrap();
         let wrapped = make_cancellable(&plan.command, "archive-1-abc");
-        // exec replaces the shell, so the recorded pid is the tool's own.
-        assert!(wrapped.contains("echo $$ >"), "{wrapped}");
-        assert!(wrapped.contains("&& exec "), "{wrapped}");
-        // The directory change must still happen before anything else.
-        assert!(wrapped.starts_with("cd -- '/srv' &&"), "{wrapped}");
+        // exec keeps the shell's pid, which leads the group cancelling kills.
+        assert!(wrapped.starts_with("echo $$ >"), "{wrapped}");
+        assert!(wrapped.ends_with(&format!("&& exec sh -c {}", shell_quote(&plan.command))), "{wrapped}");
+    }
+
+    /// Cancelling stops the running tool and removes the folder it was
+    /// filling, with the whole command running under the recorded pid.
+    #[cfg(unix)]
+    #[test]
+    fn cancelling_stops_a_running_extract() {
+        use std::os::unix::process::CommandExt;
+        let dir = std::env::temp_dir().join(format!("reach-cancel-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let d = dir.to_str().unwrap();
+        // A stand-in for a long extract: make the folder, then work slowly.
+        let command = in_dir(d, "mkdir -p -- './out' && sleep 30");
+        let mut child = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(make_cancellable(&command, "cancel-test"))
+            .env("TMPDIR", &dir)
+            .process_group(0)
+            .spawn()
+            .unwrap();
+        let pid_file = dir.join("reach-archive-cancel-test.pid");
+        for _ in 0..50 {
+            if dir.join("out").exists() && pid_file.exists() {
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(100));
+        }
+        let started = std::time::Instant::now();
+        let cancelled = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(cancel_command(d, "out", true, "cancel-test"))
+            .env("TMPDIR", &dir)
+            .status()
+            .unwrap();
+        assert!(cancelled.success());
+        let status = child.wait().unwrap();
+        let removed = !dir.join("out").exists();
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(!status.success(), "the work was killed, not finished");
+        assert!(started.elapsed() < std::time::Duration::from_secs(10), "it did not run on to the end");
+        assert!(removed, "the folder it was filling is gone");
+    }
+
+    /// Extracting runs `mkdir` before the tool. Wrapped for cancelling, the
+    /// whole command must still run: an `exec` of the `mkdir` alone left an
+    /// empty folder and reported success.
+    #[cfg(unix)]
+    #[test]
+    fn a_cancellable_extract_fills_the_folder() {
+        let dir = std::env::temp_dir().join(format!("reach-extract-test-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join("src/sub")).unwrap();
+        std::fs::write(dir.join("src/sub/file.txt"), "inside").unwrap();
+        let made = std::process::Command::new("tar")
+            .args(["-czf", "it's mine.tar.gz", "-C", "src", "sub"])
+            .current_dir(&dir)
+            .status()
+            .unwrap();
+        assert!(made.success());
+
+        let t = tools(&["tar", "gzip"]);
+        let d = dir.to_str().unwrap();
+        let plan = extract_command(&t, d, "it's mine.tar.gz", "it's mine").unwrap();
+        let ran = std::process::Command::new("sh")
+            .arg("-c")
+            .arg(make_cancellable(&plan.command, "extract-test"))
+            .env("TMPDIR", &dir)
+            .status()
+            .unwrap();
+        assert!(ran.success());
+        let got = std::fs::read_to_string(dir.join("it's mine/sub/file.txt"));
+        let _ = std::fs::remove_dir_all(&dir);
+        assert_eq!(got.unwrap(), "inside");
     }
 
     #[test]

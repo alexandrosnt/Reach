@@ -7,8 +7,8 @@
  * needs it, and again after Settings → Password managers saves.
  */
 
-import { pwmanagerStatus, type ProviderStatus } from '$lib/ipc/pwmanager';
-import { t } from '$lib/state/i18n.svelte';
+import { pwmanagerStatus, type ProviderStatus } from '#lib/ipc/pwmanager.js';
+import { t } from '#lib/state/i18n.svelte.js';
 
 let providers = $state<ProviderStatus[]>([]);
 let loaded = $state(false);

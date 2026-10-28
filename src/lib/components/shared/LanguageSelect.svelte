@@ -14,9 +14,9 @@
 	 * change a component every other settings panel depends on.
 	 */
 	import FlagIcon from './FlagIcon.svelte';
-	import { LANGUAGES, findLanguage } from '$lib/i18n/languages';
-	import { t } from '$lib/state/i18n.svelte';
-	import { matchesQuery } from '$lib/utils/search';
+	import { LANGUAGES, findLanguage } from '#lib/i18n/languages.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { matchesQuery } from '#lib/utils/search.js';
 
 	interface Props {
 		/** Locale code. */

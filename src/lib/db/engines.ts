@@ -4,7 +4,7 @@
  * the engine has; the Type field accepts anything typed into it.
  */
 
-import type { Engine } from '$lib/ipc/db';
+import type { Engine } from '#lib/ipc/db.js';
 
 export interface EngineInfo {
 	id: Engine;

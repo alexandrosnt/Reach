@@ -8,16 +8,16 @@
 	 * every prompt and check a click on the session would have still applies.
 	 */
 	import { tick } from 'svelte';
-	import { isPaletteOpen, closePalette, requestSessionAction, requestTerminalFocus } from '$lib/state/palette.svelte';
-	import { getTabs, activateTab, createTab } from '$lib/state/tabs.svelte';
-	import { getSnippets, loadSnippets, pasteSnippet, canPasteSnippet } from '$lib/state/snippets.svelte';
-	import { getActivePage, setActivePage } from '$lib/state/navigation.svelte';
-	import { getEnabledDevopsTools } from '$lib/state/devops.svelte';
-	import { openSettings, shortcutLabel } from '$lib/state/shortcuts.svelte';
-	import { lock, vaultState } from '$lib/state/vault.svelte';
-	import { sessionList, type SessionConfig } from '$lib/ipc/sessions';
-	import { t } from '$lib/state/i18n.svelte';
-	import { sessionAddress } from '$lib/utils/address';
+	import { isPaletteOpen, closePalette, requestSessionAction, requestTerminalFocus } from '#lib/state/palette.svelte.js';
+	import { getTabs, activateTab, createTab } from '#lib/state/tabs.svelte.js';
+	import { getSnippets, loadSnippets, pasteSnippet, canPasteSnippet } from '#lib/state/snippets.svelte.js';
+	import { getActivePage, setActivePage } from '#lib/state/navigation.svelte.js';
+	import { getEnabledDevopsTools } from '#lib/state/devops.svelte.js';
+	import { openSettings, shortcutLabel } from '#lib/state/shortcuts.svelte.js';
+	import { lock, vaultState } from '#lib/state/vault.svelte.js';
+	import { sessionList, type SessionConfig } from '#lib/ipc/sessions.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { sessionAddress } from '#lib/utils/address.js';
 
 	interface Item {
 		id: string;

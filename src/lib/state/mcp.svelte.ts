@@ -5,8 +5,8 @@
  * on whether a listener exists, what the token is, and which sessions are
  * shared. Every mutation goes through IPC and the reply replaces this.
  */
-import * as mcpIpc from '$lib/ipc/mcp';
-import type { AgentSummary, McpMode, McpStatus } from '$lib/ipc/mcp';
+import * as mcpIpc from '#lib/ipc/mcp.js';
+import type { AgentSummary, McpMode, McpStatus } from '#lib/ipc/mcp.js';
 
 const EMPTY: McpStatus = {
 	enabled: false,

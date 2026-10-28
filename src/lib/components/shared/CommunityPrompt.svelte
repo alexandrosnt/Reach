@@ -15,13 +15,13 @@
 	import Modal from './Modal.svelte';
 	import Button from './Button.svelte';
 	import DiscordIcon from './DiscordIcon.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { COMMUNITY } from '$lib/data/community';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { COMMUNITY } from '#lib/data/community.js';
 	import {
 		shouldShowCommunityPrompt,
 		snoozeCommunityPrompt,
 		dismissCommunityPrompt
-	} from '$lib/state/settings.svelte';
+	} from '#lib/state/settings.svelte.js';
 
 	let open = $state(false);
 	let neverAgain = $state(false);

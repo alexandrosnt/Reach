@@ -8,21 +8,21 @@
 	 * the script runs until the answer is yes.
 	 */
 	import { onMount, untrack } from 'svelte';
-	import { shortcutLabel } from '$lib/state/shortcuts.svelte';
+	import { shortcutLabel } from '#lib/state/shortcuts.svelte.js';
 	import { save as saveDialog } from '@tauri-apps/plugin-dialog';
-	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	import FaIcon from '#lib/components/shared/FaIcon.svelte';
 	import { faPlay, faForwardFast, faStop, faDiagramProject, faWandMagicSparkles, faClockRotateLeft, faFileExport, faLightbulb } from '@fortawesome/free-solid-svg-icons';
 	import SqlEditor, { type EditorApi } from './SqlEditor.svelte';
 	import DataGrid from './DataGrid.svelte';
 	import SqlReviewDialog from './SqlReviewDialog.svelte';
 	import DbMenu, { type MenuItem } from './DbMenu.svelte';
-	import * as db from '$lib/ipc/db';
-	import type { ResultSet, Statement } from '$lib/ipc/db';
-	import * as st from '$lib/state/db.svelte';
-	import { engineInfo } from '$lib/db/engines';
-	import { openAIPanel, sendMessage } from '$lib/state/ai-chat.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import * as db from '#lib/ipc/db.js';
+	import type { ResultSet, Statement } from '#lib/ipc/db.js';
+	import * as st from '#lib/state/db.svelte.js';
+	import { engineInfo } from '#lib/db/engines.js';
+	import { openAIPanel, sendMessage } from '#lib/state/ai-chat.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		tab: Extract<st.DbTab, { kind: 'query' }>;

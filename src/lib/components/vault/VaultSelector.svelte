@@ -10,10 +10,10 @@
 		saveVaultFilter,
 		type VaultFilter,
 		type VaultInfo
-	} from '$lib/state/vault.svelte';
-	import { inviteMember, listMembers, removeMember, type MemberInfo, type InviteInfo } from '$lib/ipc/vault';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	} from '#lib/state/vault.svelte.js';
+	import { inviteMember, listMembers, removeMember, type MemberInfo, type InviteInfo } from '#lib/ipc/vault.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		onvaultselect?: (filter: VaultFilter) => void;

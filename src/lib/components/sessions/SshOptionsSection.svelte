@@ -4,9 +4,9 @@
 	 * ~/.ssh/config, a few common ones a click away, the file the session
 	 * came from, and what Reach makes of all of it, checked as you type.
 	 */
-	import { sshOptionsReport, sshconfigScan, weakeningKey, type SshConfigReport } from '$lib/ipc/sshconfig';
-	import type { SshOptions } from '$lib/ipc/sessions';
-	import { t } from '$lib/state/i18n.svelte';
+	import { sshOptionsReport, sshconfigScan, weakeningKey, type SshConfigReport } from '#lib/ipc/sshconfig.js';
+	import type { SshOptions } from '#lib/ipc/sessions.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import SshOptionsReport from './SshOptionsReport.svelte';
 	import { untrack } from 'svelte';
 

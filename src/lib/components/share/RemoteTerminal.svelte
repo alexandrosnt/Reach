@@ -15,11 +15,11 @@
 	import { Terminal } from '@xterm/xterm';
 	import { Unicode11Addon } from '@xterm/addon-unicode11';
 	import '@xterm/xterm/css/xterm.css';
-	import { themeState } from '$lib/state/theme.svelte';
-	import { getSettings } from '$lib/state/settings.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import * as share from '$lib/state/share.svelte';
-	import { installWebkitInputFix } from '$lib/terminal/webkit-input-fix';
+	import { themeState } from '#lib/state/theme.svelte.js';
+	import { getSettings } from '#lib/state/settings.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import * as share from '#lib/state/share.svelte.js';
+	import { installWebkitInputFix } from '#lib/terminal/webkit-input-fix.js';
 
 	let container: HTMLDivElement | undefined = $state();
 	let term: Terminal | undefined;

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { PluginUiState } from '$lib/ipc/plugin';
+	import type { PluginUiState } from '#lib/ipc/plugin.js';
 	import PluginUIElement from './PluginUIElement.svelte';
 
 	interface Props {

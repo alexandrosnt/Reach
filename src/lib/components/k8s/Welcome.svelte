@@ -1,8 +1,8 @@
 <script lang="ts">
 	/** No cluster yet: what this page does, one button, and where kubeconfigs live. */
-	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	import FaIcon from '#lib/components/shared/FaIcon.svelte';
 	import { faAnchor, faPlus } from '@fortawesome/free-solid-svg-icons';
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	let { onadd }: { onadd: () => void } = $props();
 </script>

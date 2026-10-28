@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { SessionConfig } from '$lib/ipc/sessions';
-	import type { VaultInfo } from '$lib/state/vault.svelte';
+	import type { SessionConfig } from '#lib/ipc/sessions.js';
+	import type { VaultInfo } from '#lib/state/vault.svelte.js';
 	import DistroIcon from './DistroIcon.svelte';
-	import { getDistroIcon } from '$lib/data/distro-icons';
-	import { t } from '$lib/state/i18n.svelte';
-	import { sessionAddress } from '$lib/utils/address';
-	import { isWindows } from '$lib/platform';
+	import { getDistroIcon } from '#lib/data/distro-icons.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { sessionAddress } from '#lib/utils/address.js';
+	import { isWindows } from '#lib/platform.js';
 
 	interface Props {
 		session: SessionConfig;

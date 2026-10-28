@@ -1,9 +1,9 @@
 <script lang="ts">
 	import PluginUIRenderer from './PluginUIRenderer.svelte';
-	import { pluginGetUi, pluginCallAction, type PluginUiState } from '$lib/ipc/plugin';
-	import { getPluginUiStates, setPluginUiState } from '$lib/state/plugin.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { pluginGetUi, pluginCallAction, type PluginUiState } from '#lib/ipc/plugin.js';
+	import { getPluginUiStates, setPluginUiState } from '#lib/state/plugin.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { untrack } from 'svelte';
 

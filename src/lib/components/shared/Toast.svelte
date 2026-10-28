@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { getToasts, dismissToast, type ToastType } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { getToasts, dismissToast, type ToastType } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	let toasts = $derived(getToasts());
 

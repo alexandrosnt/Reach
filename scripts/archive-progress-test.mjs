@@ -11,7 +11,7 @@ import {
 	createProgressCounter,
 	isMeasurable,
 	percentOf
-} from '$lib/explorer/archive-progress';
+} from '#lib/explorer/archive-progress.js';
 
 let failures = 0;
 const check = (name, cond, extra = '') => {

@@ -8,12 +8,12 @@
 	 * method (Windows Hello, Touch ID, a security key), never by one click: the backend
 	 * refuses that too.
 	 */
-	import Button from '$lib/components/shared/Button.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import { hasMasterPassword } from '$lib/ipc/credentials';
-	import { unlockMethods, type UnlockMethods } from '$lib/ipc/vault';
-	import { t } from '$lib/state/i18n.svelte';
-	import { biometricName, resume, unlock, vaultState } from '$lib/state/vault.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
+	import { hasMasterPassword } from '#lib/ipc/credentials.js';
+	import { unlockMethods, type UnlockMethods } from '#lib/ipc/vault.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { biometricName, resume, unlock, vaultState } from '#lib/state/vault.svelte.js';
 
 	type View = 'choose' | 'password' | 'key-pin';
 

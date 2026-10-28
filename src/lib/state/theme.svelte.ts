@@ -1,4 +1,4 @@
-import { themeListInstalled } from '$lib/ipc/theme';
+import { themeListInstalled } from '#lib/ipc/theme.js';
 
 /**
  * Theme engine.

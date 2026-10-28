@@ -11,14 +11,14 @@
 	you try to keep your work.
 -->
 <script lang="ts">
-	import CodeEditor from '$lib/components/editor/CodeEditor.svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import CodeEditor from '#lib/components/editor/CodeEditor.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 	import DangerBadge from './DangerBadge.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { recipePreview, type Recipe } from '$lib/ipc/recipes';
-	import { saveRecipe } from '$lib/state/recipes.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { recipePreview, type Recipe } from '#lib/ipc/recipes.js';
+	import { saveRecipe } from '#lib/state/recipes.svelte.js';
 
 	interface Props {
 		/** The file to edit. A new recipe arrives here as a filled-in template. */

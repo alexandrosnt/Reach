@@ -4,8 +4,8 @@
 		removeTransfer,
 		clearCompleted,
 		type Transfer
-	} from '$lib/state/transfers.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	} from '#lib/state/transfers.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	let transfers = $derived(getTransfers());
 	let hasCompleted = $derived(transfers.some((t) => t.status !== 'uploading'));

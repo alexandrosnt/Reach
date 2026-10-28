@@ -2,7 +2,7 @@ import { check } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { invoke } from '@tauri-apps/api/core';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { isMobile } from '$lib/platform';
+import { isMobile } from '#lib/platform.js';
 
 /** A phone: Tauri's updater does not run there. Reach checks the same feed
  *  (app_update_check) and links to the release's APK; Android's installer

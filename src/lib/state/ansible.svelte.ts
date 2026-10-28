@@ -4,10 +4,10 @@ import type {
 	AnsibleCollection,
 	AnsibleInventoryHost,
 	AnsibleInventoryGroup
-} from '$lib/ipc/ansible';
-import { ansibleEngines, ansibleRemoteEngine, type AnsibleEngineInfo } from '$lib/ipc/ansible';
-import { splitLines } from '$lib/tofu/ui-json';
-import { parseAnsibleLine, applyAnsibleEvent, emptyAnsibleRun, type AnsibleRunView } from '$lib/ansible/recap';
+} from '#lib/ipc/ansible.js';
+import { ansibleEngines, ansibleRemoteEngine, type AnsibleEngineInfo } from '#lib/ipc/ansible.js';
+import { splitLines } from '#lib/tofu/ui-json.js';
+import { parseAnsibleLine, applyAnsibleEvent, emptyAnsibleRun, type AnsibleRunView } from '#lib/ansible/recap.js';
 import {
 	ansibleListProjects,
 	ansibleCreateProject,
@@ -23,8 +23,8 @@ import {
 	type AnsibleCommandRequest,
 	type AnsibleCommandEvent,
 	type AnsibleExecutionTarget
-} from '$lib/ipc/ansible';
-import { toolchainCheck, type ToolStatus } from '$lib/ipc/toolchain';
+} from '#lib/ipc/ansible.js';
+import { toolchainCheck, type ToolStatus } from '#lib/ipc/toolchain.js';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 
 // --- State ---

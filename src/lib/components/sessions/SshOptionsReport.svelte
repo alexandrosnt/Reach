@@ -4,8 +4,8 @@
 	 * what waits for the user's approval (weaker settings, local commands),
 	 * what Reach cannot act on yet, and errors. Nothing is left unsaid.
 	 */
-	import { weakeningKey, type ReportLine, type SshConfigReport } from '$lib/ipc/sshconfig';
-	import { t } from '$lib/state/i18n.svelte';
+	import { weakeningKey, type ReportLine, type SshConfigReport } from '#lib/ipc/sshconfig.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		report: SshConfigReport;

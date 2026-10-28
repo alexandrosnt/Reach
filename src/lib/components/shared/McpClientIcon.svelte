@@ -10,7 +10,7 @@
 	 * Pure-black marks are lightened, because several are `#000000` and would
 	 * disappear against a dark theme.
 	 */
-	import { clientIcons } from '$lib/data/mcp-client-icons';
+	import { clientIcons } from '#lib/data/mcp-client-icons.js';
 
 	let { slug, size = 20 }: { slug: string; size?: number } = $props();
 

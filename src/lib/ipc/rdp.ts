@@ -1,5 +1,5 @@
 import { Channel, invoke } from '@tauri-apps/api/core';
-import type { SecretRef } from '$lib/ipc/pwmanager';
+import type { SecretRef } from '#lib/ipc/pwmanager.js';
 
 /**
  * Remote desktop over RDP.

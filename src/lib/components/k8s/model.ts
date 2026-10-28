@@ -4,10 +4,10 @@
  * the lists and the "Problems only" switch all agree.
  */
 
-import type { Kind, PodRow, WorkloadRow, ObjectRow, EventRow, Revision } from '$lib/ipc/k8s';
-import type { Environment } from '$lib/ipc/containers';
-import { podStatus, type Status } from '$lib/devops/status';
-import { t } from '$lib/state/i18n.svelte';
+import type { Kind, PodRow, WorkloadRow, ObjectRow, EventRow, Revision } from '#lib/ipc/k8s.js';
+import type { Environment } from '#lib/ipc/containers.js';
+import { podStatus, type Status } from '#lib/devops/status.js';
+import { t } from '#lib/state/i18n.svelte.js';
 
 /** The open cluster, as every view needs it. */
 export interface Ctx {

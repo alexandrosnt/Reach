@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		checkTool,
 		getToolStatus,
@@ -10,7 +10,7 @@
 		hasLocalEngine,
 		isSetupSkipped,
 		getActiveProjectId
-	} from '$lib/state/ansible.svelte';
+	} from '#lib/state/ansible.svelte.js';
 	import AnsibleToolchainSetup from './AnsibleToolchainSetup.svelte';
 	import AnsibleProjectList from './AnsibleProjectList.svelte';
 	import AnsibleWorkspace from './AnsibleWorkspace.svelte';

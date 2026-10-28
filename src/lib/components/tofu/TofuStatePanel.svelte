@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { ask } from '$lib/state/ask.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { ask } from '#lib/state/ask.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getStateResources,
 		isStateLoading,
@@ -11,9 +11,9 @@
 		stateMoveResource,
 		stateImportResource,
 		isCommandRunning
-	} from '$lib/state/tofu.svelte';
-	import type { TofuExecutionTarget } from '$lib/ipc/tofu';
-	import Button from '$lib/components/shared/Button.svelte';
+	} from '#lib/state/tofu.svelte.js';
+	import type { TofuExecutionTarget } from '#lib/ipc/tofu.js';
+	import Button from '#lib/components/shared/Button.svelte';
 	import TofuStateImportModal from './TofuStateImportModal.svelte';
 
 	interface Props {

@@ -1,23 +1,23 @@
 <script lang="ts">
-	import Button from '$lib/components/shared/Button.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
 	import {
 		hasMasterPassword,
 		setMasterPassword,
 		isLocked as checkIsLocked
-	} from '$lib/ipc/credentials';
-	import { t } from '$lib/state/i18n.svelte';
-	import Dropdown from '$lib/components/shared/Dropdown.svelte';
-	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
-	import { biometricName, biometricPrompt, lock as lockVault } from '$lib/state/vault.svelte';
+	} from '#lib/ipc/credentials.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import Dropdown from '#lib/components/shared/Dropdown.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
+	import { getSettings, updateSetting } from '#lib/state/settings.svelte.js';
+	import { biometricName, biometricPrompt, lock as lockVault } from '#lib/state/vault.svelte.js';
 	import {
 		biometricEnable,
 		securityKeyAdd,
 		unlockMethodRemove,
 		unlockMethods,
 		type UnlockMethods
-	} from '$lib/ipc/vault';
+	} from '#lib/ipc/vault.js';
 
 	const settings = getSettings();
 	const autoLockOptions = $derived([

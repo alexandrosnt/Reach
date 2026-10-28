@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { getDistroIcon } from '$lib/data/distro-icons';
+	import { getDistroIcon } from '#lib/data/distro-icons.js';
 
 	let { osId, size = 16 }: { osId: string | undefined | null; size?: number } = $props();
 

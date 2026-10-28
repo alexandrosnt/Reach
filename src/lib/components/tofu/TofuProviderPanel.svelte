@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import type { TofuExecutionTarget } from '$lib/ipc/tofu';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import type { TofuExecutionTarget } from '#lib/ipc/tofu.js';
 	import {
 		getActiveProviders,
 		getProviderCatalog,
@@ -11,8 +11,8 @@
 		isSchemaLoading,
 		getDynamicSchema,
 		getSchemaError
-	} from '$lib/state/tofu.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	} from '#lib/state/tofu.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
 	import TofuProviderPicker from './TofuProviderPicker.svelte';
 	import TofuProviderConfigModal from './TofuProviderConfigModal.svelte';
 

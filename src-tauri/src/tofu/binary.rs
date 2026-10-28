@@ -353,7 +353,7 @@ fn extract_tofu(bytes: &[u8], is_zip: bool) -> Result<Vec<u8>, String> {
         let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).map_err(|e| e.to_string())?;
         for i in 0..zip.len() {
             let mut f = zip.by_index(i).map_err(|e| e.to_string())?;
-            if f.name() == wanted {
+            if f.name().is_ok_and(|n| n == wanted) {
                 let mut out = Vec::with_capacity(f.size() as usize);
                 f.read_to_end(&mut out).map_err(|e| e.to_string())?;
                 return Ok(out);

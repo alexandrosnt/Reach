@@ -9,14 +9,14 @@
 	click away for the rest.
 -->
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getRunView,
 		getRunExitCode,
 		isCommandRunning,
 		getCommandOutput
-	} from '$lib/state/ansible.svelte';
-	import { taskStatus, type HostResult } from '$lib/ansible/recap';
+	} from '#lib/state/ansible.svelte.js';
+	import { taskStatus, type HostResult } from '#lib/ansible/recap.js';
 	import AnsibleCommandOutput from './AnsibleCommandOutput.svelte';
 
 	let view = $derived(getRunView());

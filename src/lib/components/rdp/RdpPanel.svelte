@@ -42,7 +42,7 @@
 		type MouseAction,
 		type RdpConnectParams,
 		type RdpStatus,
-	} from '$lib/ipc/rdp';
+	} from '#lib/ipc/rdp.js';
 	import {
 		vncAck,
 		vncClipboardSync,
@@ -51,13 +51,13 @@
 		vncMouse,
 		vncResize,
 		type VncConnectParams,
-	} from '$lib/ipc/vnc';
-	import { keysymForChar, keysymForCode, keysymForEvent } from '$lib/vnc/keysym';
-	import { t } from '$lib/state/i18n.svelte';
-	import { untrustedRefsFromError } from '$lib/ipc/sessions';
-	import { getSettings } from '$lib/state/settings.svelte';
-	import { isMobile } from '$lib/platform';
-	import MobileKeyBar, { type BarKey } from '$lib/components/shared/MobileKeyBar.svelte';
+	} from '#lib/ipc/vnc.js';
+	import { keysymForChar, keysymForCode, keysymForEvent } from '#lib/vnc/keysym.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { untrustedRefsFromError } from '#lib/ipc/sessions.js';
+	import { getSettings } from '#lib/state/settings.svelte.js';
+	import { isMobile } from '#lib/platform.js';
+	import MobileKeyBar, { type BarKey } from '#lib/components/shared/MobileKeyBar.svelte';
 
 	interface Props {
 		id: string;

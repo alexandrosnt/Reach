@@ -1,7 +1,7 @@
 <script lang="ts">
-	import Button from '$lib/components/shared/Button.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { getSettings } from '$lib/state/settings.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getSettings } from '#lib/state/settings.svelte.js';
 
 	interface Props {
 		onComplete: () => void;

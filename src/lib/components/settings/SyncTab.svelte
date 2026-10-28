@@ -1,13 +1,13 @@
 <script lang="ts">
-	import Button from '$lib/components/shared/Button.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import { getSettings, saveSettings, exportIdentity } from '$lib/state/vault.svelte';
-	import type { AppSettings } from '$lib/ipc/vault';
-	import { createTursoDatabase, createTursoDatabaseToken, setPersonalSync, acceptInvite } from '$lib/ipc/vault';
-	import { vaultState } from '$lib/state/vault.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { getSettings as getLocalSettings, updateSetting } from '$lib/state/settings.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
+	import { getSettings, saveSettings, exportIdentity } from '#lib/state/vault.svelte.js';
+	import type { AppSettings } from '#lib/ipc/vault.js';
+	import { createTursoDatabase, createTursoDatabaseToken, setPersonalSync, acceptInvite } from '#lib/ipc/vault.js';
+	import { vaultState } from '#lib/state/vault.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getSettings as getLocalSettings, updateSetting } from '#lib/state/settings.svelte.js';
 
 	let loading = $state(true);
 	let saving = $state(false);

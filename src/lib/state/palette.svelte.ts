@@ -9,7 +9,7 @@
  * the request out the way a click on the session would.
  */
 
-import type { TypedAddress } from '$lib/utils/address';
+import type { TypedAddress } from '#lib/utils/address.js';
 
 export type SessionRequest =
 	/** `shell` opens the session with another login shell (a container's). */

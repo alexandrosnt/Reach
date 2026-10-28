@@ -23,10 +23,10 @@ import type {
 	TofuFmtResult,
 	TofuPlanSummary,
 	ProviderSchema
-} from '$lib/ipc/tofu';
-import { parseTofuUiLine, applyTofuUiMessage, emptyRunView, splitLines, type TofuRunView } from '$lib/tofu/ui-json';
-import { tofuBinaryStatus, tofuBinaryInstall, tofuBinaryPin, tofuUpdateEncryption, tofuDiscardPlan, type TofuBinaryStatus, type TofuEncryptionConfig } from '$lib/ipc/tofu';
-import type { ToolInstallEvent } from '$lib/ipc/toolchain';
+} from '#lib/ipc/tofu.js';
+import { parseTofuUiLine, applyTofuUiMessage, emptyRunView, splitLines, type TofuRunView } from '#lib/tofu/ui-json.js';
+import { tofuBinaryStatus, tofuBinaryInstall, tofuBinaryPin, tofuUpdateEncryption, tofuDiscardPlan, type TofuBinaryStatus, type TofuEncryptionConfig } from '#lib/ipc/tofu.js';
+import type { ToolInstallEvent } from '#lib/ipc/toolchain.js';
 import {
 	tofuListProjects,
 	tofuCreateProject,
@@ -65,8 +65,8 @@ import {
 	type TofuCommandRequest,
 	type TofuCommandEvent,
 	type TofuExecutionTarget
-} from '$lib/ipc/tofu';
-import { toolchainCheck, type ToolStatus } from '$lib/ipc/toolchain';
+} from '#lib/ipc/tofu.js';
+import { toolchainCheck, type ToolStatus } from '#lib/ipc/toolchain.js';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 
 // --- State ---

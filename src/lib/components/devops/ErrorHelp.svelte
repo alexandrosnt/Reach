@@ -6,8 +6,8 @@
 	 * searching.
 	 */
 	import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-	import { t } from '$lib/state/i18n.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
 
 	let { error, onretry }: { error: string; onretry?: () => void } = $props();
 

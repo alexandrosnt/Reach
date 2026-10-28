@@ -10,8 +10,8 @@
 	 * cannot follow, and a few hundred rows draw fast enough.
 	 */
 	import { untrack } from 'svelte';
-	import StatusPill from '$lib/components/devops/StatusPill.svelte';
-	import ErrorHelp from '$lib/components/devops/ErrorHelp.svelte';
+	import StatusPill from '#lib/components/devops/StatusPill.svelte';
+	import ErrorHelp from '#lib/components/devops/ErrorHelp.svelte';
 	import EventList from './EventList.svelte';
 	import {
 		k8sEvents,
@@ -25,9 +25,9 @@
 		type PodRow,
 		type Revision,
 		type WorkloadRow
-	} from '$lib/ipc/k8s';
-	import { ago, podStatus, replicaStatus, type Status } from '$lib/devops/status';
-	import { t } from '$lib/state/i18n.svelte';
+	} from '#lib/ipc/k8s.js';
+	import { ago, podStatus, replicaStatus, type Status } from '#lib/devops/status.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		CLUSTER_SCOPED,
 		OBJECT_KIND,

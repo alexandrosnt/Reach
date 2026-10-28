@@ -4,15 +4,15 @@
 	 * here (an address, a session used lately, a local shell), not a single
 	 * button and a sentence in the middle of the window.
 	 */
-	import { createTab } from '$lib/state/tabs.svelte';
-	import { sessionAddress } from '$lib/utils/address';
-	import { requestSessionAction, openPalette } from '$lib/state/palette.svelte';
-	import { recentSessionIds } from '$lib/state/recents.svelte';
-	import { shortcutLabel } from '$lib/state/shortcuts.svelte';
-	import { sessionList, type SessionConfig } from '$lib/ipc/sessions';
-	import { parseAddress } from '$lib/utils/address';
-	import { isMobile } from '$lib/platform';
-	import { t } from '$lib/state/i18n.svelte';
+	import { createTab } from '#lib/state/tabs.svelte.js';
+	import { sessionAddress } from '#lib/utils/address.js';
+	import { requestSessionAction, openPalette } from '#lib/state/palette.svelte.js';
+	import { recentSessionIds } from '#lib/state/recents.svelte.js';
+	import { shortcutLabel } from '#lib/state/shortcuts.svelte.js';
+	import { sessionList, type SessionConfig } from '#lib/ipc/sessions.js';
+	import { parseAddress } from '#lib/utils/address.js';
+	import { isMobile } from '#lib/platform.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	let address = $state('');
 	let sessions = $state<SessionConfig[]>([]);

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
-	import { getActiveLocals, saveLocals } from '$lib/state/tofu.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import type { TofuLocal } from '$lib/ipc/tofu';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getActiveLocals, saveLocals } from '#lib/state/tofu.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import type { TofuLocal } from '#lib/ipc/tofu.js';
 
 	let showModal = $state(false);
 	let editing = $state<TofuLocal | null>(null);

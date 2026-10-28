@@ -5,13 +5,13 @@
 	 * and reads the SQL itself rather than calling pg_dump or mysqldump.
 	 */
 	import { save as saveDialog, open as openDialog } from '@tauri-apps/plugin-dialog';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import * as db from '$lib/ipc/db';
-	import type { JobProgress, JobSummary } from '$lib/ipc/db';
-	import * as st from '$lib/state/db.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
+	import * as db from '#lib/ipc/db.js';
+	import type { JobProgress, JobSummary } from '#lib/ipc/db.js';
+	import * as st from '#lib/state/db.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		mode: 'backup' | 'restore';

@@ -7,7 +7,7 @@
  * are never read. Kept apart from the dialog so it can be tested in Node.
  */
 
-import type { Folder, SessionConfig } from '$lib/ipc/sessions';
+import type { Folder, SessionConfig } from '#lib/ipc/sessions.js';
 
 export interface RdpImportHost {
 	/** Position in the input, unique within one paste. */

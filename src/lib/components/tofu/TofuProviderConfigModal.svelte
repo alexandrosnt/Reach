@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getActiveProviders,
 		getProviderCatalog,
 		updateProviderConfig
-	} from '$lib/state/tofu.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	} from '#lib/state/tofu.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	interface Props {
 		providerId: string;

@@ -10,13 +10,13 @@
 	 * and not at all when it is not.
 	 */
 	import { onMount } from 'svelte';
-	import StatusPill from '$lib/components/devops/StatusPill.svelte';
-	import EnvBadge from '$lib/components/devops/EnvBadge.svelte';
-	import ConfirmAction from '$lib/components/devops/ConfirmAction.svelte';
-	import ErrorHelp from '$lib/components/devops/ErrorHelp.svelte';
-	import HostEditor from '$lib/components/containers/HostEditor.svelte';
-	import ContainerDetail from '$lib/components/containers/ContainerDetail.svelte';
-	import DbMenu, { type MenuItem } from '$lib/components/db/DbMenu.svelte';
+	import StatusPill from '#lib/components/devops/StatusPill.svelte';
+	import EnvBadge from '#lib/components/devops/EnvBadge.svelte';
+	import ConfirmAction from '#lib/components/devops/ConfirmAction.svelte';
+	import ErrorHelp from '#lib/components/devops/ErrorHelp.svelte';
+	import HostEditor from '#lib/components/containers/HostEditor.svelte';
+	import ContainerDetail from '#lib/components/containers/ContainerDetail.svelte';
+	import DbMenu, { type MenuItem } from '#lib/components/db/DbMenu.svelte';
 	import {
 		ctrHosts,
 		ctrOpen,
@@ -37,13 +37,13 @@
 		type Opened,
 		type ContainerAction,
 		type ComposeAction
-	} from '$lib/ipc/containers';
-	import { containerStatus, ago, bytes, type Status } from '$lib/devops/status';
-	import { openContainerShell } from '$lib/devops/shell';
-	import { busy } from '$lib/state/containers.svelte';
-	import { getActivePage } from '$lib/state/navigation.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	} from '#lib/ipc/containers.js';
+	import { containerStatus, ago, bytes, type Status } from '#lib/devops/status.js';
+	import { openContainerShell } from '#lib/devops/shell.js';
+	import { busy } from '#lib/state/containers.svelte.js';
+	import { getActivePage } from '#lib/state/navigation.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	type Section = 'stacks' | 'containers' | 'images' | 'volumes' | 'networks';
 

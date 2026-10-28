@@ -9,16 +9,16 @@
 	 * kubeconfig goes to the backend the same way whether pasted or chosen.
 	 */
 	import { onMount, untrack } from 'svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import ErrorHelp from '$lib/components/devops/ErrorHelp.svelte';
-	import ConfirmAction from '$lib/components/devops/ConfirmAction.svelte';
-	import { k8sClusterDelete, k8sClusterSave, k8sContexts, type ClusterView, type ContextInfo } from '$lib/ipc/k8s';
-	import type { Environment, Route } from '$lib/ipc/containers';
-	import { sessionList, sessionKind, type SessionConfig } from '$lib/ipc/sessions';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
+	import ErrorHelp from '#lib/components/devops/ErrorHelp.svelte';
+	import ConfirmAction from '#lib/components/devops/ConfirmAction.svelte';
+	import { k8sClusterDelete, k8sClusterSave, k8sContexts, type ClusterView, type ContextInfo } from '#lib/ipc/k8s.js';
+	import type { Environment, Route } from '#lib/ipc/containers.js';
+	import { sessionList, sessionKind, type SessionConfig } from '#lib/ipc/sessions.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		open: boolean;

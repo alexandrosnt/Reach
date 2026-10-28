@@ -7,27 +7,27 @@
 	import { Unicode11Addon } from '@xterm/addon-unicode11';
 	import '@xterm/xterm/css/xterm.css';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-	import { ptyWrite, ptyResize } from '$lib/ipc/pty';
-	import { sshSend, sshResize, sshConnect, sshReady, type SshConnectParams } from '$lib/ipc/ssh';
-	import { untrustedRefsFromError } from '$lib/ipc/sessions';
-	import { registerBufferReader, unregisterBufferReader } from '$lib/state/terminal-buffer.svelte';
-	import { themeState } from '$lib/state/theme.svelte';
-	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
-	import { countPasteLines, shouldWarnOnPaste } from '$lib/terminal/paste';
-	import { shouldRearmIme, nudgeCaret, REARM_SETTLE_MS } from '$lib/terminal/ime';
-	import { installWebkitInputFix } from '$lib/terminal/webkit-input-fix';
-	import { isMobile, isWebKit } from '$lib/platform';
+	import { ptyWrite, ptyResize } from '#lib/ipc/pty.js';
+	import { sshSend, sshResize, sshConnect, sshReady, type SshConnectParams } from '#lib/ipc/ssh.js';
+	import { untrustedRefsFromError } from '#lib/ipc/sessions.js';
+	import { registerBufferReader, unregisterBufferReader } from '#lib/state/terminal-buffer.svelte.js';
+	import { themeState } from '#lib/state/theme.svelte.js';
+	import { getSettings, updateSetting } from '#lib/state/settings.svelte.js';
+	import { countPasteLines, shouldWarnOnPaste } from '#lib/terminal/paste.js';
+	import { shouldRearmIme, nudgeCaret, REARM_SETTLE_MS } from '#lib/terminal/ime.js';
+	import { installWebkitInputFix } from '#lib/terminal/webkit-input-fix.js';
+	import { isMobile, isWebKit } from '#lib/platform.js';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { invoke } from '@tauri-apps/api/core';
-	import { trieMatch } from '$lib/state/snippets.svelte';
-	import { terminalFocusRequests } from '$lib/state/palette.svelte';
-	import { setTabLink } from '$lib/state/tabs.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { trieMatch } from '#lib/state/snippets.svelte.js';
+	import { terminalFocusRequests } from '#lib/state/palette.svelte.js';
+	import { setTabLink } from '#lib/state/tabs.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { readText as clipboardReadText, writeText as clipboardWriteText } from '@tauri-apps/plugin-clipboard-manager';
 	import { openUrl } from '@tauri-apps/plugin-opener';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import MobileKeyBar, { type BarKey } from '$lib/components/shared/MobileKeyBar.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import MobileKeyBar, { type BarKey } from '#lib/components/shared/MobileKeyBar.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	interface Props {
 		ptyId: string;
@@ -160,7 +160,7 @@
 	// Pending multiline paste awaiting user confirmation (guards against
 	// accidentally executing pasted multi-line commands). Whether it asks
 	// at all, and from how many lines, is the user's to decide — see
-	// $lib/terminal/paste.
+	// #lib/terminal/paste.
 	let pastePreview = $state<string | null>(null);
 	let dontAskAgain = $state(false);
 	let pasteLineCount = $derived(pastePreview ? countPasteLines(pastePreview) : 0);
@@ -230,7 +230,7 @@
 	 * which goes on using a position it cached in screen coordinates before
 	 * the window moved (issue #49). A resize does not suffer this because it
 	 * re-lays-out. Moving the caret a pixel and putting it back is what makes
-	 * the position be recomputed. See $lib/terminal/ime for what was measured
+	 * the position be recomputed. See #lib/terminal/ime for what was measured
 	 * and ruled out, including the blur-and-focus this replaces.
 	 */
 	function rearmIme(): void {
@@ -266,7 +266,7 @@
 	let unlistenMoved: UnlistenFn | undefined;
 	let unlistenResized: UnlistenFn | undefined;
 	let disposeWebkitInputFix: (() => void) | undefined;
-	/** True between compositionstart and compositionend — see $lib/terminal/ime. */
+	/** True between compositionstart and compositionend — see #lib/terminal/ime. */
 	let composing = false;
 	let rearmTimer: ReturnType<typeof setTimeout> | undefined;
 	let resizeObserver: ResizeObserver | undefined;

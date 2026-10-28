@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
-	import { getProviderCatalog, addProvider, getActiveProviders } from '$lib/state/tofu.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getProviderCatalog, addProvider, getActiveProviders } from '#lib/state/tofu.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	interface Props {
 		onclose: () => void;

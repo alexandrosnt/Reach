@@ -9,11 +9,11 @@
 	 * alone.
 	 */
 	import { onMount } from 'svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import LanguageSelect from '$lib/components/shared/LanguageSelect.svelte';
-	import ThemeSwatch from '$lib/components/shared/ThemeSwatch.svelte';
-	import { t, changeLocale } from '$lib/state/i18n.svelte';
-	import { updateSetting, getSettings } from '$lib/state/settings.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import LanguageSelect from '#lib/components/shared/LanguageSelect.svelte';
+	import ThemeSwatch from '#lib/components/shared/ThemeSwatch.svelte';
+	import { t, changeLocale } from '#lib/state/i18n.svelte.js';
+	import { updateSetting, getSettings } from '#lib/state/settings.svelte.js';
 	import {
 		themeState,
 		applyTheme,
@@ -21,10 +21,10 @@
 		DARK,
 		LIGHT,
 		type Theme
-	} from '$lib/state/theme.svelte';
-	import { themeFetchRegistry, themeInstall, type ThemeEntry } from '$lib/ipc/theme';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { matchesQuery } from '$lib/utils/search';
+	} from '#lib/state/theme.svelte.js';
+	import { themeFetchRegistry, themeInstall, type ThemeEntry } from '#lib/ipc/theme.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { matchesQuery } from '#lib/utils/search.js';
 
 	interface Props {
 		onNext: () => void;

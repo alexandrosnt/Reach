@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { FileEntry } from '$lib/state/explorer.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import type { FileEntry } from '#lib/state/explorer.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		entry: FileEntry;

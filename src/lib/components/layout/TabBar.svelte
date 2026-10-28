@@ -3,15 +3,15 @@
 		getTabs, getActiveTab, createTab, closeTab, activateTab, getSplit, splitWith, unsplit, getDraggedTab, setDraggedTab, type Tab,
 		getGroups, createGroup, addToGroup, removeFromGroup, renameGroup, setGroupColor, toggleGroup, groupHidden, ungroup, closeGroup,
 		GROUP_COLORS, type GroupColor, type TabGroup
-	} from '$lib/state/tabs.svelte';
-	import DbMenu, { type MenuItem } from '$lib/components/db/DbMenu.svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import { getActivePage, setActivePage, type Page } from '$lib/state/navigation.svelte';
-	import { getEnabledDevopsTools } from '$lib/state/devops.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import DistroIcon from '$lib/components/sessions/DistroIcon.svelte';
-	import * as mcp from '$lib/state/mcp.svelte';
+	} from '#lib/state/tabs.svelte.js';
+	import DbMenu, { type MenuItem } from '#lib/components/db/DbMenu.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import { getActivePage, setActivePage, type Page } from '#lib/state/navigation.svelte.js';
+	import { getEnabledDevopsTools } from '#lib/state/devops.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import DistroIcon from '#lib/components/sessions/DistroIcon.svelte';
+	import * as mcp from '#lib/state/mcp.svelte.js';
 	import { onMount } from 'svelte';
 
 	let mcpStatus = $derived(mcp.getMcpStatus());

@@ -5,12 +5,12 @@
 		tunnelStop,
 		tunnelList,
 		type TunnelConfig
-	} from '$lib/ipc/tunnel';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	} from '#lib/ipc/tunnel.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import TunnelCard from './TunnelCard.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 	import { untrack } from 'svelte';
 
 	interface Props {

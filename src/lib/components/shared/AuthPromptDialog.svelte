@@ -8,10 +8,10 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { invoke } from '@tauri-apps/api/core';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { addToast, dismissToast } from '$lib/state/toasts.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { addToast, dismissToast } from '#lib/state/toasts.svelte.js';
 
 	interface AuthPrompt {
 		promptId: string;

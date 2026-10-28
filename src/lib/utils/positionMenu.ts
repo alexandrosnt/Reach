@@ -11,7 +11,7 @@
  * Usage:
  *   <div class="context-menu" use:positionMenu={{ x: menu.x, y: menu.y }}>…</div>
  */
-import { safeInsets } from '$lib/edges';
+import { safeInsets } from '#lib/edges.js';
 
 export interface MenuPos {
 	x: number;

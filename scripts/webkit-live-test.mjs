@@ -41,8 +41,7 @@ const bundled = await build({
 	bundle: true,
 	format: 'iife',
 	globalName: 'WebkitInputFix',
-	write: false,
-	alias: { $lib: path.join(ROOT, 'src/lib') }
+	write: false
 });
 const adapterJs = bundled.outputFiles[0].text;
 const xtermJs = readFileSync(path.join(ROOT, 'node_modules/@xterm/xterm/lib/xterm.js'), 'utf8');

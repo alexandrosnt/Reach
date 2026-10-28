@@ -6,7 +6,7 @@
 	 * because some engines show no title for a disabled button.
 	 */
 	import type { Snippet } from 'svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		onclick: () => void;

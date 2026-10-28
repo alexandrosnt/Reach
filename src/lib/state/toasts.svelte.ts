@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { isMac, isMobile, isWebKit } from '$lib/platform';
+import { isMac, isMobile, isWebKit } from '#lib/platform.js';
 
 export type ToastType = 'info' | 'success' | 'warning' | 'error';
 

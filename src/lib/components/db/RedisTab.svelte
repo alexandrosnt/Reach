@@ -7,14 +7,14 @@
 	 * spaces or quotes needs no escaping.
 	 */
 	import { onMount, tick } from 'svelte';
-	import { ask } from '$lib/state/ask.svelte';
-	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	import { ask } from '#lib/state/ask.svelte.js';
+	import FaIcon from '#lib/components/shared/FaIcon.svelte';
 	import { faRotate, faPlus, faTrash, faMagnifyingGlass, faFloppyDisk } from '@fortawesome/free-solid-svg-icons';
-	import * as db from '$lib/ipc/db';
-	import type { KeyInfo, KeyValue, Reply } from '$lib/ipc/db';
-	import * as st from '$lib/state/db.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import * as db from '#lib/ipc/db.js';
+	import type { KeyInfo, KeyValue, Reply } from '#lib/ipc/db.js';
+	import * as st from '#lib/state/db.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		tab: Extract<st.DbTab, { kind: 'redis' }>;

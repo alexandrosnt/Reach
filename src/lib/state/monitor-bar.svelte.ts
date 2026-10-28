@@ -4,9 +4,9 @@
  * and the monitor bar carries what the status bar said (the connection's
  * state and the time): two bars said the same thing in 56px.
  */
-import { getActiveTab, getTabs } from '$lib/state/tabs.svelte';
-import { getActivePage } from '$lib/state/navigation.svelte';
-import * as share from '$lib/state/share.svelte';
+import { getActiveTab, getTabs } from '#lib/state/tabs.svelte.js';
+import { getActivePage } from '#lib/state/navigation.svelte.js';
+import * as share from '#lib/state/share.svelte.js';
 
 /** Server stats come from an SSH or WSL session; the bar also holds the
  *  sharing controls, so it stays for a shared local shell. Never under a

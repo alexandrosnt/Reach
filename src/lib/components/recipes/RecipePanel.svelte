@@ -8,12 +8,12 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { getActiveTab } from '$lib/state/tabs.svelte';
-	import { sshSend } from '$lib/ipc/ssh';
-	import { ptyWrite } from '$lib/ipc/pty';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { recipeTemplate, type Recipe, type RecipeEntry } from '$lib/ipc/recipes';
+	import { getActiveTab } from '#lib/state/tabs.svelte.js';
+	import { sshSend } from '#lib/ipc/ssh.js';
+	import { ptyWrite } from '#lib/ipc/pty.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { recipeTemplate, type Recipe, type RecipeEntry } from '#lib/ipc/recipes.js';
 	import {
 		getRecipes,
 		getRegistry,
@@ -24,7 +24,7 @@
 		loadRegistry,
 		deleteRecipe,
 		installRecipe
-	} from '$lib/state/recipes.svelte';
+	} from '#lib/state/recipes.svelte.js';
 	import DangerBadge from './DangerBadge.svelte';
 	import RecipeEditorDialog from './RecipeEditorDialog.svelte';
 	import RecipeRunDialog from './RecipeRunDialog.svelte';

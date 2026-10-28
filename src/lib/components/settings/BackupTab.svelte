@@ -1,14 +1,14 @@
 <script lang="ts">
-	import Button from '$lib/components/shared/Button.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import { exportBackup, previewBackup, importBackup } from '$lib/state/vault.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { getSettings, syncTraySettings } from '$lib/state/settings.svelte';
-	import * as vaultIpc from '$lib/ipc/vault';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
+	import { exportBackup, previewBackup, importBackup } from '#lib/state/vault.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { getSettings, syncTraySettings } from '#lib/state/settings.svelte.js';
+	import * as vaultIpc from '#lib/ipc/vault.js';
 	import { save, open, message } from '@tauri-apps/plugin-dialog';
 	import { relaunch } from '@tauri-apps/plugin-process';
-	import type { BackupPreview } from '$lib/ipc/vault';
-	import { t } from '$lib/state/i18n.svelte';
+	import type { BackupPreview } from '#lib/ipc/vault.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	// Export state
 	let exportPassword = $state('');

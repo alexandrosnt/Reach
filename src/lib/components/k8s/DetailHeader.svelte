@@ -4,11 +4,11 @@
 	 * actions. On a phone the pane is full screen, so it leads with Back.
 	 */
 	import type { Snippet } from 'svelte';
-	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	import FaIcon from '#lib/components/shared/FaIcon.svelte';
 	import { faArrowLeft, faXmark } from '@fortawesome/free-solid-svg-icons';
-	import StatusPill from '$lib/components/devops/StatusPill.svelte';
-	import type { Status } from '$lib/devops/status';
-	import { t } from '$lib/state/i18n.svelte';
+	import StatusPill from '#lib/components/devops/StatusPill.svelte';
+	import type { Status } from '#lib/devops/status.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		kind: string;

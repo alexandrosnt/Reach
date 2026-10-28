@@ -2,6 +2,12 @@
 
 All notable changes to Reach are documented here.
 
+## v0.8.6
+- **Linux: the sidebar no longer crashes Reach** — On Linux, clicking a section in the sidebar (Sessions, Tunnels, Snippets and the rest) could freeze Reach or close it with a crash of WebKitGTK's web process. The fade between sections, new in 0.8.4, used the browser's View Transitions feature, which WebKitGTK does not survive. The section now fades in with a plain CSS animation. Tested on WebKitGTK 2.54 under Wayland and X11. Reported by @Wassermann1 (#143).
+- **Extracting an archive fills its folder again** — Extract in the file explorer made the folder, said it was done and left it empty: the wrapper that lets an extract be cancelled ran only the `mkdir` and ended there, before `tar` or `unzip` ran. The whole command now runs, and Cancel still stops it and removes the half-made folder.
+- **New session with the sidebar collapsed** — New session, Quick Connect and connecting from the start screen, the shortcuts or the palette showed nothing while the sidebar was collapsed: the dialog opened inside the hidden panel. The sidebar now opens first.
+- **Security updates** — rustls 0.23.46, tokio 1.54.1, rustls-webpki 0.103.16, webpki-roots 1.0.11 and the updater 2.14.1; zip 9 with deflate only, the one method Reach opens, which drops zstd, bzip2 and lzma and their advisories; SvelteKit 3, which fixes SvelteKit's two advisories.
+
 ## v0.8.5
 - **Dialogs show on top again** — In 0.8.4, a dialog opened from the sidebar (New session, Quick Connect, Connect, Edit, Import, the file explorer's) opened under the terminal or the start screen, where it could be neither seen nor clicked. The sidebar's new fade between sections kept the panel drawn in a layer of its own all the time, and every dialog inside it stayed in that layer; the panel now takes that layer only for the moment it fades. Reported by @AliceT8d (#137, #138) and @ZZZank (#139).
 

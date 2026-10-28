@@ -15,7 +15,7 @@
  * starts with `createOffer` or `acceptOffer`, and not before.
  */
 
-import type { IceServer } from '$lib/ipc/share';
+import type { IceServer } from '#lib/ipc/share.js';
 import { deriveKey, randomToken, Sealer, type Bytes, type Direction } from './crypto.ts';
 import { decodeAnswer, decodeOffer, encodeAnswer, encodeOffer } from './codec.ts';
 import { chunk, decode, encode, type Message } from './protocol.ts';

@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getResourceCatalog,
 		getActiveProviders,
 		getActiveResources,
 		addResource,
 		getProviderCatalog
-	} from '$lib/state/tofu.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	} from '#lib/state/tofu.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	interface Props {
 		onclose: () => void;

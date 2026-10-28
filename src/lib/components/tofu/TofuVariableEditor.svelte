@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { TofuVariable, TofuVarType } from '$lib/ipc/tofu';
-	import { t } from '$lib/state/i18n.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
+	import type { TofuVariable, TofuVarType } from '#lib/ipc/tofu.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
 
 	interface Props {
 		variable: TofuVariable | null;

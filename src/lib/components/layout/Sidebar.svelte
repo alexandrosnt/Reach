@@ -1,16 +1,15 @@
 <script lang="ts">
-	import FileExplorer from '$lib/components/explorer/FileExplorer.svelte';
-	import SessionList from '$lib/components/sessions/SessionList.svelte';
-	import TunnelManager from '$lib/components/tunnel/TunnelManager.svelte';
-	import PluginPanel from '$lib/components/plugin/PluginPanel.svelte';
-	import SnippetPanel from '$lib/components/snippets/SnippetPanel.svelte';
-	import RecipePanel from '$lib/components/recipes/RecipePanel.svelte';
-	import VaultPanel from '$lib/components/vault/VaultPanel.svelte';
-	import NewIndicator from '$lib/components/shared/NewIndicator.svelte';
-	import { sidebarHasNew, markSidebarSeen, newSince } from '$lib/state/whats-new.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { pendingSessionAction } from '$lib/state/palette.svelte';
-	import { flushSync } from 'svelte';
+	import FileExplorer from '#lib/components/explorer/FileExplorer.svelte';
+	import SessionList from '#lib/components/sessions/SessionList.svelte';
+	import TunnelManager from '#lib/components/tunnel/TunnelManager.svelte';
+	import PluginPanel from '#lib/components/plugin/PluginPanel.svelte';
+	import SnippetPanel from '#lib/components/snippets/SnippetPanel.svelte';
+	import RecipePanel from '#lib/components/recipes/RecipePanel.svelte';
+	import VaultPanel from '#lib/components/vault/VaultPanel.svelte';
+	import NewIndicator from '#lib/components/shared/NewIndicator.svelte';
+	import { sidebarHasNew, markSidebarSeen, newSince } from '#lib/state/whats-new.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { pendingSessionAction } from '#lib/state/palette.svelte.js';
 
 	type Section = 'sessions' | 'vault' | 'explorer' | 'tunnels' | 'snippets' | 'recipes' | 'plugins';
 
@@ -36,8 +35,10 @@
 
 	// A request for the session list (the command palette's, a container
 	// shell's): show the list so it can carry it out, and its prompts, which
-	// live inside it, can be seen.
-	$effect(() => {
+	// live inside it, can be seen. Before the list's own effect takes the
+	// request: otherwise, with the sidebar collapsed, New session opened
+	// inside a hidden panel and nothing appeared.
+	$effect.pre(() => {
 		if (!pendingSessionAction()) return;
 		activeSection = 'sessions';
 		collapsed = false;
@@ -114,34 +115,8 @@
 		} else if (activeSection === sectionId) {
 			collapsed = true;
 		} else {
-			switchSection(sectionId);
-		}
-	}
-
-	/** The panel carries its view-transition-name only while it fades: the
-	 *  name makes it a stacking context, and a dialog opened from the panel
-	 *  (New session, Connect) is drawn inside it, so with the name always on
-	 *  the dialog sat under the terminal and the start screen (#137-#139). */
-	let fading = $state(false);
-
-	/** One panel fades into the next (the browser's view transition, scoped
-	 *  to the panel in app.css) instead of being swapped in a single frame.
-	 *  Without the API, or with less motion asked for, it is the plain swap. */
-	function switchSection(sectionId: Section): void {
-		if (!('startViewTransition' in document) || matchMedia('(prefers-reduced-motion: reduce)').matches) {
 			activeSection = sectionId;
-			return;
 		}
-		// Named before the old panel is captured, unnamed once the fade is over.
-		fading = true;
-		flushSync();
-		const transition = document.startViewTransition(() => {
-			activeSection = sectionId;
-			flushSync();
-		});
-		void transition.finished.finally(() => {
-			fading = false;
-		});
 	}
 
 	function toggleCollapsed(): void {
@@ -246,22 +221,26 @@
 		<div class="section-header">
 			{sections.find((s) => s.id === activeSection)?.label ?? ''}
 		</div>
-		<div class="section-body" class:fading>
-			{#if activeSection === 'sessions'}
-				<SessionList />
-			{:else if activeSection === 'explorer'}
-				<FileExplorer {connectionId} />
-			{:else if activeSection === 'tunnels'}
-				<TunnelManager {connectionId} />
-			{:else if activeSection === 'snippets'}
-				<SnippetPanel {connectionId} />
-			{:else if activeSection === 'vault'}
-				<VaultPanel />
-			{:else if activeSection === 'recipes'}
-				<RecipePanel />
-			{:else if activeSection === 'plugins'}
-				<PluginPanel {connectionId} />
-			{/if}
+		<div class="section-body">
+			{#key activeSection}
+				<div class="section-panel">
+					{#if activeSection === 'sessions'}
+						<SessionList />
+					{:else if activeSection === 'explorer'}
+						<FileExplorer {connectionId} />
+					{:else if activeSection === 'tunnels'}
+						<TunnelManager {connectionId} />
+					{:else if activeSection === 'snippets'}
+						<SnippetPanel {connectionId} />
+					{:else if activeSection === 'vault'}
+						<VaultPanel />
+					{:else if activeSection === 'recipes'}
+						<RecipePanel />
+					{:else if activeSection === 'plugins'}
+						<PluginPanel {connectionId} />
+					{/if}
+				</div>
+			{/key}
 		</div>
 	</div>
 
@@ -472,10 +451,25 @@
 		padding: 2px 6px;
 	}
 
-	/* What fades when the section changes (switchSection, app.css); only
-	   while it does, since the name makes the panel a stacking context. */
-	.section-body.fading {
-		view-transition-name: sidebar-panel;
+	/* A section fades in when it is switched to. A CSS animation, not the
+	   View Transitions API: starting a view transition froze or crashed
+	   WebKitGTK's web process on Linux (#143). Full height, as the panels
+	   size themselves to it. */
+	.section-panel {
+		height: 100%;
+		animation: section-in 150ms ease-out;
+	}
+
+	@keyframes section-in {
+		from {
+			opacity: 0;
+		}
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.section-panel {
+			animation: none;
+		}
 	}
 
 

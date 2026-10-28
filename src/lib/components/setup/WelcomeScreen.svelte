@@ -3,8 +3,8 @@
 	import PluginsStep from './PluginsStep.svelte';
 	import TursoStep from './TursoStep.svelte';
 	import CompleteStep from './CompleteStep.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { updateSetting } from '$lib/state/settings.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { updateSetting } from '#lib/state/settings.svelte.js';
 
 	let currentStep = $state(0);
 	const totalSteps = 4;

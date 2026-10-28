@@ -1,7 +1,7 @@
 import { SvelteMap } from 'svelte/reactivity';
-import * as vaultIpc from '$lib/ipc/vault';
-import { t } from '$lib/state/i18n.svelte';
-import { restoreLocalSettingsFromVault } from '$lib/state/settings.svelte';
+import * as vaultIpc from '#lib/ipc/vault.js';
+import { t } from '#lib/state/i18n.svelte.js';
+import { restoreLocalSettingsFromVault } from '#lib/state/settings.svelte.js';
 import type {
 	VaultInfo,
 	SecretMetadata,
@@ -12,7 +12,7 @@ import type {
 	ReceivedShare,
 	AppSettings,
 	BackupPreview
-} from '$lib/ipc/vault';
+} from '#lib/ipc/vault.js';
 
 // Re-export types
 export type {

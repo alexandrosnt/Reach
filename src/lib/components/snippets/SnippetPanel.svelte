@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { getSnippets, loadSnippets, addSnippet, removeSnippet, editSnippet, pasteSnippet } from '$lib/state/snippets.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { getSnippets, loadSnippets, addSnippet, removeSnippet, editSnippet, pasteSnippet } from '#lib/state/snippets.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { onMount } from 'svelte';
 
 	interface Props {

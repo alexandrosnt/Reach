@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
-	import type { TunnelConfig } from '$lib/ipc/tunnel';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import type { TunnelConfig } from '#lib/ipc/tunnel.js';
 
 	interface Props {
 		tunnel: TunnelConfig;

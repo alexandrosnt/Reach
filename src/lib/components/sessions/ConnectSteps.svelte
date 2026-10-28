@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
-	import { CONNECT_STEPS as STEPS, connectStep, type ConnectStep as Step } from '$lib/state/connect-stages.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { CONNECT_STEPS as STEPS, connectStep, type ConnectStep as Step } from '#lib/state/connect-stages.svelte.js';
 
 	interface Props {
 		/** The connection being made; its steps are the ones shown. */

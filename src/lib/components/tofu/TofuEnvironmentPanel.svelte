@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { ask } from '$lib/state/ask.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { ask } from '#lib/state/ask.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getActiveEnvironments,
 		getActiveEnvironmentName,
@@ -10,8 +10,8 @@
 		getProviderCatalog,
 		saveEnvironments,
 		loadCatalog
-	} from '$lib/state/tofu.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	} from '#lib/state/tofu.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	let newEnvName = $state('');
 	let selectedEnvName = $state<string | null>(null);

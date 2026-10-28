@@ -8,8 +8,8 @@
  * a password session becomes a host with no credential and a note saying
  * so; Ansible asks for it, or a key replaces it.
  */
-import type { SessionConfig } from '$lib/ipc/sessions';
-import type { AnsibleInventoryHost, AnsibleInventoryGroup } from '$lib/ipc/ansible';
+import type { SessionConfig } from '#lib/ipc/sessions.js';
+import type { AnsibleInventoryHost, AnsibleInventoryGroup } from '#lib/ipc/ansible.js';
 
 /** Inventory names are words: letters, digits, `_`, `-`, `.`. */
 export function inventoryName(raw: string): string {

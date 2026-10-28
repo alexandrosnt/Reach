@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { getUpdaterState, downloadAndInstall, dismissUpdate, relaunchNow } from '$lib/state/updater.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { getUpdaterState, downloadAndInstall, dismissUpdate, relaunchNow } from '#lib/state/updater.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	const updater = getUpdaterState();
 

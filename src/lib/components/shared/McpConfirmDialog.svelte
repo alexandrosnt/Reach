@@ -18,8 +18,8 @@
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { onMount } from 'svelte';
 	import Button from './Button.svelte';
-	import { mcpConfirmResponse, type McpConfirmRequest } from '$lib/ipc/mcp';
-	import { t } from '$lib/state/i18n.svelte';
+	import { mcpConfirmResponse, type McpConfirmRequest } from '#lib/ipc/mcp.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	let queue = $state<McpConfirmRequest[]>([]);
 	let current = $derived(queue[0] ?? null);

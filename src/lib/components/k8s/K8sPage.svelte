@@ -9,7 +9,7 @@
 	 * on screen and nothing is being edited.
 	 */
 	import { onDestroy, onMount } from 'svelte';
-	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	import FaIcon from '#lib/components/shared/FaIcon.svelte';
 	import {
 		faAnchor,
 		faAnglesLeft,
@@ -32,8 +32,8 @@
 		faTriangleExclamation
 	} from '@fortawesome/free-solid-svg-icons';
 	import type { IconDefinition } from '@fortawesome/free-solid-svg-icons';
-	import EnvBadge from '$lib/components/devops/EnvBadge.svelte';
-	import ErrorHelp from '$lib/components/devops/ErrorHelp.svelte';
+	import EnvBadge from '#lib/components/devops/EnvBadge.svelte';
+	import ErrorHelp from '#lib/components/devops/ErrorHelp.svelte';
 	import ClusterEditor from './ClusterEditor.svelte';
 	import Welcome from './Welcome.svelte';
 	import Overview from './Overview.svelte';
@@ -42,9 +42,9 @@
 	import WorkloadDetail from './WorkloadDetail.svelte';
 	import ObjectDetail from './ObjectDetail.svelte';
 	import HelmDetail from './HelmDetail.svelte';
-	import { k8sClose, k8sClusters, k8sNamespaces, k8sOpen, type ClusterView, type EventRow, type OpenedCluster } from '$lib/ipc/k8s';
-	import { sessionList } from '$lib/ipc/sessions';
-	import { t } from '$lib/state/i18n.svelte';
+	import { k8sClose, k8sClusters, k8sNamespaces, k8sOpen, type ClusterView, type EventRow, type OpenedCluster } from '#lib/ipc/k8s.js';
+	import { sessionList } from '#lib/ipc/sessions.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { NAV, loadLast, saveLast, selId, type Ctx, type Selection, type View } from './model';
 
 	const ICONS: Record<View, IconDefinition> = {

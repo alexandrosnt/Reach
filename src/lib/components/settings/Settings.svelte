@@ -1,5 +1,5 @@
 <script lang="ts">
-	import Modal from '$lib/components/shared/Modal.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
 	import GeneralTab from './GeneralTab.svelte';
 	import AppearanceTab from './AppearanceTab.svelte';
 	import SecurityTab from './SecurityTab.svelte';
@@ -11,9 +11,9 @@
 	import PluginsTab from './PluginsTab.svelte';
 	import SharingTab from './SharingTab.svelte';
 	import PasswordManagersTab from './PasswordManagersTab.svelte';
-	import NewIndicator from '$lib/components/shared/NewIndicator.svelte';
-	import { settingsTabHasNew, markSettingsTabSeen, newSince } from '$lib/state/whats-new.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import NewIndicator from '#lib/components/shared/NewIndicator.svelte';
+	import { settingsTabHasNew, markSettingsTabSeen, newSince } from '#lib/state/whats-new.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		open: boolean;

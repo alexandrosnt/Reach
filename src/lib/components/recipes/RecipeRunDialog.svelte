@@ -10,13 +10,13 @@
 	button you can hit by reflex is not a confirmation.
 -->
 <script lang="ts">
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 	import DangerBadge from './DangerBadge.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { recipePrepare, type PreparedRun, type Recipe } from '$lib/ipc/recipes';
-	import { dangerRank } from '$lib/state/recipes.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { recipePrepare, type PreparedRun, type Recipe } from '#lib/ipc/recipes.js';
+	import { dangerRank } from '#lib/state/recipes.svelte.js';
 
 	interface Props {
 		recipe: Recipe | null;

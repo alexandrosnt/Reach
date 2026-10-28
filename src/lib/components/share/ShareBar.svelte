@@ -8,8 +8,8 @@
 -->
 <script lang="ts">
 	import ShareDialog from './ShareDialog.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import * as share from '$lib/state/share.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import * as share from '#lib/state/share.svelte.js';
 
 	let open = $state(false);
 	let session = $derived(share.getSession());

@@ -10,15 +10,15 @@
 -->
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getEngines,
 		loadEngines,
 		getRemoteEngine,
 		checkRemoteEngine
-	} from '$lib/state/ansible.svelte';
-	import type { AnsibleExecutionTarget } from '$lib/ipc/ansible';
-	import { sshListConnections, type ConnectionInfo } from '$lib/ipc/ssh';
+	} from '#lib/state/ansible.svelte.js';
+	import type { AnsibleExecutionTarget } from '#lib/ipc/ansible.js';
+	import { sshListConnections, type ConnectionInfo } from '#lib/ipc/ssh.js';
 
 	interface Props {
 		onchange: (target: AnsibleExecutionTarget | null) => void;

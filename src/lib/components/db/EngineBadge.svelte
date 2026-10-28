@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { Engine } from '$lib/ipc/db';
-	import { engineInfo } from '$lib/db/engines';
+	import type { Engine } from '#lib/ipc/db.js';
+	import { engineInfo } from '#lib/db/engines.js';
 
 	interface Props {
 		engine: Engine;

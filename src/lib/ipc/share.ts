@@ -2,7 +2,7 @@
  * Sharing configuration IPC.
  *
  * Configuration only. Nothing here opens a connection — that happens in the
- * webview, in `$lib/share/peer`, and only after the user clicks Share.
+ * webview, in `#lib/share/peer.js`, and only after the user clicks Share.
  */
 
 import { invoke } from '@tauri-apps/api/core';
