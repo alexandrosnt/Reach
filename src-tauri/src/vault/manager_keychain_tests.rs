@@ -101,7 +101,9 @@ async fn a_backup_restores_over_a_vault_that_lost_its_key() {
     drop(mgr);
 
     let mut mgr = VaultManager::new(dir.clone());
-    let restored = tokio::time::timeout(std::time::Duration::from_secs(30), mgr.import_full_backup(&backup, "export-pass", ""))
+    // Only a hang must fail here. Opening the backup derives its key slowly
+    // on purpose, and a busy CI runner has taken over 30 seconds.
+    let restored = tokio::time::timeout(std::time::Duration::from_secs(300), mgr.import_full_backup(&backup, "export-pass", ""))
         .await
         .expect("the import hung");
     restored.unwrap();
