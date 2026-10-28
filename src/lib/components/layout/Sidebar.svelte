@@ -35,8 +35,10 @@
 
 	// A request for the session list (the command palette's, a container
 	// shell's): show the list so it can carry it out, and its prompts, which
-	// live inside it, can be seen.
-	$effect(() => {
+	// live inside it, can be seen. Before the list's own effect takes the
+	// request: otherwise, with the sidebar collapsed, New session opened
+	// inside a hidden panel and nothing appeared.
+	$effect.pre(() => {
 		if (!pendingSessionAction()) return;
 		activeSection = 'sessions';
 		collapsed = false;
