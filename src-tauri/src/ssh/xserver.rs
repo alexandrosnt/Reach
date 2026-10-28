@@ -200,7 +200,7 @@ fn unpack(bytes: &[u8], into: &Path, cancel: &AtomicBool, progress: &impl Fn(Pro
             return Err(CANCELLED.into());
         }
         let mut f = zip.by_index(i).map_err(|e| e.to_string())?;
-        let Some(rel) = f.enclosed_name() else { return Err(format!("unsafe path in the X server zip: {}", f.name())) };
+        let Some(rel) = f.enclosed_name() else { return Err(format!("unsafe path in the X server zip: {}", String::from_utf8_lossy(f.name_raw()))) };
         let out = into.join(rel);
         if f.is_dir() {
             std::fs::create_dir_all(&out).map_err(|e| e.to_string())?;

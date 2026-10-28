@@ -141,7 +141,9 @@ mlua = { version = "0.12", features = ["luau", "vendored", "async", "serialize",
 toml = "1"
 # Plugin marketplace: download + extract release zips. Pinned >= 2.3 to avoid
 # CVE-2025-29787 (symlink-based path traversal) which affects 1.3.0–2.2.x.
-zip = "8"
+# Deflate only: every zip Reach opens (plugins, VcXsrv, OpenTofu) uses it,
+# and the other methods pulled in zstd and its advisories.
+zip = { version = "9", default-features = false, features = ["deflate"] }
 flate2 = "1"
 tar = "0.4"
 tauri-plugin-process = "2.3.1"
