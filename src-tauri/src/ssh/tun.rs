@@ -224,7 +224,9 @@ mod sys {
         // SAFETY: TUNSETIFF reads and fills the ifreq we pass.
         cvt(unsafe { libc::ioctl(fd.as_raw_fd(), TUNSETIFF as _, &mut ifr) })?;
         let name: String = ifr.name.iter().take_while(|c| **c != 0).map(|c| *c as u8 as char).collect();
-        Ok(Device { fd: AsyncFd::new(fd)?, name, has_af: false })
+        // SAFETY: the OwnedFd moves into the AsyncFd, so the descriptor stays
+        // open and the same until the Device is dropped.
+        Ok(Device { fd: unsafe { AsyncFd::register(fd)? }, name, has_af: false })
     }
 
     /// A utun interface through the kernel control socket; unit N is utunN.
@@ -262,7 +264,9 @@ mod sys {
         let flags = cvt(unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_GETFL) })?;
         cvt(unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_SETFL, flags | libc::O_NONBLOCK) })?;
         cvt(unsafe { libc::fcntl(fd.as_raw_fd(), libc::F_SETFD, libc::FD_CLOEXEC) })?;
-        Ok(Device { fd: AsyncFd::new(fd)?, name, has_af: true })
+        // SAFETY: the OwnedFd moves into the AsyncFd, so the descriptor stays
+        // open and the same until the Device is dropped.
+        Ok(Device { fd: unsafe { AsyncFd::register(fd)? }, name, has_af: true })
     }
 }
 
