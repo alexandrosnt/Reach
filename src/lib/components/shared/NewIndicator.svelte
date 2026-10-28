@@ -10,7 +10,7 @@
 	cannot tell it from the icon behind it.
 -->
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		/** 'dot' for cramped spots, 'badge' where a word fits. */

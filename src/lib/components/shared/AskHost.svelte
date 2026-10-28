@@ -1,8 +1,8 @@
 <script lang="ts">
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import { currentQuestion, answer } from '$lib/state/ask.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import { currentQuestion, answer } from '#lib/state/ask.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { tick } from 'svelte';
 
 	let question = $derived(currentQuestion());

@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
-	import { getActiveVariables, saveVariables } from '$lib/state/tofu.svelte';
-	import type { TofuVariable } from '$lib/ipc/tofu';
-	import Button from '$lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getActiveVariables, saveVariables } from '#lib/state/tofu.svelte.js';
+	import type { TofuVariable } from '#lib/ipc/tofu.js';
+	import Button from '#lib/components/shared/Button.svelte';
 	import TofuVariableEditor from './TofuVariableEditor.svelte';
 
 	let variables = $derived(getActiveVariables());

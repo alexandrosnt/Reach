@@ -16,8 +16,8 @@
 </script>
 
 <script lang="ts">
-	import ContextMenuBackdrop from '$lib/components/shared/ContextMenuBackdrop.svelte';
-	import { safeInsets } from '$lib/edges';
+	import ContextMenuBackdrop from '#lib/components/shared/ContextMenuBackdrop.svelte';
+	import { safeInsets } from '#lib/edges.js';
 
 	interface Props {
 		x: number;

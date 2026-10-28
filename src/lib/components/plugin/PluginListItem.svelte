@@ -1,6 +1,6 @@
 <script lang="ts">
-	import type { PluginInfo } from '$lib/ipc/plugin';
-	import { t } from '$lib/state/i18n.svelte';
+	import type { PluginInfo } from '#lib/ipc/plugin.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		plugin: PluginInfo;

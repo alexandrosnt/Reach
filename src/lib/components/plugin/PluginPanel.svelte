@@ -10,7 +10,7 @@
 		pluginSetConfig,
 		type PluginInfo,
 		type PluginConfig
-	} from '$lib/ipc/plugin';
+	} from '#lib/ipc/plugin.js';
 	import {
 		getPlugins,
 		setPlugins,
@@ -22,9 +22,9 @@
 		setLoading,
 		getError,
 		setError
-	} from '$lib/state/plugin.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	} from '#lib/state/plugin.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { onMount } from 'svelte';
 

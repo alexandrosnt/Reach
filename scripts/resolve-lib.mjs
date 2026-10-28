@@ -1,5 +1,5 @@
 /**
- * Registers the `$lib` resolution hook. Use as:
+ * Registers the `#lib` resolution hook. Use as:
  *
  *   node --import ./scripts/resolve-lib.mjs scripts/<name>-test.mjs
  */

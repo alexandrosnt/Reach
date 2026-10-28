@@ -1,4 +1,4 @@
-import type { PluginInfo, PluginManifest, PluginUiState } from '$lib/ipc/plugin';
+import type { PluginInfo, PluginManifest, PluginUiState } from '#lib/ipc/plugin.js';
 
 let plugins = $state<PluginInfo[]>([]);
 let discoveredManifests = $state<PluginManifest[]>([]);

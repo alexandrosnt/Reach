@@ -1,15 +1,15 @@
 <script lang="ts">
-	import Settings from '$lib/components/settings/Settings.svelte';
-	import NewIndicator from '$lib/components/shared/NewIndicator.svelte';
-	import { settingsHaveNew, newSince } from '$lib/state/whats-new.svelte';
-	import { registerSettingsOpener, shortcutLabel } from '$lib/state/shortcuts.svelte';
-	import { togglePalette } from '$lib/state/palette.svelte';
+	import Settings from '#lib/components/settings/Settings.svelte';
+	import NewIndicator from '#lib/components/shared/NewIndicator.svelte';
+	import { settingsHaveNew, newSince } from '#lib/state/whats-new.svelte.js';
+	import { registerSettingsOpener, shortcutLabel } from '#lib/state/shortcuts.svelte.js';
+	import { togglePalette } from '#lib/state/palette.svelte.js';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
-	import { getAISettings } from '$lib/state/ai.svelte';
-	import { __APP_VERSION__ } from '$lib/version';
-	import { toggleAIPanel, getAIChatState } from '$lib/state/ai-chat.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { isMac, isMobile } from '$lib/platform';
+	import { getAISettings } from '#lib/state/ai.svelte.js';
+	import { __APP_VERSION__ } from '#lib/version.js';
+	import { toggleAIPanel, getAIChatState } from '#lib/state/ai-chat.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { isMac, isMobile } from '#lib/platform.js';
 
 	/** On a Mac the window keeps the system's own traffic lights, drawn over
 	 *  this bar (tauri.macos.conf.json): they are what a Mac user reaches for,

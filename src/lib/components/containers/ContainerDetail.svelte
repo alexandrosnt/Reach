@@ -4,11 +4,11 @@
 	 * Logs come first, the most common reason to open a container. A shell
 	 * opens as a terminal tab on the same host.
 	 */
-	import StatusPill from '$lib/components/devops/StatusPill.svelte';
-	import LogSources from '$lib/components/devops/LogSources.svelte';
-	import { ctrInspect, ctrLogs, ctrLogsFiles, ctrLogFiles, type ContainerRow, type Engine, type LogView } from '$lib/ipc/containers';
-	import { containerStatus, ago } from '$lib/devops/status';
-	import { t } from '$lib/state/i18n.svelte';
+	import StatusPill from '#lib/components/devops/StatusPill.svelte';
+	import LogSources from '#lib/components/devops/LogSources.svelte';
+	import { ctrInspect, ctrLogs, ctrLogsFiles, ctrLogFiles, type ContainerRow, type Engine, type LogView } from '#lib/ipc/containers.js';
+	import { containerStatus, ago } from '#lib/devops/status.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		hostKey: string;

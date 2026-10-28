@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { generateHcl, writeGeneratedFiles } from '$lib/state/tofu.svelte';
-	import type { GeneratedFile } from '$lib/ipc/tofu';
-	import Button from '$lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { generateHcl, writeGeneratedFiles } from '#lib/state/tofu.svelte.js';
+	import type { GeneratedFile } from '#lib/ipc/tofu.js';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	interface Props {
 		onclose: () => void;

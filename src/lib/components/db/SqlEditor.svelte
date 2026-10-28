@@ -26,7 +26,7 @@
 	import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 	import { oneDark } from '@codemirror/theme-one-dark';
 	import { sql, PostgreSQL, MySQL, MariaSQL, SQLite, MSSQL, StandardSQL } from '@codemirror/lang-sql';
-	import { getSettings } from '$lib/state/settings.svelte';
+	import { getSettings } from '#lib/state/settings.svelte.js';
 
 	interface Props {
 		value: string;

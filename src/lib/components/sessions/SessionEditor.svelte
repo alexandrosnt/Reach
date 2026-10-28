@@ -1,15 +1,15 @@
 <script lang="ts">
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 	import KeyPicker from './KeyPicker.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import { sessionCreate, sessionList, sessionUpdate, sessionKind, wslListDistros, type SessionConfig, type SessionKind, type AuthMethod, type JumpHostConfig, type Folder, type SshOptions } from '$lib/ipc/sessions';
-	import { isWindows } from '$lib/platform';
+	import Input from '#lib/components/shared/Input.svelte';
+	import { sessionCreate, sessionList, sessionUpdate, sessionKind, wslListDistros, type SessionConfig, type SessionKind, type AuthMethod, type JumpHostConfig, type Folder, type SshOptions } from '#lib/ipc/sessions.js';
+	import { isWindows } from '#lib/platform.js';
 	import SshOptionsSection from './SshOptionsSection.svelte';
-	import SecretRefField from '$lib/components/pwmanager/SecretRefField.svelte';
-	import type { EntrySummary, SecretRef } from '$lib/ipc/pwmanager';
-	import { t } from '$lib/state/i18n.svelte';
-	import { folderPath } from '$lib/sessions/folder-tree';
+	import SecretRefField from '#lib/components/pwmanager/SecretRefField.svelte';
+	import type { EntrySummary, SecretRef } from '#lib/ipc/pwmanager.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { folderPath } from '#lib/sessions/folder-tree.js';
 	import { open as openDialog } from '@tauri-apps/plugin-dialog';
 
 	interface Props {

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import QuickConnect, { type QuickConnectPrefill } from './QuickConnect.svelte';
-	import RdpQuickConnect from '$lib/components/rdp/RdpQuickConnect.svelte';
-	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	import RdpQuickConnect from '#lib/components/rdp/RdpQuickConnect.svelte';
+	import FaIcon from '#lib/components/shared/FaIcon.svelte';
 	import {
 		faPlus,
 		faBolt,
@@ -15,40 +15,40 @@
 		faFolder,
 		faFolderOpen
 	} from '@fortawesome/free-solid-svg-icons';
-	import { registerSessionActions, shortcutLabel } from '$lib/state/shortcuts.svelte';
-	import { pendingSessionAction, takeSessionAction } from '$lib/state/palette.svelte';
-	import { parseAddress } from '$lib/utils/address';
-	import { noteSessionUsed, forgetSession } from '$lib/state/recents.svelte';
+	import { registerSessionActions, shortcutLabel } from '#lib/state/shortcuts.svelte.js';
+	import { pendingSessionAction, takeSessionAction } from '#lib/state/palette.svelte.js';
+	import { parseAddress } from '#lib/utils/address.js';
+	import { noteSessionUsed, forgetSession } from '#lib/state/recents.svelte.js';
 	import { onMount, tick } from 'svelte';
 	import { listen } from '@tauri-apps/api/event';
 	import SessionEditor from './SessionEditor.svelte';
 	import SshConfigImport from './SshConfigImport.svelte';
 	import RdpImport from './RdpImport.svelte';
 	import SessionCard from './SessionCard.svelte';
-	import VaultSelector from '$lib/components/vault/VaultSelector.svelte';
-	import ContextMenuBackdrop from '$lib/components/shared/ContextMenuBackdrop.svelte';
-	import ConfirmAction from '$lib/components/devops/ConfirmAction.svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import UntrustedRefsDialog from '$lib/components/pwmanager/UntrustedRefsDialog.svelte';
-	import { sessionUntrustedSecretRefs, sessionApproveSecretRefs, untrustedRefsFromError, type UntrustedRefs } from '$lib/ipc/sessions';
-	import { sessionKind, sessionGet, sessionList, sessionDelete, sessionUpdate, sessionListFolders, sessionCreateFolder, sessionUpdateFolderParent, sessionDeleteFolder, sessionMoveToFolder, type SessionConfig, type Folder } from '$lib/ipc/sessions';
-	import { setActivePage } from '$lib/state/navigation.svelte';
-	import { sshConnect, sshDisconnect, sshDetectOs, type JumpHostConnectParams } from '$lib/ipc/ssh';
+	import VaultSelector from '#lib/components/vault/VaultSelector.svelte';
+	import ContextMenuBackdrop from '#lib/components/shared/ContextMenuBackdrop.svelte';
+	import ConfirmAction from '#lib/components/devops/ConfirmAction.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import UntrustedRefsDialog from '#lib/components/pwmanager/UntrustedRefsDialog.svelte';
+	import { sessionUntrustedSecretRefs, sessionApproveSecretRefs, untrustedRefsFromError, type UntrustedRefs } from '#lib/ipc/sessions.js';
+	import { sessionKind, sessionGet, sessionList, sessionDelete, sessionUpdate, sessionListFolders, sessionCreateFolder, sessionUpdateFolderParent, sessionDeleteFolder, sessionMoveToFolder, type SessionConfig, type Folder } from '#lib/ipc/sessions.js';
+	import { setActivePage } from '#lib/state/navigation.svelte.js';
+	import { sshConnect, sshDisconnect, sshDetectOs, type JumpHostConnectParams } from '#lib/ipc/ssh.js';
 	// Passwords are now stored encrypted in vault, not in memory cache
-	import { createTab, updateTabOs } from '$lib/state/tabs.svelte';
-	import { getSettings, sessionLogConfig } from '$lib/state/settings.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { promptForMasterPassword } from '$lib/state/password-prompt.svelte';
+	import { createTab, updateTabOs } from '#lib/state/tabs.svelte.js';
+	import { getSettings, sessionLogConfig } from '#lib/state/settings.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { promptForMasterPassword } from '#lib/state/password-prompt.svelte.js';
 	import ConnectSteps from './ConnectSteps.svelte';
-	import { hasMasterPassword } from '$lib/ipc/credentials';
-	import { t } from '$lib/state/i18n.svelte';
-	import { providerName } from '$lib/state/pwmanager.svelte';
-	import type { SecretRef } from '$lib/ipc/pwmanager';
+	import { hasMasterPassword } from '#lib/ipc/credentials.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { providerName } from '#lib/state/pwmanager.svelte.js';
+	import type { SecretRef } from '#lib/ipc/pwmanager.js';
 	import { untrack } from 'svelte';
-	import { positionMenu } from '$lib/utils/positionMenu';
-	import { buildFolderTree, canMoveFolder, folderPath, type FolderTreeNode } from '$lib/sessions/folder-tree';
-	import { vaultState, checkState, initIdentity, importIdentity, ALL_VAULTS, loadVaultFilter, type VaultFilter } from '$lib/state/vault.svelte';
+	import { positionMenu } from '#lib/utils/positionMenu.js';
+	import { buildFolderTree, canMoveFolder, folderPath, type FolderTreeNode } from '#lib/sessions/folder-tree.js';
+	import { vaultState, checkState, initIdentity, importIdentity, ALL_VAULTS, loadVaultFilter, type VaultFilter } from '#lib/state/vault.svelte.js';
 
 	let showQuickConnect = $state(false);
 	let showRdpConnect = $state(false);

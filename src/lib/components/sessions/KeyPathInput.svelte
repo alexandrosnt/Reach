@@ -1,7 +1,7 @@
 <script lang="ts">
-	import Input from '$lib/components/shared/Input.svelte';
-	import { inspectKeyFile, type KeyFileInfo, type KeyCandidate } from '$lib/ipc/ssh';
-	import { t } from '$lib/state/i18n.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
+	import { inspectKeyFile, type KeyFileInfo, type KeyCandidate } from '#lib/ipc/ssh.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		value?: string;

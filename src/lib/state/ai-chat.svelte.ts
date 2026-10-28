@@ -2,8 +2,8 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import { getAISettings } from './ai.svelte';
 import { readTerminalBuffer } from './terminal-buffer.svelte';
-import { sshSend } from '$lib/ipc/ssh';
-import { ptyWrite } from '$lib/ipc/pty';
+import { sshSend } from '#lib/ipc/ssh.js';
+import { ptyWrite } from '#lib/ipc/pty.js';
 
 export interface AIChatMessage {
 	id: string;

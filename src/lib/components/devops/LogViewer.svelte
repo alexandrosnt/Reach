@@ -8,8 +8,8 @@
 	 */
 	import { onDestroy } from 'svelte';
 	import { invoke } from '@tauri-apps/api/core';
-	import { t } from '$lib/state/i18n.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
 
 	interface Props {
 		/** Starts the stream; returns how to stop it. Re-run when it changes. */

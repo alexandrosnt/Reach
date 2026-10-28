@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { AnsibleProject } from '$lib/ipc/ansible';
-	import { createProject } from '$lib/state/ansible.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import type { AnsibleProject } from '#lib/ipc/ansible.js';
+	import { createProject } from '#lib/state/ansible.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { open } from '@tauri-apps/plugin-dialog';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	interface Props {
 		open: boolean;

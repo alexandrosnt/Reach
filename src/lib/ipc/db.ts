@@ -2,7 +2,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 import type { SecretRef } from './pwmanager';
 import { explainUntrustedRefs, type ViaRoute } from './sessions';
-import { t } from '$lib/state/i18n.svelte';
+import { t } from '#lib/state/i18n.svelte.js';
 
 export type Engine = 'postgres' | 'mysql' | 'mariadb' | 'sqlite' | 'mssql' | 'redis';
 export type TlsMode = 'prefer' | 'require' | 'disable';

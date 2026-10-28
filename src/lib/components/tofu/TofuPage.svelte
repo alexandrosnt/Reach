@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { checkTool, getToolStatus, isToolInstalled, getActiveProjectId } from '$lib/state/tofu.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { checkTool, getToolStatus, isToolInstalled, getActiveProjectId } from '#lib/state/tofu.svelte.js';
 	import TofuToolchainSetup from './TofuToolchainSetup.svelte';
 	import TofuProjectList from './TofuProjectList.svelte';
 	import TofuWorkspace from './TofuWorkspace.svelte';

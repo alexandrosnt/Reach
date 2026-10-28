@@ -6,18 +6,18 @@
 	 */
 	import { onMount } from 'svelte';
 	import { open as openDialog } from '@tauri-apps/plugin-dialog';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import Toggle from '$lib/components/shared/Toggle.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
 	import EngineBadge from './EngineBadge.svelte';
-	import SecretRefField from '$lib/components/pwmanager/SecretRefField.svelte';
-	import { ENGINES, engineInfo } from '$lib/db/engines';
-	import type { DbConnection, DbConnectionView, Engine, RoutePreview, TlsMode } from '$lib/ipc/db';
-	import { routePreview, testConnection } from '$lib/ipc/db';
-	import { sessionList, type SessionConfig } from '$lib/ipc/sessions';
-	import * as dbState from '$lib/state/db.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import SecretRefField from '#lib/components/pwmanager/SecretRefField.svelte';
+	import { ENGINES, engineInfo } from '#lib/db/engines.js';
+	import type { DbConnection, DbConnectionView, Engine, RoutePreview, TlsMode } from '#lib/ipc/db.js';
+	import { routePreview, testConnection } from '#lib/ipc/db.js';
+	import { sessionList, type SessionConfig } from '#lib/ipc/sessions.js';
+	import * as dbState from '#lib/state/db.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		open: boolean;

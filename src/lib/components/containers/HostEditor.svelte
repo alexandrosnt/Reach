@@ -5,13 +5,13 @@
 	 * read-only on, which the backend enforces; the user can turn it off.
 	 */
 	import { onMount } from 'svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import { ctrHostSave, ctrHostDelete, type ContainerHost, type Engine, type Environment, type Route } from '$lib/ipc/containers';
-	import { sessionList, sessionKind, type SessionConfig } from '$lib/ipc/sessions';
-	import { isMobile } from '$lib/platform';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
+	import { ctrHostSave, ctrHostDelete, type ContainerHost, type Engine, type Environment, type Route } from '#lib/ipc/containers.js';
+	import { sessionList, sessionKind, type SessionConfig } from '#lib/ipc/sessions.js';
+	import { isMobile } from '#lib/platform.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		open: boolean;

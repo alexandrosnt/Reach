@@ -1,9 +1,9 @@
-import { DEFAULT_PASTE_THRESHOLD } from '$lib/terminal/paste';
+import { DEFAULT_PASTE_THRESHOLD } from '#lib/terminal/paste.js';
 import { invoke } from '@tauri-apps/api/core';
-import * as settingsIpc from '$lib/ipc/settings';
-import type { AppSettings } from '$lib/ipc/settings';
-import type { SessionLogConfig } from '$lib/ipc/ssh';
-import { NEW_FEATURE_IDS } from '$lib/data/whats-new';
+import * as settingsIpc from '#lib/ipc/settings.js';
+import type { AppSettings } from '#lib/ipc/settings.js';
+import type { SessionLogConfig } from '#lib/ipc/ssh.js';
+import { NEW_FEATURE_IDS } from '#lib/data/whats-new.js';
 
 export interface Settings {
 	theme: 'dark' | 'light' | 'system';
@@ -11,7 +11,7 @@ export interface Settings {
 	themeId?: string;
 	fontSize: number;
 	/** The whole interface's size on a desktop, as a browser's zoom: 1 is 100%.
-	 *  See $lib/state/ui-zoom. */
+	 *  See #lib/state/ui-zoom. */
 	uiZoom: number;
 	/** Tighter rows (a session on one line): space over air. Text stays its size. */
 	compactLayout: boolean;
@@ -54,7 +54,7 @@ export interface Settings {
 	 * answered the question.
 	 */
 	warnOnMultilinePaste: boolean;
-	/** Warn once a paste reaches this many lines. See $lib/terminal/paste. */
+	/** Warn once a paste reaches this many lines. See #lib/terminal/paste. */
 	multilinePasteThreshold: number;
 
 	setupComplete: boolean;
@@ -81,7 +81,7 @@ export interface Settings {
 	communityPromptLastShown: number;
 
 	/**
-	 * Ids from `$lib/data/whats-new` this user has already been shown.
+	 * Ids from `#lib/data/whats-new.js` this user has already been shown.
 	 *
 	 * A fresh install starts with all of them: someone meeting Reach for the
 	 * first time should not be told which three corners of it are recent.
@@ -89,7 +89,7 @@ export interface Settings {
 	seenFeatures: string[];
 
 	/**
-	 * DevOps workspaces switched on, by id from `$lib/state/devops`.
+	 * DevOps workspaces switched on, by id from `#lib/state/devops`.
 	 *
 	 * Per device rather than synced: the tools themselves are installed per
 	 * machine, and a laptop without Ansible has no use for its workspace.

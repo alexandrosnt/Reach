@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { getActiveTab } from '$lib/state/tabs.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { getActiveTab } from '#lib/state/tabs.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import Clock from './Clock.svelte';
 
 	let activeTab = $derived(getActiveTab());

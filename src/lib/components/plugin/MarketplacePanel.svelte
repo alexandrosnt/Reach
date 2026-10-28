@@ -7,11 +7,11 @@
 		marketplaceResetUrl,
 		marketplaceSetUrl,
 		type MarketplaceEntry
-	} from '$lib/ipc/marketplace';
-	import { pluginList } from '$lib/ipc/plugin';
-	import { setPlugins } from '$lib/state/plugin.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	} from '#lib/ipc/marketplace.js';
+	import { pluginList } from '#lib/ipc/plugin.js';
+	import { setPlugins } from '#lib/state/plugin.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { onMount } from 'svelte';
 
 	let entries = $state<MarketplaceEntry[]>([]);

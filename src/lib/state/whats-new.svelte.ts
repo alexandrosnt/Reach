@@ -11,8 +11,8 @@
  * rest of the user's preferences.
  */
 
-import { NEW_FEATURES, type FeatureSurface } from '$lib/data/whats-new';
-import { getSettings, markFeaturesSeen } from '$lib/state/settings.svelte';
+import { NEW_FEATURES, type FeatureSurface } from '#lib/data/whats-new.js';
+import { getSettings, markFeaturesSeen } from '#lib/state/settings.svelte.js';
 
 function seen(): string[] {
 	return getSettings().seenFeatures;

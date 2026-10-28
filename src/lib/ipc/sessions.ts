@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import type { SecretRef } from './pwmanager';
-import { t } from '$lib/state/i18n.svelte';
+import { t } from '#lib/state/i18n.svelte.js';
 
 export interface AuthMethod {
   type: 'Password' | 'Key' | 'Agent';

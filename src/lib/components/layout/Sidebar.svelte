@@ -1,15 +1,15 @@
 <script lang="ts">
-	import FileExplorer from '$lib/components/explorer/FileExplorer.svelte';
-	import SessionList from '$lib/components/sessions/SessionList.svelte';
-	import TunnelManager from '$lib/components/tunnel/TunnelManager.svelte';
-	import PluginPanel from '$lib/components/plugin/PluginPanel.svelte';
-	import SnippetPanel from '$lib/components/snippets/SnippetPanel.svelte';
-	import RecipePanel from '$lib/components/recipes/RecipePanel.svelte';
-	import VaultPanel from '$lib/components/vault/VaultPanel.svelte';
-	import NewIndicator from '$lib/components/shared/NewIndicator.svelte';
-	import { sidebarHasNew, markSidebarSeen, newSince } from '$lib/state/whats-new.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { pendingSessionAction } from '$lib/state/palette.svelte';
+	import FileExplorer from '#lib/components/explorer/FileExplorer.svelte';
+	import SessionList from '#lib/components/sessions/SessionList.svelte';
+	import TunnelManager from '#lib/components/tunnel/TunnelManager.svelte';
+	import PluginPanel from '#lib/components/plugin/PluginPanel.svelte';
+	import SnippetPanel from '#lib/components/snippets/SnippetPanel.svelte';
+	import RecipePanel from '#lib/components/recipes/RecipePanel.svelte';
+	import VaultPanel from '#lib/components/vault/VaultPanel.svelte';
+	import NewIndicator from '#lib/components/shared/NewIndicator.svelte';
+	import { sidebarHasNew, markSidebarSeen, newSince } from '#lib/state/whats-new.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { pendingSessionAction } from '#lib/state/palette.svelte.js';
 
 	type Section = 'sessions' | 'vault' | 'explorer' | 'tunnels' | 'snippets' | 'recipes' | 'plugins';
 

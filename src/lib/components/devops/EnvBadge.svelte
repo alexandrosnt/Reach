@@ -1,7 +1,7 @@
 <script lang="ts">
 	/** What a host or cluster is for, as a small label; production in red. */
-	import type { Environment } from '$lib/ipc/containers';
-	import { t } from '$lib/state/i18n.svelte';
+	import type { Environment } from '#lib/ipc/containers.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	let { environment, readOnly = false }: { environment: Environment; readOnly?: boolean } = $props();
 </script>

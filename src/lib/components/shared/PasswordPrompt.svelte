@@ -1,11 +1,11 @@
 <script lang="ts">
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import { setMasterPassword } from '$lib/ipc/credentials';
-	import { isPasswordPromptOpen, closePasswordPrompt } from '$lib/state/password-prompt.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
+	import { setMasterPassword } from '#lib/ipc/credentials.js';
+	import { isPasswordPromptOpen, closePasswordPrompt } from '#lib/state/password-prompt.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { tick } from 'svelte';
 
 	let open = $derived(isPasswordPromptOpen());

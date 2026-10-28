@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		checkTool,
 		isToolInstalled,
@@ -9,10 +9,10 @@
 		isWsl,
 		getEngines,
 		skipToolchainSetup
-	} from '$lib/state/ansible.svelte';
-	import { toolchainInstall, type ToolInstallEvent } from '$lib/ipc/toolchain';
+	} from '#lib/state/ansible.svelte.js';
+	import { toolchainInstall, type ToolInstallEvent } from '#lib/ipc/toolchain.js';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-	import Button from '$lib/components/shared/Button.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	let installing = $state(false);
 	let installLogs = $state<string[]>([]);

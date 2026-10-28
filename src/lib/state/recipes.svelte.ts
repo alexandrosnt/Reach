@@ -7,9 +7,9 @@
  * glance, which scripts had already been vetted onto this machine.
  */
 
-import * as ipc from '$lib/ipc/recipes';
-import type { Danger, Recipe, RecipeEntry } from '$lib/ipc/recipes';
-import { DANGER_ORDER } from '$lib/ipc/recipes';
+import * as ipc from '#lib/ipc/recipes.js';
+import type { Danger, Recipe, RecipeEntry } from '#lib/ipc/recipes.js';
+import { DANGER_ORDER } from '#lib/ipc/recipes.js';
 
 let recipes = $state<Recipe[]>([]);
 let registry = $state<RecipeEntry[]>([]);

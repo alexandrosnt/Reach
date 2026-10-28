@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { getDependencyGraph, isGraphLoading, loadDependencyGraph } from '$lib/state/tofu.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getDependencyGraph, isGraphLoading, loadDependencyGraph } from '#lib/state/tofu.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	let graph = $derived(getDependencyGraph());
 	let loading = $derived(isGraphLoading());

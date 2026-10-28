@@ -18,7 +18,7 @@
  * fight it.
  */
 
-import { safeInsets } from '$lib/edges';
+import { safeInsets } from '#lib/edges.js';
 
 /** One row of the list: an option, or the heading of an <optgroup>. */
 export interface MenuRow {

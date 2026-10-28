@@ -6,11 +6,11 @@
 	 */
 	import { onMount } from 'svelte';
 	import { open as openDialog } from '@tauri-apps/plugin-dialog';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import * as db from '$lib/ipc/db';
-	import type { JobProgress, JobSummary } from '$lib/ipc/db';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import * as db from '#lib/ipc/db.js';
+	import type { JobProgress, JobSummary } from '#lib/ipc/db.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		connId: string;

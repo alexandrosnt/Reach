@@ -9,16 +9,16 @@
 	one click away for the rest. Structured first, raw always available.
 -->
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getRunView,
 		getRunExitCode,
 		getRunCommand,
 		isCommandRunning,
 		getCommandOutput
-	} from '$lib/state/tofu.svelte';
+	} from '#lib/state/tofu.svelte.js';
 	import TofuCommandOutput from './TofuCommandOutput.svelte';
-	import type { TofuChangeAction } from '$lib/tofu/ui-json';
+	import type { TofuChangeAction } from '#lib/tofu/ui-json.js';
 
 	let view = $derived(getRunView());
 	let exitCode = $derived(getRunExitCode());

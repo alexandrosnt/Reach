@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
-	import { getCommandOutput, isCommandRunning, clearOutput } from '$lib/state/tofu.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getCommandOutput, isCommandRunning, clearOutput } from '#lib/state/tofu.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	/** Inside the run view, which draws its own header. */
 	let { headless = false }: { headless?: boolean } = $props();

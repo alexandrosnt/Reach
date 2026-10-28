@@ -1,5 +1,5 @@
 <script lang="ts" module>
-	import type { LogRule } from '$lib/devops/logsource';
+	import type { LogRule } from '#lib/devops/logsource.js';
 
 	/** Sources remembered for hosts that are not saved (a terminal tab's server), until Reach closes. */
 	const unsaved = new Map<string, LogRule[]>();
@@ -17,11 +17,11 @@
 	 * the host in the vault.
 	 */
 	import LogViewer from './LogViewer.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { ago } from '$lib/devops/status';
-	import { devopsLogRules, devopsLogRulesSave, type FoundFile, type LogView } from '$lib/ipc/containers';
-	import { sourcesFor, sourceLabel, templated, upsert, remove, size, groupRotated, type Scope, type Source, type Target } from '$lib/devops/logsource';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { ago } from '#lib/devops/status.js';
+	import { devopsLogRules, devopsLogRulesSave, type FoundFile, type LogView } from '#lib/ipc/containers.js';
+	import { sourcesFor, sourceLabel, templated, upsert, remove, size, groupRotated, type Scope, type Source, type Target } from '#lib/devops/logsource.js';
 
 	type Start = (onData: (chunk: string) => void) => Promise<() => void>;
 

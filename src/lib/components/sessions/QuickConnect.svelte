@@ -1,15 +1,15 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import KeyPathInput from '$lib/components/sessions/KeyPathInput.svelte';
-	import KeyPicker from '$lib/components/sessions/KeyPicker.svelte';
-	import ConnectSteps from '$lib/components/sessions/ConnectSteps.svelte';
-	import { sshConnect, type JumpHostConnectParams } from '$lib/ipc/ssh';
-	import { createTab } from '$lib/state/tabs.svelte';
-	import { getSettings, sessionLogConfig } from '$lib/state/settings.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
+	import KeyPathInput from '#lib/components/sessions/KeyPathInput.svelte';
+	import KeyPicker from '#lib/components/sessions/KeyPicker.svelte';
+	import ConnectSteps from '#lib/components/sessions/ConnectSteps.svelte';
+	import { sshConnect, type JumpHostConnectParams } from '#lib/ipc/ssh.js';
+	import { createTab } from '#lib/state/tabs.svelte.js';
+	import { getSettings, sessionLogConfig } from '#lib/state/settings.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	/** What the sessions search field parsed out of `user@host:port`. */
 	export interface QuickConnectPrefill {

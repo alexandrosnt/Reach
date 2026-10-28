@@ -6,7 +6,7 @@
  * own term stays one hover away, because that is what people search for.
  */
 
-import { t } from '$lib/state/i18n.svelte';
+import { t } from '#lib/state/i18n.svelte.js';
 
 export type Tone = 'ok' | 'busy' | 'warn' | 'bad' | 'idle';
 

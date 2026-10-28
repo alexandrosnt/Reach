@@ -15,10 +15,10 @@
 	 * backend is asked again (from its cache), one request at a time.
 	 */
 	import { tick, untrack } from 'svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import { pwmanagerList, type EntrySummary, type ProviderStatus } from '$lib/ipc/pwmanager';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import { pwmanagerList, type EntrySummary, type ProviderStatus } from '#lib/ipc/pwmanager.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		open: boolean;

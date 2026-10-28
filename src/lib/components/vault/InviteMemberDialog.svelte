@@ -1,11 +1,11 @@
 <script lang="ts">
-	import Button from '$lib/components/shared/Button.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import { inviteMember, listMembers, removeMember, type MemberInfo, type InviteInfo } from '$lib/ipc/vault';
-	import { vaultState } from '$lib/state/vault.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import { inviteMember, listMembers, removeMember, type MemberInfo, type InviteInfo } from '#lib/ipc/vault.js';
+	import { vaultState } from '#lib/state/vault.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		open: boolean;

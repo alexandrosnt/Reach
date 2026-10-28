@@ -5,8 +5,8 @@
 	means nothing to someone who cannot distinguish it from the amber one.
 -->
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
-	import type { Danger } from '$lib/ipc/recipes';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import type { Danger } from '#lib/ipc/recipes.js';
 
 	interface Props {
 		danger: Danger;

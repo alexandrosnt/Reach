@@ -1,9 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { getRoles, isRolesLoading, loadRoles, getActiveProject, isCommandRunning, runCommand } from '$lib/state/ansible.svelte';
-	import type { AnsibleExecutionTarget } from '$lib/ipc/ansible';
-	import Button from '$lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getRoles, isRolesLoading, loadRoles, getActiveProject, isCommandRunning, runCommand } from '#lib/state/ansible.svelte.js';
+	import type { AnsibleExecutionTarget } from '#lib/ipc/ansible.js';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	interface Props {
 		target: AnsibleExecutionTarget | null;

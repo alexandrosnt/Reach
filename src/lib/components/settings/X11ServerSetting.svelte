@@ -6,10 +6,10 @@
 	 * system's X server is used and this only says so.
 	 */
 	import { onMount } from 'svelte';
-	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { isMac } from '$lib/platform';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { isMac } from '#lib/platform.js';
 	import {
 		x11ServerStatus,
 		x11ServerInstall,
@@ -18,7 +18,7 @@
 		onX11ServerProgress,
 		type X11ServerStatus,
 		type X11ServerProgress
-	} from '$lib/ipc/x11server';
+	} from '#lib/ipc/x11server.js';
 
 	let status = $state<X11ServerStatus | null>(null);
 	let busy = $state(false);

@@ -180,7 +180,7 @@ select:not([multiple]):disabled {
   cursor: default;
 }
 
-/* The open list of a <select>, drawn by $lib/utils/selectMenu in place of the
+/* The open list of a <select>, drawn by #lib/utils/selectMenu in place of the
    platform's popup, which no theme can style. */
 .select-menu {
   position: fixed;

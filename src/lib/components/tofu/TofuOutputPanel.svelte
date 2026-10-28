@@ -1,14 +1,14 @@
 <script lang="ts">
-	import type { TofuExecutionTarget, TofuOutput } from '$lib/ipc/tofu';
-	import { t } from '$lib/state/i18n.svelte';
+	import type { TofuExecutionTarget, TofuOutput } from '#lib/ipc/tofu.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getActiveOutputs,
 		saveOutputs,
 		getOutputValues,
 		isOutputsLoading,
 		loadOutputValues
-	} from '$lib/state/tofu.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	} from '#lib/state/tofu.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
 	import TofuOutputEditor from './TofuOutputEditor.svelte';
 
 	interface Props {

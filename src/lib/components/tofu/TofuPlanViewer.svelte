@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { SvelteSet } from 'svelte/reactivity';
-	import { t } from '$lib/state/i18n.svelte';
-	import { getPlanSummary, isPlanSummaryLoading } from '$lib/state/tofu.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getPlanSummary, isPlanSummaryLoading } from '#lib/state/tofu.svelte.js';
 	import type {
 		TofuPlanSummary,
 		TofuResourceChange,
 		TofuChangeAction
-	} from '$lib/ipc/tofu';
+	} from '#lib/ipc/tofu.js';
 
 	let summary = $derived(getPlanSummary());
 	let loading = $derived(isPlanSummaryLoading());

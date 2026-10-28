@@ -6,12 +6,12 @@
  * normal connect has; through the terminal tab's own connection; or here.
  */
 
-import type { Engine, Route } from '$lib/ipc/containers';
-import { ctrShellCommand } from '$lib/ipc/containers';
-import { sshConnect } from '$lib/ipc/ssh';
-import { createTab, getTabs } from '$lib/state/tabs.svelte';
-import { setActivePage } from '$lib/state/navigation.svelte';
-import { requestSessionAction } from '$lib/state/palette.svelte';
+import type { Engine, Route } from '#lib/ipc/containers.js';
+import { ctrShellCommand } from '#lib/ipc/containers.js';
+import { sshConnect } from '#lib/ipc/ssh.js';
+import { createTab, getTabs } from '#lib/state/tabs.svelte.js';
+import { setActivePage } from '#lib/state/navigation.svelte.js';
+import { requestSessionAction } from '#lib/state/palette.svelte.js';
 
 /** bash if the image has it, sh otherwise. */
 const PICK_SHELL = 'if command -v bash >/dev/null 2>&1; then exec bash; else exec sh; fi';

@@ -2,7 +2,7 @@ import { createTab, closeTab, getActiveTab, getTabs, activateTab } from './tabs.
 import { toggleAIPanel } from './ai-chat.svelte';
 import { togglePalette, requestSessionAction } from './palette.svelte';
 import { stepUiZoom } from './ui-zoom';
-import { isMobile } from '$lib/platform';
+import { isMobile } from '#lib/platform.js';
 
 export interface Shortcut {
 	key: string;

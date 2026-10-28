@@ -1,10 +1,11 @@
 /**
- * Teaches Node the `$lib` alias that Vite gives the app.
+ * Teaches Node the `#lib` subpath imports the way Vite resolves them for the app.
  *
  * Without this, a module can only be covered by the plain-Node test scripts if
  * it imports nothing — which silently pushes shared helpers into being copied
- * rather than imported. This maps `$lib/x` to `src/lib/x` the way SvelteKit
- * does, trying the bare path, then `.ts`, then an `index.ts` directory entry.
+ * rather than imported. This maps `#lib/x` to `src/lib/x`: a `.js` import of a
+ * TypeScript module is its `.ts` file, as in the app; otherwise it tries the
+ * bare path, then `.ts`, then an `index.ts` directory entry.
  *
  * Loaded through scripts/resolve-lib.mjs, which is what tests pass to
  * `node --import`. Resolution hooks run on their own thread, so the register
@@ -17,10 +18,13 @@ import { fileURLToPath } from 'node:url';
 const ROOT = new URL('../', import.meta.url);
 
 export function resolve(specifier, context, nextResolve) {
-	if (specifier === '$lib' || specifier.startsWith('$lib/')) {
-		const rest = specifier === '$lib' ? '' : specifier.slice('$lib/'.length);
+	if (specifier === '#lib' || specifier.startsWith('#lib/')) {
+		const rest = specifier === '#lib' ? '' : specifier.slice('#lib/'.length);
 		const base = new URL(`src/lib/${rest}`, ROOT).href;
-		for (const candidate of [base, `${base}.ts`, `${base}/index.ts`]) {
+		const candidates = base.endsWith('.js')
+			? [base.replace(/\.js$/, '.ts'), base]
+			: [base, `${base}.ts`, `${base}/index.ts`];
+		for (const candidate of candidates) {
 			if (existsSync(fileURLToPath(candidate))) {
 				return nextResolve(candidate, context);
 			}

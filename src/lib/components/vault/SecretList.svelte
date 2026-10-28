@@ -1,8 +1,8 @@
 <script lang="ts">
-	import Button from '$lib/components/shared/Button.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Dropdown from '$lib/components/shared/Dropdown.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Dropdown from '#lib/components/shared/Dropdown.svelte';
 	import {
 		getSecretList,
 		createSecret,
@@ -10,9 +10,9 @@
 		updateSecret,
 		deleteSecret,
 		type SecretMetadata
-	} from '$lib/state/vault.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	} from '#lib/state/vault.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	// Categories with their display names
 	let categories = $derived([

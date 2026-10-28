@@ -31,7 +31,7 @@
 	 * the default (focus) prevented.
 	 */
 	import type { Snippet } from 'svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		/** Sticky Ctrl, bound so the owner can apply it to typed text. */

@@ -1,9 +1,9 @@
 <script lang="ts">
-	import CodeEditor from '$lib/components/editor/CodeEditor.svelte';
-	import { sftpWriteFile } from '$lib/ipc/sftp';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { fetchPendingFile } from '$lib/state/editor.svelte';
+	import CodeEditor from '#lib/components/editor/CodeEditor.svelte';
+	import { sftpWriteFile } from '#lib/ipc/sftp.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { fetchPendingFile } from '#lib/state/editor.svelte.js';
 	import { invoke } from '@tauri-apps/api/core';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { getCurrentWindow } from '@tauri-apps/api/window';

@@ -15,9 +15,9 @@
 	 * Both dropdowns offer a "follow global" option, so a per-session override
 	 * is something you opt into rather than a value you are forced to pin.
 	 */
-	import * as mcp from '$lib/state/mcp.svelte';
-	import type { McpMode } from '$lib/ipc/mcp';
-	import { t } from '$lib/state/i18n.svelte';
+	import * as mcp from '#lib/state/mcp.svelte.js';
+	import type { McpMode } from '#lib/ipc/mcp.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	let { sessionId }: { sessionId: string | undefined } = $props();
 

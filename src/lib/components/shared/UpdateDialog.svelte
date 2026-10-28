@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { getUpdaterState, downloadAndInstall, skipStartupUpdate } from '$lib/state/updater.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { getUpdaterState, downloadAndInstall, skipStartupUpdate } from '#lib/state/updater.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		open: boolean;

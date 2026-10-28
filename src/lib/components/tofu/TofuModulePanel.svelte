@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
-	import { getActiveModules, saveModules } from '$lib/state/tofu.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import type { TofuModuleConfig } from '$lib/ipc/tofu';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getActiveModules, saveModules } from '#lib/state/tofu.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
+	import type { TofuModuleConfig } from '#lib/ipc/tofu.js';
 
 	let modules = $derived(getActiveModules());
 

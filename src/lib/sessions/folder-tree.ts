@@ -1,4 +1,4 @@
-import type { Folder, SessionConfig } from '$lib/ipc/sessions';
+import type { Folder, SessionConfig } from '#lib/ipc/sessions.js';
 
 export interface FolderTreeNode {
 	folder: Folder;

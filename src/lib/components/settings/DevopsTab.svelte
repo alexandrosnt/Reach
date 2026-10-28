@@ -8,10 +8,10 @@
 	 * behind switching it on.
 	 */
 	import { onMount } from 'svelte';
-	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import { toolchainCheck, type ToolStatus } from '$lib/ipc/toolchain';
-	import { DEVOPS_TOOLS, isDevopsEnabled, setDevopsEnabled, type DevopsTool } from '$lib/state/devops.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
+	import { toolchainCheck, type ToolStatus } from '#lib/ipc/toolchain.js';
+	import { DEVOPS_TOOLS, isDevopsEnabled, setDevopsEnabled, type DevopsTool } from '#lib/state/devops.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	let found = $state<Record<string, ToolStatus | null>>({});
 

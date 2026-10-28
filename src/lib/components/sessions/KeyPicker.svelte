@@ -14,11 +14,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { open as openDialog } from '@tauri-apps/plugin-dialog';
-	import { t } from '$lib/state/i18n.svelte';
-	import { sshKeyList, sshKeyDelete, type StoredKeyInfo } from '$lib/ipc/sshkeys';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { sshKeyList, sshKeyDelete, type StoredKeyInfo } from '#lib/ipc/sshkeys.js';
 	import KeyPathInput from './KeyPathInput.svelte';
 	import SshKeyImport from './SshKeyImport.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	interface Props {
 		/** A key file on this machine. */

@@ -27,9 +27,9 @@
 	import { untrack } from 'svelte';
 	import { open as openDialog } from '@tauri-apps/plugin-dialog';
 	import { openUrl } from '@tauri-apps/plugin-opener';
-	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 	import {
 		configInputFromView,
 		pwmanagerForgetPassphrase,
@@ -44,11 +44,11 @@
 		type PasswordManagersConfigInput,
 		type PasswordManagersView,
 		type TestResult
-	} from '$lib/ipc/pwmanager';
-	import { pwManagerProviders, pwManagersLoaded, refreshPwManagers, rememberLabel } from '$lib/state/pwmanager.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { isLocked } from '$lib/state/vault.svelte';
+	} from '#lib/ipc/pwmanager.js';
+	import { pwManagerProviders, pwManagersLoaded, refreshPwManagers, rememberLabel } from '#lib/state/pwmanager.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { isLocked } from '#lib/state/vault.svelte.js';
 
 	const RELEASES_URL = 'https://github.com/passbolt/go-passbolt-cli/releases';
 	const TIMEOUT_MIN = 10;

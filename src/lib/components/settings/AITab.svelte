@@ -1,6 +1,6 @@
 <script lang="ts">
-	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import Input from '$lib/components/shared/Input.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
+	import Input from '#lib/components/shared/Input.svelte';
 	import {
 		getAISettings,
 		updateAISetting,
@@ -9,9 +9,9 @@
 		getModelsError,
 		fetchModels,
 		loadSecureAISettings
-	} from '$lib/state/ai.svelte';
-	import { isLocked } from '$lib/state/vault.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	} from '#lib/state/ai.svelte.js';
+	import { isLocked } from '#lib/state/vault.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	const aiSettings = getAISettings();
 

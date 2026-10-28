@@ -1,8 +1,8 @@
-import type { SshConnectParams } from '$lib/ipc/ssh';
-import { rdpDisconnect, type RdpConnectParams } from '$lib/ipc/rdp';
-import { vncDisconnect, type VncConnectParams } from '$lib/ipc/vnc';
-import * as splits from '$lib/terminal/split';
-import type { Direction, Split } from '$lib/terminal/split';
+import type { SshConnectParams } from '#lib/ipc/ssh.js';
+import { rdpDisconnect, type RdpConnectParams } from '#lib/ipc/rdp.js';
+import { vncDisconnect, type VncConnectParams } from '#lib/ipc/vnc.js';
+import * as splits from '#lib/terminal/split.js';
+import type { Direction, Split } from '#lib/terminal/split.js';
 
 export type TabType = 'local' | 'ssh' | 'rdp' | 'vnc';
 
@@ -43,7 +43,7 @@ let tabs = $state<Tab[]>([]);
 
 let activeTab = $derived<Tab | undefined>(tabs.find((t) => t.active));
 
-/** Two tabs side by side (#106); see $lib/terminal/split. */
+/** Two tabs side by side (#106); see #lib/terminal/split. */
 let split = $state<Split | null>(null);
 /** A tab being dragged from the tab bar, for the terminal area to drop beside. */
 let draggedTab = $state<string | null>(null);

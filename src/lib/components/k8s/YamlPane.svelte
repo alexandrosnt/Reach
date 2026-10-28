@@ -9,14 +9,14 @@
 	 * shown hidden, and revealed on request; Secrets are not edited here.
 	 */
 	import { onDestroy, untrack } from 'svelte';
-	import { ask } from '$lib/state/ask.svelte';
+	import { ask } from '#lib/state/ask.svelte.js';
 	import { writeText } from '@tauri-apps/plugin-clipboard-manager';
-	import ErrorHelp from '$lib/components/devops/ErrorHelp.svelte';
+	import ErrorHelp from '#lib/components/devops/ErrorHelp.svelte';
 	import ActionButton from './ActionButton.svelte';
-	import { k8sGetYaml, k8sReplaceYaml, type Kind } from '$lib/ipc/k8s';
-	import { busy } from '$lib/state/k8s.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { k8sGetYaml, k8sReplaceYaml, type Kind } from '#lib/ipc/k8s.js';
+	import { busy } from '#lib/state/k8s.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { isConflict, maskSecretYaml, decodeSecretData, type Ctx } from './model';
 
 	interface Props {

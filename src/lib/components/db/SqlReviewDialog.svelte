@@ -6,10 +6,10 @@
 	 * destructive change also asks for the connection's name, the way
 	 * OpenTofu's Destroy asks for the project's.
 	 */
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import type { Statement } from '$lib/ipc/db';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import type { Statement } from '#lib/ipc/db.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		open: boolean;

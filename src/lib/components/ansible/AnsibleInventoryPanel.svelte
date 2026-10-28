@@ -1,12 +1,12 @@
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
-	import { getActiveProject, saveInventory, generateInventory, writeInventory } from '$lib/state/ansible.svelte';
-	import type { AnsibleInventoryHost, AnsibleInventoryGroup } from '$lib/ipc/ansible';
-	import Button from '$lib/components/shared/Button.svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import { sessionList, type SessionConfig } from '$lib/ipc/sessions';
-	import { vaultState } from '$lib/state/vault.svelte';
-	import { hostFromSession, alreadyInInventory, missingGroups } from '$lib/ansible/from-sessions';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getActiveProject, saveInventory, generateInventory, writeInventory } from '#lib/state/ansible.svelte.js';
+	import type { AnsibleInventoryHost, AnsibleInventoryGroup } from '#lib/ipc/ansible.js';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import { sessionList, type SessionConfig } from '#lib/ipc/sessions.js';
+	import { vaultState } from '#lib/state/vault.svelte.js';
+	import { hostFromSession, alreadyInInventory, missingGroups } from '#lib/ansible/from-sessions.js';
 
 	let project = $derived(getActiveProject());
 

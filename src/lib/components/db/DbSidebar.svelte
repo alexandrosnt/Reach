@@ -5,7 +5,7 @@
 	 * away from "which databases run here?".
 	 */
 	import { onMount } from 'svelte';
-	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	import FaIcon from '#lib/components/shared/FaIcon.svelte';
 	import {
 		faPlus,
 		faChevronRight,
@@ -22,12 +22,12 @@
 	} from '@fortawesome/free-solid-svg-icons';
 	import EngineBadge from './EngineBadge.svelte';
 	import DbMenu, { type MenuItem } from './DbMenu.svelte';
-	import type { DbConnectionView, DbObject, Detected, ObjectKind } from '$lib/ipc/db';
-	import { detect } from '$lib/ipc/db';
-	import * as st from '$lib/state/db.svelte';
-	import { getTabs as getTerminalTabs } from '$lib/state/tabs.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import type { DbConnectionView, DbObject, Detected, ObjectKind } from '#lib/ipc/db.js';
+	import { detect } from '#lib/ipc/db.js';
+	import * as st from '#lib/state/db.svelte.js';
+	import { getTabs as getTerminalTabs } from '#lib/state/tabs.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		onNewConnection: () => void;
@@ -235,7 +235,7 @@
 
 	async function showDefinition(connId: string, database: string, schema: string | null, o: DbObject): Promise<void> {
 		try {
-			const { definition } = await import('$lib/ipc/db');
+			const { definition } = await import('#lib/ipc/db.js');
 			const def = await definition(connId, database, schema, o.name, o.kind);
 			st.openQuery(connId, database, schema, def);
 		} catch (err) {

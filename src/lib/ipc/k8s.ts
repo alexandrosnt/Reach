@@ -6,7 +6,7 @@
 
 import { invoke, Channel } from '@tauri-apps/api/core';
 import { explainUntrustedRefs } from './sessions';
-import type { Environment, Route } from '$lib/ipc/containers';
+import type { Environment, Route } from '#lib/ipc/containers.js';
 
 export interface ContextInfo {
 	name: string;
@@ -152,7 +152,7 @@ export async function k8sLogs(
 	namespace: string,
 	pod: string,
 	container: string | null,
-	view: import('$lib/ipc/containers').LogView,
+	view: import('#lib/ipc/containers.js').LogView,
 	onData: (chunk: string) => void
 ): Promise<() => void> {
 	const streamId = crypto.randomUUID();
@@ -180,7 +180,7 @@ export async function k8sLogsFiles(
 }
 
 export const k8sLogFiles = (key: string, namespace: string, pod: string, container: string | null) =>
-	invoke<import('$lib/ipc/containers').FoundFile[]>('k8s_log_files', { key, namespace, pod, container });
+	invoke<import('#lib/ipc/containers.js').FoundFile[]>('k8s_log_files', { key, namespace, pod, container });
 
 export const k8sHelmReleases = (key: string, namespace: Ns) => invoke<Revision[]>('k8s_helm_releases', { key, namespace });
 export const k8sHelmHistory = (key: string, namespace: string, name: string) => invoke<Revision[]>('k8s_helm_history', { key, namespace, name });

@@ -6,12 +6,12 @@
 	 * may not list nodes still sees their pods.
 	 */
 	import { untrack } from 'svelte';
-	import StatusPill from '$lib/components/devops/StatusPill.svelte';
-	import ErrorHelp from '$lib/components/devops/ErrorHelp.svelte';
+	import StatusPill from '#lib/components/devops/StatusPill.svelte';
+	import ErrorHelp from '#lib/components/devops/ErrorHelp.svelte';
 	import EventList from './EventList.svelte';
-	import { k8sEvents, k8sObjects, k8sPods, k8sWorkloads, type EventRow, type ObjectRow, type PodRow, type WorkloadRow } from '$lib/ipc/k8s';
-	import { podStatus, replicaStatus } from '$lib/devops/status';
-	import { t } from '$lib/state/i18n.svelte';
+	import { k8sEvents, k8sObjects, k8sPods, k8sWorkloads, type EventRow, type ObjectRow, type PodRow, type WorkloadRow } from '#lib/ipc/k8s.js';
+	import { podStatus, replicaStatus } from '#lib/devops/status.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { nodeStatus, podProblem, workloadProblem, type Ctx, type Selection, type View } from './model';
 
 	interface Props {

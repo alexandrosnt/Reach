@@ -1,26 +1,26 @@
 <script lang="ts">
-	import { getTabs, getActiveTab, updateTabTitle, updateTabConnection, createTab, activateTab, getSplit, setSplitRatio, getDraggedTab, setDraggedTab, splitWith, unsplit } from '$lib/state/tabs.svelte';
-	import { paneOf, paneStyle, dividerStyle, dropZone, neighbour, type Direction } from '$lib/terminal/split';
-	import { getActivePage } from '$lib/state/navigation.svelte';
-	import { isDevopsEnabled } from '$lib/state/devops.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import StartScreen from '$lib/components/layout/StartScreen.svelte';
-	import { ptySpawn, ptyClose } from '$lib/ipc/pty';
-	import { sshDisconnect } from '$lib/ipc/ssh';
-	import { monitoringStart, monitoringStop, monitoringGetStats, monitoringStartWsl } from '$lib/ipc/monitoring';
-	import { updateStats, removeStats } from '$lib/state/monitoring.svelte';
-	import Terminal from '$lib/components/terminal/Terminal.svelte';
-	import RdpPanel from '$lib/components/rdp/RdpPanel.svelte';
-	import MonitoringBar from '$lib/components/terminal/MonitoringBar.svelte';
-	import RemoteTerminal from '$lib/components/share/RemoteTerminal.svelte';
-	import * as share from '$lib/state/share.svelte';
-	import { monitorBarShown } from '$lib/state/monitor-bar.svelte';
-	import AnsiblePage from '$lib/components/ansible/AnsiblePage.svelte';
-	import TofuPage from '$lib/components/tofu/TofuPage.svelte';
-	import DbPage from '$lib/components/db/DbPage.svelte';
-	import ContainersPage from '$lib/components/containers/ContainersPage.svelte';
-	import K8sPage from '$lib/components/k8s/K8sPage.svelte';
-	import EditorWindow from '$lib/components/editor/EditorWindow.svelte';
+	import { getTabs, getActiveTab, updateTabTitle, updateTabConnection, createTab, activateTab, getSplit, setSplitRatio, getDraggedTab, setDraggedTab, splitWith, unsplit } from '#lib/state/tabs.svelte.js';
+	import { paneOf, paneStyle, dividerStyle, dropZone, neighbour, type Direction } from '#lib/terminal/split.js';
+	import { getActivePage } from '#lib/state/navigation.svelte.js';
+	import { isDevopsEnabled } from '#lib/state/devops.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import StartScreen from '#lib/components/layout/StartScreen.svelte';
+	import { ptySpawn, ptyClose } from '#lib/ipc/pty.js';
+	import { sshDisconnect } from '#lib/ipc/ssh.js';
+	import { monitoringStart, monitoringStop, monitoringGetStats, monitoringStartWsl } from '#lib/ipc/monitoring.js';
+	import { updateStats, removeStats } from '#lib/state/monitoring.svelte.js';
+	import Terminal from '#lib/components/terminal/Terminal.svelte';
+	import RdpPanel from '#lib/components/rdp/RdpPanel.svelte';
+	import MonitoringBar from '#lib/components/terminal/MonitoringBar.svelte';
+	import RemoteTerminal from '#lib/components/share/RemoteTerminal.svelte';
+	import * as share from '#lib/state/share.svelte.js';
+	import { monitorBarShown } from '#lib/state/monitor-bar.svelte.js';
+	import AnsiblePage from '#lib/components/ansible/AnsiblePage.svelte';
+	import TofuPage from '#lib/components/tofu/TofuPage.svelte';
+	import DbPage from '#lib/components/db/DbPage.svelte';
+	import ContainersPage from '#lib/components/containers/ContainersPage.svelte';
+	import K8sPage from '#lib/components/k8s/K8sPage.svelte';
+	import EditorWindow from '#lib/components/editor/EditorWindow.svelte';
 
 	const isEditorWindow = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('editor');
 
@@ -57,7 +57,7 @@
 	let activeTab = $derived(getActiveTab());
 	let activePage = $derived(getActivePage());
 
-	// Two tabs side by side (#106); the rules are in $lib/terminal/split.
+	// Two tabs side by side (#106); the rules are in #lib/terminal/split.
 	let areaEl = $state<HTMLDivElement>();
 	let innerWidth = $state(1200);
 	/** Below this width only the focused pane is shown; the split comes back with the room. */

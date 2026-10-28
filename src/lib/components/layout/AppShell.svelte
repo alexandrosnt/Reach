@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { rdpDisconnectAll } from '$lib/ipc/rdp';
-	import { vncDisconnectAll } from '$lib/ipc/vnc';
+	import { rdpDisconnectAll } from '#lib/ipc/rdp.js';
+	import { vncDisconnectAll } from '#lib/ipc/vnc.js';
 	import type { Snippet } from 'svelte';
 	import { onMount, onDestroy } from 'svelte';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
@@ -10,24 +10,24 @@
 	import TabBar from './TabBar.svelte';
 	import Sidebar from './Sidebar.svelte';
 	import StatusBar from './StatusBar.svelte';
-	import { monitorBarShown } from '$lib/state/monitor-bar.svelte';
-	import Toast from '$lib/components/shared/Toast.svelte';
-	import UpdateBanner from '$lib/components/shared/UpdateBanner.svelte';
-	import UpdateDialog from '$lib/components/shared/UpdateDialog.svelte';
-	import ActiveSessionsDialog from '$lib/components/shared/ActiveSessionsDialog.svelte';
-	import HostKeyDialog from '$lib/components/shared/HostKeyDialog.svelte';
-	import AuthPromptDialog from '$lib/components/shared/AuthPromptDialog.svelte';
-	import PassphrasePrompt from '$lib/components/pwmanager/PassphrasePrompt.svelte';
-	import DuplicateVaultsDialog from '$lib/components/vault/DuplicateVaultsDialog.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import McpConfirmDialog from '$lib/components/shared/McpConfirmDialog.svelte';
-	import { getUpdaterState, relaunchNow, postponeRelaunch } from '$lib/state/updater.svelte';
-	import { getActiveTab, getTabs, isDesktopTab } from '$lib/state/tabs.svelte';
-	import { getActivePage } from '$lib/state/navigation.svelte';
-	import { getSettings } from '$lib/state/settings.svelte';
-	import { sshListConnections } from '$lib/ipc/ssh';
-	import AIPanel from '$lib/components/ai/AIPanel.svelte';
+	import { monitorBarShown } from '#lib/state/monitor-bar.svelte.js';
+	import Toast from '#lib/components/shared/Toast.svelte';
+	import UpdateBanner from '#lib/components/shared/UpdateBanner.svelte';
+	import UpdateDialog from '#lib/components/shared/UpdateDialog.svelte';
+	import ActiveSessionsDialog from '#lib/components/shared/ActiveSessionsDialog.svelte';
+	import HostKeyDialog from '#lib/components/shared/HostKeyDialog.svelte';
+	import AuthPromptDialog from '#lib/components/shared/AuthPromptDialog.svelte';
+	import PassphrasePrompt from '#lib/components/pwmanager/PassphrasePrompt.svelte';
+	import DuplicateVaultsDialog from '#lib/components/vault/DuplicateVaultsDialog.svelte';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import McpConfirmDialog from '#lib/components/shared/McpConfirmDialog.svelte';
+	import { getUpdaterState, relaunchNow, postponeRelaunch } from '#lib/state/updater.svelte.js';
+	import { getActiveTab, getTabs, isDesktopTab } from '#lib/state/tabs.svelte.js';
+	import { getActivePage } from '#lib/state/navigation.svelte.js';
+	import { getSettings } from '#lib/state/settings.svelte.js';
+	import { sshListConnections } from '#lib/ipc/ssh.js';
+	import AIPanel from '#lib/components/ai/AIPanel.svelte';
 
 	const updater = getUpdaterState();
 

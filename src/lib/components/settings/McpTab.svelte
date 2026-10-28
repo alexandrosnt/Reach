@@ -12,15 +12,15 @@
 	 * Reach fills in its own URL and token and hands over the finished thing.
 	 */
 	import { onMount } from 'svelte';
-	import Disclosure from '$lib/components/shared/Disclosure.svelte';
-	import Dropdown from '$lib/components/shared/Dropdown.svelte';
-	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import McpClientIcon from '$lib/components/shared/McpClientIcon.svelte';
-	import { MCP_CLIENTS, fill } from '$lib/data/mcp-clients';
-	import type { McpMode } from '$lib/ipc/mcp';
-	import * as mcp from '$lib/state/mcp.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import Disclosure from '#lib/components/shared/Disclosure.svelte';
+	import Dropdown from '#lib/components/shared/Dropdown.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
+	import McpClientIcon from '#lib/components/shared/McpClientIcon.svelte';
+	import { MCP_CLIENTS, fill } from '#lib/data/mcp-clients.js';
+	import type { McpMode } from '#lib/ipc/mcp.js';
+	import * as mcp from '#lib/state/mcp.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	let status = $derived(mcp.getMcpStatus());
 	let agents = $derived(mcp.getAgents());

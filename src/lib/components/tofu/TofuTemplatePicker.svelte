@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import type { ProjectTemplate } from '$lib/ipc/tofu';
-	import { getTemplateCatalog, loadTemplates } from '$lib/state/tofu.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import type { ProjectTemplate } from '#lib/ipc/tofu.js';
+	import { getTemplateCatalog, loadTemplates } from '#lib/state/tofu.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	interface Props {
 		open: boolean;

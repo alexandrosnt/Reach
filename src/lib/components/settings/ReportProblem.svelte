@@ -8,12 +8,12 @@
 	 * so the issue opens in the browser, filled in, and the folder holding the
 	 * cleaned copy opens beside it to drag the file in.
 	 */
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 	import { openUrl } from '@tauri-apps/plugin-opener';
-	import { t } from '$lib/state/i18n.svelte';
-	import { sessionList } from '$lib/ipc/sessions';
-	import { reportPrepare, reportReveal, type Private, type Report } from '$lib/ipc/report';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { sessionList } from '#lib/ipc/sessions.js';
+	import { reportPrepare, reportReveal, type Private, type Report } from '#lib/ipc/report.js';
 
 	interface Props {
 		open: boolean;

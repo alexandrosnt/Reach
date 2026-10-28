@@ -10,8 +10,8 @@
 	 * `theme` is null for "System", which has no colours of its own; that card
 	 * shows a split of the two built-ins instead.
 	 */
-	import type { Theme } from '$lib/state/theme.svelte';
-	import type { ThemeEntry } from '$lib/ipc/theme';
+	import type { Theme } from '#lib/state/theme.svelte.js';
+	import type { ThemeEntry } from '#lib/ipc/theme.js';
 
 	interface Props {
 		theme: Theme | null;

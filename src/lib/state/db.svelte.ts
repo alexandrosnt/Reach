@@ -8,9 +8,9 @@
  * parts need to see: titles, which tabs are busy, which have unsaved work.
  */
 
-import * as db from '$lib/ipc/db';
-import type { Connected, DbConnection, DbConnectionView, DbObject, Engine } from '$lib/ipc/db';
-import { addToast } from '$lib/state/toasts.svelte';
+import * as db from '#lib/ipc/db.js';
+import type { Connected, DbConnection, DbConnectionView, DbObject, Engine } from '#lib/ipc/db.js';
+import { addToast } from '#lib/state/toasts.svelte.js';
 
 export type DbTab =
 	| { kind: 'query'; id: string; connId: string; database: string; schema: string | null; title: string; initialSql?: string }

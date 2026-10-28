@@ -147,8 +147,8 @@ export function ctrLogsFiles(key: string, id: string, paths: string[], lines: nu
 export const ctrLogFiles = (key: string, id: string) => invoke<FoundFile[]>('ctr_log_files', { key, id });
 
 /** Log files saved for a host's or cluster's containers. */
-export const devopsLogRules = (owner: string) => invoke<import('$lib/devops/logsource').LogRule[]>('devops_log_rules', { owner });
-export const devopsLogRulesSave = (owner: string, rules: import('$lib/devops/logsource').LogRule[]) =>
+export const devopsLogRules = (owner: string) => invoke<import('#lib/devops/logsource.js').LogRule[]>('devops_log_rules', { owner });
+export const devopsLogRulesSave = (owner: string, rules: import('#lib/devops/logsource.js').LogRule[]) =>
 	invoke<void>('devops_log_rules_save', { owner, rules });
 
 export const ctrShellCommand = (engine: Engine, id: string) => invoke<string>('ctr_shell_command', { engine, id });

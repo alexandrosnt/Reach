@@ -7,12 +7,12 @@
 	 * so all of them stay. The entry kept is one that connected, since the two
 	 * may hold different tokens and an expired one must not be what remains.
 	 */
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import { vaultDuplicates, type VaultInfo } from '$lib/ipc/vault';
-	import { vaultState, deleteVault, refreshVaults } from '$lib/state/vault.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import { vaultDuplicates, type VaultInfo } from '#lib/ipc/vault.js';
+	import { vaultState, deleteVault, refreshVaults } from '#lib/state/vault.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	let groups = $state<VaultInfo[][]>([]);
 	/** Per group, the entry to keep. */

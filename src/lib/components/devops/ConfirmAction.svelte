@@ -7,11 +7,11 @@
 	 * well-known outages happened. On production, or when `typeToConfirm` is
 	 * set, the user types the name before the button works.
 	 */
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import EnvBadge from '$lib/components/devops/EnvBadge.svelte';
-	import type { Environment } from '$lib/ipc/containers';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import EnvBadge from '#lib/components/devops/EnvBadge.svelte';
+	import type { Environment } from '#lib/ipc/containers.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		open: boolean;

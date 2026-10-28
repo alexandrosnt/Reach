@@ -3,7 +3,7 @@
 	 * A state as a shape and words together: never colour alone. The
 	 * engine's or cluster's own term is the tooltip.
 	 */
-	import type { Status } from '$lib/devops/status';
+	import type { Status } from '#lib/devops/status.js';
 
 	let { status, compact = false }: { status: Status; compact?: boolean } = $props();
 

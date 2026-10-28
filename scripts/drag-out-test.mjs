@@ -12,7 +12,7 @@ import {
 	showsProgress,
 	MAX_DRAG_BYTES,
 	QUIET_PREFETCH_BYTES
-} from '$lib/explorer/drag-out';
+} from '#lib/explorer/drag-out.js';
 
 let failures = 0;
 const check = (name, cond, extra = '') => {

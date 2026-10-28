@@ -1,18 +1,18 @@
 <script lang="ts">
 	/**
 	 * Bulk-import RDP hosts from pasted JSON: a Termix export or a plain array
-	 * (see $lib/sessions/rdp-import). Each host becomes an RDP session in the
+	 * (see #lib/sessions/rdp-import). Each host becomes an RDP session in the
 	 * selected vault, and folders named in the JSON are created there once,
 	 * or reused when the vault already has them. Passwords are never imported;
 	 * RDP asks for them on connect. Hosts already saved are shown but not
 	 * imported again, like the ssh_config import.
 	 */
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import { sessionCreate, sessionCreateFolder, sessionList, sessionListFolders, type Folder, type SessionConfig } from '$lib/ipc/sessions';
-	import { findExisting, findFolder, parseRdpHosts, type RdpImportHost, type RdpSkipped } from '$lib/sessions/rdp-import';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import { sessionCreate, sessionCreateFolder, sessionList, sessionListFolders, type Folder, type SessionConfig } from '#lib/ipc/sessions.js';
+	import { findExisting, findFolder, parseRdpHosts, type RdpImportHost, type RdpSkipped } from '#lib/sessions/rdp-import.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		open: boolean;

@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { getStats } from '$lib/state/monitoring.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { getStats } from '#lib/state/monitoring.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import McpSessionBar from './McpSessionBar.svelte';
-	import ShareBar from '$lib/components/share/ShareBar.svelte';
-	import Clock from '$lib/components/layout/Clock.svelte';
-	import { getActiveTab } from '$lib/state/tabs.svelte';
+	import ShareBar from '#lib/components/share/ShareBar.svelte';
+	import Clock from '#lib/components/layout/Clock.svelte';
+	import { getActiveTab } from '#lib/state/tabs.svelte.js';
 
 	interface Props {
 		connectionId?: string;

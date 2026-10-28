@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getActiveBackend,
 		getBackendCatalog,
 		loadBackendCatalog,
 		saveBackend
-	} from '$lib/state/tofu.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import type { TofuBackendConfig, BackendCatalogEntry } from '$lib/ipc/tofu';
-	import { getActiveEncryption, saveEncryption } from '$lib/state/tofu.svelte';
+	} from '#lib/state/tofu.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
+	import type { TofuBackendConfig, BackendCatalogEntry } from '#lib/ipc/tofu.js';
+	import { getActiveEncryption, saveEncryption } from '#lib/state/tofu.svelte.js';
 
 	let backend = $derived(getActiveBackend());
 	let catalog = $derived(getBackendCatalog());

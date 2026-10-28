@@ -1,7 +1,7 @@
-import { snippetList, snippetCreate, snippetUpdate, snippetDelete, type Snippet } from '$lib/ipc/snippets';
-import { getActiveTab } from '$lib/state/tabs.svelte';
-import { sshSend } from '$lib/ipc/ssh';
-import { ptyWrite } from '$lib/ipc/pty';
+import { snippetList, snippetCreate, snippetUpdate, snippetDelete, type Snippet } from '#lib/ipc/snippets.js';
+import { getActiveTab } from '#lib/state/tabs.svelte.js';
+import { sshSend } from '#lib/ipc/ssh.js';
+import { ptyWrite } from '#lib/ipc/pty.js';
 
 let snippets = $state<Snippet[]>([]);
 

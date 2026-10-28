@@ -1,17 +1,17 @@
 <script lang="ts">
-	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import { themeState, applyTheme, loadInstalledThemes, DARK, LIGHT } from '$lib/state/theme.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
+	import { themeState, applyTheme, loadInstalledThemes, DARK, LIGHT } from '#lib/state/theme.svelte.js';
 	import { onMount } from 'svelte';
-	import { themeFetchRegistry, themeInstall, themeUninstall, type ThemeEntry } from '$lib/ipc/theme';
-	import { validateTheme } from '$lib/state/theme.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { getSettings, updateSetting } from '$lib/state/settings.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { matchesQuery } from '$lib/utils/search';
-	import { isMobile } from '$lib/platform';
-	import { stepUiZoom, UI_ZOOM_STEPS } from '$lib/state/ui-zoom';
-	import { shortcutLabel } from '$lib/state/shortcuts.svelte';
-	import { sessionLogDefaultDir } from '$lib/ipc/ssh';
+	import { themeFetchRegistry, themeInstall, themeUninstall, type ThemeEntry } from '#lib/ipc/theme.js';
+	import { validateTheme } from '#lib/state/theme.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { getSettings, updateSetting } from '#lib/state/settings.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { matchesQuery } from '#lib/utils/search.js';
+	import { isMobile } from '#lib/platform.js';
+	import { stepUiZoom, UI_ZOOM_STEPS } from '#lib/state/ui-zoom.js';
+	import { shortcutLabel } from '#lib/state/shortcuts.svelte.js';
+	import { sessionLogDefaultDir } from '#lib/ipc/ssh.js';
 	import { open as pickFolder } from '@tauri-apps/plugin-dialog';
 
 	const settings = getSettings();

@@ -9,7 +9,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { faTerminal } from '@fortawesome/free-solid-svg-icons';
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getActiveProject,
 		getProjectFiles,
@@ -17,11 +17,11 @@
 		closeProject,
 		getWorkspaceTab,
 		setWorkspaceTab
-	} from '$lib/state/ansible.svelte';
-	import { ansibleReadFile } from '$lib/ipc/ansible';
-	import type { AnsibleExecutionTarget } from '$lib/ipc/ansible';
-	import FaIcon from '$lib/components/shared/FaIcon.svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
+	} from '#lib/state/ansible.svelte.js';
+	import { ansibleReadFile } from '#lib/ipc/ansible.js';
+	import type { AnsibleExecutionTarget } from '#lib/ipc/ansible.js';
+	import FaIcon from '#lib/components/shared/FaIcon.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
 	import AnsibleEnginePicker from './AnsibleEnginePicker.svelte';
 	import AnsibleRunView from './AnsibleRunView.svelte';
 	import AnsiblePlaybookPanel from './AnsiblePlaybookPanel.svelte';

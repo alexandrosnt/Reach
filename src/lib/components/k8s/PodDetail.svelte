@@ -6,21 +6,21 @@
 	 * it come back" is the usual way to restart one.
 	 */
 	import { untrack } from 'svelte';
-	import StatusPill from '$lib/components/devops/StatusPill.svelte';
-	import LogSources from '$lib/components/devops/LogSources.svelte';
-	import ConfirmAction from '$lib/components/devops/ConfirmAction.svelte';
-	import ErrorHelp from '$lib/components/devops/ErrorHelp.svelte';
+	import StatusPill from '#lib/components/devops/StatusPill.svelte';
+	import LogSources from '#lib/components/devops/LogSources.svelte';
+	import ConfirmAction from '#lib/components/devops/ConfirmAction.svelte';
+	import ErrorHelp from '#lib/components/devops/ErrorHelp.svelte';
 	import DetailHeader from './DetailHeader.svelte';
 	import ActionButton from './ActionButton.svelte';
 	import Tabs from './Tabs.svelte';
 	import EventList from './EventList.svelte';
 	import YamlPane from './YamlPane.svelte';
-	import { k8sDelete, k8sEvents, k8sLogs, k8sLogsFiles, k8sLogFiles, type EventRow, type PodRow } from '$lib/ipc/k8s';
-	import type { LogView } from '$lib/ipc/containers';
-	import { podStatus, ago } from '$lib/devops/status';
-	import { busy } from '$lib/state/k8s.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { k8sDelete, k8sEvents, k8sLogs, k8sLogsFiles, k8sLogFiles, type EventRow, type PodRow } from '#lib/ipc/k8s.js';
+	import type { LogView } from '#lib/ipc/containers.js';
+	import { podStatus, ago } from '#lib/devops/status.js';
+	import { busy } from '#lib/state/k8s.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import type { Ctx } from './model';
 
 	interface Props {

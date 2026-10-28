@@ -8,12 +8,12 @@
 	LAN-only sharing that contacts nothing outside.
 -->
 <script lang="ts">
-	import Disclosure from '$lib/components/shared/Disclosure.svelte';
-	import Toggle from '$lib/components/shared/Toggle.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import * as share from '$lib/state/share.svelte';
-	import type { IceServer } from '$lib/ipc/share';
+	import Disclosure from '#lib/components/shared/Disclosure.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import * as share from '#lib/state/share.svelte.js';
+	import type { IceServer } from '#lib/ipc/share.js';
 
 	let config = $derived(share.getConfig());
 

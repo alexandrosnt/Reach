@@ -1,11 +1,11 @@
 <script lang="ts">
-	import { getAIChatState, sendMessage, executeCommand, closeAIPanel, clearChat, type TerminalInfo } from '$lib/state/ai-chat.svelte';
-	import { getAISettings } from '$lib/state/ai.svelte';
-	import { getSessionList } from '$lib/state/sessions.svelte';
-	import { readTerminalBuffer } from '$lib/state/terminal-buffer.svelte';
-	import { sshSend } from '$lib/ipc/ssh';
-	import { ptyWrite } from '$lib/ipc/pty';
-	import { t } from '$lib/state/i18n.svelte';
+	import { getAIChatState, sendMessage, executeCommand, closeAIPanel, clearChat, type TerminalInfo } from '#lib/state/ai-chat.svelte.js';
+	import { getAISettings } from '#lib/state/ai.svelte.js';
+	import { getSessionList } from '#lib/state/sessions.svelte.js';
+	import { readTerminalBuffer } from '#lib/state/terminal-buffer.svelte.js';
+	import { sshSend } from '#lib/ipc/ssh.js';
+	import { ptyWrite } from '#lib/ipc/pty.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		connectionId?: string;

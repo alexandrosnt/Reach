@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getActiveDataSources,
 		getDataSourceCatalog,
@@ -9,9 +9,9 @@
 		getActiveProviders,
 		getProviderCatalog,
 		loadCatalog
-	} from '$lib/state/tofu.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import type { TofuDataSource, DataSourceCatalogEntry } from '$lib/ipc/tofu';
+	} from '#lib/state/tofu.svelte.js';
+	import Button from '#lib/components/shared/Button.svelte';
+	import type { TofuDataSource, DataSourceCatalogEntry } from '#lib/ipc/tofu.js';
 
 	type Category = 'All' | 'Compute' | 'Network' | 'Storage' | 'Container' | 'Utility';
 

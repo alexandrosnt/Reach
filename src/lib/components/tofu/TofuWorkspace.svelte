@@ -11,7 +11,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { faEllipsis } from '@fortawesome/free-solid-svg-icons';
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getActiveProject,
 		getProjectFiles,
@@ -36,12 +36,12 @@
 		loadBinaryStatus,
 		type TofuCodeSection,
 		type TofuStateSection
-	} from '$lib/state/tofu.svelte';
-	import { tofuReadFile } from '$lib/ipc/tofu';
-	import type { TofuCommandRequest, TofuExecutionTarget } from '$lib/ipc/tofu';
-	import { sshListConnections, type ConnectionInfo } from '$lib/ipc/ssh';
-	import Button from '$lib/components/shared/Button.svelte';
-	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	} from '#lib/state/tofu.svelte.js';
+	import { tofuReadFile } from '#lib/ipc/tofu.js';
+	import type { TofuCommandRequest, TofuExecutionTarget } from '#lib/ipc/tofu.js';
+	import { sshListConnections, type ConnectionInfo } from '#lib/ipc/ssh.js';
+	import Button from '#lib/components/shared/Button.svelte';
+	import FaIcon from '#lib/components/shared/FaIcon.svelte';
 	import TofuRunView from './TofuRunView.svelte';
 	import TofuVersionControl from './TofuVersionControl.svelte';
 	import TofuProviderPanel from './TofuProviderPanel.svelte';

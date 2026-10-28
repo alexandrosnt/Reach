@@ -1,21 +1,21 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/core';
 	import { enable, disable, isEnabled } from '@tauri-apps/plugin-autostart';
-	import { isMobile } from '$lib/platform';
+	import { isMobile } from '#lib/platform.js';
 	import { openUrl } from '@tauri-apps/plugin-opener';
-	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	import FaIcon from '#lib/components/shared/FaIcon.svelte';
 	import { faBug, faCopy, faUpRightFromSquare } from '@fortawesome/free-solid-svg-icons';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import Dropdown from '$lib/components/shared/Dropdown.svelte';
-	import DiscordIcon from '$lib/components/shared/DiscordIcon.svelte';
-	import { COMMUNITY } from '$lib/data/community';
-	import LanguageSelect from '$lib/components/shared/LanguageSelect.svelte';
-	import Toggle from '$lib/components/shared/Toggle.svelte';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import Dropdown from '#lib/components/shared/Dropdown.svelte';
+	import DiscordIcon from '#lib/components/shared/DiscordIcon.svelte';
+	import { COMMUNITY } from '#lib/data/community.js';
+	import LanguageSelect from '#lib/components/shared/LanguageSelect.svelte';
+	import Toggle from '#lib/components/shared/Toggle.svelte';
 	import X11ServerSetting from './X11ServerSetting.svelte';
 	import ReportProblem from './ReportProblem.svelte';
-	import { getSettings, updateSetting, syncTraySettings } from '$lib/state/settings.svelte';
-	import { effectiveThreshold, MIN_PASTE_THRESHOLD } from '$lib/terminal/paste';
-	import { t, changeLocale } from '$lib/state/i18n.svelte';
+	import { getSettings, updateSetting, syncTraySettings } from '#lib/state/settings.svelte.js';
+	import { effectiveThreshold, MIN_PASTE_THRESHOLD } from '#lib/terminal/paste.js';
+	import { t, changeLocale } from '#lib/state/i18n.svelte.js';
 
 	const settings = getSettings();
 

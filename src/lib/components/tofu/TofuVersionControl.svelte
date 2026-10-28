@@ -7,14 +7,14 @@
 	pin: pick a managed version, use the PATH, or install the latest.
 -->
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import {
 		getBinaryStatus,
 		isBinaryInstalling,
 		getBinaryInstallMessage,
 		installBinary,
 		pinBinary
-	} from '$lib/state/tofu.svelte';
+	} from '#lib/state/tofu.svelte.js';
 
 	let status = $derived(getBinaryStatus());
 	let installing = $derived(isBinaryInstalling());

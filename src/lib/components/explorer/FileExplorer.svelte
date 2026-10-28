@@ -1,10 +1,10 @@
 <script lang="ts">
 	function autoFocus(node: HTMLElement) { node.focus(); }
 
-	import { t } from '$lib/state/i18n.svelte';
-	import { getCurrentPath, getEntries, setCurrentPath, setEntries } from '$lib/state/explorer.svelte';
-	import { sftpListDir, sftpUpload, sftpDownload, sftpDelete, sftpRename, sftpMkdir, sftpTouch, sftpReadFile } from '$lib/ipc/sftp';
-	import { sshSend } from '$lib/ipc/ssh';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getCurrentPath, getEntries, setCurrentPath, setEntries } from '#lib/state/explorer.svelte.js';
+	import { sftpListDir, sftpUpload, sftpDownload, sftpDelete, sftpRename, sftpMkdir, sftpTouch, sftpReadFile } from '#lib/ipc/sftp.js';
+	import { sshSend } from '#lib/ipc/ssh.js';
 	import {
 		archiveTools,
 		archiveCreate,
@@ -15,26 +15,26 @@
 		FORMAT_EXTENSION,
 		type ArchiveTools,
 		type ArchiveFormat
-	} from '$lib/ipc/archive';
-	import { createProgressCounter, percentOf } from '$lib/explorer/archive-progress';
+	} from '#lib/ipc/archive.js';
+	import { createProgressCounter, percentOf } from '#lib/explorer/archive-progress.js';
 	import {
 		cacheKey,
 		safeLocalName,
 		dragAction,
 		isDraggable,
 		showsProgress
-	} from '$lib/explorer/drag-out';
+	} from '#lib/explorer/drag-out.js';
 	import { startDrag } from '@crabnebula/tauri-plugin-drag';
-	import { dragoutStart } from '$lib/ipc/dragout';
-	import { isWindows } from '$lib/platform';
+	import { dragoutStart } from '#lib/ipc/dragout.js';
+	import { isWindows } from '#lib/platform.js';
 	import { tempDir, join } from '@tauri-apps/api/path';
 	import { invoke } from '@tauri-apps/api/core';
-	import { openEditor } from '$lib/state/editor.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { positionMenu } from '$lib/utils/positionMenu';
-	import ContextMenuBackdrop from '$lib/components/shared/ContextMenuBackdrop.svelte';
+	import { openEditor } from '#lib/state/editor.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { positionMenu } from '#lib/utils/positionMenu.js';
+	import ContextMenuBackdrop from '#lib/components/shared/ContextMenuBackdrop.svelte';
 	import FileNode from './FileNode.svelte';
-	import type { FileEntry } from '$lib/state/explorer.svelte';
+	import type { FileEntry } from '#lib/state/explorer.svelte.js';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
 	import { getCurrentWebview } from '@tauri-apps/api/webview';
 	import { save } from '@tauri-apps/plugin-dialog';
@@ -47,7 +47,7 @@
 		getTransfers,
 		removeTransfer,
 		type Transfer
-	} from '$lib/state/transfers.svelte';
+	} from '#lib/state/transfers.svelte.js';
 
 	interface Props {
 		connectionId?: string;
@@ -138,7 +138,7 @@
 	// has to exist locally before the gesture begins and the OS copies it from
 	// there. Pressing a row starts that download; by the time the pointer has
 	// moved far enough to be a drag, a small file is usually ready. See
-	// $lib/explorer/drag-out for why it cannot work any other way.
+	// #lib/explorer/drag-out for why it cannot work any other way.
 	type DragEntry = { state: 'fetching' | 'ready' | 'failed'; localPath?: string };
 	const dragCache = new Map<string, DragEntry>();
 

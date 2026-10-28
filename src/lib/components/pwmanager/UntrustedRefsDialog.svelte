@@ -12,12 +12,12 @@
 	 * by whoever edited it last and is never shown here. Allowing signs exactly
 	 * what was shown; if the session changed meanwhile, the backend refuses.
 	 */
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import { pwmanagerList } from '$lib/ipc/pwmanager';
-	import type { RefSlot, UntrustedRefs, ViaRoute } from '$lib/ipc/sessions';
-	import { providerName } from '$lib/state/pwmanager.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import { pwmanagerList } from '#lib/ipc/pwmanager.js';
+	import type { RefSlot, UntrustedRefs, ViaRoute } from '#lib/ipc/sessions.js';
+	import { providerName } from '#lib/state/pwmanager.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		asked: UntrustedRefs | null;

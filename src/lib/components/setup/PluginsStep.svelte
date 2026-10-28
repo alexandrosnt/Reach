@@ -9,12 +9,12 @@
 	 * step is skippable in one click. The wizard never blocks on the network.
 	 */
 	import { onMount } from 'svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { marketplaceFetch, marketplaceInstall, type MarketplaceEntry } from '$lib/ipc/marketplace';
-	import { pluginList } from '$lib/ipc/plugin';
-	import { setPlugins } from '$lib/state/plugin.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { marketplaceFetch, marketplaceInstall, type MarketplaceEntry } from '#lib/ipc/marketplace.js';
+	import { pluginList } from '#lib/ipc/plugin.js';
+	import { setPlugins } from '#lib/state/plugin.svelte.js';
 
 	interface Props {
 		onNext: () => void;

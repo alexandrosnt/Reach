@@ -1,5 +1,5 @@
 <script lang="ts">
-	import type { UiElement } from '$lib/ipc/plugin';
+	import type { UiElement } from '#lib/ipc/plugin.js';
 	import Self from './PluginUIElement.svelte';
 
 	interface Props {

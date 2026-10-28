@@ -6,10 +6,10 @@
 	output; now the output has the whole page and the composer is a line.
 -->
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
-	import { getProjectFiles, getActiveProject, isCommandRunning, runCommand } from '$lib/state/ansible.svelte';
-	import type { AnsibleCommandRequest, AnsibleExecutionTarget } from '$lib/ipc/ansible';
-	import Button from '$lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { getProjectFiles, getActiveProject, isCommandRunning, runCommand } from '#lib/state/ansible.svelte.js';
+	import type { AnsibleCommandRequest, AnsibleExecutionTarget } from '#lib/ipc/ansible.js';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	interface Props {
 		target: AnsibleExecutionTarget | null;

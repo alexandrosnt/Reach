@@ -3,10 +3,10 @@
 	 * Cluster events as short cards: what happened (the reason and message),
 	 * to what, how often and when. Warnings lead with their shape and word.
 	 */
-	import StatusPill from '$lib/components/devops/StatusPill.svelte';
-	import type { EventRow } from '$lib/ipc/k8s';
-	import { ago } from '$lib/devops/status';
-	import { t } from '$lib/state/i18n.svelte';
+	import StatusPill from '#lib/components/devops/StatusPill.svelte';
+	import type { EventRow } from '#lib/ipc/k8s.js';
+	import { ago } from '#lib/devops/status.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { eventStatus } from './model';
 
 	interface Props {

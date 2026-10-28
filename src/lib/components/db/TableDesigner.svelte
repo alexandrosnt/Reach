@@ -9,15 +9,15 @@
 	 * anything runs.
 	 */
 	import { onMount } from 'svelte';
-	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	import FaIcon from '#lib/components/shared/FaIcon.svelte';
 	import { faFloppyDisk, faPlus, faArrowUp, faArrowDown, faTrash, faKey, faRotateLeft, faIndent } from '@fortawesome/free-solid-svg-icons';
 	import SqlReviewDialog from './SqlReviewDialog.svelte';
-	import * as db from '$lib/ipc/db';
-	import type { ColumnDef, TableDesign, IndexDef, ForeignKeyDef, CheckDef, TriggerDef, Engine } from '$lib/ipc/db';
-	import * as st from '$lib/state/db.svelte';
-	import { engineInfo, FK_ACTIONS, indexMethods, mysqlEngines } from '$lib/db/engines';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import * as db from '#lib/ipc/db.js';
+	import type { ColumnDef, TableDesign, IndexDef, ForeignKeyDef, CheckDef, TriggerDef, Engine } from '#lib/ipc/db.js';
+	import * as st from '#lib/state/db.svelte.js';
+	import { engineInfo, FK_ACTIONS, indexMethods, mysqlEngines } from '#lib/db/engines.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		tab: Extract<st.DbTab, { kind: 'design' }>;

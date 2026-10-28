@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { t } from '$lib/state/i18n.svelte';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 
 	interface Props {
 		open: boolean;

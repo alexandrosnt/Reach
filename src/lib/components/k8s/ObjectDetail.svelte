@@ -7,16 +7,16 @@
 	 * out, whatever the environment.
 	 */
 	import { untrack } from 'svelte';
-	import ConfirmAction from '$lib/components/devops/ConfirmAction.svelte';
+	import ConfirmAction from '#lib/components/devops/ConfirmAction.svelte';
 	import DetailHeader from './DetailHeader.svelte';
 	import ActionButton from './ActionButton.svelte';
 	import Tabs from './Tabs.svelte';
 	import YamlPane from './YamlPane.svelte';
-	import { k8sDelete, type Kind, type ObjectRow } from '$lib/ipc/k8s';
-	import { ago } from '$lib/devops/status';
-	import { busy } from '$lib/state/k8s.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { k8sDelete, type Kind, type ObjectRow } from '#lib/ipc/k8s.js';
+	import { ago } from '#lib/devops/status.js';
+	import { busy } from '#lib/state/k8s.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 	import { CLUSTER_SCOPED, nodeStatus, type Ctx } from './model';
 
 	interface Props {

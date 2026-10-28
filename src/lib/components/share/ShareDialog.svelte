@@ -11,13 +11,13 @@
 	this machine regardless of what the other side asks for.
 -->
 <script lang="ts">
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { getTabs, getActiveTab } from '$lib/state/tabs.svelte';
-	import * as share from '$lib/state/share.svelte';
-	import type { Mode } from '$lib/share/protocol';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { getTabs, getActiveTab } from '#lib/state/tabs.svelte.js';
+	import * as share from '#lib/state/share.svelte.js';
+	import type { Mode } from '#lib/share/protocol.js';
 
 	interface Props {
 		open: boolean;

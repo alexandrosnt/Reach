@@ -9,9 +9,9 @@
 	 *
 	 * Saved RDP sessions in the vault are the next step, not this one.
 	 */
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import { createTab } from '$lib/state/tabs.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import { createTab } from '#lib/state/tabs.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		open: boolean;

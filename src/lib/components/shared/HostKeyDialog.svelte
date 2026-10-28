@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import { sshHostkeyResponse, type HostKeyPrompt } from '$lib/ipc/ssh';
-	import { t } from '$lib/state/i18n.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import { sshHostkeyResponse, type HostKeyPrompt } from '#lib/ipc/ssh.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	// Prompts queue up (e.g. a jump-host chain can produce several); show one at
 	// a time, oldest first.

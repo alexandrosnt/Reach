@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import type { Theme } from '$lib/state/theme.svelte';
+import type { Theme } from '#lib/state/theme.svelte.js';
 
 /** One row of the theme registry index. */
 export interface ThemeEntry {

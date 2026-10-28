@@ -14,9 +14,9 @@
 	 * optional and never touches the database itself: the grid reports each
 	 * change and the owner decides what it becomes.
 	 */
-	import type { ColumnInfo } from '$lib/ipc/db';
+	import type { ColumnInfo } from '#lib/ipc/db.js';
 	import DbMenu, { type MenuItem } from './DbMenu.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		columns: ColumnInfo[];

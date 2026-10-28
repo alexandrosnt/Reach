@@ -7,9 +7,9 @@
 	 * for them without knowing about each other.
 	 */
 	import { onMount } from 'svelte';
-	import { ask } from '$lib/state/ask.svelte';
+	import { ask } from '#lib/state/ask.svelte.js';
 	import { save as saveDialog } from '@tauri-apps/plugin-dialog';
-	import FaIcon from '$lib/components/shared/FaIcon.svelte';
+	import FaIcon from '#lib/components/shared/FaIcon.svelte';
 	import { faXmark, faBars, faDatabase, faPlus, faMagnifyingGlass } from '@fortawesome/free-solid-svg-icons';
 	import DbSidebar from './DbSidebar.svelte';
 	import ConnectionEditor from './ConnectionEditor.svelte';
@@ -23,12 +23,12 @@
 	import SqlReviewDialog from './SqlReviewDialog.svelte';
 	import DbMenu, { type MenuItem } from './DbMenu.svelte';
 	import EngineBadge from './EngineBadge.svelte';
-	import * as db from '$lib/ipc/db';
-	import type { DbConnection, DbConnectionView, Detected, Statement } from '$lib/ipc/db';
-	import * as st from '$lib/state/db.svelte';
-	import { engineInfo } from '$lib/db/engines';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
+	import * as db from '#lib/ipc/db.js';
+	import type { DbConnection, DbConnectionView, Detected, Statement } from '#lib/ipc/db.js';
+	import * as st from '#lib/state/db.svelte.js';
+	import { engineInfo } from '#lib/db/engines.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	let editor = $state<{ initial: Partial<DbConnectionView> | null; connectOnly: boolean } | null>(null);
 	let job = $state<{ mode: 'backup' | 'restore'; connId: string; database: string; schema: string | null } | null>(null);

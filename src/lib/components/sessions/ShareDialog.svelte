@@ -1,7 +1,7 @@
 <script lang="ts">
-	import { vaultState } from '$lib/state/vault.svelte';
-	import { sessionShare, type SessionConfig } from '$lib/ipc/sessions';
-	import { t } from '$lib/state/i18n.svelte';
+	import { vaultState } from '#lib/state/vault.svelte.js';
+	import { sessionShare, type SessionConfig } from '#lib/ipc/sessions.js';
+	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
 		session: SessionConfig;

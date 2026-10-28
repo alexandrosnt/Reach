@@ -10,8 +10,8 @@
  * this does nothing there.
  */
 import { getCurrentWebview } from '@tauri-apps/api/webview';
-import { getSettings, updateSetting } from '$lib/state/settings.svelte';
-import { isMobile } from '$lib/platform';
+import { getSettings, updateSetting } from '#lib/state/settings.svelte.js';
+import { isMobile } from '#lib/platform.js';
 
 /** A browser's steps, so each press is a size people know. */
 export const UI_ZOOM_STEPS = [0.67, 0.75, 0.8, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2];

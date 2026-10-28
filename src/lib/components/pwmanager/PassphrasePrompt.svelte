@@ -14,16 +14,16 @@
 	 */
 	import { onMount, onDestroy } from 'svelte';
 	import { listen, type UnlistenFn } from '@tauri-apps/api/event';
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { rememberLabel } from '$lib/state/pwmanager.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { rememberLabel } from '#lib/state/pwmanager.svelte.js';
 	import {
 		PASSPHRASE_PROMPT_CLOSED_EVENT,
 		PASSPHRASE_PROMPT_EVENT,
 		pwmanagerPassphraseResponse,
 		type PassphrasePrompt
-	} from '$lib/ipc/pwmanager';
+	} from '#lib/ipc/pwmanager.js';
 
 	let queue = $state<PassphrasePrompt[]>([]);
 	let current = $derived(queue[0]);

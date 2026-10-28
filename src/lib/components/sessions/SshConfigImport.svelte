@@ -5,14 +5,14 @@
 	 * for approval (weaker settings, local commands), not supported yet, or
 	 * an error. The files are kept with the session.
 	 */
-	import Modal from '$lib/components/shared/Modal.svelte';
-	import Button from '$lib/components/shared/Button.svelte';
+	import Modal from '#lib/components/shared/Modal.svelte';
+	import Button from '#lib/components/shared/Button.svelte';
 	import SshOptionsReport from './SshOptionsReport.svelte';
-	import { sshconfigScan, weakeningKey, type HostImport } from '$lib/ipc/sshconfig';
-	import { sessionCreate, sessionList, sessionListFolders, sessionCreateFolder, type SessionConfig, type AuthMethod, type JumpHostConfig, type Folder } from '$lib/ipc/sessions';
-	import { addToast } from '$lib/state/toasts.svelte';
-	import { t } from '$lib/state/i18n.svelte';
-	import { folderPath } from '$lib/sessions/folder-tree';
+	import { sshconfigScan, weakeningKey, type HostImport } from '#lib/ipc/sshconfig.js';
+	import { sessionCreate, sessionList, sessionListFolders, sessionCreateFolder, type SessionConfig, type AuthMethod, type JumpHostConfig, type Folder } from '#lib/ipc/sessions.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
+	import { t } from '#lib/state/i18n.svelte.js';
+	import { folderPath } from '#lib/sessions/folder-tree.js';
 
 	interface Props {
 		open: boolean;

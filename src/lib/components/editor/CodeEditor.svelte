@@ -38,7 +38,7 @@
 	import { lintKeymap } from '@codemirror/lint';
 	import { LanguageDescription } from '@codemirror/language';
 	import { hcl } from 'codemirror-lang-hcl';
-	import { getSettings } from '$lib/state/settings.svelte';
+	import { getSettings } from '#lib/state/settings.svelte.js';
 
 	interface Props {
 		content: string;
