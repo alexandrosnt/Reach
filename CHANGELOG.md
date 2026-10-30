@@ -2,6 +2,10 @@
 
 All notable changes to Reach are documented here.
 
+## v0.8.7
+- **Deleting asks in a dialog** — The file explorer asked before deleting in a bar at the top of the list, which scrolled away with it: in a long folder scrolled down, the question was out of sight. It now asks in Reach's own dialog, over everything, with the full name and the focus on Cancel. Reported by @Xtry333 (#144).
+- **The Full screen button moves out of the way** — Over a remote desktop (RDP or VNC), the Full screen button sat in the top right corner, over the remote's own close and maximize buttons. It can now be dragged anywhere and stays where it was put, and Settings → Appearance → *Full screen button* hides it; Ctrl+Alt+Enter still toggles full screen. Reported by @terkajurka (#145).
+
 ## v0.8.6
 - **Linux: the sidebar no longer crashes Reach** — On Linux, clicking a section in the sidebar (Sessions, Tunnels, Snippets and the rest) could freeze Reach or close it with a crash of WebKitGTK's web process. The fade between sections, new in 0.8.4, used the browser's View Transitions feature, which WebKitGTK does not survive. The section now fades in with a plain CSS animation. Tested on WebKitGTK 2.54 under Wayland and X11. Reported by @Wassermann1 (#143).
 - **Extracting an archive fills its folder again** — Extract in the file explorer made the folder, said it was done and left it empty: the wrapper that lets an extract be cancelled ran only the `mkdir` and ended there, before `tar` or `unzip` ran. The whole command now runs, and Cancel still stops it and removes the half-made folder.

@@ -6912,7 +6912,7 @@ dependencies = [
 
 [[package]]
 name = "reach"
-version = "0.8.6"
+version = "0.8.7"
 dependencies = [
  "anyhow",
  "apple-native-keyring-store",
