@@ -44,6 +44,13 @@ export interface Settings {
 	rdpHardwareRendering: boolean;
 	/** Remote desktop: advertise the graphics pipeline, for hosts that encode H.264. */
 	rdpGraphicsPipeline: boolean;
+	/** Remote desktop: show the Full screen button over the desktop. */
+	rdpFullscreenButton: boolean;
+	/**
+	 * Where the Full screen button was dragged to, as fractions of the room
+	 * it has across and down; null for its place in the top right corner.
+	 */
+	rdpFullscreenButtonAt: { x: number; y: number } | null;
 
 	/**
 	 * Confirm a multi-line paste before it reaches the shell.
@@ -132,6 +139,8 @@ const defaults: Settings = {
 	sessionLogHeader: true,
 	rdpHardwareRendering: true,
 	rdpGraphicsPipeline: false,
+	rdpFullscreenButton: true,
+	rdpFullscreenButtonAt: null,
 	warnOnMultilinePaste: true,
 	multilinePasteThreshold: DEFAULT_PASTE_THRESHOLD,
 	setupComplete: false,
@@ -224,6 +233,8 @@ export function loadSettings(): void {
 			settings.sessionLogHeader = parsed.sessionLogHeader ?? defaults.sessionLogHeader;
 			settings.rdpHardwareRendering = parsed.rdpHardwareRendering ?? defaults.rdpHardwareRendering;
 			settings.rdpGraphicsPipeline = parsed.rdpGraphicsPipeline ?? defaults.rdpGraphicsPipeline;
+			settings.rdpFullscreenButton = parsed.rdpFullscreenButton ?? defaults.rdpFullscreenButton;
+			settings.rdpFullscreenButtonAt = parsed.rdpFullscreenButtonAt ?? defaults.rdpFullscreenButtonAt;
 			settings.pendingTursoOrg = parsed.pendingTursoOrg ?? defaults.pendingTursoOrg;
 			settings.launches = parsed.launches ?? defaults.launches;
 			settings.communityPromptDismissed =

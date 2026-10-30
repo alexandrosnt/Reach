@@ -2,6 +2,7 @@
 	function autoFocus(node: HTMLElement) { node.focus(); }
 
 	import { t } from '#lib/state/i18n.svelte.js';
+	import { ask } from '#lib/state/ask.svelte.js';
 	import { getCurrentPath, getEntries, setCurrentPath, setEntries } from '#lib/state/explorer.svelte.js';
 	import { sftpListDir, sftpUpload, sftpDownload, sftpDelete, sftpRename, sftpMkdir, sftpTouch, sftpReadFile } from '#lib/ipc/sftp.js';
 	import { sshSend } from '#lib/ipc/ssh.js';
@@ -64,7 +65,6 @@
 	// Context menu state — entry is undefined for background (empty space) clicks
 	let contextMenu = $state<{ x: number; y: number; entry?: FileEntry } | undefined>();
 	let renaming = $state<{ entry: FileEntry; newName: string } | undefined>();
-	let deleteConfirm = $state<{ entry: FileEntry } | undefined>();
 	let explorerEl: HTMLDivElement | undefined = $state();
 
 	let currentPath = $derived(connectionId ? getCurrentPath(connectionId) : '/');
@@ -476,27 +476,21 @@
 		}
 	}
 
-	function handleDelete(): void {
+	// Asked in Reach's own dialog, over everything: a bar at the top of the
+	// list scrolled away with it, out of sight in a long folder (#144).
+	async function handleDelete(): Promise<void> {
 		if (!contextMenu?.entry) return;
 		const entry = contextMenu.entry;
+		const id = connectionId;
 		closeContextMenu();
-		deleteConfirm = { entry };
-	}
-
-	async function confirmDelete(): Promise<void> {
-		if (!connectionId || !deleteConfirm) return;
-		const { entry } = deleteConfirm;
-		deleteConfirm = undefined;
+		if (!id) return;
+		if (!(await ask(t('explorer.delete_confirm', { name: entry.name }), { confirmLabel: t('common.delete') }))) return;
 		try {
-			await sftpDelete(connectionId, entry.path);
-			refresh();
+			await sftpDelete(id, entry.path);
+			if (id === connectionId) refresh();
 		} catch (err) {
 			error = `Delete failed: ${err}`;
 		}
-	}
-
-	function cancelDelete(): void {
-		deleteConfirm = undefined;
 	}
 
 	function startRename(): void {
@@ -1119,16 +1113,6 @@
 							<span class="skeleton-perm"></span>
 						</div>
 					{/each}
-				</div>
-			{/if}
-
-			{#if deleteConfirm}
-				<div class="delete-confirm-bar">
-					<span class="delete-confirm-text">{t('explorer.delete_confirm', { name: deleteConfirm.entry.name })}</span>
-					<div class="delete-confirm-actions">
-						<button class="delete-confirm-btn cancel" onclick={cancelDelete} type="button">{t('common.cancel')}</button>
-						<button class="delete-confirm-btn confirm" onclick={confirmDelete} type="button">{t('common.delete')}</button>
-					</div>
 				</div>
 			{/if}
 
@@ -1972,59 +1956,4 @@
 		outline: none;
 	}
 
-	.delete-confirm-bar {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		gap: 8px;
-		padding: 8px 10px;
-		background-color: rgba(255, 69, 58, 0.08);
-		border-bottom: 1px solid rgba(255, 69, 58, 0.2);
-	}
-
-	.delete-confirm-text {
-		font-size: 0.6875rem;
-		color: var(--color-text-primary);
-		overflow: hidden;
-		text-overflow: ellipsis;
-		white-space: nowrap;
-		min-width: 0;
-	}
-
-	.delete-confirm-actions {
-		display: flex;
-		gap: 4px;
-		flex-shrink: 0;
-	}
-
-	.delete-confirm-btn {
-		padding: 3px 10px;
-		font-family: var(--font-sans);
-		font-size: 0.6875rem;
-		font-weight: 500;
-		border-radius: 4px;
-		cursor: pointer;
-		border: none;
-		transition: background-color var(--duration-default) var(--ease-default);
-	}
-
-	.delete-confirm-btn.cancel {
-		background: transparent;
-		color: var(--color-text-secondary);
-		border: 1px solid var(--color-border);
-	}
-
-	.delete-confirm-btn.cancel:hover {
-		background-color: var(--color-surface-hover);
-		color: var(--color-text-primary);
-	}
-
-	.delete-confirm-btn.confirm {
-		background-color: var(--color-danger, var(--color-danger));
-		color: #fff;
-	}
-
-	.delete-confirm-btn.confirm:hover {
-		background-color: #ff6961;
-	}
 </style>

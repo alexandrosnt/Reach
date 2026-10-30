@@ -562,6 +562,16 @@
 			<Toggle hideLabel checked={settings.rdpGraphicsPipeline} label={t('settings.rdp_gfx')} onchange={(v) => updateSetting('rdpGraphicsPipeline', v)} />
 		</div>
 	</div>
+
+	<div class="setting-row">
+		<div class="setting-info">
+			<span class="setting-label">{t('settings.rdp_fs_button')}</span>
+			<span class="setting-description">{t('settings.rdp_fs_button_desc')}</span>
+		</div>
+		<div class="setting-control">
+			<Toggle hideLabel checked={settings.rdpFullscreenButton} label={t('settings.rdp_fs_button')} onchange={(v) => updateSetting('rdpFullscreenButton', v)} />
+		</div>
+	</div>
 </div>
 
 <style>
