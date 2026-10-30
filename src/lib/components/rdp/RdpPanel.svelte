@@ -55,7 +55,7 @@
 	import { keysymForChar, keysymForCode, keysymForEvent } from '#lib/vnc/keysym.js';
 	import { t } from '#lib/state/i18n.svelte.js';
 	import { untrustedRefsFromError } from '#lib/ipc/sessions.js';
-	import { getSettings } from '#lib/state/settings.svelte.js';
+	import { getSettings, updateSetting } from '#lib/state/settings.svelte.js';
 	import { isMobile } from '#lib/platform.js';
 	import MobileKeyBar, { type BarKey } from '#lib/components/shared/MobileKeyBar.svelte';
 
@@ -186,6 +186,63 @@
 
 	function onHostMove(e: MouseEvent): void {
 		if (fullscreen && e.clientY <= 4) showBar();
+	}
+
+	/*
+	 * The Full screen button can be dragged out of the way, since in the top
+	 * right corner it sat over the remote's own window buttons (#145), and
+	 * stays where it was put. Its place is kept as fractions of the room it
+	 * has, so it stays in the same spot as the window is resized.
+	 */
+	const FS_MARGIN = 8;
+	let fsButton = $state<HTMLButtonElement>();
+	let fsDrag: { id: number; dx: number; dy: number; x0: number; y0: number; moved: boolean } | null = null;
+	/** Set by a drag, so the click that ends it does not go full screen. */
+	let fsDragged = false;
+	/** The place while it is being dragged, saved when the drag ends. */
+	let fsDragAt = $state<{ x: number; y: number } | null>(null);
+
+	const clamp01 = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? Math.min(1, Math.max(0, v)) : 0);
+	const fsAt = $derived.by(() => {
+		const at = fsDragAt ?? getSettings().rdpFullscreenButtonAt;
+		return at ? { x: clamp01(at.x), y: clamp01(at.y) } : null;
+	});
+
+	function fsDown(e: PointerEvent): void {
+		if (e.button !== 0 || !fsButton) return;
+		const r = fsButton.getBoundingClientRect();
+		fsDrag = { id: e.pointerId, dx: e.clientX - r.left, dy: e.clientY - r.top, x0: e.clientX, y0: e.clientY, moved: false };
+		fsButton.setPointerCapture(e.pointerId);
+	}
+
+	function fsMove(e: PointerEvent): void {
+		if (!fsDrag || e.pointerId !== fsDrag.id || !fsButton || !screen) return;
+		if (!fsDrag.moved && Math.hypot(e.clientX - fsDrag.x0, e.clientY - fsDrag.y0) < 4) return;
+		fsDrag.moved = true;
+		const box = screen.getBoundingClientRect();
+		const b = fsButton.getBoundingClientRect();
+		const roomX = box.width - 2 * FS_MARGIN - b.width;
+		const roomY = box.height - 2 * FS_MARGIN - b.height;
+		fsDragAt = {
+			x: roomX > 0 ? clamp01((e.clientX - fsDrag.dx - box.left - FS_MARGIN) / roomX) : 0,
+			y: roomY > 0 ? clamp01((e.clientY - fsDrag.dy - box.top - FS_MARGIN) / roomY) : 0
+		};
+	}
+
+	function fsUp(e: PointerEvent): void {
+		if (!fsDrag || e.pointerId !== fsDrag.id) return;
+		fsDragged = fsDrag.moved;
+		fsDrag = null;
+		if (fsDragged && fsDragAt) updateSetting('rdpFullscreenButtonAt', fsDragAt);
+		fsDragAt = null;
+	}
+
+	function fsClick(): void {
+		if (fsDragged) {
+			fsDragged = false;
+			return;
+		}
+		void setFullscreen(true);
 	}
 
 	/* --- GPU path ---------------------------------------------------------- */
@@ -836,8 +893,23 @@
 		></textarea>
 	{/if}
 
-	{#if phase === 'connected' && !fullscreen && !onPhone}
-		<button type="button" class="fs-button" title={t('rdp.fullscreen_hint')} onclick={() => setFullscreen(true)}>
+	{#if phase === 'connected' && !fullscreen && !onPhone && getSettings().rdpFullscreenButton}
+		<button
+			type="button"
+			class="fs-button"
+			class:placed={fsAt}
+			class:dragging={fsDragAt}
+			style:left={fsAt ? `calc(${FS_MARGIN}px + (100% - ${2 * FS_MARGIN}px) * ${fsAt.x})` : undefined}
+			style:top={fsAt ? `calc(${FS_MARGIN}px + (100% - ${2 * FS_MARGIN}px) * ${fsAt.y})` : undefined}
+			style:transform={fsAt ? `translate(${-fsAt.x * 100}%, ${-fsAt.y * 100}%)` : undefined}
+			title="{t('rdp.fullscreen_hint')}. {t('rdp.fullscreen_drag')}"
+			bind:this={fsButton}
+			onpointerdown={fsDown}
+			onpointermove={fsMove}
+			onpointerup={fsUp}
+			onpointercancel={fsUp}
+			onclick={fsClick}
+		>
 			<svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M2 6V2h4v1.5H3.5V6zm8-4h4v4h-1.5V3.5H10zM2 10h1.5v2.5H6V14H2zm10.5 0H14v4h-4v-1.5h2.5z"/></svg>
 			{t('rdp.fullscreen')}
 		</button>
@@ -1016,8 +1088,18 @@
 		border: 1px solid rgba(255, 255, 255, 0.25);
 		border-radius: var(--radius-btn);
 		cursor: pointer;
+		touch-action: none;
 		opacity: 0;
 		transition: opacity 150ms ease;
+	}
+
+	.fs-button.placed {
+		right: auto;
+	}
+
+	.fs-button.dragging {
+		cursor: grabbing;
+		opacity: 1;
 	}
 
 	.rdp:hover .fs-button,
