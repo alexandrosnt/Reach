@@ -152,8 +152,8 @@ pub(crate) fn ref_context(s: &SessionConfig, via: Option<&SessionConfig>) -> Opt
 /// The via session of `s` as stored now, if it has one and it still exists.
 async fn via_for(manager: &crate::vault::VaultManager, s: &SessionConfig) -> Option<SessionConfig> {
     let id = via_id(s)?;
-    let vault_id = find_session_vault(manager, id).await?;
-    read_session(manager, &vault_id, id).await.ok()
+    let loc = locate_session(manager, id).await?;
+    read_session(manager, &loc.vault_id, &loc.secret_id).await.ok()
 }
 
 /// After reading a session: the user's approvals are the ones signed with
@@ -489,10 +489,10 @@ pub(crate) async fn stored_session_and_via(
     if manager.is_locked() {
         return Err("Vault is locked".to_string());
     }
-    let vault_id = find_session_vault(&manager, session_id)
+    let loc = locate_session(&manager, session_id)
         .await
         .ok_or_else(|| format!("Session not found: {}", session_id))?;
-    let mut session = read_session(&manager, &vault_id, session_id).await?;
+    let mut session = read_session(&manager, &loc.vault_id, &loc.secret_id).await?;
     let via = open_approvals(&manager, &mut session).await;
     Ok((session, via))
 }
@@ -584,10 +584,10 @@ pub async fn session_approve_secret_refs(
     if manager.is_locked() {
         return Err("Vault is locked".to_string());
     }
-    let vault_id = find_session_vault(&manager, &session_id)
+    let loc = locate_session(&manager, &session_id)
         .await
         .ok_or_else(|| format!("Session not found: {}", session_id))?;
-    let mut session = read_session(&manager, &vault_id, &session_id).await?;
+    let mut session = read_session(&manager, &loc.vault_id, &loc.secret_id).await?;
     // The via session is read once: what is checked against `context` is
     // what is signed.
     let via = via_for(&manager, &session).await;
@@ -598,7 +598,7 @@ pub async fn session_approve_secret_refs(
     seal_for(key.as_deref(), who.as_deref(), &mut session, Some(&stored), via.as_ref());
     let json = serde_json::to_string(&session).map_err(|e| e.to_string())?;
     manager
-        .update_secret(&vault_id, &session.id, SecretBox::new(Box::new(json.into_bytes())))
+        .update_secret(&loc.vault_id, &loc.secret_id, SecretBox::new(Box::new(json.into_bytes())))
         .await
         .map_err(|e| e.to_string())?;
     tracing::info!("Approved {} password manager entries for session {}", refs.len(), session.id);
@@ -667,11 +667,11 @@ pub async fn session_get(
     }
 
     // Find which vault contains this session
-    let vault_id = find_session_vault(&manager, &session_id).await
+    let loc = locate_session(&manager, &session_id).await
         .ok_or_else(|| format!("Session not found: {}", session_id))?;
 
     // O(1) lookup by primary key
-    let mut session = read_session(&manager, &vault_id, &session_id).await?;
+    let mut session = read_session(&manager, &loc.vault_id, &loc.secret_id).await?;
     open_approvals(&manager, &mut session).await;
     Ok(session)
 }
@@ -797,12 +797,12 @@ pub async fn session_update(
     }
 
     // Find which vault contains this session
-    let storage_vault_id = find_session_vault(&manager, &session.id).await
+    let loc = locate_session(&manager, &session.id).await
         .ok_or_else(|| format!("Session not found: {}", session.id))?;
 
     // The record being replaced, as this user reads it: which password
     // manager references they had approved (see `seal_for`).
-    let stored = match read_session(&manager, &storage_vault_id, &session.id).await {
+    let stored = match read_session(&manager, &loc.vault_id, &loc.secret_id).await {
         Ok(mut s) => {
             open_approvals(&manager, &mut s).await;
             Some(s)
@@ -815,11 +815,11 @@ pub async fn session_update(
 
     // O(1) update by primary key
     manager
-        .update_secret(&storage_vault_id, &session.id, plaintext)
+        .update_secret(&loc.vault_id, &loc.secret_id, plaintext)
         .await
         .map_err(|e| e.to_string())?;
 
-    tracing::info!("Updated session: {} in vault: {}", session.id, storage_vault_id);
+    tracing::info!("Updated session: {} in vault: {}", session.id, loc.vault_id);
     open_approvals(&manager, &mut session).await;
     Ok(session)
 }
@@ -842,8 +842,8 @@ pub async fn session_move_to_folder(
     }
     let mut moved = 0u32;
     for id in &session_ids {
-        let Some(vault_id) = find_session_vault(&manager, id).await else { continue };
-        let plaintext = manager.read_secret(&vault_id, id).await.map_err(|e| e.to_string())?;
+        let Some(loc) = locate_session(&manager, id).await else { continue };
+        let plaintext = manager.read_secret(&loc.vault_id, &loc.secret_id).await.map_err(|e| e.to_string())?;
         use secrecy::ExposeSecret;
         let mut value: serde_json::Value =
             serde_json::from_slice(plaintext.expose_secret()).map_err(|e| format!("Invalid session data: {e}"))?;
@@ -855,7 +855,7 @@ pub async fn session_move_to_folder(
         obj.insert("folder_id".into(), target);
         let json = serde_json::to_vec(&value).map_err(|e| e.to_string())?;
         manager
-            .update_secret(&vault_id, id, SecretBox::new(Box::new(json)))
+            .update_secret(&loc.vault_id, &loc.secret_id, SecretBox::new(Box::new(json)))
             .await
             .map_err(|e| e.to_string())?;
         moved += 1;
@@ -878,18 +878,23 @@ pub async fn session_delete(
     }
 
     // Find which vault contains this session
-    let vault_id = match find_session_vault(&manager, &session_id).await {
-        Some(id) => id,
-        None => return Ok(()), // Already deleted or doesn't exist
+    let loc = match locate_session(&manager, &session_id).await {
+        Some(loc) => loc,
+        None => {
+            // Already deleted, or never stored. Say so: a silent success left
+            // the session on screen and looked like the click did nothing.
+            tracing::warn!("session_delete: session {session_id} is not in any open vault");
+            return Ok(());
+        }
     };
 
     // O(1) delete by primary key
     manager
-        .delete_secret(&vault_id, &session_id)
+        .delete_secret(&loc.vault_id, &loc.secret_id)
         .await
         .map_err(|e| e.to_string())?;
 
-    tracing::info!("Deleted session: {} from vault: {}", session_id, vault_id);
+    tracing::info!("Deleted session: {} from vault: {}", session_id, loc.vault_id);
     Ok(())
 }
 
@@ -1201,13 +1206,6 @@ async fn ensure_folders_vault(
     }
 }
 
-/// Get sessions vault ID. O(1).
-fn get_sessions_vault_id(manager: &crate::vault::VaultManager) -> Result<String, String> {
-    manager
-        .get_vault_id_by_name(SESSIONS_VAULT_NAME)
-        .ok_or_else(|| "Sessions vault not found".to_string())
-}
-
 /// Get sessions vault ID if exists. O(1).
 fn get_sessions_vault_id_if_exists(manager: &crate::vault::VaultManager) -> Option<String> {
     manager.get_vault_id_by_name(SESSIONS_VAULT_NAME)
@@ -1218,15 +1216,44 @@ fn get_folders_vault_id_if_exists(manager: &crate::vault::VaultManager) -> Optio
     manager.get_vault_id_by_name(FOLDERS_VAULT_NAME)
 }
 
-/// Find which vault contains a session by ID.
-/// Checks __sessions__ first, then all user vaults.
-async fn find_session_vault(manager: &crate::vault::VaultManager, session_id: &str) -> Option<String> {
+/// Where a session's ciphertext lives. `secret_id` is the secrets-table row,
+/// which is the session id except for a row copied into the unified personal
+/// vault (see [`crate::vault::manager::unified_secret_id`]).
+struct SessionLoc {
+    vault_id: String,
+    secret_id: String,
+}
+
+/// Find which vault contains a session, and the row to read or write.
+/// Checks __sessions__ first (its own id, then the personal-sync copy), then
+/// all user vaults.
+async fn locate_session(manager: &crate::vault::VaultManager, session_id: &str) -> Option<SessionLoc> {
     if let Some(vault_id) = get_sessions_vault_id_if_exists(manager) {
-        if manager.secret_exists(&vault_id, session_id).await {
-            return Some(vault_id);
+        if let Some(secret_id) = session_row_id(manager, &vault_id, session_id).await {
+            return Some(SessionLoc { vault_id, secret_id });
         }
     }
-    find_in_user_vaults(manager, session_id).await
+    let vault_id = find_in_user_vaults(manager, session_id).await?;
+    Some(SessionLoc { vault_id, secret_id: session_id.to_string() })
+}
+
+/// The secrets-table id for a session in one vault.
+///
+/// Personal sync copies every internal vault into one database and stores
+/// each row as `{vault}_{original_id}` so the ids cannot collide. The
+/// session JSON still has the original id, which is what the list shows and
+/// what edit and delete send. Looking up only that id misses the copy: delete
+/// then reports success and the session stays, and saving it (including a
+/// move into a folder) returns "Session not found".
+async fn session_row_id(manager: &crate::vault::VaultManager, vault_id: &str, session_id: &str) -> Option<String> {
+    if manager.secret_exists(vault_id, session_id).await {
+        return Some(session_id.to_string());
+    }
+    let migrated = crate::vault::manager::unified_secret_id(SESSIONS_VAULT_NAME, session_id);
+    if migrated != session_id && manager.secret_exists(vault_id, &migrated).await {
+        return Some(migrated);
+    }
+    None
 }
 
 /// Find which vault contains a folder by ID: the user vaults first, as
@@ -1277,7 +1304,9 @@ pub async fn session_share(
         return Err("Vault is locked".to_string());
     }
 
-    let vault_id = get_sessions_vault_id(&manager)?;
+    let loc = locate_session(&manager, &session_id)
+        .await
+        .ok_or_else(|| format!("Session not found: {}", session_id))?;
 
     // Decode recipient public key from base64
     use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
@@ -1293,7 +1322,7 @@ pub async fn session_share(
     pk_array.copy_from_slice(&pk_bytes);
 
     manager
-        .share_item(&vault_id, &session_id, &recipient_uuid, &pk_array, expires_in_hours)
+        .share_item(&loc.vault_id, &loc.secret_id, &recipient_uuid, &pk_array, expires_in_hours)
         .await
         .map_err(|e| e.to_string())
 }
@@ -1309,6 +1338,16 @@ mod unique_tests {
             "vault_id": vault,
         }))
         .unwrap()
+    }
+
+    #[test]
+    fn a_personal_sync_copy_is_stored_under_the_vault_prefix() {
+        // `__sessions__` plus the separator plus the original id. Edit and
+        // delete must look up this row, not only the id inside the JSON.
+        assert_eq!(
+            crate::vault::manager::unified_secret_id(SESSIONS_VAULT_NAME, "ab8dc7a4-4d90-4c04-bb80-fb0ac8ed3afa"),
+            "__sessions___ab8dc7a4-4d90-4c04-bb80-fb0ac8ed3afa"
+        );
     }
 
     #[test]
