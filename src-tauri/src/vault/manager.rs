@@ -22,6 +22,13 @@ use crate::vault::types::{
     VaultInfo, VaultType, WrappedDek,
 };
 
+/// Row id of a secret copied from an internal vault into the unified personal
+/// vault. The copy keeps its original id inside the plaintext; callers that
+/// address it by that id also have to try this row id.
+pub fn unified_secret_id(vault_name: &str, original_id: &str) -> String {
+    format!("{vault_name}_{original_id}")
+}
+
 /// Internal vault names for encrypted app data.
 pub const SESSIONS_VAULT: &str = "__sessions__";
 pub const CREDENTIALS_VAULT: &str = "__credentials__";
@@ -1226,8 +1233,10 @@ impl VaultManager {
                                         let category: SecretCategory = category_str
                                             .parse()
                                             .unwrap_or(SecretCategory::Custom("unknown".to_string()));
-                                        // Use a prefixed ID to avoid collisions
-                                        let prefixed_id = format!("{}_{}", name, id);
+                                        // Prefix so two internal vaults cannot collide in the one
+                                        // database. The plaintext still has the original id, and
+                                        // lookups have to try this row id too (see `unified_secret_id`).
+                                        let prefixed_id = unified_secret_id(name, &id);
                                         all_secrets.push((prefixed_id, secret_name, category, plaintext));
                                     }
                                     Err(e) => {
@@ -2537,16 +2546,22 @@ impl VaultManager {
         if vault.cached_secret(secret_id).is_some() {
             return true;
         }
-        let Ok(conn) = vault.conn() else {
-            return false;
-        };
-
-        match conn
-            .query("SELECT 1 FROM secrets WHERE id = ?", [secret_id])
-            .await
-        {
-            Ok(mut rows) => matches!(rows.next().await, Ok(Some(_))),
-            Err(_) => false,
+        // The same retry as every other read. A dead Turso stream used to
+        // make this return false, and a session that was on screen then
+        // could not be saved or deleted.
+        match vault.query("SELECT 1 FROM secrets WHERE id = ?", [secret_id]).await {
+            Ok(mut rows) => match rows.next().await {
+                Ok(Some(_)) => true,
+                Ok(None) => false,
+                Err(e) => {
+                    tracing::warn!("secret_exists({secret_id}): {e}");
+                    false
+                }
+            },
+            Err(e) => {
+                tracing::warn!("secret_exists({secret_id}): {e}");
+                false
+            }
         }
     }
 

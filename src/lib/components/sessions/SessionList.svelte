@@ -1019,6 +1019,7 @@
 			await loadSessions();
 		} catch (err) {
 			console.error('Delete failed:', err);
+			addToast(String(err), 'error');
 		}
 	}
 
