@@ -61,6 +61,16 @@ pub const INTERNAL_VAULTS: [&str; 11] = [
     DEVOPS_VAULT,
 ];
 
+/// The id a secret had in its own internal vault, if `stored` is the
+/// `{vault}_{id}` it was copied into the personal vault under (see
+/// `VaultManager::restore_copied_ids`).
+fn copied_id(stored: &str) -> Option<&str> {
+    INTERNAL_VAULTS
+        .iter()
+        .find_map(|vault| stored.strip_prefix(vault)?.strip_prefix('_'))
+        .filter(|id| !id.is_empty())
+}
+
 /// How long a remote connection may sit unused before Reach stops trusting
 /// its stream. Turso expires a hrana stream that has been idle; a connection
 /// in constant use is never at risk, so this only has to be shorter than the
@@ -1189,8 +1199,9 @@ impl VaultManager {
             let internal_names = INTERNAL_VAULTS;
 
             // Step 1: Read and decrypt all secrets from local vaults
-            let mut all_secrets: Vec<(String, String, SecretCategory, SecretBox<Vec<u8>>)> =
-                Vec::new();
+            // Vault name, id, name, category, plaintext.
+            type Copied<'a> = (&'a str, String, String, SecretCategory, SecretBox<Vec<u8>>);
+            let mut all_secrets: Vec<Copied> = Vec::new();
 
             for name in internal_names {
                 if let Some(vault_id) = self.vault_names.get(name).cloned() {
@@ -1233,11 +1244,7 @@ impl VaultManager {
                                         let category: SecretCategory = category_str
                                             .parse()
                                             .unwrap_or(SecretCategory::Custom("unknown".to_string()));
-                                        // Prefix so two internal vaults cannot collide in the one
-                                        // database. The plaintext still has the original id, and
-                                        // lookups have to try this row id too (see `unified_secret_id`).
-                                        let prefixed_id = unified_secret_id(name, &id);
-                                        all_secrets.push((prefixed_id, secret_name, category, plaintext));
+                                        all_secrets.push((name, id, secret_name, category, plaintext));
                                     }
                                     Err(e) => {
                                         tracing::warn!(
@@ -1281,7 +1288,18 @@ impl VaultManager {
                 .cloned()
                 .ok_or_else(|| VaultError::NotFound("Unified vault not created".to_string()))?;
 
-            for (id, name, category, plaintext) in all_secrets {
+            // Each secret keeps its own id: everything that reads one back
+            // asks for it by that id, and a session stored as
+            // `__sessions___<id>` still listed but could not be edited or
+            // deleted (#148). Only an id that is already taken, by an
+            // earlier secret here or by data already in the cloud, is
+            // prefixed with its vault, so neither is overwritten.
+            let mut taken = std::collections::HashSet::new();
+            for (vault_name, id, name, category, plaintext) in all_secrets {
+                let free = !taken.contains(&id)
+                    && matches!(self.find_secret(&unified_vault_id, &id).await, Ok(false));
+                let id = if free { id } else { unified_secret_id(vault_name, &id) };
+                taken.insert(id.clone());
                 match self
                     .create_secret_with_id(&unified_vault_id, &id, &name, category, plaintext)
                     .await
@@ -1322,7 +1340,57 @@ impl VaultManager {
     async fn ensure_internal_vaults(&mut self) -> Result<(), VaultError> {
         self.open_internal_vaults().await?;
         self.restore_vault_keys().await;
+        if self.personal_sync_url.is_some() && self.personal_sync_token.is_some() {
+            self.restore_copied_ids().await;
+        }
         Ok(())
+    }
+
+    /// Turning personal sync on used to copy each internal vault's secrets
+    /// into the personal vault as `{vault}_{id}`, where nothing that looks a
+    /// secret up by its id finds it: a session that lists but cannot be
+    /// edited or deleted (#148), a folder that cannot be renamed, settings
+    /// that seem lost. Store each under its own id again. If that id is
+    /// already in use, the secret using it is newer and is kept; the copy
+    /// stays as it was.
+    async fn restore_copied_ids(&self) {
+        let Some(vault_id) = self.vault_names.get(SETTINGS_VAULT).cloned() else {
+            return;
+        };
+        let secrets = match self.list_secrets(&vault_id).await {
+            Ok(secrets) => secrets,
+            Err(e) => {
+                tracing::warn!("Could not list the personal vault to restore copied ids: {}", e);
+                return;
+            }
+        };
+        for meta in secrets {
+            let Some(id) = copied_id(&meta.id) else { continue };
+            match self.find_secret(&vault_id, id).await {
+                Ok(false) => {}
+                Ok(true) => {
+                    tracing::warn!("Secret {} is already in use; {} stays as it is", id, meta.id);
+                    continue;
+                }
+                Err(e) => {
+                    tracing::warn!("Could not check for secret {}: {}; {} stays as it is", id, e, meta.id);
+                    continue;
+                }
+            }
+            let category = meta.category.parse().unwrap_or(SecretCategory::Custom("unknown".to_string()));
+            // Written under its own id before the copy is deleted: a failure
+            // in between leaves two copies, never none.
+            let moved = async {
+                let plaintext = self.read_secret(&vault_id, &meta.id).await?;
+                self.create_secret_with_id(&vault_id, id, &meta.name, category, plaintext).await?;
+                self.delete_secret(&vault_id, &meta.id).await
+            }
+            .await;
+            match moved {
+                Ok(()) => tracing::info!("Restored secret {} to its own id", meta.id),
+                Err(e) => tracing::warn!("Could not restore secret {} to its own id: {}", meta.id, e),
+            }
+        }
     }
 
     /// A lock wipes every vault's key but leaves its connection open, and
@@ -2537,32 +2605,31 @@ impl VaultManager {
         Ok(())
     }
 
-    /// Check if a secret exists.
+    /// Check if a secret exists. A failed check is logged and reads as no.
     pub async fn secret_exists(&self, vault_id: &str, secret_id: &str) -> bool {
-        let Some(vault) = self.vaults.get(vault_id) else {
+        if !self.vaults.contains_key(vault_id) {
             return false;
-        };
+        }
+        self.find_secret(vault_id, secret_id).await.unwrap_or_else(|e| {
+            tracing::error!("Could not check for secret {} in vault {}: {}", secret_id, vault_id, e);
+            false
+        })
+    }
 
+    /// Whether a secret exists, or why that could not be found out. Goes
+    /// through [`VaultConnection::query`] like every other read, so a dead
+    /// Turso stream is reconnected instead of reported as a missing secret
+    /// (#148).
+    pub async fn find_secret(&self, vault_id: &str, secret_id: &str) -> Result<bool, VaultError> {
+        let vault = self
+            .vaults
+            .get(vault_id)
+            .ok_or_else(|| VaultError::NotFound(vault_id.to_string()))?;
         if vault.cached_secret(secret_id).is_some() {
-            return true;
+            return Ok(true);
         }
-        // The same retry as every other read. A dead Turso stream used to
-        // make this return false, and a session that was on screen then
-        // could not be saved or deleted.
-        match vault.query("SELECT 1 FROM secrets WHERE id = ?", [secret_id]).await {
-            Ok(mut rows) => match rows.next().await {
-                Ok(Some(_)) => true,
-                Ok(None) => false,
-                Err(e) => {
-                    tracing::warn!("secret_exists({secret_id}): {e}");
-                    false
-                }
-            },
-            Err(e) => {
-                tracing::warn!("secret_exists({secret_id}): {e}");
-                false
-            }
-        }
+        let mut rows = vault.query("SELECT 1 FROM secrets WHERE id = ?", [secret_id]).await?;
+        Ok(rows.next().await?.is_some())
     }
 
     /// Get vault ID by name.
@@ -3721,3 +3788,7 @@ mod backup_tests;
 #[cfg(test)]
 #[path = "manager_keychain_tests.rs"]
 mod keychain_tests;
+
+#[cfg(test)]
+#[path = "manager_copied_ids_tests.rs"]
+mod copied_ids_tests;
