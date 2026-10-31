@@ -47,6 +47,11 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
+    ignore:
+      # Its branches are named for Rust releases, some before they exist
+      # (#122 asked for 1.120.0, which every job failed to download). The
+      # pin is the Rust version and is moved by hand, see build-check.yml.
+      - dependency-name: "dtolnay/rust-toolchain"
     groups:
       actions:
         patterns: ["*"]

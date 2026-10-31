@@ -48,7 +48,7 @@ jobs:
         # something, and with warnings as errors the build breaks overnight
         # with no change of ours (1.99 renamed fetch_update). Rust is moved
         # forward on purpose, here and in release.yml together.
-        uses: dtolnay/rust-toolchain@1.99.0
+        uses: dtolnay/rust-toolchain@1.99.1
         with:
           targets: ${{ matrix.platform == 'macos-latest' && 'x86_64-apple-darwin' || '' }}
           components: clippy
@@ -111,7 +111,7 @@ jobs:
         # something, and with warnings as errors the build breaks overnight
         # with no change of ours (1.99 renamed fetch_update). Rust is moved
         # forward on purpose, here and in release.yml together.
-        uses: dtolnay/rust-toolchain@1.99.0
+        uses: dtolnay/rust-toolchain@1.99.1
         with:
           targets: x86_64-linux-android
 
@@ -176,6 +176,9 @@ jobs:
         uses: actions/setup-node@v7
         with:
           node-version: '22'
+          # The newest 22, not the runner's cached one: Astro raises its
+          # minimum within 22 (7.4.2 needs 22.23.4) and the cache lags.
+          check-latest: true
 
       - name: Build the site
         run: |
@@ -205,7 +208,7 @@ jobs:
         # something, and with warnings as errors the build breaks overnight
         # with no change of ours (1.99 renamed fetch_update). Rust is moved
         # forward on purpose, here and in release.yml together.
-        uses: dtolnay/rust-toolchain@1.99.0
+        uses: dtolnay/rust-toolchain@1.99.1
         with:
           targets: aarch64-linux-android,armv7-linux-androideabi
 
