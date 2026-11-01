@@ -52,7 +52,7 @@ pub async fn dragout_start(
                     open: Box::new(move || {
                         // Bounded, so a slow write on the far end stops us
                         // reading rather than filling memory.
-                        let (tx, rx) = std::sync::mpsc::sync_channel::<Vec<u8>>(64);
+                        let (tx, rx) = std::sync::mpsc::sync_channel::<Result<Vec<u8>, String>>(64);
                         let handle = handle.clone();
                         let path = path.clone();
                         tauri::async_runtime::spawn(async move {

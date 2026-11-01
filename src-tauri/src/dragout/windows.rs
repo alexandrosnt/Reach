@@ -28,7 +28,7 @@ use std::sync::mpsc::Receiver;
 use windows::core::{implement, Result as WinResult, BOOL, HRESULT, PWSTR};
 use windows::Win32::Foundation::{
     DATA_S_SAMEFORMATETC, DV_E_FORMATETC, E_NOTIMPL, HGLOBAL, OLE_E_ADVISENOTSUPPORTED,
-    POINT, S_FALSE, S_OK,
+    POINT, STG_E_READFAULT, S_FALSE, S_OK,
 };
 use windows::Win32::System::Com::{
     CoTaskMemAlloc, IAdviseSink, IDataObject, IDataObject_Impl, IEnumFORMATETC,
@@ -50,6 +50,9 @@ use windows::Win32::System::DataExchange::RegisterClipboardFormatW;
 const GMEM_MOVEABLE: GLOBAL_ALLOC_FLAGS = GLOBAL_ALLOC_FLAGS(0x0002);
 const FILE_ATTRIBUTE_NORMAL: u32 = 0x80;
 
+/// A promised file's contents as they arrive; see [`PromisedFile::open`].
+pub type Chunks = Receiver<Result<Vec<u8>, String>>;
+
 /// One file being offered.
 ///
 /// `open` is not called while dragging. It runs when the drop target asks for
@@ -58,7 +61,9 @@ const FILE_ATTRIBUTE_NORMAL: u32 = 0x80;
 pub struct PromisedFile {
     pub name: String,
     pub size: u64,
-    pub open: Box<dyn Fn() -> Receiver<Vec<u8>> + Send + Sync>,
+    /// Chunks of the file in order; an `Err` is a failed transfer, and the
+    /// last item.
+    pub open: Box<dyn Fn() -> Chunks + Send + Sync>,
 }
 
 /// An `IStream` fed by a channel, so the drop target's reads pull bytes off
@@ -69,7 +74,7 @@ pub struct PromisedFile {
 /// piling up in memory.
 #[implement(IStream)]
 struct ChannelStream {
-    rx: RefCell<Option<Receiver<Vec<u8>>>>,
+    rx: RefCell<Option<Chunks>>,
     /// Bytes received but not yet handed over, when a read asked for less
     /// than one chunk.
     pending: RefCell<Vec<u8>>,
@@ -96,9 +101,20 @@ impl ISequentialStream_Impl for ChannelStream_Impl {
                     }
                 };
                 match next {
-                    Some(chunk) => *pending = chunk,
-                    // Sender gone: the file ended, or the transfer failed. A
-                    // short read is how end-of-stream is reported.
+                    Some(Ok(chunk)) => *pending = chunk,
+                    // A failed transfer fails the read, so the drop target
+                    // fails its copy rather than keep a short file as the
+                    // whole one (#150).
+                    Some(Err(e)) => {
+                        tracing::warn!("drag transfer of {} failed: {}", self.name, e);
+                        *self.rx.borrow_mut() = None;
+                        if !pcbread.is_null() {
+                            unsafe { *pcbread = written as u32 };
+                        }
+                        return STG_E_READFAULT;
+                    }
+                    // Sender gone after the whole file: a short read is how
+                    // end-of-stream is reported.
                     None => break,
                 }
             }

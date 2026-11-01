@@ -17,6 +17,9 @@ pub enum TransferError {
     IoError(String),
     #[error("Transfer cancelled")]
     Cancelled,
+    /// The remote command failed; what it said, e.g. "base64: /x: Permission denied".
+    #[error("{0}")]
+    Remote(String),
 }
 
 /// Progress information for an active file transfer.
@@ -42,7 +45,6 @@ pub async fn download_file(
     transfer_id: &str,
     app_handle: &tauri::AppHandle,
 ) -> Result<(), TransferError> {
-    use russh::ChannelMsg;
     use std::io::Write;
 
     tracing::info!("Downloading {} to {}", remote_path, local_path);
@@ -106,117 +108,175 @@ pub async fn download_file(
     let mut file = std::fs::File::create(local_path)
         .map_err(|e| TransferError::IoError(format!("Failed to create local file: {}", e)))?;
 
-    let mut b64_buffer = String::new();
-    let mut bytes_written: u64 = 0;
-    let mut last_progress_bytes: u64 = 0;
-    let mut got_eof = false;
-    let mut got_exit = false;
+    // Initial progress
+    let progress = |bytes: u64, percent: f64| {
+        let _ = app_handle.emit(
+            &format!("transfer-progress-{}", transfer_id),
+            &TransferProgress {
+                id: transfer_id.to_string(),
+                filename: filename.clone(),
+                bytes_transferred: bytes,
+                total_bytes,
+                percent,
+            },
+        );
+    };
+    progress(0, 0.0);
 
-    // Emit initial progress
-    let _ = app_handle.emit(
-        &format!("transfer-progress-{}", transfer_id),
-        &TransferProgress {
-            id: transfer_id.to_string(),
-            filename: filename.clone(),
-            bytes_transferred: 0,
-            total_bytes,
-            percent: 0.0,
-        },
-    );
-
-    loop {
-        let msg = tokio::time::timeout(
-            std::time::Duration::from_secs(30),
-            channel.wait(),
-        ).await;
-
-        match msg {
-            Ok(Some(ChannelMsg::Data { ref data })) => {
-                b64_buffer.push_str(&String::from_utf8_lossy(data));
-
-                // Process complete base64 lines (76 chars each = 57 raw bytes)
-                while let Some(newline_pos) = b64_buffer.find('\n') {
-                    let line: String = b64_buffer[..newline_pos]
-                        .chars()
-                        .filter(|c| !c.is_whitespace())
-                        .collect();
-                    b64_buffer = b64_buffer[newline_pos + 1..].to_string();
-
-                    if line.is_empty() {
-                        continue;
-                    }
-
-                    let decoded = base64::engine::general_purpose::STANDARD
-                        .decode(&line)
-                        .map_err(|e| TransferError::IoError(format!("Base64 decode error: {}", e)))?;
-
-                    file.write_all(&decoded)
-                        .map_err(|e| TransferError::IoError(format!("Write error: {}", e)))?;
-
-                    bytes_written += decoded.len() as u64;
-                }
-
-                // Emit progress every ~64KB of decoded data
-                if bytes_written - last_progress_bytes >= 65536 {
-                    last_progress_bytes = bytes_written;
-                    let percent = (bytes_written as f64 / total_bytes as f64 * 100.0).min(100.0);
-                    let _ = app_handle.emit(
-                        &format!("transfer-progress-{}", transfer_id),
-                        &TransferProgress {
-                            id: transfer_id.to_string(),
-                            filename: filename.clone(),
-                            bytes_transferred: bytes_written,
-                            total_bytes,
-                            percent,
-                        },
-                    );
-                }
-            }
-            Ok(Some(ChannelMsg::ExtendedData { .. })) => {
-                // stderr — ignore
-            }
-            Ok(Some(ChannelMsg::Eof)) => {
-                got_eof = true;
-                if got_exit { break; }
-            }
-            Ok(Some(ChannelMsg::ExitStatus { .. })) => {
-                got_exit = true;
-                if got_eof { break; }
-            }
-            Ok(None) | Err(_) => break,
-            _ => {}
+    let received = receive_base64(&mut channel, &mut file, DOWNLOAD_IDLE_LIMIT, |bytes| {
+        progress(bytes, (bytes as f64 / total_bytes as f64 * 100.0).min(100.0));
+    })
+    .await
+    .and_then(|bytes| {
+        file.flush().map_err(|e| TransferError::IoError(format!("Flush error: {}", e)))?;
+        Ok(bytes)
+    });
+    let bytes_written = match received {
+        Ok(bytes) => bytes,
+        Err(e) => {
+            // What arrived is not the file, and a file of the right name
+            // left behind looks like a finished download (#150).
+            drop(file);
+            let _ = std::fs::remove_file(local_path);
+            tracing::warn!("Download of {} failed: {}", remote_path, e);
+            return Err(e);
         }
-    }
+    };
 
-    // Decode any remaining data in the buffer (last partial line)
-    let remaining: String = b64_buffer.chars().filter(|c| !c.is_whitespace()).collect();
-    if !remaining.is_empty() {
-        let decoded = base64::engine::general_purpose::STANDARD
-            .decode(&remaining)
-            .map_err(|e| TransferError::IoError(format!("Base64 decode error (tail): {}", e)))?;
-        file.write_all(&decoded)
-            .map_err(|e| TransferError::IoError(format!("Write error: {}", e)))?;
-        bytes_written += decoded.len() as u64;
-    }
-
-    file.flush()
-        .map_err(|e| TransferError::IoError(format!("Flush error: {}", e)))?;
-
-    // Final progress + completion
-    let _ = app_handle.emit(
-        &format!("transfer-progress-{}", transfer_id),
-        &TransferProgress {
-            id: transfer_id.to_string(),
-            filename: filename.clone(),
-            bytes_transferred: bytes_written,
-            total_bytes,
-            percent: 100.0,
-        },
-    );
+    progress(bytes_written, 100.0);
     let _ = app_handle.emit(&format!("transfer-complete-{}", transfer_id), ());
 
     tracing::info!("Download complete: {} ({} bytes)", remote_path, bytes_written);
     Ok(())
+}
+
+/// How long a download may go without hearing from the server.
+const DOWNLOAD_IDLE_LIMIT: std::time::Duration = std::time::Duration::from_secs(30);
+
+/// The messages of a remote command's channel, one at a time. A trait so
+/// that [`receive_base64`] can be tested without a server.
+pub(crate) trait ChannelMessages {
+    async fn next_message(&mut self) -> Option<russh::ChannelMsg>;
+}
+
+impl ChannelMessages for russh::Channel<russh::client::Msg> {
+    async fn next_message(&mut self) -> Option<russh::ChannelMsg> {
+        self.wait().await
+    }
+}
+
+/// Read the output of a remote `base64 <file>`, decode it into `out`, and
+/// return how many bytes it was.
+///
+/// The file is only what was sent if the command said so: exit status 0.
+/// A command that could not read the file (no permission, gone, a
+/// directory) sends nothing on stdout and says why on stderr; taking that
+/// as an empty file left an empty download and no error (#150). So any
+/// other status is an error carrying what the server said, and so is a
+/// channel that closes without a status or goes quiet for `idle`: both are
+/// a file cut short.
+pub(crate) async fn receive_base64<C: ChannelMessages>(
+    channel: &mut C,
+    out: &mut impl std::io::Write,
+    idle: std::time::Duration,
+    mut progress: impl FnMut(u64),
+) -> Result<u64, TransferError> {
+    use russh::ChannelMsg;
+
+    /// Enough of stderr to say what went wrong.
+    const STDERR_LIMIT: usize = 4096;
+
+    let mut b64_buffer = String::new();
+    let mut stderr = String::new();
+    let mut bytes_written: u64 = 0;
+    let mut last_progress_bytes: u64 = 0;
+    let mut got_eof = false;
+    let mut exit: Option<Result<(), String>> = None;
+
+    let mut write_line = |line: &str, bytes_written: &mut u64| -> Result<(), TransferError> {
+        let line: String = line.chars().filter(|c| !c.is_whitespace()).collect();
+        if line.is_empty() {
+            return Ok(());
+        }
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(&line)
+            .map_err(|e| TransferError::IoError(format!("Base64 decode error: {}", e)))?;
+        out.write_all(&decoded)
+            .map_err(|e| TransferError::IoError(format!("Write error: {}", e)))?;
+        *bytes_written += decoded.len() as u64;
+        Ok(())
+    };
+
+    loop {
+        let msg = tokio::time::timeout(idle, channel.next_message()).await.map_err(|_| {
+            TransferError::IoError(format!(
+                "The server sent nothing for {} seconds; the download stopped",
+                idle.as_secs()
+            ))
+        })?;
+        match msg {
+            Some(ChannelMsg::Data { ref data }) => {
+                b64_buffer.push_str(&String::from_utf8_lossy(data));
+                // Complete base64 lines (76 chars each = 57 raw bytes)
+                while let Some(newline_pos) = b64_buffer.find('\n') {
+                    write_line(&b64_buffer[..newline_pos], &mut bytes_written)?;
+                    b64_buffer.drain(..=newline_pos);
+                }
+                // Progress every ~64KB of decoded data
+                if bytes_written - last_progress_bytes >= 65536 {
+                    last_progress_bytes = bytes_written;
+                    progress(bytes_written);
+                }
+            }
+            Some(ChannelMsg::ExtendedData { ref data, .. }) => {
+                if stderr.len() < STDERR_LIMIT {
+                    stderr.push_str(&String::from_utf8_lossy(data));
+                }
+            }
+            Some(ChannelMsg::Eof) => {
+                got_eof = true;
+                if exit.is_some() {
+                    break;
+                }
+            }
+            Some(ChannelMsg::ExitStatus { exit_status }) => {
+                exit = Some(if exit_status == 0 { Ok(()) } else { Err(format!("exit status {exit_status}")) });
+                if got_eof {
+                    break;
+                }
+            }
+            Some(ChannelMsg::ExitSignal { signal_name, .. }) => {
+                exit = Some(Err(format!("stopped by signal {signal_name:?}")));
+                if got_eof {
+                    break;
+                }
+            }
+            // Closed: whatever status was coming has come or never will.
+            Some(ChannelMsg::Close) | None => break,
+            Some(_) => {}
+        }
+    }
+
+    match exit {
+        Some(Ok(())) => {}
+        Some(Err(status)) => {
+            let said = stderr.trim();
+            return Err(TransferError::Remote(if said.is_empty() {
+                format!("The server could not send the file ({status})")
+            } else {
+                said.to_string()
+            }));
+        }
+        None => {
+            return Err(TransferError::IoError(
+                "The connection closed before the whole file arrived".to_string(),
+            ))
+        }
+    }
+
+    // The last partial line
+    write_line(&b64_buffer, &mut bytes_written)?;
+    Ok(bytes_written)
 }
 
 /// Upload a local file or directory to the remote host.
@@ -552,84 +612,169 @@ fn shell_escape(s: &str) -> String {
 /// receiver stops reading, this stops reading from the network rather than
 /// buffering a whole file in memory. Sending fails once the receiver is gone,
 /// which is how a cancelled drop stops the transfer.
+///
+/// A transfer that fails sends its error as the last item, so the drop
+/// target fails its copy instead of keeping what arrived as the whole file:
+/// an unreadable file used to drop as an empty one (#150).
 pub async fn stream_file(
     handle: &SharedHandle,
     remote_path: &str,
-    sink: std::sync::mpsc::SyncSender<Vec<u8>>,
+    sink: std::sync::mpsc::SyncSender<Result<Vec<u8>, String>>,
 ) -> Result<u64, TransferError> {
-    use russh::ChannelMsg;
-
-    let mut channel = {
-        let guard = handle.lock().await;
-        guard
-            .channel_open_session()
+    let channel_error = |e: russh::Error| TransferError::SshError(SshError::ChannelError(format!("{}", e)));
+    let result = async {
+        let mut channel = {
+            let guard = handle.lock().await;
+            guard.channel_open_session().await.map_err(channel_error)?
+        };
+        channel
+            .exec(true, format!("base64 {}", shell_escape(remote_path)))
             .await
-            .map_err(|e| TransferError::SshError(crate::ssh::client::SshError::ChannelError(format!("{}", e))))?
-    };
-    channel
-        .exec(true, format!("base64 {}", shell_escape(remote_path)))
-        .await
-        .map_err(|e| TransferError::SshError(crate::ssh::client::SshError::ChannelError(format!("{}", e))))?;
+            .map_err(channel_error)?;
+        receive_base64(&mut channel, &mut SinkWriter(&sink), DOWNLOAD_IDLE_LIMIT, |_| {}).await
+    }
+    .await;
+    if let Err(e) = &result {
+        let _ = sink.send(Err(e.to_string()));
+    }
+    result
+}
 
-    let mut b64 = String::new();
-    let mut sent: u64 = 0;
-    let mut got_eof = false;
-    let mut got_exit = false;
+/// Writes go to the drop target's channel, one chunk per write.
+struct SinkWriter<'a>(&'a std::sync::mpsc::SyncSender<Result<Vec<u8>, String>>);
 
-    let mut emit = |bytes: Vec<u8>| -> Result<(), TransferError> {
-        sent += bytes.len() as u64;
-        sink.send(bytes)
-            .map_err(|_| TransferError::IoError("drop cancelled".into()))
-    };
-
-    loop {
-        let msg = tokio::time::timeout(std::time::Duration::from_secs(30), channel.wait()).await;
-        match msg {
-            Ok(Some(ChannelMsg::Data { ref data })) => {
-                b64.push_str(&String::from_utf8_lossy(data));
-                while let Some(nl) = b64.find('\n') {
-                    let line: String = b64[..nl].chars().filter(|c| !c.is_whitespace()).collect();
-                    b64 = b64[nl + 1..].to_string();
-                    if line.is_empty() {
-                        continue;
-                    }
-                    let decoded = base64::engine::general_purpose::STANDARD
-                        .decode(&line)
-                        .map_err(|e| TransferError::IoError(format!("Base64 decode error: {}", e)))?;
-                    emit(decoded)?;
-                }
-            }
-            Ok(Some(ChannelMsg::Eof)) => {
-                got_eof = true;
-                if got_exit {
-                    break;
-                }
-            }
-            Ok(Some(ChannelMsg::ExitStatus { .. })) => {
-                got_exit = true;
-                if got_eof {
-                    break;
-                }
-            }
-            Ok(None) | Err(_) => break,
-            _ => {}
-        }
+impl std::io::Write for SinkWriter<'_> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        self.0
+            .send(Ok(buf.to_vec()))
+            .map_err(|_| std::io::Error::other("drop cancelled"))?;
+        Ok(buf.len())
     }
 
-    let tail: String = b64.chars().filter(|c| !c.is_whitespace()).collect();
-    if !tail.is_empty() {
-        let decoded = base64::engine::general_purpose::STANDARD
-            .decode(&tail)
-            .map_err(|e| TransferError::IoError(format!("Base64 decode error (tail): {}", e)))?;
-        emit(decoded)?;
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
     }
-
-    Ok(sent)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use russh::ChannelMsg;
+    use std::collections::VecDeque;
+    use std::time::Duration;
+
+    /// A channel that sends these messages, then closes.
+    struct Sends(VecDeque<ChannelMsg>);
+
+    impl ChannelMessages for Sends {
+        async fn next_message(&mut self) -> Option<ChannelMsg> {
+            self.0.pop_front()
+        }
+    }
+
+    /// A channel that sends these messages, then nothing, ever.
+    struct Stalls(VecDeque<ChannelMsg>);
+
+    impl ChannelMessages for Stalls {
+        async fn next_message(&mut self) -> Option<ChannelMsg> {
+            match self.0.pop_front() {
+                Some(m) => Some(m),
+                None => std::future::pending().await,
+            }
+        }
+    }
+
+    fn stdout(s: &str) -> ChannelMsg {
+        ChannelMsg::Data { data: s.as_bytes().to_vec().into() }
+    }
+    fn stderr(s: &str) -> ChannelMsg {
+        ChannelMsg::ExtendedData { data: s.as_bytes().to_vec().into(), ext: 1 }
+    }
+    fn exit(status: u32) -> ChannelMsg {
+        ChannelMsg::ExitStatus { exit_status: status }
+    }
+
+    async fn receive(channel: &mut impl ChannelMessages) -> (Result<u64, TransferError>, Vec<u8>) {
+        let mut out = Vec::new();
+        let result = receive_base64(channel, &mut out, Duration::from_millis(50), |_| {}).await;
+        (result, out)
+    }
+
+    /// `base64 <file>` as the server answers it, for "hello world\n".
+    const HELLO_B64: &str = "aGVsbG8gd29ybGQK\n";
+
+    #[tokio::test]
+    async fn a_file_that_was_sent_is_received_whole() {
+        let mut ch = Sends(VecDeque::from([stdout(HELLO_B64), exit(0), ChannelMsg::Eof, ChannelMsg::Close]));
+        let (result, out) = receive(&mut ch).await;
+        assert_eq!(result.unwrap(), 12);
+        assert_eq!(out, b"hello world\n");
+    }
+
+    #[tokio::test]
+    async fn the_status_may_come_after_eof_and_lines_may_split_anywhere() {
+        let mut ch = Sends(VecDeque::from([stdout("aGVsbG8g"), stdout("d29ybGQK"), ChannelMsg::Eof, exit(0)]));
+        let (result, out) = receive(&mut ch).await;
+        assert_eq!(result.unwrap(), 12);
+        assert_eq!(out, b"hello world\n");
+    }
+
+    /// #150: what the server sends for a file the login user cannot read.
+    /// It was taken as an empty file: an empty download, and no error.
+    #[tokio::test]
+    async fn a_file_the_server_cannot_read_is_an_error_saying_why() {
+        let mut ch = Sends(VecDeque::from([
+            stderr("base64: /home/reach/r150/rootonly.txt: Permission denied\n"),
+            exit(1),
+            ChannelMsg::Eof,
+            ChannelMsg::Close,
+        ]));
+        let (result, out) = receive(&mut ch).await;
+        let err = result.unwrap_err();
+        assert_eq!(err.to_string(), "base64: /home/reach/r150/rootonly.txt: Permission denied");
+        assert!(out.is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_failure_with_nothing_on_stderr_still_fails() {
+        let mut ch = Sends(VecDeque::from([exit(2), ChannelMsg::Eof]));
+        let err = receive(&mut ch).await.0.unwrap_err();
+        assert_eq!(err.to_string(), "The server could not send the file (exit status 2)");
+    }
+
+    #[tokio::test]
+    async fn a_command_stopped_by_a_signal_fails() {
+        let mut ch = Sends(VecDeque::from([
+            stdout(HELLO_B64),
+            ChannelMsg::ExitSignal {
+                signal_name: russh::Sig::KILL,
+                core_dumped: false,
+                error_message: String::new(),
+                lang_tag: String::new(),
+            },
+            ChannelMsg::Eof,
+        ]));
+        assert!(receive(&mut ch).await.0.is_err());
+    }
+
+    /// The connection dropping mid-file was a short file reported complete.
+    #[tokio::test]
+    async fn a_channel_that_closes_without_a_status_is_a_file_cut_short() {
+        let mut ch = Sends(VecDeque::from([stdout(HELLO_B64), ChannelMsg::Eof]));
+        let err = receive(&mut ch).await.0.unwrap_err();
+        assert_eq!(err.to_string(), "IO error: The connection closed before the whole file arrived");
+
+        let mut ch = Sends(VecDeque::from([stdout(HELLO_B64), ChannelMsg::Close]));
+        assert!(receive(&mut ch).await.0.is_err());
+    }
+
+    /// A server that went quiet was a short file reported complete too.
+    #[tokio::test]
+    async fn a_server_that_goes_quiet_stops_the_download_with_an_error() {
+        let mut ch = Stalls(VecDeque::from([stdout(HELLO_B64)]));
+        let err = receive(&mut ch).await.0.unwrap_err();
+        assert!(err.to_string().contains("sent nothing"), "{err}");
+    }
 
     fn scratch(name: &str) -> PathBuf {
         let dir = std::env::temp_dir().join(format!("reach-upload-{}-{}", name, std::process::id()));
