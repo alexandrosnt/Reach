@@ -506,10 +506,6 @@ pub fn run() {
             credential_is_locked,
             credential_lock,
             credential_has_master_password,
-            credential_save_password,
-            credential_get_password,
-            credential_has_password,
-            credential_delete_password,
             // Settings commands
             settings_get_all,
             settings_get,
@@ -909,10 +905,6 @@ pub fn run() {
             credential_is_locked,
             credential_lock,
             credential_has_master_password,
-            credential_save_password,
-            credential_get_password,
-            credential_has_password,
-            credential_delete_password,
             // Settings commands
             settings_get_all,
             settings_get,

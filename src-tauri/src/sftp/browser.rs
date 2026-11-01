@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use crate::ssh::client::{SharedHandle, exec_on_connection, SshError};
+use crate::ssh::client::{SharedHandle, exec_on_connection, exec_on_connection_with_exit_code, SshError};
 
 #[derive(Debug, Error)]
 pub enum SftpBrowserError {
@@ -14,6 +14,9 @@ pub enum SftpBrowserError {
     PathNotFound(String),
     #[error("Permission denied: {0}")]
     PermissionDenied(String),
+    /// A remote command failed; what it said, e.g. "base64: /x: Permission denied".
+    #[error("{0}")]
+    Remote(String),
 }
 
 /// Metadata for a remote file or directory entry.
@@ -40,8 +43,8 @@ pub async fn list_directory(
         shell_escape(path),
         shell_escape(path)
     );
-    let output = exec_on_connection(handle, &command).await?;
-    parse_ls_output(&output, path)
+    let (stdout, stderr, code) = exec_on_connection_with_exit_code(handle, &command).await?;
+    parse_ls_output(&listing_output(stdout, &stderr, code)?, path)
 }
 
 /// Create a directory on the remote host.
@@ -50,7 +53,7 @@ pub async fn make_directory(
     path: &str,
 ) -> Result<(), SftpBrowserError> {
     let command = format!("mkdir -p {}", shell_escape(path));
-    exec_on_connection(handle, &command).await?;
+    run_checked(handle, &command).await?;
     Ok(())
 }
 
@@ -60,7 +63,7 @@ pub async fn delete_entry(
     path: &str,
 ) -> Result<(), SftpBrowserError> {
     let command = format!("rm -rf {}", shell_escape(path));
-    exec_on_connection(handle, &command).await?;
+    run_checked(handle, &command).await?;
     Ok(())
 }
 
@@ -70,7 +73,7 @@ pub async fn touch_file(
     path: &str,
 ) -> Result<(), SftpBrowserError> {
     let command = format!("touch {}", shell_escape(path));
-    exec_on_connection(handle, &command).await?;
+    run_checked(handle, &command).await?;
     Ok(())
 }
 
@@ -81,7 +84,7 @@ pub async fn rename_entry(
     new_path: &str,
 ) -> Result<(), SftpBrowserError> {
     let command = format!("mv {} {}", shell_escape(old_path), shell_escape(new_path));
-    exec_on_connection(handle, &command).await?;
+    run_checked(handle, &command).await?;
     Ok(())
 }
 
@@ -111,7 +114,8 @@ pub async fn read_text_file(
 
     // Read file via base64 to handle binary-safe transport
     let cmd = format!("base64 {}", shell_escape(path));
-    let b64_output = exec_on_connection(handle, &cmd).await?;
+    let (stdout, stderr, code) = exec_on_connection_with_exit_code(handle, &cmd).await?;
+    let b64_output = command_output(stdout, &stderr, code)?;
 
     // Remove all whitespace from base64 output (line breaks etc.)
     let b64_clean: String = b64_output.chars().filter(|c| !c.is_whitespace()).collect();
@@ -130,6 +134,41 @@ pub async fn read_text_file(
     })
 }
 
+/// What `ls` listed. It also fails for an entry it could not stat (exit 1,
+/// the rest still listed), so only a failure that listed nothing is an
+/// error: a folder the login user cannot read, which showed as empty (#150).
+fn listing_output(stdout: String, stderr: &str, code: i32) -> Result<String, SftpBrowserError> {
+    let listed = stdout.lines().any(|l| !l.trim().is_empty() && !l.starts_with("total "));
+    if listed { Ok(stdout) } else { command_output(stdout, stderr, code) }
+}
+
+/// Run a remote command; its stdout, or an error with what it said.
+///
+/// The commands here (mkdir, rm, touch, mv) print nothing when they work,
+/// and when they fail only stderr and the exit status say so: a delete the
+/// login user may not do reported success, and the file came back on the
+/// next refresh (#150).
+async fn run_checked(handle: &SharedHandle, command: &str) -> Result<String, SftpBrowserError> {
+    let (stdout, stderr, code) = exec_on_connection_with_exit_code(handle, command).await?;
+    command_output(stdout, &stderr, code)
+}
+
+/// A remote command's stdout, if it succeeded. A file the login user cannot
+/// read gives an empty stdout and a reason on stderr; taken as output, it
+/// opened as an empty file, and saving that would have emptied the real one
+/// (#150). `-1` is no exit status at all: the channel closed or timed out.
+fn command_output(stdout: String, stderr: &str, code: i32) -> Result<String, SftpBrowserError> {
+    if code == 0 {
+        return Ok(stdout);
+    }
+    let said = stderr.trim();
+    Err(SftpBrowserError::Remote(match (code, said.is_empty()) {
+        (-1, _) => "The connection closed before the server answered".to_string(),
+        (_, false) => said.to_string(),
+        (_, true) => format!("The server reported a failure (exit status {code})"),
+    }))
+}
+
 /// Write text content to a remote file via streaming base64 over a single SSH channel.
 pub async fn write_text_file(
     handle: &SharedHandle,
@@ -144,7 +183,7 @@ pub async fn write_text_file(
     // Empty file: simple truncate
     if data.is_empty() {
         let cmd = format!(": > {}", shell_escape(path));
-        exec_on_connection(handle, &cmd).await?;
+        run_checked(handle, &cmd).await?;
         return Ok(());
     }
 
@@ -297,4 +336,59 @@ fn parse_ls_output(output: &str, base_path: &str) -> Result<Vec<RemoteEntry>, Sf
     });
 
     Ok(entries)
+}
+
+#[cfg(test)]
+mod command_output_tests {
+    use super::*;
+
+    #[test]
+    fn a_command_that_succeeded_gives_its_output() {
+        assert_eq!(command_output("aGkK\n".into(), "", 0).unwrap(), "aGkK\n");
+        // An empty file is a success with nothing on stdout.
+        assert_eq!(command_output(String::new(), "", 0).unwrap(), "");
+    }
+
+    /// #150: a file the login user cannot read opened as an empty file.
+    #[test]
+    fn a_file_the_server_cannot_read_is_an_error_saying_why() {
+        let err = command_output(String::new(), "base64: /root/x: Permission denied\n", 1).unwrap_err();
+        assert_eq!(err.to_string(), "base64: /root/x: Permission denied");
+    }
+
+    #[test]
+    fn a_failure_with_nothing_on_stderr_still_fails() {
+        let err = command_output(String::new(), "", 1).unwrap_err();
+        assert_eq!(err.to_string(), "The server reported a failure (exit status 1)");
+    }
+
+    #[test]
+    fn a_folder_the_server_cannot_list_is_an_error_saying_why() {
+        let err = listing_output(String::new(), "ls: cannot open directory '/root': Permission denied
+", 2).unwrap_err();
+        assert_eq!(err.to_string(), "ls: cannot open directory '/root': Permission denied");
+    }
+
+    #[test]
+    fn a_folder_listed_in_part_still_lists() {
+        let out = "total 4
+-rw-r--r-- 1 a a 3 1700000000 ok.txt
+".to_string();
+        let listed = listing_output(out.clone(), "ls: cannot access 'gone': No such file or directory
+", 1).unwrap();
+        assert_eq!(listed, out);
+    }
+
+    #[test]
+    fn an_empty_folder_is_not_an_error() {
+        assert_eq!(listing_output("total 0
+".into(), "", 0).unwrap(), "total 0
+");
+    }
+
+    #[test]
+    fn no_exit_status_is_a_file_cut_short() {
+        let err = command_output("aGVsbG8g".into(), "", -1).unwrap_err();
+        assert_eq!(err.to_string(), "The connection closed before the server answered");
+    }
 }

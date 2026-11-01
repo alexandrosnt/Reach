@@ -2,6 +2,12 @@
 
 All notable changes to Reach are documented here.
 
+## v0.8.8
+- **Personal sync: delete and edit work again** — Turning on personal sync copied every session, folder, snippet and setting into the synced vault under a new id, `{vault}_{id}`. After that, deleting or editing one looked done but did nothing, or failed with *Session not found*. The copy now keeps each item's own id, and the first start after the update puts back the ids of anything copied before, so data already synced works again with nothing to redo. A check for an item that fails is now reported, not taken as "not there". Reported, diagnosed and partly fixed by @ahhexia (#148, #149).
+- **File explorer: a file you can't read is an error, not an empty file** — Downloading, previewing or dragging out a file the login user may not read gave an empty file and no error. The download now fails with the server's own message (such as *Permission denied*) and leaves no file behind. A download that stops partway, because the connection drops or the server goes quiet, fails the same way instead of leaving a cut-off file that looks complete. Delete, rename, new file, new folder and opening a folder show the server's error too: a delete that wasn't allowed looked done, and a folder you can't read looked empty. Reported by @coRpTitan (#150).
+- **Unused password commands removed** — Four commands that stored a password per session were never used by the app; with personal sync, saving one would have overwritten the session itself.
+- **Build and docs** — CI builds with Rust 1.99.1; the docs site is on Starlight 0.42.7 and Astro 7.4.2 (#121).
+
 ## v0.8.7
 - **Deleting asks in a dialog** — The file explorer asked before deleting in a bar at the top of the list, which scrolled away with it: in a long folder scrolled down, the question was out of sight. It now asks in Reach's own dialog, over everything, with the full name and the focus on Cancel. Reported by @Xtry333 (#144).
 - **The Full screen button moves out of the way** — Over a remote desktop (RDP or VNC), the Full screen button sat in the top right corner, over the remote's own close and maximize buttons. It can now be dragged anywhere and stays where it was put, and Settings → Appearance → *Full screen button* hides it; Ctrl+Alt+Enter still toggles full screen. Reported by @terkajurka (#145).

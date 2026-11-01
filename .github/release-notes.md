@@ -1,10 +1,13 @@
-Delete asks in a dialog; the Full screen button moves out of the way.
+Personal sync deletes and edits work again; unreadable files show an error.
 
-- File explorer: deleting asks in a dialog over everything, instead of
-  a bar that scrolled out of sight in a long folder. Reported by
-  @Xtry333 (#144).
-- Remote desktop: the Full screen button can be dragged anywhere and
-  stays there, or hidden in Settings → Appearance. Reported by
-  @terkajurka (#145).
+- Personal sync: deleting or editing a session, folder or snippet did
+  nothing after sync was turned on. Fixed, and data synced before is
+  repaired on first start. Reported and partly fixed by @ahhexia
+  (#148, #149).
+- File explorer: downloading, previewing or dragging a file you can't
+  read gave an empty file with no error. It now shows the server's
+  error, and a download cut short leaves no file. Delete, rename and
+  new file/folder show the server's error too. Reported by @coRpTitan
+  (#150).
 
 Full details: https://github.com/alexandrosnt/Reach/blob/main/CHANGELOG.md
