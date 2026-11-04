@@ -19,12 +19,13 @@
 	import { isMobile, isWebKit } from '#lib/platform.js';
 	import { getCurrentWindow } from '@tauri-apps/api/window';
 	import { invoke } from '@tauri-apps/api/core';
-	import { trieMatch } from '#lib/state/snippets.svelte.js';
+	import { trieMatch, registerTerminalInput, unregisterTerminalInput, type TerminalInput } from '#lib/state/snippets.svelte.js';
 	import { terminalFocusRequests } from '#lib/state/palette.svelte.js';
 	import { setTabLink } from '#lib/state/tabs.svelte.js';
 	import { t } from '#lib/state/i18n.svelte.js';
 	import { readText as clipboardReadText, writeText as clipboardWriteText } from '@tauri-apps/plugin-clipboard-manager';
 	import { openUrl } from '@tauri-apps/plugin-opener';
+	import { URL_PATTERN } from '#lib/terminal/links.js';
 	import Modal from '#lib/components/shared/Modal.svelte';
 	import MobileKeyBar, { type BarKey } from '#lib/components/shared/MobileKeyBar.svelte';
 	import Button from '#lib/components/shared/Button.svelte';
@@ -156,6 +157,7 @@
 		terminal?.focus();
 	}
 	let fitAddon: FitAddon | undefined = $state();
+	let snippetInput: TerminalInput | undefined;
 
 	// Pending multiline paste awaiting user confirmation (guards against
 	// accidentally executing pasted multi-line commands). Whether it asks
@@ -358,11 +360,15 @@
 	function loadAddons(term: Terminal, fit: FitAddon, host: HTMLElement): void {
 		term.loadAddon(fit);
 		// Open links in the OS default browser (Windows/macOS/Linux) via Tauri's
-		// shell, not inside the WebView.
+		// shell, not inside the WebView. Our pattern, not the addon's: its own
+		// cut long links short at ! * ' ( ) (#lib/terminal/links).
 		term.loadAddon(
-			new WebLinksAddon((_event, uri) => {
-				openUrl(uri).catch((e) => console.error('Failed to open link:', e));
-			})
+			new WebLinksAddon(
+				(_event, uri) => {
+					openUrl(uri).catch((e) => console.error('Failed to open link:', e));
+				},
+				{ urlRegex: URL_PATTERN }
+			)
 		);
 
 		const unicode11 = new Unicode11Addon();
@@ -824,6 +830,14 @@
 			terminal = term;
 			fitAddon = fit;
 
+			// Where a snippet types in: this terminal's own channel, and whether
+			// its shell takes a bracketed paste (#lib/terminal/snippet).
+			snippetInput = {
+				bracketed: () => term.modes.bracketedPasteMode,
+				send: sendData
+			};
+			registerTerminalInput(ptyId, snippetInput);
+
 			const bufferId = termType === 'ssh' && currentConnectionId ? currentConnectionId : ptyId;
 			registerBufferReader(bufferId, {
 				size: () => ({ cols: term.cols, rows: term.rows }),
@@ -845,6 +859,7 @@
 		return () => {
 			const bufferId = termType === 'ssh' && currentConnectionId ? currentConnectionId : ptyId;
 			unregisterBufferReader(bufferId);
+			if (snippetInput) unregisterTerminalInput(ptyId, snippetInput);
 			unlistenData?.();
 			unlistenExit?.();
 			unlistenMenuCopy?.();
