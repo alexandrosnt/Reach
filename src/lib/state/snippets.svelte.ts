@@ -2,6 +2,7 @@ import { snippetList, snippetCreate, snippetUpdate, snippetDelete, type Snippet 
 import { getActiveTab } from '#lib/state/tabs.svelte.js';
 import { sshSend } from '#lib/ipc/ssh.js';
 import { ptyWrite } from '#lib/ipc/pty.js';
+import { snippetInput } from '#lib/terminal/snippet.js';
 
 let snippets = $state<Snippet[]>([]);
 
@@ -70,14 +71,38 @@ export function canPasteSnippet(): boolean {
 	return terminalTarget() !== null;
 }
 
-/** Types `command` into the active terminal, without pressing Enter: the
-    snippet panel's Paste and the command palette both use it. False when
-    there is no terminal to type into. */
-export function pasteSnippet(command: string): boolean {
+/** A mounted terminal's input, keyed by its tab's id. */
+export interface TerminalInput {
+	/** Whether the shell in it has turned bracketed paste on. */
+	bracketed: () => boolean;
+	send: (data: number[]) => void;
+}
+
+const inputs = new Map<string, TerminalInput>();
+
+export function registerTerminalInput(tabId: string, input: TerminalInput): void {
+	inputs.set(tabId, input);
+}
+
+export function unregisterTerminalInput(tabId: string, input: TerminalInput): void {
+	if (inputs.get(tabId) === input) inputs.delete(tabId);
+}
+
+/** Types `command` into the active terminal. Without `run` it waits for
+    Enter, every line of it: the snippet panel's Paste and the command
+    palette. With `run` it presses Enter: the panel's Run. False when there
+    is no terminal to type into. See #lib/terminal/snippet. */
+export function pasteSnippet(command: string, run = false): boolean {
 	const target = terminalTarget();
 	if (!target) return false;
-	const data = Array.from(new TextEncoder().encode(command));
-	if (target.ssh) {
+	const tab = getActiveTab();
+	const input = tab ? inputs.get(tab.id) : undefined;
+	const text = snippetInput(command, { bracketed: input?.bracketed() ?? false, run });
+	if (!text) return true;
+	const data = Array.from(new TextEncoder().encode(text));
+	if (input) {
+		input.send(data);
+	} else if (target.ssh) {
 		sshSend(target.id, data);
 	} else {
 		ptyWrite(target.id, data);

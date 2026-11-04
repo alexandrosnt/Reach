@@ -19,6 +19,8 @@
     "discord:invite": "node scripts/discord/invite.mjs",
     "share:test": "node scripts/share-test.mjs",
     "paste:test": "node scripts/paste-test.mjs",
+    "snippet:test": "node scripts/snippet-test.mjs",
+    "links:test": "node scripts/links-test.mjs",
     "ime:test": "node scripts/ime-test.mjs",
     "select:test": "node --import ./scripts/resolve-lib.mjs scripts/select-test.mjs",
     "rdp-import:test": "node scripts/rdp-import-test.mjs",

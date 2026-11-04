@@ -32,13 +32,13 @@
 		);
 	});
 
-	function pasteToTerminal(command: string): void {
-		if (!pasteSnippet(command)) return;
+	function pasteToTerminal(command: string, run = false): void {
+		if (!pasteSnippet(command, run)) return;
 		addToast(t('snippets.pasted', { command: command.length > 40 ? command.slice(0, 40) + '…' : command }), 'success');
 	}
 
 	function executeSnippet(command: string): void {
-		pasteToTerminal(command + '\n');
+		pasteToTerminal(command, true);
 	}
 
 	async function handleAdd(): Promise<void> {
