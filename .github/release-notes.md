@@ -1,13 +1,12 @@
-Personal sync deletes and edits work again; unreadable files show an error.
+Multi-line snippets arrive whole; long links open in full; a security update.
 
-- Personal sync: deleting or editing a session, folder or snippet did
-  nothing after sync was turned on. Fixed, and data synced before is
-  repaired on first start. Reported and partly fixed by @ahhexia
-  (#148, #149).
-- File explorer: downloading, previewing or dragging a file you can't
-  read gave an empty file with no error. It now shows the server's
-  error, and a download cut short leaves no file. Delete, rename and
-  new file/folder show the server's error too. Reported by @coRpTitan
-  (#150).
+- Snippets: a snippet of several lines lost the start of a line when a
+  program asked something in between (`apt upgrade` arrived as
+  `t upgrade`), and the palette dropped the last line. It now goes in
+  as one paste. Reported by @coRpTitan (#154).
+- Terminal: clicking a long link opens all of it, not just the part
+  before a `!`, `*`, `'` or bracket.
+- Security: pageant 0.2.5, so a malformed reply from the Windows SSH
+  agent can no longer make Reach buffer without limit.
 
 Full details: https://github.com/alexandrosnt/Reach/blob/main/CHANGELOG.md

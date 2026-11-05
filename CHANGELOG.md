@@ -2,6 +2,12 @@
 
 All notable changes to Reach are documented here.
 
+## v0.8.9
+- **Multi-line snippets arrive whole** — A snippet of several lines was typed in one line at a time, so a program that read input in between (a pager, or a *[Y/n]* question) swallowed the start of the next line: `apt upgrade` arrived as `t upgrade`, and from the command palette the last line was never sent. When the shell takes bracketed paste, which bash, zsh and fish do, the snippet now goes in as a single paste. The palette's Paste leaves every line waiting for Enter, and Run presses Enter once at the end. Reported by @coRpTitan (#154).
+- **Clicking a link opens all of it** — A long link in the terminal opened only part of itself in the browser: the link pattern stopped at `!`, `*`, `'`, `(` and `)`. It now takes the whole link, with balanced brackets kept, and still leaves off a full stop or comma at the end of a sentence.
+- **Security update** — pageant 0.2.5: a reply from the Windows SSH agent (Pageant) with a huge length prefix could make Reach keep buffering without limit (Dependabot alert 154).
+- **Updates** — SvelteKit 3.1.1, Svelte 5.57.3, the dialog plugin 2.8.4; the docs site is on Astro 7.4.4.
+
 ## v0.8.8
 - **Personal sync: delete and edit work again** — Turning on personal sync copied every session, folder, snippet and setting into the synced vault under a new id, `{vault}_{id}`. After that, deleting or editing one looked done but did nothing, or failed with *Session not found*. The copy now keeps each item's own id, and the first start after the update puts back the ids of anything copied before, so data already synced works again with nothing to redo. A check for an item that fails is now reported, not taken as "not there". Reported, diagnosed and partly fixed by @ahhexia (#148, #149).
 - **File explorer: a file you can't read is an error, not an empty file** — Downloading, previewing or dragging out a file the login user may not read gave an empty file and no error. The download now fails with the server's own message (such as *Permission denied*) and leaves no file behind. A download that stops partway, because the connection drops or the server goes quiet, fails the same way instead of leaving a cut-off file that looks complete. Delete, rename, new file, new folder and opening a folder show the server's error too: a delete that wasn't allowed looked done, and a folder you can't read looked empty. Reported by @coRpTitan (#150).
