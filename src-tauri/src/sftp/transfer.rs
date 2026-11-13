@@ -4,6 +4,7 @@ use tauri::Emitter;
 use serde::{Deserialize, Serialize};
 use crate::ssh::client::{SharedHandle, SshError, exec_on_connection, exec_on_connection_with_exit_code};
 use base64::Engine;
+pub use tokio_util::sync::CancellationToken;
 
 #[derive(Debug, Error)]
 pub enum TransferError {
@@ -44,6 +45,7 @@ pub async fn download_file(
     local_path: &str,
     transfer_id: &str,
     app_handle: &tauri::AppHandle,
+    cancel: &CancellationToken,
 ) -> Result<(), TransferError> {
     use std::io::Write;
 
@@ -123,11 +125,16 @@ pub async fn download_file(
     };
     progress(0, 0.0);
 
-    let received = receive_base64(&mut channel, &mut file, DOWNLOAD_IDLE_LIMIT, |bytes| {
-        progress(bytes, (bytes as f64 / total_bytes as f64 * 100.0).min(100.0));
-    })
-    .await
-    .and_then(|bytes| {
+    let received = tokio::select! {
+        r = receive_base64(&mut channel, &mut file, DOWNLOAD_IDLE_LIMIT, |bytes| {
+            progress(bytes, (bytes as f64 / total_bytes as f64 * 100.0).min(100.0));
+        }) => r,
+        _ = cancel.cancelled() => Err(TransferError::Cancelled),
+    };
+    if matches!(received, Err(TransferError::Cancelled)) {
+        let _ = channel.close().await;
+    }
+    let received = received.and_then(|bytes| {
         file.flush().map_err(|e| TransferError::IoError(format!("Flush error: {}", e)))?;
         Ok(bytes)
     });
@@ -291,11 +298,12 @@ pub async fn upload_path(
     remote_path: &str,
     transfer_id: &str,
     app_handle: &tauri::AppHandle,
+    cancel: &CancellationToken,
 ) -> Result<(), TransferError> {
     if Path::new(local_path).is_dir() {
-        upload_directory(handle, local_path, remote_path, transfer_id, app_handle).await
+        upload_directory(handle, local_path, remote_path, transfer_id, app_handle, cancel).await
     } else {
-        upload_file(handle, local_path, remote_path, transfer_id, app_handle).await
+        upload_file(handle, local_path, remote_path, transfer_id, app_handle, cancel).await
     }
 }
 
@@ -306,6 +314,7 @@ pub async fn upload_file(
     remote_path: &str,
     transfer_id: &str,
     app_handle: &tauri::AppHandle,
+    cancel: &CancellationToken,
 ) -> Result<(), TransferError> {
     tracing::info!("Uploading {} to {}", local_path, remote_path);
 
@@ -315,7 +324,7 @@ pub async fn upload_file(
     let emit = |sent: u64| emit_progress(app_handle, transfer_id, &filename, sent, total_bytes);
 
     emit(0);
-    send_bytes(handle, &data, remote_path, emit).await?;
+    send_bytes(handle, &data, remote_path, cancel, emit).await?;
     emit(total_bytes);
     let _ = app_handle.emit(&format!("transfer-complete-{}", transfer_id), ());
 
@@ -329,6 +338,7 @@ async fn upload_directory(
     remote_path: &str,
     transfer_id: &str,
     app_handle: &tauri::AppHandle,
+    cancel: &CancellationToken,
 ) -> Result<(), TransferError> {
     tracing::info!("Uploading directory {} to {}", local_path, remote_path);
 
@@ -340,21 +350,17 @@ async fn upload_directory(
 
     emit(0);
     for command in mkdir_commands(&plan.dirs) {
-        let (_, stderr, code) = exec_on_connection_with_exit_code(handle, &command).await?;
-        if code != 0 {
-            let msg = if stderr.trim().is_empty() {
-                format!("Remote mkdir exited with code {}", code)
-            } else {
-                stderr.trim().to_string()
-            };
-            return Err(TransferError::IoError(msg));
+        if cancel.is_cancelled() {
+            return Err(TransferError::Cancelled);
         }
+        let (_, stderr, code) = exec_on_connection_with_exit_code(handle, &command).await?;
+        remote_outcome(i64::from(code), &stderr)?;
     }
 
     let mut done: u64 = 0;
     for file in &plan.files {
         let data = read_local(&file.local)?;
-        send_bytes(handle, &data, &file.remote, |sent| emit(done + sent)).await?;
+        send_bytes(handle, &data, &file.remote, cancel, |sent| emit(done + sent)).await?;
         done += data.len() as u64;
     }
 
@@ -498,103 +504,151 @@ fn emit_progress(
 /// per-chunk SSH roundtrips — mirrors the download approach for maximum
 /// throughput. `on_progress` hears how many bytes of `data` have gone out,
 /// about every 64KB.
+///
+/// The server's answer is read while the data goes out, not after. A shell
+/// that cannot create the target (a folder the user may not write, #161)
+/// exits at once and reads nothing more; written blind, the upload filled
+/// the channel's window and then waited for room that never came. Now its
+/// exit and its message end the upload there and then.
+///
+/// `cancel` stops the upload: the channel is closed and the partial file
+/// removed, since `>` has already emptied whatever was there.
 async fn send_bytes(
     handle: &SharedHandle,
     data: &[u8],
     remote_path: &str,
+    cancel: &CancellationToken,
     mut on_progress: impl FnMut(u64),
 ) -> Result<(), TransferError> {
     use russh::ChannelMsg;
 
-    // Handle empty files
     if data.is_empty() {
-        let _ = exec_on_connection(
-            handle,
-            &format!(": > {}", shell_escape(remote_path)),
-        ).await?;
-        return Ok(());
+        let command = format!(": > {}", shell_escape(remote_path));
+        let (_, stderr, code) = exec_on_connection_with_exit_code(handle, &command).await?;
+        return remote_outcome(i64::from(code), &stderr);
     }
 
     let total_bytes = data.len() as u64;
 
-    // Open a single channel: pipe base64 stdin into decoder, write to file
-    let mut channel = {
+    let channel = {
         let guard = handle.lock().await;
         guard.channel_open_session().await
             .map_err(|e| SshError::ChannelError(format!("{}", e)))?
     };
     channel.exec(true, format!("base64 -d > {}", shell_escape(remote_path))).await
         .map_err(|e| SshError::ChannelError(format!("{}", e)))?;
+    let (mut rx, tx) = channel.split();
 
-    // Stream base64-encoded data in chunks through the channel's stdin.
-    // 48KB raw → 64KB base64 (multiple of 3 avoids padding mid-stream).
-    let chunk_size: usize = 48 * 1024;
-    let mut bytes_sent: u64 = 0;
-    let mut last_progress_bytes: u64 = 0;
-
-    for chunk in data.chunks(chunk_size) {
-        let mut b64 = base64::engine::general_purpose::STANDARD.encode(chunk);
-        b64.push('\n');
-
-        channel.data(b64.as_bytes()).await
-            .map_err(|e| TransferError::IoError(format!("Channel write error: {}", e)))?;
-
-        bytes_sent += chunk.len() as u64;
-
-        // Emit progress every ~64KB of raw data
-        if bytes_sent - last_progress_bytes >= 65536 || bytes_sent == total_bytes {
-            last_progress_bytes = bytes_sent;
-            on_progress(bytes_sent);
-        }
-    }
-
-    // Close stdin to signal EOF to base64 -d
-    channel.eof().await
-        .map_err(|e| TransferError::IoError(format!("EOF signal error: {}", e)))?;
-
-    // Wait for the remote command to finish
-    let mut got_eof = false;
-    let mut got_exit = false;
-    let mut exit_code: Option<u32> = None;
     let mut stderr_buf = String::new();
+    let mut exit_code: Option<u32> = None;
+    let mut sent = false;
 
-    loop {
-        let msg = tokio::time::timeout(
-            std::time::Duration::from_secs(30),
-            channel.wait(),
-        ).await;
+    let outcome: Result<(), TransferError> = {
+        // 48KB raw → 64KB base64 (a multiple of 3 keeps padding out of the
+        // middle of the stream).
+        let send = async {
+            let mut bytes_sent: u64 = 0;
+            let mut last_progress_bytes: u64 = 0;
+            for chunk in data.chunks(48 * 1024) {
+                let mut b64 = base64::engine::general_purpose::STANDARD.encode(chunk);
+                b64.push('\n');
+                tx.data_bytes(b64.into_bytes()).await
+                    .map_err(|e| TransferError::IoError(format!("Channel write error: {}", e)))?;
+                bytes_sent += chunk.len() as u64;
+                if bytes_sent - last_progress_bytes >= 65536 || bytes_sent == total_bytes {
+                    last_progress_bytes = bytes_sent;
+                    on_progress(bytes_sent);
+                }
+            }
+            // Close stdin so base64 -d finishes.
+            tx.eof().await
+                .map_err(|e| TransferError::IoError(format!("EOF signal error: {}", e)))
+        };
+        tokio::pin!(send);
+        let mut got_eof = false;
 
-        match msg {
-            Ok(Some(ChannelMsg::ExtendedData { ref data, .. })) => {
-                stderr_buf.push_str(&String::from_utf8_lossy(data));
+        loop {
+            // A failed command reads nothing more, so sending stops; its
+            // message may still be on the way (sshd can report the exit
+            // before the last of stderr), so the replies are read to the end.
+            let failed = exit_code.is_some_and(|c| c != 0);
+            tokio::select! {
+                _ = cancel.cancelled() => break Err(TransferError::Cancelled),
+                result = &mut send, if !sent && !failed => {
+                    if let Err(e) = result {
+                        break Err(e);
+                    }
+                    sent = true;
+                    if got_eof && exit_code.is_some() {
+                        break Ok(());
+                    }
+                }
+                msg = next_reply(&mut rx, sent || failed) => match msg {
+                    Some(ChannelMsg::ExtendedData { data, .. }) => {
+                        stderr_buf.push_str(&String::from_utf8_lossy(&data));
+                    }
+                    Some(ChannelMsg::Eof) => {
+                        got_eof = true;
+                        if (sent || failed) && exit_code.is_some() {
+                            break Ok(());
+                        }
+                    }
+                    Some(ChannelMsg::ExitStatus { exit_status }) => {
+                        exit_code = Some(exit_status);
+                        if got_eof && (sent || exit_status != 0) {
+                            break Ok(());
+                        }
+                    }
+                    // Closed, or silent for too long after the last byte.
+                    None => break Ok(()),
+                    _ => {}
+                },
             }
-            Ok(Some(ChannelMsg::Eof)) => {
-                got_eof = true;
-                if got_exit { break; }
-            }
-            Ok(Some(ChannelMsg::ExitStatus { exit_status })) => {
-                exit_code = Some(exit_status);
-                got_exit = true;
-                if got_eof { break; }
-            }
-            Ok(None) | Err(_) => break,
-            _ => {}
+        }
+    };
+
+    let failed = match outcome {
+        Err(e) => Err(e),
+        Ok(()) => match exit_code {
+            Some(code) if code != 0 => remote_outcome(i64::from(code), &stderr_buf),
+            _ if !sent => Err(TransferError::IoError(
+                "The server closed the upload before it finished".to_string(),
+            )),
+            _ => return Ok(()),
+        },
+    };
+    let _ = tx.close().await;
+    if matches!(failed, Err(TransferError::Cancelled)) {
+        let command = format!("rm -f -- {}", shell_escape(remote_path));
+        if let Err(e) = exec_on_connection_with_exit_code(handle, &command).await {
+            tracing::warn!("Could not remove the cancelled upload {}: {}", remote_path, e);
         }
     }
+    failed
+}
 
-    // Check for errors
-    if let Some(code) = exit_code {
-        if code != 0 {
-            let msg = if stderr_buf.trim().is_empty() {
-                format!("Remote base64 -d exited with code {}", code)
-            } else {
-                stderr_buf.trim().to_string()
-            };
-            return Err(TransferError::IoError(msg));
-        }
+/// The next message from the server. While data is still going out there is
+/// no limit, since a slow link may keep the window shut for a long time;
+/// once all is sent, a server silent for 30 seconds counts as gone.
+async fn next_reply(rx: &mut russh::ChannelReadHalf, sent: bool) -> Option<russh::ChannelMsg> {
+    if sent {
+        tokio::time::timeout(std::time::Duration::from_secs(30), rx.wait()).await.ok().flatten()
+    } else {
+        rx.wait().await
     }
+}
 
-    Ok(())
+/// A remote command's exit as a result: its own words on failure.
+fn remote_outcome(code: i64, stderr: &str) -> Result<(), TransferError> {
+    if code == 0 {
+        return Ok(());
+    }
+    let msg = stderr.trim();
+    Err(TransferError::Remote(if msg.is_empty() {
+        format!("The remote command exited with code {}", code)
+    } else {
+        msg.to_string()
+    }))
 }
 
 /// Escape a string for safe use in a shell command using single quotes.
@@ -835,3 +889,7 @@ mod tests {
         assert_eq!(count, dirs.len());
     }
 }
+
+#[cfg(test)]
+#[path = "transfer_live_tests.rs"]
+mod live;

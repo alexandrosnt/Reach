@@ -259,6 +259,9 @@ pub struct AppState {
     /// Peer-to-peer sharing configuration. Off by default; the webview
     /// loads none of the sharing code until this says otherwise.
     pub share: Arc<RwLock<crate::share::ShareConfig>>,
+    /// Uploads and downloads in flight, by transfer id: whose connection
+    /// they run on and how to stop them.
+    pub transfers: Arc<std::sync::Mutex<HashMap<String, (String, crate::sftp::transfer::CancellationToken)>>>,
 }
 
 impl AppState {
@@ -297,6 +300,7 @@ impl AppState {
             pending_editor_file: Arc::new(tokio::sync::Mutex::new(None)),
             mcp: Arc::new(McpState::default()),
             share: Arc::new(RwLock::new(crate::share::ShareConfig::default())),
+            transfers: Arc::new(std::sync::Mutex::new(HashMap::new())),
         }
     }
 }
