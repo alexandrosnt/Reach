@@ -4,6 +4,8 @@
 	import { t } from '#lib/state/i18n.svelte.js';
 	import { ask } from '#lib/state/ask.svelte.js';
 	import { getCurrentPath, getEntries, setCurrentPath, setEntries, getFollowPath, toggleFollowPath, linesEntered } from '#lib/state/explorer.svelte.js';
+	import { getView, toggleDetailsView, toggleColumn, sortBy, compareEntries, DETAIL_COLUMNS, type DetailColumn, type SortKey } from '#lib/state/explorer.svelte.js';
+	import DbMenu, { type MenuItem } from '#lib/components/db/DbMenu.svelte';
 	import { sftpTerminalCwd } from '#lib/ipc/sftp.js';
 	import { sftpListDir, sftpUpload, sftpDownload, sftpDelete, sftpRename, sftpMkdir, sftpTouch, sftpReadFile } from '#lib/ipc/sftp.js';
 	import { sshSend } from '#lib/ipc/ssh.js';
@@ -100,14 +102,41 @@
 		if (q) {
 			filtered = entries.filter((e: FileEntry) => e.name.toLowerCase().includes(q));
 		}
-		const dirs = filtered
-			.filter((e: FileEntry) => e.isDirectory)
-			.sort((a: FileEntry, b: FileEntry) => a.name.localeCompare(b.name));
-		const files = filtered
-			.filter((e: FileEntry) => !e.isDirectory)
-			.sort((a: FileEntry, b: FileEntry) => a.name.localeCompare(b.name));
-		return [...dirs, ...files];
+		const key = view.details ? view.sort : 'name';
+		const desc = view.details && view.desc;
+		return [...filtered].sort((a: FileEntry, b: FileEntry) => compareEntries(a, b, key, desc));
 	});
+
+	// The Details view (MobaXterm-style columns). Narrower than its columns,
+	// the list scrolls sideways, as on a phone.
+	let view = $derived(getView());
+	const COLUMN_WIDTH: Record<DetailColumn, number> = { size: 64, modified: 112, owner: 72, group: 72, access: 84 };
+	const COLUMN_LABEL: Record<SortKey, string> = {
+		name: 'explorer.col_name',
+		size: 'explorer.col_size',
+		modified: 'explorer.col_modified',
+		owner: 'explorer.col_owner',
+		group: 'explorer.col_group',
+		access: 'explorer.col_access'
+	};
+	let columns = $derived(view.details ? DETAIL_COLUMNS.filter((c) => !view.hidden.includes(c)) : undefined);
+	let detailStyle = $derived.by(() => {
+		if (!columns) return undefined;
+		const widths = columns.map((c) => COLUMN_WIDTH[c]);
+		const min = 16 + 16 + 140 + widths.reduce((a, w) => a + w + 12, 12);
+		return `--detail-cols: 16px minmax(140px, 1fr) ${widths.map((w) => w + 'px').join(' ')}; --detail-min: ${min}px`;
+	});
+	let columnMenu = $state<{ x: number; y: number } | undefined>();
+	function columnMenuItems(): MenuItem[] {
+		return DETAIL_COLUMNS.map((c) => ({
+			label: t(COLUMN_LABEL[c]),
+			checked: !view.hidden.includes(c),
+			action: () => toggleColumn(c)
+		}));
+	}
+	function ariaSort(key: SortKey): 'ascending' | 'descending' | 'none' {
+		return view.sort === key ? (view.desc ? 'descending' : 'ascending') : 'none';
+	}
 
 	function cdToFolder(entry: FileEntry): void {
 		if (!connectionId || !entry.isDirectory) return;
@@ -648,7 +677,9 @@
 					isDirectory: e.isDirectory,
 					size: e.size,
 					modified: e.modified,
-					permissions: e.permissions
+					permissions: e.permissions,
+					owner: e.owner,
+					group: e.group
 				}))
 			);
 		} catch (err) {
@@ -877,6 +908,20 @@
 				</svg>
 			</button>
 
+			<button
+				class="tool-btn"
+				class:on={view.details}
+				onclick={toggleDetailsView}
+				aria-pressed={view.details}
+				aria-label={t('explorer.details_view')}
+				title={t('explorer.details_view')}
+				type="button"
+			>
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+					<path d="M3 5h18M3 12h18M3 19h18M9 5v14M15 5v14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+				</svg>
+			</button>
+
 			<div class="explorer-search">
 				<svg width="11" height="11" viewBox="0 0 24 24" fill="none" class="explorer-search-icon">
 					<circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
@@ -937,7 +982,33 @@
 		{/if}
 
 		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div class="file-list" class:drag-over={dragging} oncontextmenu={openBackgroundContextMenu}>
+		<div class="file-list" class:drag-over={dragging} class:details={!!columns} style={detailStyle} oncontextmenu={openBackgroundContextMenu}>
+			{#if columns}
+				<div
+					class="detail-header"
+					role="row"
+					tabindex="-1"
+					oncontextmenu={(e) => { e.preventDefault(); e.stopPropagation(); columnMenu = { x: e.clientX, y: e.clientY }; }}
+				>
+					<span></span>
+					{#each ['name', ...columns] as key (key)}
+						<button
+							class="col-head"
+							class:num={key === 'size'}
+							role="columnheader"
+							aria-sort={ariaSort(key as SortKey)}
+							title={t('explorer.columns_hint')}
+							onclick={() => sortBy(key as SortKey)}
+							type="button"
+						>
+							{t(COLUMN_LABEL[key as SortKey])}
+							{#if view.sort === key}
+								<span class="sort-mark" aria-hidden="true">{view.desc ? '▾' : '▴'}</span>
+							{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
 			{#if dragging}
 				<div class="drop-overlay">
 					<div class="drop-overlay-content">
@@ -1091,12 +1162,16 @@
 							/>
 						</div>
 					{:else}
-						<FileNode {entry} active={contextMenu?.entry?.path === entry.path} onpressstart={() => void prepareForDrag(entry)} ondragout={() => beginDragOut(entry)} onclick={() => handleNodeClick(entry)} oncontextmenu={(e) => openContextMenu(e, entry)} ondownload={!entry.isDirectory ? () => handleQuickDownload(entry) : undefined} />
+						<FileNode {entry} {columns} active={contextMenu?.entry?.path === entry.path} onpressstart={() => void prepareForDrag(entry)} ondragout={() => beginDragOut(entry)} onclick={() => handleNodeClick(entry)} oncontextmenu={(e) => openContextMenu(e, entry)} ondownload={!entry.isDirectory ? () => handleQuickDownload(entry) : undefined} />
 					{/if}
 				{/each}
 			{/if}
 		</div>
 	</div>
+{/if}
+
+{#if columnMenu}
+	<DbMenu x={columnMenu.x} y={columnMenu.y} items={columnMenuItems()} onclose={() => (columnMenu = undefined)} />
 {/if}
 
 {#if previewFile}
@@ -1493,6 +1568,57 @@
 		overflow-y: auto;
 		position: relative;
 		transition: border-color 0.15s ease;
+	}
+
+	.file-list.details {
+		overflow-x: auto;
+	}
+
+	/* Stays in view while the list scrolls down; right-click to pick columns. */
+	.detail-header {
+		position: sticky;
+		top: 0;
+		z-index: 1;
+		display: grid;
+		grid-template-columns: var(--detail-cols);
+		min-width: var(--detail-min);
+		column-gap: 12px;
+		padding: 0 8px;
+		border-bottom: 1px solid var(--color-border);
+		background-color: var(--color-bg-secondary, var(--color-surface));
+	}
+
+	.col-head {
+		display: flex;
+		align-items: center;
+		gap: 2px;
+		min-width: 0;
+		padding: 5px 0;
+		border: none;
+		background: transparent;
+		color: var(--color-text-secondary);
+		font-family: var(--font-sans);
+		font-size: 0.6875rem;
+		font-weight: 600;
+		text-align: left;
+		white-space: nowrap;
+		overflow: hidden;
+		cursor: pointer;
+	}
+
+	.col-head:hover,
+	.col-head[aria-sort='ascending'],
+	.col-head[aria-sort='descending'] {
+		color: var(--color-text-primary);
+	}
+
+	.col-head:focus-visible {
+		outline: 1px solid var(--color-accent);
+		outline-offset: -1px;
+	}
+
+	.sort-mark {
+		font-size: 0.625rem;
 	}
 
 	.file-list::-webkit-scrollbar {

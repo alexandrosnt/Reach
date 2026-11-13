@@ -55,10 +55,29 @@ If you already have hosts defined in `~/.ssh/config`, you can import them instea
 
 ### What gets imported
 
+Everything. Reach reads the file the way OpenSSH does (`Host` and `Match` blocks, `Include`, tokens, first value wins) and keeps every keyword that applies to the host, so an imported host connects exactly as `ssh` would:
+
 - **HostName**, **Port**, **User** — resolved from the config (including wildcard matches)
 - **IdentityFile** — imported as key-based auth with the resolved path
 - **ProxyJump chains** — if host A jumps through host B, and B jumps through C, the full chain `[C, B]` is preserved
+- **ProxyCommand**, algorithms, forwards and every other keyword — kept as the session's SSH options (see below)
 - Hosts that are already imported (matching host + port + user) show as grayed out
+
+A line Reach cannot apply is shown to you, never dropped.
+
+## ProxyCommand
+
+`ProxyCommand` runs a local program and uses its input and output as the connection, for example a corporate proxy, `cloudflared access ssh`, or an older bastion setup:
+
+```
+ProxyCommand ssh -W %h:%p bastion.example.com
+```
+
+It comes in with an imported host, or you can add it to any session yourself: open the Session Editor, go to **SSH options (ssh_config)** and write it on a line of its own, just as in `~/.ssh/config`. The tokens `%h`, `%p`, `%r`, `%n` and `%k` are expanded as OpenSSH does, and `ProxyUseFdpass` works on Linux and macOS.
+
+- The command runs through your shell (`cmd` on Windows), as `ssh` runs it.
+- Because it runs a program on your computer, Reach asks you to approve it once for that session. A session someone else changes in a shared vault needs your approval again.
+- Desktop only: a phone cannot run local programs, so a session with `ProxyCommand` says so on Android. Use `ProxyJump` there instead.
 
 ### Cross-platform paths
 
@@ -70,6 +89,4 @@ Reach resolves `~` in IdentityFile paths to your home directory on all platforms
 
 ### Limitations
 
-- `Match` blocks and `Include` directives are not currently supported
-- Only `ProxyJump` is supported for jump hosts (not the older `ProxyCommand`)
 - Wildcard-only hosts (like `Host *`) are skipped during import since they don't represent specific servers

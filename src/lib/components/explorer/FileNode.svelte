@@ -1,5 +1,6 @@
 <script lang="ts">
-	import type { FileEntry } from '#lib/state/explorer.svelte.js';
+	import type { FileEntry, DetailColumn } from '#lib/state/explorer.svelte.js';
+	import { formatModified } from '#lib/explorer/format.js';
 	import { t } from '#lib/state/i18n.svelte.js';
 
 	interface Props {
@@ -13,6 +14,8 @@
 		onpressstart?: () => void;
 		/** Returns true if it handled the drag natively; false leaves it alone. */
 		ondragout?: () => boolean;
+		/** The Details view's columns, in order; none for the compact row. */
+		columns?: readonly DetailColumn[];
 	}
 
 	let {
@@ -22,7 +25,8 @@
 		ondownload,
 		active = false,
 		onpressstart,
-		ondragout
+		ondragout,
+		columns
 	}: Props = $props();
 
 	/** A symbolic link, as `ls -l` marks it. Its "size" is the length of the
@@ -43,6 +47,7 @@
      the OS natively, because an HTML5 drag cannot deliver a file to the desktop. -->
 <div
 	class="file-node"
+	class:details={!!columns}
 	class:active
 	class:downloadable={!entry.isDirectory && !!ondownload}
 	draggable={!entry.isDirectory}
@@ -94,13 +99,27 @@
 		{/if}
 	</span>
 
-	<span class="file-name">{entry.name}</span>
+	<span class="file-name" title={columns ? entry.name : undefined}>{entry.name}</span>
 
-	{#if sizeText}
+	{#if columns}
+		{#each columns as col (col)}
+			{#if col === 'size'}
+				<span class="cell num">{sizeText}</span>
+			{:else if col === 'modified'}
+				<span class="cell num">{formatModified(entry.modified)}</span>
+			{:else if col === 'owner'}
+				<span class="cell" title={entry.owner}>{entry.owner ?? ''}</span>
+			{:else if col === 'group'}
+				<span class="cell" title={entry.group}>{entry.group ?? ''}</span>
+			{:else}
+				<span class="cell mono">{entry.permissions ?? ''}</span>
+			{/if}
+		{/each}
+	{:else if sizeText}
 		<span class="file-size">{sizeText}</span>
 	{/if}
 
-	{#if entry.permissions}
+	{#if entry.permissions && !columns}
 		<span class="file-permissions">{entry.permissions}</span>
 	{/if}
 
@@ -220,6 +239,38 @@
 	.download-btn:hover {
 		background: var(--color-surface-active);
 		color: var(--color-accent, var(--color-accent));
+	}
+
+	/* Details view: one cell per column, laid out by the list's grid. */
+	.file-node.details {
+		display: grid;
+		grid-template-columns: var(--detail-cols);
+		min-width: var(--detail-min);
+		column-gap: 12px;
+	}
+
+	/* The download button lies over the last cell while it shows. */
+	.file-node.details.downloadable:hover .cell:last-of-type,
+	.file-node.details.downloadable:focus-within .cell:last-of-type,
+	.file-node.details.downloadable:focus-visible .cell:last-of-type {
+		visibility: hidden;
+	}
+
+	.cell {
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+		min-width: 0;
+		font-size: 0.6875rem;
+		color: var(--color-text-secondary);
+	}
+
+	.cell.num {
+		font-variant-numeric: tabular-nums;
+	}
+
+	.cell.mono {
+		font-family: var(--font-mono, monospace);
 	}
 
 	/* Compact layout: shorter rows, the same text. */

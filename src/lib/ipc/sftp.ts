@@ -7,6 +7,8 @@ export interface FileEntry {
   size: number;
   modified: number;
   permissions: string;
+  owner: string;
+  group: string;
 }
 
 export async function sftpListDir(connectionId: string, path: string): Promise<FileEntry[]> {
