@@ -30,6 +30,10 @@ pub struct RemoteEntry {
     pub size: u64,
     pub modified: u64,
     pub permissions: String,
+    /// The owning user and group, as `ls -l` names them (a number when
+    /// the server has no name for the id).
+    pub owner: String,
+    pub group: String,
 }
 
 /// List the contents of a remote directory via SSH exec.
@@ -285,6 +289,8 @@ fn parse_ls_output(output: &str, base_path: &str) -> Result<Vec<RemoteEntry>, Sf
             continue;
         }
         let is_dir = permissions.starts_with('d');
+        let owner = parts[2].to_string();
+        let group = parts[3].to_string();
         let size: u64 = parts[4].parse().unwrap_or(0);
 
         // Detect format: --time-style=+%s gives epoch in parts[5], standard ls gives month
@@ -325,6 +331,8 @@ fn parse_ls_output(output: &str, base_path: &str) -> Result<Vec<RemoteEntry>, Sf
             size,
             modified,
             permissions,
+            owner,
+            group,
         });
     }
 
@@ -384,6 +392,22 @@ mod command_output_tests {
         assert_eq!(listing_output("total 0
 ".into(), "", 0).unwrap(), "total 0
 ");
+    }
+
+    #[test]
+    fn a_listing_keeps_owner_group_size_and_time() {
+        let out = "total 8
+drwxr-xr-x 2 root root 4096 1762000000 etc
+-rw-r----- 1 www-data adm 1234 1762000001 my file.log
+lrwxrwxrwx 1 root root 7 1762000002 bin -> usr/bin
+";
+        let e = parse_ls_output(out, "/").unwrap();
+        assert_eq!(e.len(), 3);
+        assert_eq!((e[0].name.as_str(), e[0].owner.as_str(), e[0].group.as_str()), ("etc", "root", "root"));
+        let log = e.iter().find(|x| x.name == "my file.log").unwrap();
+        assert_eq!((log.owner.as_str(), log.group.as_str(), log.size, log.modified), ("www-data", "adm", 1234, 1762000001));
+        assert_eq!(log.permissions, "-rw-r-----");
+        assert!(e.iter().any(|x| x.name == "bin" && x.path == "/bin"));
     }
 
     #[test]

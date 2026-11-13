@@ -130,7 +130,20 @@ function matchesShortcut(e: KeyboardEvent, shortcut: Shortcut): boolean {
 	return normalizeKey(e.key) === shortcut.key.toLowerCase() || e.key === shortcut.key;
 }
 
+/** The keys a browser reloads the page on: F5, Ctrl+R and Ctrl+F5, Cmd+R
+ *  on a Mac, each with or without Shift. Reach is one page, so a reload
+ *  threw away every open terminal, file list and tab. KeyR by position,
+ *  so it is the same key on every layout. */
+export function isReloadKey(e: Pick<KeyboardEvent, 'key' | 'code' | 'ctrlKey' | 'metaKey' | 'altKey'>): boolean {
+	if (e.key === 'F5' || e.key === 'BrowserRefresh') return true;
+	return (isMac() ? e.metaKey : e.ctrlKey) && !e.altKey && e.code === 'KeyR';
+}
+
 function onKeydown(e: KeyboardEvent): void {
+	// Only the page's own reload is stopped: the key still goes on to the
+	// terminal, where F5 means something to programs like Midnight
+	// Commander and Ctrl+R searches the shell's history.
+	if (isReloadKey(e)) e.preventDefault();
 	for (const shortcut of shortcuts) {
 		if (matchesShortcut(e, shortcut)) {
 			e.preventDefault();

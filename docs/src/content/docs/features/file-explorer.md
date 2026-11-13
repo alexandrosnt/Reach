@@ -11,6 +11,12 @@ The explorer has breadcrumb navigation at the top. Click any path segment to jum
 
 A **Refresh** button reloads the current directory listing.
 
+### Following the terminal
+
+The **terminal folder** button (`>_`) opens the folder your terminal is in. Turn on **Follow** (the link button) and the explorer moves with you each time you press Enter in the terminal, so after `cd /var/log` it shows `/var/log`. Follow is off until you turn it on, and Reach remembers the choice on that device.
+
+Nothing is typed into your shell. Reach asks the server, over the same connection, which folder the shell (or the program running in it) is in, by reading `/proc`. That works on Linux servers with any shell; on other systems the explorer says it can't tell. Inside `tmux`, or a root shell started with `sudo`, it shows the folder of your login shell instead.
+
 ## File List
 
 Each entry shows:
@@ -20,7 +26,11 @@ Each entry shows:
 - **Size** — formatted in B, KB, MB, or GB (hidden for directories)
 - **Permissions** — Unix-style string like `drwxr-xr-x`
 
-Files are sorted with directories first, then alphabetically by name. Click a directory to open it. The listing comes from running `ls -lA` over the SSH connection, so there's nothing extra to install on the server.
+Files are sorted with directories first, then alphabetically by name. Click a directory to open it.
+
+### Details view
+
+The **Details view** button (the grid) shows each entry as a row of columns, as MobaXterm does: **Name**, **Size**, **Modified**, **Owner**, **Group** and **Access**. Click a column's heading to sort by it and again to reverse; folders stay on top. Right-click the headings to choose which columns show. When the sidebar is narrower than the columns, the list scrolls sideways. Reach remembers the view, the columns and the sort order on that device. The listing comes from running `ls -lA` over the SSH connection, so there's nothing extra to install on the server.
 
 ## Context Menu
 
@@ -155,6 +165,8 @@ Active uploads and downloads show a progress display:
 - **Filename** and transfer direction icon
 - **Progress bar** with percentage
 - **Size** — bytes transferred / total (e.g., "2.4 MB / 10.1 MB")
+
+A transfer in progress has a **Cancel** button: it stops the transfer and removes the partly written file. If the server refuses a transfer, for example an upload into a folder you can't write such as `/opt`, it fails at once with the server's own message (such as *Permission denied*). Disconnecting cancels that connection's transfers, and each explorer lists only its own connection's transfers.
 
 Completed transfers show a green checkmark. Failed transfers show a red error message. Both have a dismiss button (X). There's a **Clear finished** button to remove all completed and errored transfers at once.
 
