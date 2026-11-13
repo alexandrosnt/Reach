@@ -337,3 +337,64 @@ function dropEmptyGroups(): void {
 	const used = new Set(tabs.map((t) => t.groupId).filter(Boolean));
 	if (groups.some((g) => !used.has(g.id))) groups = groups.filter((g) => used.has(g.id));
 }
+
+// ---- Closing several tabs, and placing a copy (#160) ---------------------
+
+export type CloseScope = 'others' | 'left' | 'right';
+
+/** The tabs "close others / to the left / to the right" of `id` would
+ *  close, in bar order. Tabs folded away in a group count: they are still
+ *  open, as in a browser. */
+export function tabsBeside(id: string, scope: CloseScope): Tab[] {
+	const i = tabs.findIndex((t) => t.id === id);
+	if (i === -1) return [];
+	if (scope === 'left') return tabs.slice(0, i);
+	if (scope === 'right') return tabs.slice(i + 1);
+	return tabs.filter((t) => t.id !== id);
+}
+
+/** Several tabs waiting on the user's yes; the tab bar asks. */
+let pendingClose = $state<{ ids: string[]; keep: string } | null>(null);
+
+export function getPendingClose(): { ids: string[]; keep: string } | null {
+	return pendingClose;
+}
+
+/**
+ * Close the tabs `scope` names around `id`, which stays and comes to the
+ * front. One tab goes at once; more are asked about first, since every
+ * session among them ends, as closing a group asks.
+ */
+export function requestCloseBeside(id: string, scope: CloseScope): void {
+	const ids = tabsBeside(id, scope).map((t) => t.id);
+	if (ids.length === 0) return;
+	if (ids.length === 1) {
+		closeTabs(ids, id);
+		return;
+	}
+	pendingClose = { ids, keep: id };
+}
+
+export function confirmPendingClose(): void {
+	const p = pendingClose;
+	pendingClose = null;
+	if (p) closeTabs(p.ids, p.keep);
+}
+
+export function cancelPendingClose(): void {
+	pendingClose = null;
+}
+
+function closeTabs(ids: string[], keep: string): void {
+	if (tabs.some((t) => t.id === keep)) activateTab(keep);
+	for (const id of ids) closeTab(id);
+}
+
+/** Put `tabId` just after `refId`, in the same group: where a copy goes. */
+export function placeAfter(tabId: string, refId: string): void {
+	const ref = tabs.find((t) => t.id === refId);
+	const tab = tabs.find((t) => t.id === tabId);
+	if (!ref || !tab) return;
+	tab.groupId = ref.groupId;
+	moveTab(tabId, tabs.findIndex((t) => t.id === refId) + 1);
+}

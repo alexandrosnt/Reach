@@ -29,6 +29,59 @@ pub async fn sftp_list_dir(
     Ok(result)
 }
 
+/// The id a transfer reports under. The caller may choose it, so that it can
+/// listen for the transfer's events before the transfer starts: a failure
+/// that comes at once (a folder the user cannot write, #161) was otherwise
+/// reported before anyone listened, and the transfer looked stuck forever.
+/// It names events, so it must be a UUID.
+fn transfer_id_from(requested: Option<String>) -> Result<String, String> {
+    match requested {
+        None => Ok(uuid::Uuid::new_v4().to_string()),
+        Some(id) => uuid::Uuid::parse_str(&id)
+            .map(|u| u.to_string())
+            .map_err(|_| "Invalid transfer id".to_string()),
+    }
+}
+
+/// Note a transfer as running, so it can be cancelled; the token it checks.
+fn register_transfer(
+    state: &AppState,
+    transfer_id: &str,
+    connection_id: &str,
+) -> crate::sftp::transfer::CancellationToken {
+    let token = crate::sftp::transfer::CancellationToken::new();
+    if let Ok(mut map) = state.transfers.lock() {
+        map.insert(transfer_id.to_string(), (connection_id.to_string(), token.clone()));
+    }
+    token
+}
+
+/// Stop every transfer running on a connection.
+pub fn cancel_transfers_on(state: &AppState, connection_id: &str) {
+    if let Ok(map) = state.transfers.lock() {
+        for (conn, token) in map.values() {
+            if conn == connection_id {
+                token.cancel();
+            }
+        }
+    }
+}
+
+/// Stop one upload or download. The partial file is removed: on the server
+/// for an upload, on this machine for a download.
+#[tauri::command]
+pub async fn sftp_transfer_cancel(
+    state: tauri::State<'_, AppState>,
+    transfer_id: String,
+) -> Result<(), String> {
+    if let Ok(map) = state.transfers.lock() {
+        if let Some((_, token)) = map.get(&transfer_id) {
+            token.cancel();
+        }
+    }
+    Ok(())
+}
+
 /// Upload a local file or directory to the remote host. Returns the
 /// transfer_id immediately and runs the upload in a background task, emitting
 /// progress events.
@@ -39,21 +92,28 @@ pub async fn sftp_upload(
     connection_id: String,
     local_path: String,
     remote_path: String,
+    transfer_id: Option<String>,
 ) -> Result<String, String> {
     let handle = {
         let manager = state.ssh_manager.lock().await;
         manager.get_handle(&connection_id).map_err(|e| e.to_string())?
     };
-    let transfer_id = uuid::Uuid::new_v4().to_string();
+    let transfer_id = transfer_id_from(transfer_id)?;
     let tid = transfer_id.clone();
     let plugin_mgr = state.plugin_manager.clone();
     let conn_id = connection_id.clone();
     let rpath = remote_path.clone();
+    let cancel = register_transfer(&state, &transfer_id, &connection_id);
+    let transfers = state.transfers.clone();
 
     tokio::spawn(async move {
-        if let Err(e) = crate::sftp::transfer::upload_path(
-            &handle, &local_path, &remote_path, &tid, &app,
-        ).await {
+        let result = crate::sftp::transfer::upload_path(
+            &handle, &local_path, &remote_path, &tid, &app, &cancel,
+        ).await;
+        if let Ok(mut map) = transfers.lock() {
+            map.remove(&tid);
+        }
+        if let Err(e) = result {
             tracing::error!("Upload failed for {}: {}", tid, e);
             let _ = app.emit(&format!("transfer-error-{}", tid), e.to_string());
         } else {
@@ -75,22 +135,29 @@ pub async fn sftp_download(
     connection_id: String,
     remote_path: String,
     local_path: String,
+    transfer_id: Option<String>,
 ) -> Result<String, String> {
     let handle = {
         let manager = state.ssh_manager.lock().await;
         manager.get_handle(&connection_id).map_err(|e| e.to_string())?
     };
-    let transfer_id = uuid::Uuid::new_v4().to_string();
+    let transfer_id = transfer_id_from(transfer_id)?;
     let tid = transfer_id.clone();
     let plugin_mgr = state.plugin_manager.clone();
     let conn_id = connection_id.clone();
     let rpath = remote_path.clone();
     let lpath = local_path.clone();
+    let cancel = register_transfer(&state, &transfer_id, &connection_id);
+    let transfers = state.transfers.clone();
 
     tokio::spawn(async move {
-        if let Err(e) = crate::sftp::transfer::download_file(
-            &handle, &remote_path, &local_path, &tid, &app,
-        ).await {
+        let result = crate::sftp::transfer::download_file(
+            &handle, &remote_path, &local_path, &tid, &app, &cancel,
+        ).await;
+        if let Ok(mut map) = transfers.lock() {
+            map.remove(&tid);
+        }
+        if let Err(e) = result {
             tracing::error!("Download failed for {}: {}", tid, e);
             let _ = app.emit(&format!("transfer-error-{}", tid), e.to_string());
         } else {
@@ -478,4 +545,20 @@ pub async fn drag_preview_icon(app: tauri::AppHandle) -> Result<String, String> 
         std::fs::write(&path, ICON).map_err(|e| e.to_string())?;
     }
     Ok(path.to_string_lossy().into_owned())
+}
+
+/// The folder the connection's terminal is in, for the explorer to go to
+/// (#162). `None` when the server cannot say (no /proc).
+#[tauri::command]
+pub async fn sftp_terminal_cwd(
+    state: tauri::State<'_, AppState>,
+    connection_id: String,
+) -> Result<Option<String>, String> {
+    let handle = {
+        let manager = state.ssh_manager.lock().await;
+        manager.get_handle(&connection_id).map_err(|e| e.to_string())?
+    };
+    crate::sftp::terminal_cwd::terminal_cwd(&handle)
+        .await
+        .map_err(|e| e.to_string())
 }

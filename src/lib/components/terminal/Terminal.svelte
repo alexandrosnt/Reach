@@ -10,6 +10,7 @@
 	import { ptyWrite, ptyResize } from '#lib/ipc/pty.js';
 	import { sshSend, sshResize, sshConnect, sshReady, type SshConnectParams } from '#lib/ipc/ssh.js';
 	import { untrustedRefsFromError } from '#lib/ipc/sessions.js';
+	import { noteLineEntered } from '#lib/state/explorer.svelte.js';
 	import { registerBufferReader, unregisterBufferReader } from '#lib/state/terminal-buffer.svelte.js';
 	import { themeState } from '#lib/state/theme.svelte.js';
 	import { getSettings, updateSetting } from '#lib/state/settings.svelte.js';
@@ -436,6 +437,9 @@
 
 	function sendData(data: number[]): void {
 		if (termType === 'ssh' && currentConnectionId) {
+			// A line typed (Enter) may have changed the folder, for an
+			// explorer following this terminal (#162).
+			if (data.includes(13)) noteLineEntered(currentConnectionId);
 			sshSend(currentConnectionId, data).catch((err) => {
 				console.error('[Terminal] Failed to write to SSH:', err);
 			});

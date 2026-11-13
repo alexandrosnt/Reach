@@ -2,8 +2,11 @@
 	import {
 		getTabs, getActiveTab, createTab, closeTab, activateTab, getSplit, splitWith, unsplit, getDraggedTab, setDraggedTab, type Tab,
 		getGroups, createGroup, addToGroup, removeFromGroup, renameGroup, setGroupColor, toggleGroup, groupHidden, ungroup, closeGroup,
-		GROUP_COLORS, type GroupColor, type TabGroup
+		GROUP_COLORS, type GroupColor, type TabGroup,
+		tabsBeside, requestCloseBeside, getPendingClose, confirmPendingClose, cancelPendingClose
 	} from '#lib/state/tabs.svelte.js';
+	import { canDuplicate, duplicateTab } from '#lib/terminal/duplicate-tab.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
 	import DbMenu, { type MenuItem } from '#lib/components/db/DbMenu.svelte';
 	import Modal from '#lib/components/shared/Modal.svelte';
 	import Button from '#lib/components/shared/Button.svelte';
@@ -117,9 +120,24 @@
 		}
 		if (tab?.groupId) items.push({ label: t('tabs.group_remove'), action: () => removeFromGroup(id) });
 
-		items.push({ label: '', separator: true }, { label: t('common.close'), action: () => closeTab(id) });
+		// Duplicate and close, as a browser's tab menu has them (#160).
+		items.push(
+			{ label: '', separator: true },
+			{ label: t('tabs.duplicate'), disabled: !canDuplicate(tab), action: () => duplicate(id) },
+			{ label: '', separator: true },
+			{ label: t('common.close'), action: () => closeTab(id) },
+			{ label: t('tabs.close_others'), disabled: tabsBeside(id, 'others').length === 0, action: () => requestCloseBeside(id, 'others') },
+			{ label: t('tabs.close_left'), disabled: tabsBeside(id, 'left').length === 0, action: () => requestCloseBeside(id, 'left') },
+			{ label: t('tabs.close_right'), disabled: tabsBeside(id, 'right').length === 0, action: () => requestCloseBeside(id, 'right') }
+		);
 		return items;
 	}
+
+	function duplicate(id: string): void {
+		duplicateTab(id).catch((err) => addToast(t('tabs.duplicate_failed', { error: String(err) }), 'error'));
+	}
+
+	let pendingClose = $derived(getPendingClose());
 
 	// ---- Tab groups ---------------------------------------------------------
 
@@ -408,6 +426,16 @@
 				confirmClose = null;
 			}}>{t('tabs.group_close')}</Button
 		>
+	{/snippet}
+</Modal>
+
+<Modal open={pendingClose !== null} onclose={cancelPendingClose} title={t('tabs.close_many_title')} maxWidth="420px">
+	{#if pendingClose}
+		<p class="confirm-text">{t('tabs.close_many_confirm', { count: String(pendingClose.ids.length) })}</p>
+	{/if}
+	{#snippet actions()}
+		<Button variant="secondary" onclick={cancelPendingClose}>{t('common.cancel')}</Button>
+		<Button variant="danger" onclick={confirmPendingClose}>{t('tabs.close_many_title')}</Button>
 	{/snippet}
 </Modal>
 

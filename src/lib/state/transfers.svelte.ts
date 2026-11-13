@@ -8,6 +8,8 @@ export interface Transfer {
 	/** Present while the work can still be called off. */
 	cancel?: () => void;
 	error?: string;
+	/** The connection it runs on; its row shows only there. */
+	connectionId?: string;
 }
 
 let transfers = $state<Record<string, Transfer>>({});
@@ -27,7 +29,8 @@ export function addTransfer(
 	filename: string,
 	totalBytes: number,
 	status: 'uploading' | 'downloading' | 'archiving' = 'uploading',
-	cancel?: () => void
+	cancel?: () => void,
+	connectionId?: string
 ): void {
 	transfers[id] = {
 		id,
@@ -36,7 +39,8 @@ export function addTransfer(
 		totalBytes,
 		percent: 0,
 		status,
-		cancel
+		cancel,
+		connectionId
 	};
 }
 

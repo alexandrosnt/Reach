@@ -3,7 +3,8 @@
 
 	import { t } from '#lib/state/i18n.svelte.js';
 	import { ask } from '#lib/state/ask.svelte.js';
-	import { getCurrentPath, getEntries, setCurrentPath, setEntries } from '#lib/state/explorer.svelte.js';
+	import { getCurrentPath, getEntries, setCurrentPath, setEntries, getFollowPath, toggleFollowPath, linesEntered } from '#lib/state/explorer.svelte.js';
+	import { sftpTerminalCwd } from '#lib/ipc/sftp.js';
 	import { sftpListDir, sftpUpload, sftpDownload, sftpDelete, sftpRename, sftpMkdir, sftpTouch, sftpReadFile } from '#lib/ipc/sftp.js';
 	import { sshSend } from '#lib/ipc/ssh.js';
 	import {
@@ -49,6 +50,7 @@
 		removeTransfer,
 		type Transfer
 	} from '#lib/state/transfers.svelte.js';
+	import { runTransfer } from '#lib/explorer/run-transfer.js';
 
 	interface Props {
 		connectionId?: string;
@@ -69,7 +71,15 @@
 
 	let currentPath = $derived(connectionId ? getCurrentPath(connectionId) : '/');
 	let entries = $derived(connectionId ? getEntries(connectionId) : []);
-	let activeTransfers = $derived(getTransfers().filter((t: Transfer) => t.status === 'uploading' || t.status === 'downloading' || t.status === 'archiving'));
+	// Only this connection's: another tab's, or one from before a reconnect,
+	// is not this explorer's to show.
+	let activeTransfers = $derived(
+		getTransfers().filter(
+			(t: Transfer) =>
+				(t.status === 'uploading' || t.status === 'downloading' || t.status === 'archiving') &&
+				(t.connectionId === undefined || t.connectionId === connectionId)
+		)
+	);
 
 	let pathSegments = $derived.by(() => {
 		const parts = currentPath.split('/').filter(Boolean);
@@ -158,65 +168,31 @@
 		// transfer panel, with real byte progress and a cancel, rather than
 		// the window appearing to do nothing for a minute.
 		const visible = showsProgress(entry.size);
-		let unlistenProgress: UnlistenFn | undefined;
-		let unlistenDone: UnlistenFn | undefined;
-		let unlistenFailed: UnlistenFn | undefined;
 
 		try {
 			const base = await tempDir();
 			// Its own folder, because the copy must keep the file's real name
 			// and two remote files can share one.
 			const localPath = await join(base, 'reach-drag', key, safeLocalName(entry.name));
-			const transferId = await sftpDownload(conn, entry.path, localPath);
-
-			if (visible) {
-				addTransfer(transferId, entry.name, entry.size, 'downloading', () => {
-					// Giving up on the fetch gives up on the drag too, so a
-					// half-written file is never left looking ready.
-					dragCache.delete(key);
-					removeTransfer(transferId);
-				});
-				unlistenProgress = await listen<{
-					id: string;
-					bytesTransferred: number;
-					totalBytes: number;
-					percent: number;
-				}>(`transfer-progress-${transferId}`, (event) => {
-					updateTransferProgress(
-						event.payload.id,
-						event.payload.bytesTransferred,
-						event.payload.totalBytes,
-						event.payload.percent
-					);
-				});
-			}
-
-			await new Promise<void>((resolve, reject) => {
-				let settled = false;
-				void listen(`transfer-complete-${transferId}`, () => {
-					if (settled) return;
-					settled = true;
-					resolve();
-				}).then((un) => (unlistenDone = un));
-				void listen<string>(`transfer-error-${transferId}`, (event) => {
-					if (settled) return;
-					settled = true;
-					reject(new Error(String(event.payload ?? 'Download failed')));
-				}).then((un) => (unlistenFailed = un));
+			const done = await runTransfer({
+				kind: 'downloading',
+				connectionId: conn,
+				filename: entry.name,
+				totalBytes: entry.size,
+				visible,
+				start: (id) => sftpDownload(conn, entry.path, localPath, id),
+				// Giving up on the fetch gives up on the drag too, so a
+				// half-written file is never left looking ready.
+				onCancel: () => dragCache.delete(key)
 			});
-
-			if (visible) completeTransfer(transferId);
+			if (!done) return;
 			dragCache.set(key, { state: 'ready', localPath });
 			if (visible) addToast(t('explorer.drag_ready', { name: entry.name }), 'success');
 		} catch (err) {
 			// Left as failed rather than deleted, so a broken file is not
 			// re-fetched on every press.
 			dragCache.set(key, { state: 'failed' });
-			if (visible) addToast(String(err), 'error');
-		} finally {
-			unlistenProgress?.();
-			unlistenDone?.();
-			unlistenFailed?.();
+			if (visible) addToast(errorText(err), 'error');
 		}
 	}
 
@@ -315,7 +291,7 @@
 				.catch((err) => addToast(String(err), 'error'));
 		};
 
-		addTransfer(operationId, label, 0, 'archiving', cancel);
+		addTransfer(operationId, label, 0, 'archiving', cancel, conn);
 
 		let counter: ReturnType<typeof createProgressCounter> | undefined;
 		let total = 0;
@@ -401,66 +377,32 @@
 		const entry = contextMenu.entry;
 		closeContextMenu();
 
+		await downloadEntry(entry);
+	}
+
+	/** Ask where to save `entry`, then fetch it there with a row and a cancel. */
+	async function downloadEntry(entry: FileEntry): Promise<void> {
+		if (!connectionId) return;
+		const conn = connectionId;
 		const localPath = await save({ defaultPath: entry.name });
 		if (!localPath) return;
 
-		let transferId: string | undefined;
-		let progressUnlisten: UnlistenFn | undefined;
-		let completeUnlisten: UnlistenFn | undefined;
-		let errorUnlisten: UnlistenFn | undefined;
-
 		try {
-			transferId = await sftpDownload(connectionId, entry.path, localPath);
-			addTransfer(transferId, entry.name, entry.size, 'downloading');
-
-			const tid = transferId;
-
-			progressUnlisten = await listen<{
-				id: string;
-				filename: string;
-				bytesTransferred: number;
-				totalBytes: number;
-				percent: number;
-			}>(`transfer-progress-${tid}`, (event) => {
-				updateTransferProgress(
-					event.payload.id,
-					event.payload.bytesTransferred,
-					event.payload.totalBytes,
-					event.payload.percent
-				);
-			});
-
-			completeUnlisten = await listen(`transfer-complete-${tid}`, () => {
-				completeTransfer(tid);
-			});
-
-			errorUnlisten = await listen<string>(`transfer-error-${tid}`, (event) => {
-				const errMsg = typeof event.payload === 'string' ? event.payload : 'Download failed';
-				failTransfer(tid, errMsg);
-			});
-
-			await new Promise<void>((resolve, reject) => {
-				const checkInterval = setInterval(() => {
-					const transfers = getTransfers();
-					const tr = transfers.find((x: Transfer) => x.id === tid);
-					if (!tr || tr.status === 'completed') {
-						clearInterval(checkInterval);
-						resolve();
-					} else if (tr.status === 'error') {
-						clearInterval(checkInterval);
-						reject(new Error(tr.error ?? 'Download failed'));
-					}
-				}, 200);
+			await runTransfer({
+				kind: 'downloading',
+				connectionId: conn,
+				filename: entry.name,
+				totalBytes: entry.size,
+				start: (id) => sftpDownload(conn, entry.path, localPath, id)
 			});
 		} catch (err) {
-			if (transferId) {
-				failTransfer(transferId, String(err));
-			}
-		} finally {
-			progressUnlisten?.();
-			completeUnlisten?.();
-			errorUnlisten?.();
+			addToast(t('explorer.download_failed', { error: errorText(err) }), 'error');
 		}
+	}
+
+	/** An error's own words, without the "Error: " a thrown Error adds. */
+	function errorText(err: unknown): string {
+		return err instanceof Error ? err.message : String(err);
 	}
 
 	async function handleEdit(): Promise<void> {
@@ -584,46 +526,7 @@
 	}
 
 	async function handleQuickDownload(entry: FileEntry): Promise<void> {
-		if (!connectionId) return;
-
-		const localPath = await save({ defaultPath: entry.name });
-		if (!localPath) return;
-
-		let transferId: string | undefined;
-		let progressUnlisten: UnlistenFn | undefined;
-		let completeUnlisten: UnlistenFn | undefined;
-		let errorUnlisten: UnlistenFn | undefined;
-
-		try {
-			transferId = await sftpDownload(connectionId, entry.path, localPath);
-			addTransfer(transferId, entry.name, entry.size, 'downloading');
-
-			const tid = transferId;
-
-			progressUnlisten = await listen<{ id: string; filename: string; bytesTransferred: number; totalBytes: number; percent: number; }>(`transfer-progress-${tid}`, (event) => {
-				updateTransferProgress(event.payload.id, event.payload.bytesTransferred, event.payload.totalBytes, event.payload.percent);
-			});
-
-			completeUnlisten = await listen(`transfer-complete-${tid}`, () => { completeTransfer(tid); });
-			errorUnlisten = await listen<string>(`transfer-error-${tid}`, (event) => {
-				failTransfer(tid, typeof event.payload === 'string' ? event.payload : 'Download failed');
-			});
-
-			await new Promise<void>((resolve, reject) => {
-				const checkInterval = setInterval(() => {
-					const transfers = getTransfers();
-					const tr = transfers.find((x: Transfer) => x.id === tid);
-					if (!tr || tr.status === 'completed') { clearInterval(checkInterval); resolve(); }
-					else if (tr.status === 'error') { clearInterval(checkInterval); reject(new Error(tr.error ?? 'Download failed')); }
-				}, 200);
-			});
-		} catch (err) {
-			if (transferId) failTransfer(transferId, String(err));
-		} finally {
-			progressUnlisten?.();
-			completeUnlisten?.();
-			errorUnlisten?.();
-		}
+		await downloadEntry(entry);
 	}
 
 	let creatingFolder = $state<string | undefined>();
@@ -693,6 +596,42 @@
 		}
 	}
 
+	// ---- The terminal's folder (#162) ----------------------------------------
+
+	let following = $derived(getFollowPath());
+
+	/** Show the folder this connection's terminal is in. `quiet` while
+	 *  following: a server that cannot say is told once, when it is turned on. */
+	async function goToTerminalFolder(quiet = false): Promise<void> {
+		if (!connectionId) return;
+		const conn = connectionId;
+		try {
+			const cwd = await sftpTerminalCwd(conn);
+			if (conn !== connectionId) return;
+			if (!cwd) {
+				if (!quiet) addToast(t('explorer.terminal_folder_unknown'), 'info');
+				return;
+			}
+			if (cwd !== getCurrentPath(conn)) await loadDirectory(cwd);
+		} catch (err) {
+			if (!quiet) addToast(errorText(err), 'error');
+		}
+	}
+
+	function toggleFollow(): void {
+		toggleFollowPath();
+		if (getFollowPath()) void goToTerminalFolder();
+	}
+
+	// While following: look again shortly after each line typed into the
+	// terminal (a `cd` takes effect as it runs), and on another connection.
+	$effect(() => {
+		if (!connectionId || !following) return;
+		void linesEntered(connectionId);
+		const timer = setTimeout(() => void goToTerminalFolder(true), 350);
+		return () => clearTimeout(timer);
+	});
+
 	async function loadDirectory(path: string): Promise<void> {
 		if (!connectionId) return;
 		loading = true;
@@ -752,67 +691,21 @@
 
 	async function uploadFile(localPath: string): Promise<void> {
 		if (!connectionId) return;
+		const conn = connectionId;
 
 		const filename = extractFilename(localPath);
 		const remotePath = buildRemotePath(currentPath, filename);
 
-		let transferId: string | undefined;
-		let progressUnlisten: UnlistenFn | undefined;
-		let completeUnlisten: UnlistenFn | undefined;
-		let errorUnlisten: UnlistenFn | undefined;
-
 		try {
-			transferId = await sftpUpload(connectionId, localPath, remotePath);
-			addTransfer(transferId, filename, 0);
-
-			const tid = transferId;
-
-			progressUnlisten = await listen<{
-				id: string;
-				filename: string;
-				bytesTransferred: number;
-				totalBytes: number;
-				percent: number;
-			}>(`transfer-progress-${tid}`, (event) => {
-				updateTransferProgress(
-					event.payload.id,
-					event.payload.bytesTransferred,
-					event.payload.totalBytes,
-					event.payload.percent
-				);
-			});
-
-			completeUnlisten = await listen(`transfer-complete-${tid}`, () => {
-				completeTransfer(tid);
-			});
-
-			errorUnlisten = await listen<string>(`transfer-error-${tid}`, (event) => {
-				const errMsg = typeof event.payload === 'string' ? event.payload : 'Upload failed';
-				failTransfer(tid, errMsg);
-			});
-
-			await new Promise<void>((resolve, reject) => {
-				const checkInterval = setInterval(() => {
-					const transfers = getTransfers();
-					const tr = transfers.find((x: Transfer) => x.id === tid);
-					if (!tr || tr.status === 'completed') {
-						clearInterval(checkInterval);
-						resolve();
-					} else if (tr.status === 'error') {
-						clearInterval(checkInterval);
-						reject(new Error(tr.error ?? 'Upload failed'));
-					}
-				}, 200);
+			await runTransfer({
+				kind: 'uploading',
+				connectionId: conn,
+				filename,
+				totalBytes: 0,
+				start: (id) => sftpUpload(conn, localPath, remotePath, id)
 			});
 		} catch (err) {
-			if (transferId) {
-				failTransfer(transferId, String(err));
-			}
-			addToast(t('explorer.upload_failed', { error: String(err) }), 'error');
-		} finally {
-			progressUnlisten?.();
-			completeUnlisten?.();
-			errorUnlisten?.();
+			addToast(t('explorer.upload_failed', { error: errorText(err) }), 'error');
 		}
 	}
 
@@ -955,6 +848,32 @@
 						stroke-linecap="round"
 						stroke-linejoin="round"
 					/>
+				</svg>
+			</button>
+
+			<button
+				class="tool-btn"
+				onclick={() => goToTerminalFolder()}
+				aria-label={t('explorer.go_terminal_folder')}
+				title={t('explorer.go_terminal_folder')}
+				type="button"
+			>
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+					<path d="M4 17l6-5-6-5M12 19h8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+				</svg>
+			</button>
+
+			<button
+				class="tool-btn"
+				class:on={following}
+				onclick={toggleFollow}
+				aria-pressed={following}
+				aria-label={t('explorer.follow_terminal')}
+				title={following ? t('explorer.follow_terminal_on') : t('explorer.follow_terminal')}
+				type="button"
+			>
+				<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+					<path d="M10 13a5 5 0 007.5.5l3-3a5 5 0 00-7-7l-1.7 1.7M14 11a5 5 0 00-7.5-.5l-3 3a5 5 0 007 7l1.7-1.7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
 				</svg>
 			</button>
 
@@ -1391,6 +1310,12 @@
 	.tool-btn:hover {
 		background-color: var(--color-surface-hover);
 		color: var(--color-text-primary);
+	}
+
+	/* Following the terminal: lit while on. */
+	.tool-btn.on {
+		color: var(--color-accent);
+		background-color: var(--color-surface-hover);
 	}
 
 	.tool-btn:disabled {

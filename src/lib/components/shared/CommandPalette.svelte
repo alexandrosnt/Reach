@@ -9,7 +9,18 @@
 	 */
 	import { tick } from 'svelte';
 	import { isPaletteOpen, closePalette, requestSessionAction, requestTerminalFocus } from '#lib/state/palette.svelte.js';
-	import { getTabs, activateTab, createTab } from '#lib/state/tabs.svelte.js';
+	import {
+		getTabs,
+		getActiveTab,
+		activateTab,
+		createTab,
+		closeTab,
+		tabsBeside,
+		requestCloseBeside,
+		type CloseScope
+	} from '#lib/state/tabs.svelte.js';
+	import { canDuplicate, duplicateTab } from '#lib/terminal/duplicate-tab.js';
+	import { addToast } from '#lib/state/toasts.svelte.js';
 	import { getSnippets, loadSnippets, pasteSnippet, canPasteSnippet } from '#lib/state/snippets.svelte.js';
 	import { getActivePage, setActivePage } from '#lib/state/navigation.svelte.js';
 	import { getEnabledDevopsTools } from '#lib/state/devops.svelte.js';
@@ -51,6 +62,42 @@
 		void loadSnippets();
 		void tick().then(() => input?.focus());
 	});
+
+	/** Duplicate and close for the tab in front, those that would do something. */
+	function activeTabActions(): Item[] {
+		const tab = getActiveTab();
+		if (!tab) return [];
+		const group = t('palette.group_actions');
+		const out: Item[] = [];
+		if (canDuplicate(tab)) {
+			out.push({
+				id: 'action:tab-duplicate',
+				group,
+				label: t('tabs.duplicate_tab'),
+				run: () => {
+					setActivePage('terminal');
+					duplicateTab(tab.id).catch((err) => addToast(t('tabs.duplicate_failed', { error: String(err) }), 'error'));
+				}
+			});
+		}
+		out.push({
+			id: 'action:tab-close',
+			group,
+			label: t('tabs.close_tab'),
+			hint: shortcutLabel('W', { ctrl: true, shift: true }),
+			run: () => closeTab(tab.id)
+		});
+		const scopes: [CloseScope, string][] = [
+			['others', 'tabs.close_others'],
+			['left', 'tabs.close_left'],
+			['right', 'tabs.close_right']
+		];
+		for (const [scope, key] of scopes) {
+			if (tabsBeside(tab.id, scope).length === 0) continue;
+			out.push({ id: `action:tab-close-${scope}`, group, label: t(key), run: () => requestCloseBeside(tab.id, scope) });
+		}
+		return out;
+	}
 
 	let items = $derived.by((): Item[] => {
 		const out: Item[] = [];
@@ -134,6 +181,8 @@
 				hint: shortcutLabel('N', { ctrl: true, shift: true }),
 				run: () => requestSessionAction({ kind: 'quick-connect' })
 			},
+			// The tab in front, as its own menu in the tab bar has it (#160).
+			...activeTabActions(),
 			{
 				id: 'action:settings',
 				group: t('palette.group_actions'),

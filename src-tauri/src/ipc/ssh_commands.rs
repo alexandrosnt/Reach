@@ -451,6 +451,9 @@ pub async fn ssh_disconnect(
     let mut manager = state.ssh_manager.lock().await;
     manager.disconnect(&connection_id).map_err(|e| e.to_string())?;
     drop(manager);
+    // Transfers on this connection end with it, rather than being left
+    // waiting on a channel that is gone (#161).
+    crate::ipc::sftp_commands::cancel_transfers_on(&state, &connection_id);
 
     // Fire-and-forget hook dispatch (see ssh_connect for rationale).
     let hook = hooks::session_disconnected(&connection_id);
