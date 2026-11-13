@@ -41,6 +41,9 @@
   <!-- The newest first. A test (metainfo_lists_this_version in lib.rs)
        fails if the version in Cargo.toml is missing here. -->
   <releases>
+    <release version="0.9.1" date="2026-11-13">
+      <url type="details">https://github.com/alexandrosnt/Reach/releases/tag/v0.9.1</url>
+    </release>
     <release version="0.9.0" date="2026-11-13">
       <url type="details">https://github.com/alexandrosnt/Reach/releases/tag/v0.9.0</url>
     </release>
