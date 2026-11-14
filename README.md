@@ -87,7 +87,7 @@ Each tool is off on a fresh install. Switching one off hides it without deleting
 - **Themes** that colour the whole app, not just the terminal, from a registry pinned by SHA-256.
 - **Interface size** (Ctrl+= / Ctrl+-) for the whole window, separate from the terminal's text size.
 - **Lua plugins** in a sandbox.
-- **Nine languages**: English, German, Spanish, French, Italian, Greek, Bulgarian, Russian and Chinese.
+- **Ten languages**: English, Czech, German, Spanish, French, Italian, Greek, Bulgarian, Russian and Chinese.
 - **A real phone app**: Esc, Ctrl, Alt and arrow keys above the keyboard, pinch to zoom, and a layout that respects notches and large text.
 
 ## Download

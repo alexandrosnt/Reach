@@ -20,6 +20,7 @@ export interface Language {
 
 export const LANGUAGES: Language[] = [
 	{ code: 'en', name: 'English', english: 'English' },
+	{ code: 'cs', name: 'Čeština', english: 'Czech' },
 	{ code: 'de', name: 'Deutsch', english: 'German' },
 	{ code: 'es', name: 'Español', english: 'Spanish' },
 	{ code: 'fr', name: 'Français', english: 'French' },
