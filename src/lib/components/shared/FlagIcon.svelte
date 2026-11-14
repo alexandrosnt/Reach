@@ -36,6 +36,11 @@
 		<path d="M0 0L60 40M60 0L0 40" stroke="#C8102E" stroke-width="4" />
 		<path d="M30 0V40M0 20H60" stroke="#fff" stroke-width="10" />
 		<path d="M30 0V40M0 20H60" stroke="#C8102E" stroke-width="6" />
+	{:else if code === 'cs'}
+		<!-- Czechia: white over red, blue triangle reaching half the width -->
+		<rect width="60" height="20" fill="#fff" />
+		<rect y="20" width="60" height="20" fill="#D7141A" />
+		<path d="M0 0L30 20L0 40Z" fill="#11457E" />
 	{:else if code === 'de'}
 		<!-- Germany -->
 		<rect width="60" height="13.33" fill="#000" />

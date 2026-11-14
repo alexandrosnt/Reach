@@ -11,7 +11,7 @@ Basic app preferences.
 
 ### Language
 
-Pick your language from the dropdown. Nine options: English, Deutsch, Espa&ntilde;ol, Fran&ccedil;ais, Ελληνικά, Italiano, Български, Русский, 中文. Changes apply immediately.
+Pick your language from the dropdown. Ten options: English, Čeština, Deutsch, Espa&ntilde;ol, Fran&ccedil;ais, Ελληνικά, Italiano, Български, Русский, 中文. Changes apply immediately.
 
 ### Default Shell
 

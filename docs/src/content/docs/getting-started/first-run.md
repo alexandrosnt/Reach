@@ -7,7 +7,7 @@ When you launch Reach for the first time, a short setup wizard walks you through
 
 ## Step 1: Language
 
-Pick your language. Right now Reach supports English, German (Deutsch), French (Francais), Greek (Ellinika), Italian (Italiano), and Bulgarian (Balgarski). More languages will come over time.
+Pick your language. Right now Reach supports English, Czech (Čeština), German (Deutsch), Spanish (Español), French (Français), Greek (Ελληνικά), Italian (Italiano), Bulgarian (Български), Russian (Русский) and Chinese (中文). More languages will come over time.
 
 You can always change the language later in Settings > General.
 
