@@ -25,6 +25,8 @@
 	import SshConfigImport from './SshConfigImport.svelte';
 	import RdpImport from './RdpImport.svelte';
 	import RdmImport from './RdmImport.svelte';
+	import CredentialList from './CredentialList.svelte';
+	import { savedCredentialList, credentialsFor, type SavedCredential } from '#lib/ipc/savedCredentials.js';
 	import SessionCard from './SessionCard.svelte';
 	import VaultSelector from '#lib/components/vault/VaultSelector.svelte';
 	import ContextMenuBackdrop from '#lib/components/shared/ContextMenuBackdrop.svelte';
@@ -33,7 +35,7 @@
 	import Button from '#lib/components/shared/Button.svelte';
 	import UntrustedRefsDialog from '#lib/components/pwmanager/UntrustedRefsDialog.svelte';
 	import { sessionUntrustedSecretRefs, sessionApproveSecretRefs, untrustedRefsFromError, type UntrustedRefs } from '#lib/ipc/sessions.js';
-	import { sessionKind, sessionGet, sessionList, sessionDelete, sessionUpdate, sessionListFolders, sessionCreateFolder, sessionUpdateFolderParent, sessionDeleteFolder, sessionMoveToFolder, type SessionConfig, type Folder } from '#lib/ipc/sessions.js';
+	import { sessionKind, sessionGet, sessionList, sessionDelete, sessionUpdate, sessionListFolders, sessionCreateFolder, sessionUpdateFolderParent, sessionDeleteFolder, sessionMoveToFolder, sessionSetFolderCredential, type SessionConfig, type Folder } from '#lib/ipc/sessions.js';
 	import { setActivePage } from '#lib/state/navigation.svelte.js';
 	import { sshConnect, sshDisconnect, sshDetectOs, type JumpHostConnectParams } from '#lib/ipc/ssh.js';
 	// Passwords are now stored encrypted in vault, not in memory cache
@@ -61,6 +63,11 @@
 	let sessions = $state<SessionConfig[]>([]);
 	let loading = $state(true);
 	let deleteConfirm = $state<string | null>(null);
+
+	/** Which list the sidebar shows: the sessions, or the saved credentials. */
+	let tab = $state<'sessions' | 'credentials'>('sessions');
+	/** Saved credentials, for a folder's credential menu. */
+	let savedCredentials = $state<SavedCredential[]>([]);
 
 	// What the list shows: everything, this device's default vault (null), or
 	// one vault by id. Restored from the last run; the selector confirms it on
@@ -584,9 +591,21 @@
 		}
 	});
 
+	/** Set or clear the saved credential a folder's sessions log in with. */
+	async function setFolderCredential(folder: Folder, credentialId: string | null): Promise<void> {
+		closeContextMenu();
+		try {
+			await sessionSetFolderCredential(folder.id, credentialId);
+			await loadSessions();
+		} catch (err) {
+			addToast(String(err), 'error');
+		}
+	}
+
 	async function loadSessions(): Promise<void> {
 		try {
 			[sessions, folders] = await Promise.all([sessionList(), sessionListFolders()]);
+			savedCredentials = await savedCredentialList().catch(() => []);
 		} catch (err) {
 			console.error('Failed to load sessions:', err);
 		} finally {
@@ -1215,6 +1234,14 @@
 	{:else}
 		<VaultSelector onvaultselect={(filter) => { selectedVaultId = filter; creatingFolder = false; creatingFolderParentId = null; pendingMove = null; newFolderName = ''; }} onrefresh={() => loadSessions()} />
 
+		<div class="list-tabs" role="tablist">
+			<button class="list-tab" class:active={tab === 'sessions'} role="tab" aria-selected={tab === 'sessions'} onclick={() => (tab = 'sessions')}>{t('credential.tab_sessions')}</button>
+			<button class="list-tab" class:active={tab === 'credentials'} role="tab" aria-selected={tab === 'credentials'} onclick={() => (tab = 'credentials')}>{t('credential.tab_credentials')}</button>
+		</div>
+
+		{#if tab === 'credentials'}
+			<CredentialList vaultFilter={selectedVaultId} {targetVaultId} {sessions} {folders} onchange={() => void loadSessions()} />
+		{:else}
 		<div class="tool-row">
 			<div class="search-row">
 				<span class="search-icon"><FaIcon icon={faMagnifyingGlass} size={11} /></span>
@@ -1354,6 +1381,7 @@
 				</div>
 			</div>
 		{/if}
+		{/if}
 	{/if}
 	{#if contextMenu}
 		<ContextMenuBackdrop onclose={closeContextMenu} />
@@ -1408,6 +1436,14 @@
 					{#if contextMenu.folder.parent_id}<button class="context-item context-folder-item" onclick={() => { if (contextMenu?.folder) moveFolder(contextMenu.folder, null); }} type="button">{t('session.no_folder')}</button>{/if}
 					{#each folders.filter(folder => contextMenu?.folder && canMoveFolder(contextMenu.folder.id, folder.id, folders)) as folder (folder.id)}
 						<button class="context-item context-folder-item" onclick={() => { if (contextMenu?.folder) moveFolder(contextMenu.folder, folder.id); }} type="button">{folderPath(folder.id, folders)}</button>
+					{/each}
+				</div>
+				<div class="context-sep"></div>
+				<div class="context-label">{t('credential.folder_menu')}</div>
+				<div class="context-folders">
+					<button class="context-item context-folder-item" class:context-current={!contextMenu.folder.credential_id} onclick={() => { if (contextMenu?.folder) void setFolderCredential(contextMenu.folder, null); }} type="button">{t('credential.folder_none')}</button>
+					{#each credentialsFor(savedCredentials, contextMenu.folder.vault_id) as c (c.id)}
+						<button class="context-item context-folder-item" class:context-current={contextMenu.folder.credential_id === c.id} onclick={() => { if (contextMenu?.folder) void setFolderCredential(contextMenu.folder, c.id); }} type="button">{c.name} ({c.username})</button>
 					{/each}
 				</div>
 				<div class="context-sep"></div>
@@ -1562,6 +1598,36 @@
 
 
 <style>
+	.list-tabs {
+		display: flex;
+		gap: 2px;
+		padding: 2px;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+	}
+
+	.list-tab {
+		flex: 1;
+		padding: 4px 8px;
+		border: none;
+		border-radius: 4px;
+		background: transparent;
+		color: var(--color-text-secondary);
+		font-size: var(--text-xs);
+		cursor: pointer;
+	}
+
+	.list-tab.active {
+		background-color: var(--color-surface-hover);
+		color: var(--color-text-primary);
+		font-weight: 500;
+	}
+
+	.context-current {
+		font-weight: 600;
+		color: var(--color-accent);
+	}
+
 	.session-list {
 		display: flex;
 		flex-direction: column;

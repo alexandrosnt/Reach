@@ -54,6 +54,23 @@ export interface SessionConfig {
   ssh_options?: SshOptions | null;
   /** WSL only: the distribution name, e.g. "Ubuntu" */
   wsl_distro?: string | null;
+  /** A saved credential this session logs in with (see savedCredentials.ts).
+   *  Unset: its folder's, if one applies. */
+  credential_id?: string | null;
+  /** Read only: the saved credential the login was filled in from. */
+  credential?: CredentialUse | null;
+}
+
+/** Which saved credential a session's login came from, as read. */
+export interface CredentialUse {
+  id: string;
+  /** Empty when the credential is missing. */
+  name: string;
+  /** The folder it is inherited from; absent when the session links it. */
+  folder_id?: string | null;
+  /** Not in the session's vault (deleted, or not synced yet): the session's
+   *  own stored login is used. */
+  missing?: boolean;
 }
 
 /** A config file as it was read at import. */
@@ -100,6 +117,8 @@ export interface Folder {
   name: string;
   parent_id: string | null;
   vault_id: string | null;
+  /** A saved credential the sessions inside log in with. */
+  credential_id?: string | null;
 }
 
 export async function sessionList(): Promise<SessionConfig[]> {
@@ -131,6 +150,7 @@ export async function sessionCreate(params: {
   tryAgentKeys?: boolean | null;
   sshOptions?: SshOptions | null;
   wslDistro?: string | null;
+  credentialId?: string | null;
 }): Promise<SessionConfig> {
   return invoke<SessionConfig>('session_create', {
     name: params.name,
@@ -152,6 +172,7 @@ export async function sessionCreate(params: {
     tryAgentKeys: params.tryAgentKeys || null,
     sshOptions: params.sshOptions ?? null,
     wslDistro: params.wslDistro || null,
+    credentialId: params.credentialId || null,
   });
 }
 
@@ -265,6 +286,11 @@ export async function sessionCreateFolder(name: string, parentId: string | null,
 
 export async function sessionUpdateFolderParent(folderId: string, parentId: string | null): Promise<Folder> {
   return invoke<Folder>('session_update_folder_parent', { folderId, parentId });
+}
+
+/** Set or clear the saved credential a folder's sessions log in with. */
+export async function sessionSetFolderCredential(folderId: string, credentialId: string | null): Promise<Folder> {
+  return invoke<Folder>('session_set_folder_credential', { folderId, credentialId });
 }
 
 export async function sessionDeleteFolder(folderId: string): Promise<void> {
