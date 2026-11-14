@@ -24,6 +24,7 @@
     "ime:test": "node scripts/ime-test.mjs",
     "select:test": "node --import ./scripts/resolve-lib.mjs scripts/select-test.mjs",
     "rdp-import:test": "node scripts/rdp-import-test.mjs",
+    "rdm-import:test": "node scripts/rdm-import-test.mjs",
     "logsource:test": "node scripts/logsource-test.mjs",
     "split:test": "node scripts/split-test.mjs",
     "webkit:test": "node --import ./scripts/resolve-lib.mjs scripts/webkit-input-test.mjs",
