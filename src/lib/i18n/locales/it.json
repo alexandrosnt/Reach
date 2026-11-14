@@ -1111,6 +1111,7 @@
   "session.rdm_import_encrypted": "Questa esportazione è cifrata con una chiave master. Esporta di nuovo da RDM senza chiave master (e senza credenziali), poi importa quel file.",
   "session.rdm_import_none": "Nessuna voce RDP, SSH o VNC trovata nell'esportazione.",
   "session.rdm_import_unsupported": "Le voci {{type}} non sono supportate",
+  "session.rdm_import_duplicate": "Già presente una volta in questa esportazione",
   "session.rdm_import_done": "{{count}} host importati da RDM",
   "session.rdm_import_user": "Nome utente per gli host che non ne hanno",
   "session.rdm_import_user_hint": "RDM conserva i nomi utente insieme alle credenziali, quindi questa esportazione non li contiene per alcuni host. Inserisci il nome utente da usare per loro e per i loro gateway SSH; per usarne di diversi, filtra e importa a gruppi.",

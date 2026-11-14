@@ -1111,6 +1111,7 @@
   "session.rdm_import_encrypted": "Tento export je zašifrovaný hlavním klíčem. Exportujte ho z RDM znovu bez hlavního klíče (a bez přihlašovacích údajů) a importujte nový soubor.",
   "session.rdm_import_none": "V exportu nebyly nalezeny žádné položky RDP, SSH ani VNC.",
   "session.rdm_import_unsupported": "Položky typu {{type}} nejsou podporovány",
+  "session.rdm_import_duplicate": "V tomto exportu už je jednou",
   "session.rdm_import_done": "Z RDM importováno hostitelů: {{count}}",
   "session.rdm_import_user": "Uživatelské jméno pro hostitele bez něj",
   "session.rdm_import_user_hint": "RDM ukládá uživatelská jména spolu s přihlašovacími údaji, takže u některých hostitelů v tomto exportu chybí. Zadejte uživatelské jméno, které se použije pro ně a pro jejich SSH brány; pokud potřebujete různá, filtrujte a importujte po částech.",

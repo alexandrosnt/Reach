@@ -8,7 +8,7 @@
  * Run: node scripts/rdm-import-test.mjs
  */
 
-import { parseRdmExport, parseXml, splitAddress, splitGroup, findExisting, findChildFolder } from '../src/lib/sessions/rdm-import.ts';
+import { parseRdmExport, parseXml, splitAddress, splitGroup, findExisting, findChildFolder, sessionUser } from '../src/lib/sessions/rdm-import.ts';
 
 let failures = 0;
 const check = (name, cond, extra = '') => {
@@ -287,6 +287,16 @@ section('credentials inherited from a group');
 	check('an entry with no credential link inherits nothing', byName.none && byName.none.username === '');
 }
 
+section('duplicates');
+{
+	const entry = (name, group, user) => ({ Name: name, ConnectionType: 'RDPConfigured', Group: group, Url: 'DC01.corp', RDP: { UserName: user } });
+	const r = parseRdmExport(JSON.stringify({ Connections: [entry('dc', 'A', 'admin'), entry('dc copy', 'B', 'admin'), entry('dc other user', 'B', 'bob')] }));
+	check('the same host and user twice is imported once', r.ok && r.hosts.length === 2, JSON.stringify(r.hosts?.map((h) => h.name)));
+	check('the first one wins', r.ok && r.hosts[0].name === 'dc');
+	check('the second is listed as a duplicate', r.ok && r.skipped.some((s) => s.label === 'dc copy' && s.reason === 'duplicate'));
+	check('another user on the same host is kept', r.ok && r.hosts.some((h) => h.username === 'bob'));
+}
+
 section('helpers');
 {
 	check('splitAddress: scheme and path are dropped', JSON.stringify(splitAddress('rdp://h.local:3390/x')) === JSON.stringify({ host: 'h.local', port: '3390' }));
@@ -303,6 +313,10 @@ section('helpers');
 	check('findExisting: another user is another session', findExisting({ ...host, username: 'b' }, sessions) === undefined);
 	check('findExisting: no username in the export is not another user', findExisting({ ...host, username: '' }, sessions) === undefined);
 	check('findExisting does not match another kind', findExisting({ ...host, kind: 'vnc' }, sessions) === undefined);
+
+	check("sessionUser: the export's own username wins", sessionUser({ ...host, kind: 'ssh', username: 'root' }, 'ops') === 'root');
+	check('sessionUser: no username takes the typed one', sessionUser({ ...host, kind: 'ssh', username: '' }, ' ops ') === 'ops');
+	check('sessionUser: VNC never gets one', sessionUser({ ...host, kind: 'vnc', username: '' }, 'ops') === '');
 
 	const folders = [
 		{ id: 'f1', name: 'HQ', parent_id: null, vault_id: null },
