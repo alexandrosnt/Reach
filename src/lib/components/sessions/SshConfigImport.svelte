@@ -76,11 +76,16 @@
 	function isAlreadyImported(host: HostImport): boolean {
 		// An imported session knows its Host alias: two Host blocks for the
 		// same machine (different options) are different sessions. Only a
-		// session saved without one is matched by address.
-		return existingSessions.some((s) =>
-			s.ssh_options?.imported
-				? s.ssh_options.imported.alias === host.alias
-				: s.host === host.hostname && s.port === host.port && s.username === host.user
+		// session saved without one is matched by address. Only sessions in
+		// the target vault count, so importing into a new vault brings in
+		// every host.
+		const target = vaultId ?? null;
+		return existingSessions.some(
+			(s) =>
+				(s.vault_id ?? null) === target &&
+				(s.ssh_options?.imported
+					? s.ssh_options.imported.alias === host.alias
+					: s.host === host.hostname && s.port === host.port && s.username === host.user)
 		);
 	}
 

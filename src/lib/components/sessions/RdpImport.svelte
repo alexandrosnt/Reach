@@ -50,7 +50,7 @@
 	const canImport = $derived(parsed && selectedCount > 0 && !busy);
 
 	function isSaved(host: RdpImportHost): boolean {
-		return findExisting(host, existingSessions) !== undefined;
+		return findExisting(host, existingSessions, target) !== undefined;
 	}
 
 	function skipReason(s: RdpSkipped): string {
