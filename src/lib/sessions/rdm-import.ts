@@ -493,11 +493,7 @@ function looksEncrypted(data: unknown): boolean {
 // Matching what is already saved
 // ---------------------------------------------------------------------------
 
-/**
- * A session of the same kind already saved for the same machine and user.
- * A host the export gives no username for matches any user, since the one
- * it was imported with came from the dialog.
- */
+/** A session of the same kind already saved for the same machine and user, as the RDP import checks. */
 export function findExisting(host: RdmImportHost, sessions: SessionConfig[]): SessionConfig | undefined {
 	const address = host.host.toLowerCase();
 	return sessions.find(
@@ -505,7 +501,7 @@ export function findExisting(host: RdmImportHost, sessions: SessionConfig[]): Se
 			(s.kind ?? 'ssh') === host.kind &&
 			s.host.toLowerCase() === address &&
 			s.port === host.port &&
-			(host.username === '' || s.username === host.username)
+			s.username === host.username
 	);
 }
 

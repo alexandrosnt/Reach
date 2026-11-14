@@ -301,7 +301,6 @@ section('helpers');
 	check('findExisting matches kind, host (any case), port and user', findExisting(host, sessions)?.id === 's1');
 	check('findExisting treats a session without a kind as SSH', findExisting({ ...host, kind: 'ssh', host: 'web', port: 22 }, sessions)?.id === 's2');
 	check('findExisting: another user is another session', findExisting({ ...host, username: 'b' }, sessions) === undefined);
-	check('findExisting: no username in the export matches any user', findExisting({ ...host, username: '' }, sessions)?.id === 's1');
 	check('findExisting does not match another kind', findExisting({ ...host, kind: 'vnc' }, sessions) === undefined);
 
 	const folders = [
