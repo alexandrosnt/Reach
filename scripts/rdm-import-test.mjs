@@ -92,6 +92,86 @@ const RDM_XML = `<?xml version="1.0" encoding="utf-8"?>
   </Connection>
 </ArrayOfConnection>`;
 
+// Shaped like a real RDM 2026.1 "Export .rdm without credentials": no
+// usernames anywhere, an SSH gateway kept as a VPN entry, a tunnel entry.
+const RDM_2026 = `<?xml version="1.0" encoding="utf-8"?>
+<RDMExport>
+  <Connections>
+    <Connection>
+      <AppVersion>2026.1</AppVersion>
+      <ConnectionType>Group</ConnectionType>
+      <Group>SSH\\Lab</Group>
+      <ID>aaaaaaaa-0000-0000-0000-000000000001</ID>
+      <Name>Lab</Name>
+    </Connection>
+    <Connection>
+      <AppVersion>2026.1</AppVersion>
+      <ConnectionType>VPN</ConnectionType>
+      <Group>SSH\\Lab</Group>
+      <ID>aaaaaaaa-0000-0000-0000-0000000000AA</ID>
+      <Name>Lab jump gateway</Name>
+      <VPN>
+        <Application>SSHGateway</Application>
+        <SSHGateways>
+          <SSHGateway>
+            <Host>gw.example.net</Host>
+            <ID>aaaaaaaa-0000-0000-0000-000000000003</ID>
+            <Port>1022</Port>
+            <PrivateKeyType>Link</PrivateKeyType>
+          </SSHGateway>
+        </SSHGateways>
+      </VPN>
+    </Connection>
+    <Connection>
+      <AppVersion>2026.1</AppVersion>
+      <ConnectionType>SSHShell</ConnectionType>
+      <Group>SSH\\Lab</Group>
+      <ID>aaaaaaaa-0000-0000-0000-000000000004</ID>
+      <Name>router (admin)</Name>
+      <Terminal>
+        <Host>router.example.net</Host>
+        <HostPort>22</HostPort>
+        <TryAgent>true</TryAgent>
+      </Terminal>
+    </Connection>
+    <Connection>
+      <AppVersion>2026.1</AppVersion>
+      <ConnectionType>SSHShell</ConnectionType>
+      <Group>SSH\\Lab</Group>
+      <ID>aaaaaaaa-0000-0000-0000-000000000005</ID>
+      <Name>inside</Name>
+      <Terminal>
+        <Host>192.0.2.10</Host>
+        <HostPort>22</HostPort>
+        <LinkedSSHGateway>aaaaaaaa-0000-0000-0000-0000000000aa</LinkedSSHGateway>
+        <SSHGatewayMode>Linked</SSHGatewayMode>
+        <UseSSHGateway>true</UseSSHGateway>
+      </Terminal>
+    </Connection>
+    <Connection>
+      <AppVersion>2026.1</AppVersion>
+      <ConnectionType>SSHTunnel</ConnectionType>
+      <Group>SSH\\Lab</Group>
+      <Name>Lab tunnel</Name>
+      <Terminal><Host>gw.example.net</Host><HostPort>1022</HostPort></Terminal>
+    </Connection>
+    <Connection>
+      <AppVersion>2026.1</AppVersion>
+      <ConnectionType>RDPConfigured</ConnectionType>
+      <Group>RDP\\Corp</Group>
+      <Name>DC (AD)</Name>
+      <Url>198.51.100.4</Url>
+      <RDP><ScreenSizingMode>FitToWindow</ScreenSizingMode></RDP>
+    </Connection>
+    <Connection>
+      <AppVersion>2026.1</AppVersion>
+      <ConnectionType>Credential</ConnectionType>
+      <Name>domain account</Name>
+      <Credentials />
+    </Connection>
+  </Connections>
+</RDMExport>`;
+
 section('XML reader');
 {
 	const root = parseXml('<a x="1>2"><b>one</b><b>two</b><c/><d><![CDATA[<raw>]]></d></a>');
@@ -175,19 +255,37 @@ section('unreadable files');
 	check('a byte order mark is ignored', parseRdmExport('\uFEFF' + RDM_XML).ok);
 }
 
+section('RDM 2026.1 export without credentials');
+{
+	const r = parseRdmExport(RDM_2026);
+	check('the file is read', r.ok, JSON.stringify(r));
+	const byName = Object.fromEntries((r.ok ? r.hosts : []).map((h) => [h.name, h]));
+	check('three hosts: two SSH, one RDP', r.ok && r.hosts.length === 3);
+	check('hosts have no username', r.ok && r.hosts.every((h) => h.username === ''));
+	check('a linked SSH gateway becomes the jump host (ID case ignored)', byName.inside && JSON.stringify(byName.inside.jump) === JSON.stringify([{ host: 'gw.example.net', port: 1022 }]));
+	check('a host without a gateway has no jump', byName['router (admin)'] && byName['router (admin)'].jump.length === 0);
+	check('the gateway entry itself is neither a host nor skipped', r.ok && !r.skipped.some((s) => s.label === 'Lab jump gateway'));
+	check('an SSH tunnel is skipped as unsupported', r.ok && r.skipped.some((s) => s.label === 'Lab tunnel' && s.type === 'SSHTunnel'));
+	check('nested groups', byName['DC (AD)'] && byName['DC (AD)'].folder.join('/') === 'RDP/Corp');
+	const vpn = parseRdmExport(JSON.stringify([{ ConnectionType: 'VPN', Name: 'OpenVPN', VPN: { Application: 'OpenVPN' } }]));
+	check('another VPN entry is skipped as unsupported', !vpn.ok || vpn.skipped.some((s) => s.label === 'OpenVPN' && s.reason === 'unsupported'));
+}
+
 section('helpers');
 {
 	check('splitAddress: scheme and path are dropped', JSON.stringify(splitAddress('rdp://h.local:3390/x')) === JSON.stringify({ host: 'h.local', port: '3390' }));
 	check('splitAddress: bare IPv6 keeps every colon', splitAddress('fe80::1').host === 'fe80::1');
 	check('splitGroup: empty levels are dropped', splitGroup('\\A\\\\B ').join('|') === 'A|B');
 
-	const host = { id: '0', kind: 'rdp', name: 'x', host: 'DC01', port: 3389, username: 'a', domain: null, keyPath: null, folder: [] };
+	const host = { id: '0', kind: 'rdp', name: 'x', host: 'DC01', port: 3389, username: 'a', domain: null, keyPath: null, folder: [], jump: [] };
 	const sessions = [
 		{ id: 's1', name: 'x', host: 'dc01', port: 3389, username: 'a', kind: 'rdp' },
 		{ id: 's2', name: 'y', host: 'web', port: 22, username: 'a' }
 	];
 	check('findExisting matches kind, host (any case), port and user', findExisting(host, sessions)?.id === 's1');
 	check('findExisting treats a session without a kind as SSH', findExisting({ ...host, kind: 'ssh', host: 'web', port: 22 }, sessions)?.id === 's2');
+	check('findExisting: another user is another session', findExisting({ ...host, username: 'b' }, sessions) === undefined);
+	check('findExisting: no username in the export matches any user', findExisting({ ...host, username: '' }, sessions)?.id === 's1');
 	check('findExisting does not match another kind', findExisting({ ...host, kind: 'vnc' }, sessions) === undefined);
 
 	const folders = [

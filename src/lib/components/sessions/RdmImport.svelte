@@ -4,12 +4,15 @@
 	 * (XML) or .json file, picked or pasted (see #lib/sessions/rdm-import).
 	 * RDP, SSH and VNC entries become sessions in the selected vault, and the
 	 * RDM group path is recreated as nested folders, reusing folders already
-	 * there. Passwords are never imported: the session asks for them on
-	 * connect. Hosts already saved are shown but not imported again.
+	 * there, and a linked SSH gateway becomes the session's jump host.
+	 * Passwords are never imported: the session asks for them on connect.
+	 * An export saved without credentials has no usernames, so the dialog
+	 * asks for one to use where the export gives none. Hosts already saved
+	 * are shown but not imported again.
 	 */
 	import Modal from '#lib/components/shared/Modal.svelte';
 	import Button from '#lib/components/shared/Button.svelte';
-	import { sessionCreate, sessionCreateFolder, sessionList, sessionListFolders, type AuthMethod, type Folder, type SessionConfig } from '#lib/ipc/sessions.js';
+	import { sessionCreate, sessionCreateFolder, sessionList, sessionListFolders, type AuthMethod, type Folder, type JumpHostConfig, type SessionConfig } from '#lib/ipc/sessions.js';
 	import { findChildFolder, findExisting, parseRdmExport, type RdmImportHost, type RdmSkipped } from '#lib/sessions/rdm-import.js';
 	import { addToast } from '#lib/state/toasts.svelte.js';
 	import { t } from '#lib/state/i18n.svelte.js';
@@ -39,6 +42,8 @@
 	let folders = $state<Folder[]>([]);
 	let selected = $state<Set<string>>(new Set());
 	let filter = $state('');
+	/** Used for every host, and gateway, the export gives no username for. */
+	let fallbackUser = $state('');
 
 	const target = $derived(vaultId ?? null);
 	const busy = $derived(reading || importing);
@@ -52,7 +57,12 @@
 	});
 	const selectableHosts = $derived(shownHosts.filter((h) => !isSaved(h)));
 	const selectedCount = $derived(selected.size);
-	const canImport = $derived(parsed && selectedCount > 0 && !busy);
+	/** Selected SSH and RDP hosts that would be saved without a username, which they cannot log in without. */
+	const missingUser = $derived(
+		fallbackUser.trim() ? 0 : hosts.filter((h) => selected.has(h.id) && h.kind !== 'vnc' && !h.username).length
+	);
+	const anyWithoutUser = $derived(hosts.some((h) => h.kind !== 'vnc' && !h.username));
+	const canImport = $derived(parsed && selectedCount > 0 && missingUser === 0 && !busy);
 
 	function isSaved(host: RdmImportHost): boolean {
 		return findExisting(host, existingSessions) !== undefined;
@@ -146,6 +156,16 @@
 		return h.keyPath ? { type: 'Key', path: h.keyPath } : { type: 'Password' };
 	}
 
+	function userFor(h: RdmImportHost): string {
+		return h.username || (h.kind === 'vnc' ? '' : fallbackUser.trim());
+	}
+
+	/** The gateway hops; their own credentials are not in the export, so the login asks. */
+	function jumpFor(h: RdmImportHost): JumpHostConfig[] | null {
+		if (h.jump.length === 0) return null;
+		return h.jump.map((g) => ({ host: g.host, port: g.port, username: fallbackUser.trim(), auth_method: { type: 'Password' } }));
+	}
+
 	async function handleImport(): Promise<void> {
 		if (!canImport) return;
 		importing = true;
@@ -162,8 +182,9 @@
 					name: h.name,
 					host: h.host,
 					port: h.port,
-					username: h.username,
+					username: userFor(h),
 					authMethod: authFor(h),
+					jumpChain: jumpFor(h),
 					folderId: await folderFor(h.folder, created),
 					vaultId: target,
 					tags: ['rdm-import'],
@@ -210,6 +231,7 @@
 		folders = [];
 		selected = new Set();
 		filter = '';
+		fallbackUser = '';
 	}
 </script>
 
@@ -270,6 +292,13 @@
 					bind:value={filter}
 					disabled={busy}
 				/>
+				{#if anyWithoutUser}
+					<label class="user-field">
+						<span>{t('session.rdm_import_user')}</span>
+						<input class="tool-input" type="text" bind:value={fallbackUser} autocomplete="off" spellcheck="false" disabled={busy} />
+					</label>
+					<p class="user-hint" class:warn={missingUser > 0}>{t('session.rdm_import_user_hint')}</p>
+				{/if}
 				<div class="select-actions">
 					<button class="select-btn" type="button" onclick={() => (selected = new Set(selectableHosts.map((h) => h.id)))} disabled={busy}>
 						{t('session.import_select_all')}
@@ -296,7 +325,7 @@
 									<span class="host-name">{h.name}</span>
 									{#if saved}<span class="badge-imported">{t('session.import_already_exists')}</span>{/if}
 								</span>
-								<span class="host-detail">{h.username ? `${h.username}@` : ''}{h.host}:{h.port}{h.domain ? ` · ${h.domain}` : ''}{h.keyPath ? ` · ${h.keyPath}` : ''}</span>
+								<span class="host-detail">{h.username ? `${h.username}@` : ''}{h.host}:{h.port}{h.domain ? ` · ${h.domain}` : ''}{h.keyPath ? ` · ${h.keyPath}` : ''}{h.jump.length > 0 ? ` · ${t('session.rdm_import_via', { host: h.jump.map((g) => `${g.host}:${g.port}`).join(' → ') })}` : ''}</span>
 							</span>
 							{#if h.folder.length > 0}<span class="host-folder">{folderLabel(h)}</span>{/if}
 						</label>
@@ -332,6 +361,24 @@
 		font-size: 0.8125rem;
 		line-height: 1.45;
 		color: var(--color-text-secondary);
+	}
+
+	.user-field {
+		display: flex;
+		flex-direction: column;
+		gap: 4px;
+		font-size: 0.75rem;
+		color: var(--color-text-secondary);
+	}
+
+	.user-hint {
+		margin: -6px 0 0;
+		font-size: 0.6875rem;
+		color: var(--color-text-tertiary);
+	}
+
+	.user-hint.warn {
+		color: var(--color-warning);
 	}
 
 	.file-row {

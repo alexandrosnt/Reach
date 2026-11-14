@@ -6,7 +6,12 @@
  * every object that says its ConnectionType is read as an entry. RDP, SSH and
  * VNC entries become hosts; groups and credential entries are not hosts but
  * a credential entry linked from a host lends it its username and domain.
+ * An SSH gateway entry (a VPN entry of the SSHGateway kind) is not a host
+ * either, but becomes the jump host of the SSH entries linked to it.
  * Everything else is listed as skipped, with the reason.
+ *
+ * An export saved without credentials has no usernames at all: RDM keeps
+ * them with the credentials. The dialog asks for one in that case.
  *
  * Passwords, passphrases and every other secret in the file are never read.
  * An export encrypted with a master key cannot be read at all: the person is
@@ -34,6 +39,14 @@ export interface RdmImportHost {
 	keyPath: string | null;
 	/** The RDM group path, outermost first; empty at the top level. */
 	folder: string[];
+	/** SSH only: the SSH gateway(s) RDM reaches the host through, outermost first. */
+	jump: RdmGateway[];
+}
+
+/** One hop of an RDM SSH gateway entry; its credentials are not in the export. */
+export interface RdmGateway {
+	host: string;
+	port: number;
 }
 
 /** Why an entry in the export could not become a session. */
@@ -239,6 +252,8 @@ function classify(entry: Obj): EntryClass {
 			return { kind: 'ssh' };
 		case 'vnc':
 			return { kind: 'vnc' };
+		case 'vpn':
+			return isGatewayEntry(entry) ? { ignore: true } : { unsupported: raw };
 		case 'putty': {
 			const protocol = pick(entry, ['Putty.Protocol', 'Putty.ProtocolType', 'Protocol']).toLowerCase();
 			return protocol === '' || protocol === 'ssh' ? { kind: 'ssh' } : { unsupported: `Putty (${protocol})` };
@@ -261,6 +276,34 @@ function classify(entry: Obj): EntryClass {
 		if (isObj(field(entry, 'Credentials'))) return { ignore: true };
 	}
 	return { unsupported: raw || '?' };
+}
+
+function isGatewayEntry(entry: Obj): boolean {
+	return pick(entry, ['VPN.Application']).toLowerCase() === 'sshgateway';
+}
+
+/** Every object (or the one object) under a key that may hold a list. */
+function list(value: unknown): Obj[] {
+	if (Array.isArray(value)) return value.filter(isObj);
+	return isObj(value) ? [value] : [];
+}
+
+/** The hops of an SSH gateway entry, in order; hops without a usable address are left out. */
+function gatewayHops(entry: Obj): RdmGateway[] {
+	const vpn = field(entry, 'VPN');
+	if (!isObj(vpn)) return [];
+	const holder = field(vpn, 'SSHGateways');
+	// XML gives { SSHGateway: {...} | [...] }; JSON gives the array itself.
+	const items = isObj(holder) && field(holder, 'SSHGateway') !== undefined ? list(field(holder, 'SSHGateway')) : list(holder);
+	const hops: RdmGateway[] = [];
+	for (const g of items) {
+		const address = splitAddress(pick(g, ['Host', 'HostName']));
+		if (!address.host) continue;
+		const portText = pick(g, ['Port', 'HostPort']) || address.port;
+		const port = !portText || portText === '0' ? 22 : parsePort(portText);
+		if (port !== null) hops.push({ host: address.host, port });
+	}
+	return hops;
 }
 
 /** A TCP port, or null when the value is not one. */
@@ -348,6 +391,13 @@ export function parseRdmExport(raw: string): RdmParseResult {
 		if (id && (type === 'credential' || type === 'credentials' || (!type && isObj(field(e, 'Credentials'))))) credentials.set(id, e);
 	}
 
+	// SSH gateway entries, by ID, for the SSH hosts that link one.
+	const gateways = new Map<string, RdmGateway[]>();
+	for (const e of entries) {
+		const id = text(field(e, 'ID')).toLowerCase();
+		if (id && isGatewayEntry(e)) gateways.set(id, gatewayHops(e));
+	}
+
 	const hosts: RdmImportHost[] = [];
 	const skipped: RdmSkipped[] = [];
 	entries.forEach((entry, i) => {
@@ -379,6 +429,10 @@ export function parseRdmExport(raw: string): RdmParseResult {
 		if (kind === 'rdp') {
 			domain = pick(entry, ['RDP.Domain', 'Domain']) || (credential ? pick(credential, CREDENTIAL_DOMAIN_PATHS) : '') || null;
 		}
+		let jump: RdmGateway[] = [];
+		if (kind === 'ssh' && pick(entry, ['Terminal.UseSSHGateway']).toLowerCase() === 'true') {
+			jump = gateways.get(pick(entry, ['Terminal.LinkedSSHGateway']).toLowerCase()) ?? [];
+		}
 		const keyPath = kind === 'ssh' ? pick(entry, ['Terminal.PrivateKeyPath', 'Putty.PrivateKeyPath', 'PrivateKeyPath']) || null : null;
 
 		hosts.push({
@@ -390,7 +444,8 @@ export function parseRdmExport(raw: string): RdmParseResult {
 			username,
 			domain,
 			keyPath,
-			folder: splitGroup(text(field(entry, 'Group')))
+			folder: splitGroup(text(field(entry, 'Group'))),
+			jump
 		});
 	});
 
@@ -415,7 +470,11 @@ function looksEncrypted(data: unknown): boolean {
 // Matching what is already saved
 // ---------------------------------------------------------------------------
 
-/** A session of the same kind already saved for the same machine and user. */
+/**
+ * A session of the same kind already saved for the same machine and user.
+ * A host the export gives no username for matches any user, since the one
+ * it was imported with came from the dialog.
+ */
 export function findExisting(host: RdmImportHost, sessions: SessionConfig[]): SessionConfig | undefined {
 	const address = host.host.toLowerCase();
 	return sessions.find(
@@ -423,7 +482,7 @@ export function findExisting(host: RdmImportHost, sessions: SessionConfig[]): Se
 			(s.kind ?? 'ssh') === host.kind &&
 			s.host.toLowerCase() === address &&
 			s.port === host.port &&
-			s.username === host.username
+			(host.username === '' || s.username === host.username)
 	);
 }
 
