@@ -493,11 +493,16 @@ function looksEncrypted(data: unknown): boolean {
 // Matching what is already saved
 // ---------------------------------------------------------------------------
 
-/** A session of the same kind already saved for the same machine and user, as the RDP import checks. */
-export function findExisting(host: RdmImportHost, sessions: SessionConfig[]): SessionConfig | undefined {
+/**
+ * A session of the same kind already saved in the target vault for the same
+ * machine and user. Sessions in other vaults don't count, so importing into
+ * a new vault brings in every host.
+ */
+export function findExisting(host: RdmImportHost, sessions: SessionConfig[], vaultId: string | null): SessionConfig | undefined {
 	const address = host.host.toLowerCase();
 	return sessions.find(
 		(s) =>
+			(s.vault_id ?? null) === vaultId &&
 			(s.kind ?? 'ssh') === host.kind &&
 			s.host.toLowerCase() === address &&
 			s.port === host.port &&

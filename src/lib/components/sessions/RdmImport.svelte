@@ -65,7 +65,8 @@
 	const canImport = $derived(parsed && selectedCount > 0 && missingUser === 0 && !busy);
 
 	function isSaved(host: RdmImportHost): boolean {
-		return findExisting(host, existingSessions) !== undefined;
+		// Compared with the username it would be saved under, fallback included.
+		return findExisting({ ...host, username: userFor(host) }, existingSessions, target) !== undefined;
 	}
 
 	function folderLabel(host: RdmImportHost): string {

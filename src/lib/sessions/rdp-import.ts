@@ -116,11 +116,16 @@ export function parseRdpHosts(raw: string): RdpParseResult {
 	return { ok: true, hosts, skipped };
 }
 
-/** An RDP session already saved for the same machine and user. */
-export function findExisting(host: RdpImportHost, sessions: SessionConfig[]): SessionConfig | undefined {
+/**
+ * An RDP session already saved in the target vault for the same machine and
+ * user. Sessions in other vaults don't count, so importing into a new vault
+ * brings in every host.
+ */
+export function findExisting(host: RdpImportHost, sessions: SessionConfig[], vaultId: string | null): SessionConfig | undefined {
 	const address = host.host.toLowerCase();
 	return sessions.find(
 		(s) =>
+			(s.vault_id ?? null) === vaultId &&
 			s.kind === 'rdp' &&
 			s.host.toLowerCase() === address &&
 			s.port === host.port &&

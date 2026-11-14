@@ -91,10 +91,12 @@ section('already saved');
 {
 	const host = { id: '0', name: 'desk', host: 'PC.example.com', port: 3389, username: 'me', domain: null, folder: null };
 	const rdp = { kind: 'rdp', host: 'pc.example.com', port: 3389, username: 'me' };
-	check('the same RDP host and user is found, address case ignored', findExisting(host, [rdp]) === rdp);
-	check('an SSH session to the same address is not a match', findExisting(host, [{ ...rdp, kind: 'ssh' }]) === undefined);
-	check('another port is not a match', findExisting(host, [{ ...rdp, port: 3390 }]) === undefined);
-	check('another user is not a match', findExisting(host, [{ ...rdp, username: 'admin' }]) === undefined);
+	check('the same RDP host and user is found, address case ignored', findExisting(host, [rdp], null) === rdp);
+	check('an SSH session to the same address is not a match', findExisting(host, [{ ...rdp, kind: 'ssh' }], null) === undefined);
+	check('another port is not a match', findExisting(host, [{ ...rdp, port: 3390 }], null) === undefined);
+	check('another user is not a match', findExisting(host, [{ ...rdp, username: 'admin' }], null) === undefined);
+	check('a session in another vault is not a match', findExisting(host, [rdp], 'other-vault') === undefined);
+	check('a session in the target vault is a match', findExisting(host, [{ ...rdp, vault_id: 'v2' }], 'v2') !== undefined);
 }
 
 section('folders');

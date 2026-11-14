@@ -298,10 +298,12 @@ section('helpers');
 		{ id: 's1', name: 'x', host: 'dc01', port: 3389, username: 'a', kind: 'rdp' },
 		{ id: 's2', name: 'y', host: 'web', port: 22, username: 'a' }
 	];
-	check('findExisting matches kind, host (any case), port and user', findExisting(host, sessions)?.id === 's1');
-	check('findExisting treats a session without a kind as SSH', findExisting({ ...host, kind: 'ssh', host: 'web', port: 22 }, sessions)?.id === 's2');
-	check('findExisting: another user is another session', findExisting({ ...host, username: 'b' }, sessions) === undefined);
-	check('findExisting does not match another kind', findExisting({ ...host, kind: 'vnc' }, sessions) === undefined);
+	check('findExisting matches kind, host (any case), port and user', findExisting(host, sessions, null)?.id === 's1');
+	check('findExisting treats a session without a kind as SSH', findExisting({ ...host, kind: 'ssh', host: 'web', port: 22 }, sessions, null)?.id === 's2');
+	check('findExisting: another user is another session', findExisting({ ...host, username: 'b' }, sessions, null) === undefined);
+	check('findExisting ignores sessions in another vault', findExisting(host, sessions, 'other-vault') === undefined);
+	check('findExisting matches within the target vault', findExisting(host, [{ ...sessions[0], vault_id: 'v2' }], 'v2')?.id === 's1');
+	check('findExisting does not match another kind', findExisting({ ...host, kind: 'vnc' }, sessions, null) === undefined);
 
 	const folders = [
 		{ id: 'f1', name: 'HQ', parent_id: null, vault_id: null },
