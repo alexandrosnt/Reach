@@ -24,6 +24,7 @@
 	import SessionEditor from './SessionEditor.svelte';
 	import SshConfigImport from './SshConfigImport.svelte';
 	import RdpImport from './RdpImport.svelte';
+	import RdmImport from './RdmImport.svelte';
 	import SessionCard from './SessionCard.svelte';
 	import VaultSelector from '#lib/components/vault/VaultSelector.svelte';
 	import ContextMenuBackdrop from '#lib/components/shared/ContextMenuBackdrop.svelte';
@@ -55,6 +56,7 @@
 	let showEditor = $state(false);
 	let showImport = $state(false);
 	let showRdpImport = $state(false);
+	let showRdmImport = $state(false);
 	let editingSession = $state<SessionConfig | undefined>();
 	let sessions = $state<SessionConfig[]>([]);
 	let loading = $state(true);
@@ -1275,6 +1277,10 @@
 							<FaIcon icon={faFileImport} size={12} />
 							<span>{t('session.import_rdp')}</span>
 						</button>
+						<button class="menu-item" role="menuitem" onclick={() => fromMenu(() => (showRdmImport = true))}>
+							<FaIcon icon={faFileImport} size={12} />
+							<span>{t('session.import_rdm')}</span>
+						</button>
 					</div>
 				{/if}
 			</div>
@@ -1476,6 +1482,7 @@
 <SessionEditor bind:open={showEditor} editSession={editingSession} vaultId={targetVaultId} {folders} onsave={handleEditorSave} />
 <SshConfigImport bind:open={showImport} vaultId={targetVaultId} onsave={handleEditorSave} />
 <RdpImport bind:open={showRdpImport} vaultId={targetVaultId} onsave={handleEditorSave} />
+<RdmImport bind:open={showRdmImport} vaultId={targetVaultId} onsave={handleEditorSave} />
 <UntrustedRefsDialog
 	asked={askedRefs}
 	busy={approvingRefs}
