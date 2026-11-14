@@ -1111,6 +1111,7 @@
   "session.rdm_import_encrypted": "Esta exportación está cifrada con una clave maestra. Exporte de nuevo desde RDM sin clave maestra (y sin credenciales) e importe ese archivo.",
   "session.rdm_import_none": "No se encontraron entradas RDP, SSH o VNC en la exportación.",
   "session.rdm_import_unsupported": "Las entradas {{type}} no son compatibles",
+  "session.rdm_import_duplicate": "Ya aparece una vez en esta exportación",
   "session.rdm_import_done": "{{count}} host(s) importado(s) desde RDM",
   "session.rdm_import_user": "Usuario para los hosts que no tienen",
   "session.rdm_import_user_hint": "RDM guarda los usuarios con las credenciales, así que esta exportación no los incluye para algunos hosts. Introduzca el usuario para ellos y para sus pasarelas SSH; para usar distintos, filtre e importe por lotes.",

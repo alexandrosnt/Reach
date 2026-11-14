@@ -1111,6 +1111,7 @@
   "session.rdm_import_encrypted": "Cet export est chiffré avec une clé maître. Exportez à nouveau depuis RDM sans clé maître (et sans identifiants), puis importez ce fichier.",
   "session.rdm_import_none": "Aucune entrée RDP, SSH ou VNC trouvée dans l'export.",
   "session.rdm_import_unsupported": "Les entrées {{type}} ne sont pas prises en charge",
+  "session.rdm_import_duplicate": "Figure déjà une fois dans cet export",
   "session.rdm_import_done": "{{count}} hôte(s) importé(s) depuis RDM",
   "session.rdm_import_user": "Nom d'utilisateur pour les hôtes qui n'en ont pas",
   "session.rdm_import_user_hint": "RDM conserve les noms d'utilisateur avec les identifiants, cet export n'en contient donc pas pour certains hôtes. Saisissez le nom à utiliser pour eux et pour leurs passerelles SSH ; pour des noms différents, filtrez et importez par lots.",

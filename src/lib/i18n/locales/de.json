@@ -1111,6 +1111,7 @@
   "session.rdm_import_encrypted": "Dieser Export ist mit einem Hauptschlüssel verschlüsselt. Exportieren Sie in RDM erneut ohne Hauptschlüssel (und ohne Anmeldedaten) und importieren Sie diese Datei.",
   "session.rdm_import_none": "Keine RDP-, SSH- oder VNC-Einträge im Export gefunden.",
   "session.rdm_import_unsupported": "Einträge vom Typ {{type}} werden nicht unterstützt",
+  "session.rdm_import_duplicate": "Steht schon einmal in diesem Export",
   "session.rdm_import_done": "{{count}} Host(s) aus RDM importiert",
   "session.rdm_import_user": "Benutzername für Hosts ohne einen",
   "session.rdm_import_user_hint": "RDM speichert Benutzernamen bei den Anmeldedaten, daher fehlen sie in diesem Export für einige Hosts. Geben Sie den Benutzernamen für diese Hosts und ihre SSH-Gateways ein; für unterschiedliche Namen filtern und in Etappen importieren.",
