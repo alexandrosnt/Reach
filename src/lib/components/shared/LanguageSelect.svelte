@@ -230,7 +230,7 @@
 		right: 0;
 		display: flex;
 		flex-direction: column;
-		/* Nine locales already overflow a short window, and the list only grows
+		/* Ten locales already overflow a short window, and the list only grows
 		   as translations land — scroll inside the menu rather than off-screen. */
 		max-height: 300px;
 		padding: var(--space-1);

@@ -46,7 +46,7 @@ Security: sessions, passwords and SSH keys live in an encrypted vault, with opti
 
 DevOps tools, each switched on in Settings: a database workspace for PostgreSQL, MySQL, MariaDB, SQL Server, SQLite and Redis that browses, queries, edits rows, designs tables and backs up and restores, directly or through an SSH session; plus Ansible and OpenTofu workspaces.
 
-Also included: command snippets, live server monitoring without agents, peer-to-peer terminal sharing, an optional AI assistant, an MCP server for AI coding tools, Lua plugins, themes and nine languages. No account, no subscription, no telemetry.`,
+Also included: command snippets, live server monitoring without agents, peer-to-peer terminal sharing, an optional AI assistant, an MCP server for AI coding tools, Lua plugins, themes and ten languages. No account, no subscription, no telemetry.`,
 } as const;
 
 for (const [limit, text] of Object.entries(DESCRIPTIONS)) {
@@ -112,7 +112,7 @@ export const GET: APIRoute = async () => {
     <Program_Release_Status>Major Update</Program_Release_Status>
     <Program_Install_Support>Install and Uninstall</Program_Install_Support>
     <Program_OS_Support>Win10,Win11,Mac OS X,Linux,Android</Program_OS_Support>
-    <Program_Language>English,German,Spanish,French,Italian,Greek,Bulgarian,Russian,Chinese</Program_Language>
+    <Program_Language>English,Czech,German,Spanish,French,Italian,Greek,Bulgarian,Russian,Chinese</Program_Language>
     <Program_Change_Info>${esc(`See the changelog: ${PRODUCT.repo}/blob/main/CHANGELOG.md`)}</Program_Change_Info>
     <Program_Specific_Category>Utilities</Program_Specific_Category>
     <Program_Category_Class>Network &amp; Internet::Terminal &amp; Telnet Clients</Program_Category_Class>
