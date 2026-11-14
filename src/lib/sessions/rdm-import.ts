@@ -391,6 +391,29 @@ export function parseRdmExport(raw: string): RdmParseResult {
 		if (id && (type === 'credential' || type === 'credentials' || (!type && isObj(field(e, 'Credentials'))))) credentials.set(id, e);
 	}
 
+	// Groups that name a credential, by their path: an entry linked to a
+	// credential the export doesn't hold (RDM's "inherited" link, or one in
+	// another vault) takes the nearest enclosing group's.
+	const groupCredentials = new Map<string, string>();
+	for (const e of entries) {
+		if (text(field(e, 'ConnectionType')).toLowerCase() !== 'group') continue;
+		const link = text(field(e, 'CredentialConnectionID')).toLowerCase();
+		if (link) groupCredentials.set(splitGroup(text(field(e, 'Group'))).join('\\').toLowerCase(), link);
+	}
+	const credentialFor = (entry: Obj): Obj | undefined => {
+		const link = text(field(entry, 'CredentialConnectionID')).toLowerCase();
+		if (!link) return undefined;
+		const own = credentials.get(link);
+		if (own) return own;
+		const path = splitGroup(text(field(entry, 'Group')));
+		for (let n = path.length; n > 0; n--) {
+			const up = groupCredentials.get(path.slice(0, n).join('\\').toLowerCase());
+			const found = up ? credentials.get(up) : undefined;
+			if (found) return found;
+		}
+		return undefined;
+	};
+
 	// SSH gateway entries, by ID, for the SSH hosts that link one.
 	const gateways = new Map<string, RdmGateway[]>();
 	for (const e of entries) {
@@ -423,7 +446,7 @@ export function parseRdmExport(raw: string): RdmParseResult {
 			return;
 		}
 
-		const credential = credentials.get(text(field(entry, 'CredentialConnectionID')).toLowerCase());
+		const credential = credentialFor(entry);
 		const username = pick(entry, USER_PATHS[kind]) || (credential ? pick(credential, CREDENTIAL_USER_PATHS) : '');
 		let domain: string | null = null;
 		if (kind === 'rdp') {

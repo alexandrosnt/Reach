@@ -271,6 +271,22 @@ section('RDM 2026.1 export without credentials');
 	check('another VPN entry is skipped as unsupported', !vpn.ok || vpn.skipped.some((s) => s.label === 'OpenVPN' && s.reason === 'unsupported'));
 }
 
+section('credentials inherited from a group');
+{
+	const xml = `<RDMExport><Connections>
+		<Connection><ConnectionType>Group</ConnectionType><Group>RDP\\Bank</Group><Name>Bank</Name><CredentialConnectionID>fda0</CredentialConnectionID></Connection>
+		<Connection><ConnectionType>Credential</ConnectionType><Group>RDP\\Bank</Group><ID>FDA0</ID><Name>bank account</Name><Credentials><UserName>jdoe</UserName><Domain>BANK</Domain></Credentials></Connection>
+		<Connection><ConnectionType>RDPConfigured</ConnectionType><Group>RDP\\Bank\\Prod</Group><Name>app</Name><Url>app.bank</Url><CredentialConnectionID>1310CF82-6FAB-4B7A-9EEA-3E2E451CA2CF</CredentialConnectionID></Connection>
+		<Connection><ConnectionType>RDPConfigured</ConnectionType><Group>RDP\\Other</Group><Name>other</Name><Url>other</Url><CredentialConnectionID>1310CF82-6FAB-4B7A-9EEA-3E2E451CA2CF</CredentialConnectionID></Connection>
+		<Connection><ConnectionType>RDPConfigured</ConnectionType><Group>RDP\\Bank</Group><Name>none</Name><Url>none</Url></Connection>
+	</Connections></RDMExport>`;
+	const r = parseRdmExport(xml);
+	const byName = Object.fromEntries((r.ok ? r.hosts : []).map((h) => [h.name, h]));
+	check('an unresolved link takes the nearest group credential', byName.app && byName.app.username === 'jdoe' && byName.app.domain === 'BANK');
+	check('no group credential up the path leaves it empty', byName.other && byName.other.username === '');
+	check('an entry with no credential link inherits nothing', byName.none && byName.none.username === '');
+}
+
 section('helpers');
 {
 	check('splitAddress: scheme and path are dropped', JSON.stringify(splitAddress('rdp://h.local:3390/x')) === JSON.stringify({ host: 'h.local', port: '3390' }));
