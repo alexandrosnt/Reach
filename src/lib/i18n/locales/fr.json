@@ -2635,5 +2635,6 @@
   "credential.delete_used": "Utilisés par des sessions : {{sessions}}, dossiers : {{folders}}. Ils reviennent à leurs propres identifiants enregistrés.",
   "credential.delete_unused": "Aucune session ni aucun dossier ne les utilise.",
   "credential.folder_menu": "Identifiants pour les sessions du dossier",
-  "credential.folder_none": "Aucun"
+  "credential.folder_none": "Aucun",
+  "credential.own_login_hop": "Identifiants propres à ce rebond"
 }

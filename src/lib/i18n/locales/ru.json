@@ -2635,5 +2635,6 @@
   "credential.delete_used": "Используют сессии: {{sessions}}, папки: {{folders}}. Они вернутся к своим сохранённым данным входа.",
   "credential.delete_unused": "Ни одна сессия или папка их не использует.",
   "credential.folder_menu": "Учётные данные для сессий внутри",
-  "credential.folder_none": "Нет"
+  "credential.folder_none": "Нет",
+  "credential.own_login_hop": "Собственные данные входа промежуточного хоста"
 }

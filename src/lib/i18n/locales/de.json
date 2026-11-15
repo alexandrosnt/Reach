@@ -2635,5 +2635,6 @@
   "credential.delete_used": "Genutzt von Sitzungen: {{sessions}}, Ordnern: {{folders}}. Sie kehren zu ihrer eigenen gespeicherten Anmeldung zurück.",
   "credential.delete_unused": "Keine Sitzung und kein Ordner nutzt sie.",
   "credential.folder_menu": "Zugangsdaten für Sitzungen darin",
-  "credential.folder_none": "Keine"
+  "credential.folder_none": "Keine",
+  "credential.own_login_hop": "Eigene Anmeldung dieses Jump-Hosts"
 }

@@ -2635,5 +2635,6 @@
   "credential.delete_used": "Използват ги сесии: {{sessions}}, папки: {{folders}}. Те се връщат към собствения си запазен вход.",
   "credential.delete_unused": "Никоя сесия или папка не ги използва.",
   "credential.folder_menu": "Идентификационни данни за сесиите вътре",
-  "credential.folder_none": "Няма"
+  "credential.folder_none": "Няма",
+  "credential.own_login_hop": "Собствен вход на междинния хост"
 }

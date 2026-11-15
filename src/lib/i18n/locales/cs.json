@@ -2635,5 +2635,6 @@
   "credential.delete_used": "Používají je relace: {{sessions}}, složky: {{folders}}. Vrátí se ke svému vlastnímu uloženému přihlášení.",
   "credential.delete_unused": "Nepoužívá je žádná relace ani složka.",
   "credential.folder_menu": "Přihlašovací údaje pro relace uvnitř",
-  "credential.folder_none": "Žádné"
+  "credential.folder_none": "Žádné",
+  "credential.own_login_hop": "Vlastní přihlášení jump hostu"
 }

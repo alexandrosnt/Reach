@@ -2635,5 +2635,6 @@
   "credential.delete_used": "Sessions using it: {{sessions}}, folders: {{folders}}. They go back to their own stored login.",
   "credential.delete_unused": "No session or folder uses it.",
   "credential.folder_menu": "Credential for sessions inside",
-  "credential.folder_none": "None"
+  "credential.folder_none": "None",
+  "credential.own_login_hop": "This jump host's own login"
 }

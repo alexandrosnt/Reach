@@ -2635,5 +2635,6 @@
   "credential.delete_used": "Τα χρησιμοποιούν συνεδρίες: {{sessions}}, φάκελοι: {{folders}}. Επιστρέφουν στα δικά τους αποθηκευμένα στοιχεία σύνδεσης.",
   "credential.delete_unused": "Καμία συνεδρία ή φάκελος δεν τα χρησιμοποιεί.",
   "credential.folder_menu": "Διαπιστευτήρια για τις συνεδρίες μέσα",
-  "credential.folder_none": "Κανένα"
+  "credential.folder_none": "Κανένα",
+  "credential.own_login_hop": "Τα δικά του στοιχεία σύνδεσης του ενδιάμεσου κόμβου"
 }

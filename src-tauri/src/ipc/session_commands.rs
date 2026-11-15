@@ -564,7 +564,7 @@ async fn read_session(manager: &crate::vault::VaultManager, vault_id: &str, sess
 async fn read_session_filled(
     manager: &crate::vault::VaultManager,
     loc: &SessionLoc,
-) -> Result<(SessionConfig, Option<creds::OwnLogin>), String> {
+) -> Result<(SessionConfig, creds::SessionLogins), String> {
     let mut session = read_session(manager, &loc.vault_id, &loc.secret_id).await?;
     let logins = creds::logins(manager).await;
     let vault = creds::vault_of(manager, &loc.vault_id);
@@ -574,12 +574,13 @@ async fn read_session_filled(
 
 /// A session as it is written to its vault: with `login` as its own (see
 /// `saved_credential_commands`), and nothing that is only ever read.
-fn to_store(session: &SessionConfig, login: Option<creds::OwnLogin>) -> SessionConfig {
+fn to_store(session: &SessionConfig, logins: creds::SessionLogins) -> SessionConfig {
     let mut s = session.clone();
-    if let Some(login) = login {
-        login.put_into(&mut s);
-    }
+    logins.put_into(&mut s);
     s.credential = None;
+    for j in s.jump_chain.iter_mut().flatten() {
+        j.credential = None;
+    }
     for (_, r) in ref_slots_mut(&mut s) {
         r.trusted = false;
         r.confirm = false;
@@ -803,13 +804,8 @@ pub async fn session_create(
     // is not copied into the session).
     let logins = creds::logins(&manager).await;
     let vault = session.vault_id.clone();
-    creds::check_link(&logins.creds, session.credential_id.as_deref(), vault.as_deref())?;
-    let sent = creds::fill(&mut session, vault.as_deref(), &logins.folders, &logins.creds);
-    let own = sent.map(|sent| {
-        let filled = creds::OwnLogin::of(&session);
-        let bare = creds::OwnLogin { auth_method: AuthMethod::Agent, ..filled.clone() };
-        creds::login_to_store(sent, &[&filled], Some(bare))
-    });
+    creds::check_links(&logins.creds, &session, vault.as_deref())?;
+    let own = creds::fill_for_save(&mut session, vault.as_deref(), &logins.folders, &logins.creds, None);
 
     seal_approvals(&manager, &mut session, None).await;
     let json = serde_json::to_string(&to_store(&session, own)).map_err(|e| e.to_string())?;
@@ -852,36 +848,31 @@ pub async fn session_update(
 
     let logins = creds::logins(&manager).await;
     let vault = creds::vault_of(&manager, &loc.vault_id);
-    creds::check_link(&logins.creds, session.credential_id.as_deref(), vault.as_deref())?;
+    creds::check_links(&logins.creds, &session, vault.as_deref())?;
 
     // The record being replaced, as this user reads it: which password
     // manager references they had approved (see `seal_for`), and its own
     // login and the one a credential filled in, if one did.
-    let (stored, stored_own, stored_filled) = match read_session(&manager, &loc.vault_id, &loc.secret_id).await {
+    let (stored, before) = match read_session(&manager, &loc.vault_id, &loc.secret_id).await {
         Ok(mut s) => {
-            let own = creds::fill(&mut s, vault.as_deref(), &logins.folders, &logins.creds);
-            let filled = own.is_some().then(|| creds::OwnLogin::of(&s));
-            let own = own.unwrap_or_else(|| creds::OwnLogin::of(&s));
+            let own = creds::SessionLogins::all(&s);
+            let replaced = creds::fill(&mut s, vault.as_deref(), &logins.folders, &logins.creds);
+            let filled = creds::SessionLogins::all(&s).only(&replaced);
             open_approvals(&manager, &mut s).await;
-            (Some(s), Some(own), filled)
+            (Some(s), Some((own, filled)))
         }
-        Err(_) => (None, None, None),
+        Err(_) => (None, None),
     };
 
-    // The login sent is the session's own, unless it is one a credential
+    // A login sent is the session's own, unless it is one a credential
     // filled in (the editor shows that one): then the stored own login stays.
-    let sent = creds::OwnLogin::of(&session);
-    let applied = creds::fill(&mut session, vault.as_deref(), &logins.folders, &logins.creds).is_some();
-    let filled_now = applied.then(|| creds::OwnLogin::of(&session));
-    let filled: Vec<&creds::OwnLogin> = filled_now.iter().chain(stored_filled.iter()).collect();
-    let own = creds::login_to_store(sent, &filled, stored_own);
-    let own = if applied {
-        Some(own)
-    } else {
-        // No credential: the session is sealed with the login it is stored with.
-        own.put_into(&mut session);
-        None
-    };
+    let own = creds::fill_for_save(
+        &mut session,
+        vault.as_deref(),
+        &logins.folders,
+        &logins.creds,
+        before.as_ref().map(|(own, filled)| (own, filled)),
+    );
     seal_approvals(&manager, &mut session, stored.as_ref()).await;
     let json = serde_json::to_string(&to_store(&session, own)).map_err(|e| e.to_string())?;
     let plaintext = SecretBox::new(Box::new(json.into_bytes()));
@@ -1625,6 +1616,8 @@ mod approval_tests {
             port: 22,
             username: "jump".into(),
             auth_method: AuthMethod::Key { path: None, passphrase: None, key_content: None, key_id: Some("k".into()), passphrase_ref: Some(entry("e-jump")) },
+            credential_id: None,
+            credential: None,
         }]);
         s.proxy = Some(serde_json::from_value(serde_json::json!({
             "proxy_type": "http", "host": "proxy.example", "port": 3128, "username": "pu",
@@ -1961,7 +1954,7 @@ mod approval_tests {
             ("port", Box::new(|s| s.port = 2222)),
             ("user", Box::new(|s| s.username = "other".into())),
             ("jumps", Box::new(|s| {
-                s.jump_chain = Some(vec![JumpHostConfig { host: "attacker.example".into(), port: 22, username: "j".into(), auth_method: AuthMethod::Agent }])
+                s.jump_chain = Some(vec![JumpHostConfig { host: "attacker.example".into(), port: 22, username: "j".into(), auth_method: AuthMethod::Agent, credential_id: None, credential: None }])
             })),
             ("proxy", Box::new(|s| {
                 s.proxy = Some(serde_json::from_value(serde_json::json!({ "proxy_type": "socks5", "host": "attacker.example", "port": 1080 })).unwrap())

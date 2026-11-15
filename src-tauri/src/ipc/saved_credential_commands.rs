@@ -18,7 +18,7 @@
 //! one approval to every session that uses it.
 
 use crate::ipc::session_commands as sessions;
-use crate::state::{AppState, AuthMethod, CredentialUse, Folder, SavedCredential, SessionConfig};
+use crate::state::{AppState, AuthMethod, CredentialUse, Folder, JumpHostConfig, SavedCredential, SessionConfig};
 use crate::vault::types::SecretCategory;
 use secrecy::{ExposeSecret, SecretBox};
 use tauri::State;
@@ -53,6 +53,68 @@ impl OwnLogin {
     }
 }
 
+impl OwnLogin {
+    fn of_hop(j: &JumpHostConfig) -> Self {
+        OwnLogin { username: j.username.clone(), domain: None, auth_method: j.auth_method.clone() }
+    }
+
+    fn put_into_hop(self, j: &mut JumpHostConfig) {
+        j.username = self.username;
+        j.auth_method = self.auth_method;
+    }
+
+    /// The same login with no secret: what is stored as a session's own
+    /// when all it was given is a credential's.
+    fn bare(&self) -> Self {
+        OwnLogin { auth_method: AuthMethod::Agent, ..self.clone() }
+    }
+}
+
+/// Every login in a session: its own, then each jump host's, in order.
+#[derive(Debug, Clone, Default)]
+pub(crate) struct SessionLogins {
+    pub session: Option<OwnLogin>,
+    pub hops: Vec<Option<OwnLogin>>,
+}
+
+/// Which parts a credential filled in, and the login each had before.
+pub(crate) type Replaced = SessionLogins;
+
+impl SessionLogins {
+    /// All of a session's logins as they are now.
+    pub(crate) fn all(s: &SessionConfig) -> Self {
+        SessionLogins {
+            session: Some(OwnLogin::of(s)),
+            hops: s.jump_chain.iter().flatten().map(|j| Some(OwnLogin::of_hop(j))).collect(),
+        }
+    }
+
+    /// Only the parts that `replaced` says a credential filled in.
+    pub(crate) fn only(mut self, replaced: &Replaced) -> Self {
+        if replaced.session.is_none() {
+            self.session = None;
+        }
+        for (i, h) in self.hops.iter_mut().enumerate() {
+            if replaced.hops.get(i).is_none_or(|r| r.is_none()) {
+                *h = None;
+            }
+        }
+        self
+    }
+
+    /// Put each login that is set into the session.
+    pub(crate) fn put_into(self, s: &mut SessionConfig) {
+        if let Some(l) = self.session {
+            l.put_into(s);
+        }
+        for (j, l) in s.jump_chain.iter_mut().flatten().zip(self.hops) {
+            if let Some(l) = l {
+                l.put_into_hop(j);
+            }
+        }
+    }
+}
+
 fn login_of(c: &SavedCredential) -> OwnLogin {
     OwnLogin { username: c.username.clone(), domain: c.domain.clone(), auth_method: c.auth_method.clone() }
 }
@@ -81,25 +143,96 @@ fn wanted(s: &SessionConfig, vault: Option<&str>, folders: &[Folder]) -> Option<
     None
 }
 
-/// Fill in the credential that applies to a session in `vault`, if any.
-/// Returns the session's own login it replaced (None when nothing was
-/// replaced: no credential applies, or it is missing).
-pub(crate) fn fill(
+/// Fill in the credentials that apply to a session in `vault`: the
+/// session's own (linked, or from its folder) and each jump host's (linked
+/// only: a folder's credential is for the servers in it, not the hosts on
+/// the way). Returns the logins replaced, per part (None where nothing was:
+/// no credential applies, or it is missing).
+pub(crate) fn fill(s: &mut SessionConfig, vault: Option<&str>, folders: &[Folder], creds: &[SavedCredential]) -> Replaced {
+    let find = |id: &str| creds.iter().find(|c| c.id == id && c.vault_id.as_deref() == vault);
+    let mut replaced = Replaced::default();
+    s.credential = None;
+    if let Some((id, folder_id)) = wanted(s, vault, folders) {
+        match find(&id) {
+            Some(c) => {
+                replaced.session = Some(OwnLogin::of(s));
+                login_of(c).put_into(s);
+                s.credential = Some(CredentialUse { id, name: c.name.clone(), folder_id, missing: false });
+            }
+            None => s.credential = Some(CredentialUse { id, name: String::new(), folder_id, missing: true }),
+        }
+    }
+    for j in s.jump_chain.iter_mut().flatten() {
+        j.credential = None;
+        let Some(id) = j.credential_id.clone().filter(|id| !id.is_empty() && id != OWN_LOGIN) else {
+            replaced.hops.push(None);
+            continue;
+        };
+        match find(&id) {
+            Some(c) => {
+                replaced.hops.push(Some(OwnLogin::of_hop(j)));
+                let l = login_of(c);
+                j.username = l.username;
+                j.auth_method = l.auth_method;
+                j.credential = Some(CredentialUse { id, name: c.name.clone(), folder_id: None, missing: false });
+            }
+            None => {
+                replaced.hops.push(None);
+                j.credential = Some(CredentialUse { id, name: String::new(), folder_id: None, missing: true });
+            }
+        }
+    }
+    replaced
+}
+
+/// Fill in a session being saved, and work out which of its logins to
+/// store as its own (see [`login_to_store`]), part by part. `before` is the
+/// stored record as read: its own logins and the ones a credential filled
+/// in; None for a new session. A part a credential fills in now keeps the
+/// filled-in login in `s` (it is sealed with that) and its own is returned
+/// for storing; a part without one gets the chosen login put into `s`.
+pub(crate) fn fill_for_save(
     s: &mut SessionConfig,
     vault: Option<&str>,
     folders: &[Folder],
     creds: &[SavedCredential],
-) -> Option<OwnLogin> {
-    s.credential = None;
-    let (id, folder_id) = wanted(s, vault, folders)?;
-    let Some(c) = creds.iter().find(|c| c.id == id && c.vault_id.as_deref() == vault) else {
-        s.credential = Some(CredentialUse { id, name: String::new(), folder_id, missing: true });
-        return None;
+    before: Option<(&SessionLogins, &SessionLogins)>,
+) -> SessionLogins {
+    let sent = SessionLogins::all(s);
+    let replaced = fill(s, vault, folders, creds);
+    let now = SessionLogins::all(s).only(&replaced);
+    let (stored_own, stored_filled) = match before {
+        Some((own, filled)) => (own.clone(), filled.clone()),
+        None => (SessionLogins::default(), SessionLogins::default()),
     };
-    let own = OwnLogin::of(s);
-    login_of(c).put_into(s);
-    s.credential = Some(CredentialUse { id, name: c.name.clone(), folder_id, missing: false });
-    Some(own)
+    let choose = |sent: Option<OwnLogin>, now: Option<&OwnLogin>, then: Option<&OwnLogin>, own: Option<OwnLogin>| {
+        let sent = sent?;
+        let filled: Vec<&OwnLogin> = now.into_iter().chain(then).collect();
+        // A new session, or a new hop: nothing of its own is stored yet.
+        let own = own.or_else(|| now.map(OwnLogin::bare));
+        Some(login_to_store(sent, &filled, own))
+    };
+    let mut keep = SessionLogins::default();
+    let session = choose(sent.session, now.session.as_ref(), stored_filled.session.as_ref(), stored_own.session);
+    match (&now.session, session) {
+        (Some(_), chosen) => keep.session = chosen,
+        (None, Some(chosen)) => chosen.put_into(s),
+        (None, None) => {}
+    }
+    let hop = |v: &Vec<Option<OwnLogin>>, i: usize| v.get(i).cloned().flatten();
+    for (i, sent_hop) in sent.hops.into_iter().enumerate() {
+        let filled_now = hop(&now.hops, i);
+        let chosen = choose(sent_hop, filled_now.as_ref(), hop(&stored_filled.hops, i).as_ref(), hop(&stored_own.hops, i));
+        if filled_now.is_some() {
+            keep.hops.push(chosen);
+        } else {
+            if let (Some(chosen), Some(j)) = (chosen, s.jump_chain.as_mut().and_then(|c| c.get_mut(i))) {
+                chosen.put_into_hop(j);
+            }
+            keep.hops.push(None);
+        }
+    }
+    keep
 }
 
 /// Which login to store for a session being saved. `sent` is the login in
@@ -307,6 +440,15 @@ pub(crate) fn check_link(creds: &[SavedCredential], credential_id: Option<&str>,
     }
 }
 
+/// Check every credential a session names: its own and its jump hosts'.
+pub(crate) fn check_links(creds: &[SavedCredential], s: &SessionConfig, vault: Option<&str>) -> Result<(), String> {
+    check_link(creds, s.credential_id.as_deref(), vault)?;
+    for j in s.jump_chain.iter().flatten() {
+        check_link(creds, j.credential_id.as_deref(), vault)?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -358,7 +500,7 @@ mod tests {
     #[test]
     fn a_linked_credential_fills_in_the_login() {
         let mut s = session(None, Some("c1"), None);
-        let own = fill(&mut s, None, &[], &[cred("c1", "admin", None)]).unwrap();
+        let own = fill(&mut s, None, &[], &[cred("c1", "admin", None)]).session.unwrap();
         assert_eq!(s.username, "admin");
         assert_eq!(password(&s), Some("admin-pw"));
         assert_eq!(own.username, "own");
@@ -388,7 +530,7 @@ mod tests {
     #[test]
     fn a_credential_in_another_vault_does_not_count() {
         let mut s = session(None, Some("c1"), Some("team"));
-        assert!(fill(&mut s, Some("team"), &[], &[cred("c1", "admin", None)]).is_none());
+        assert!(fill(&mut s, Some("team"), &[], &[cred("c1", "admin", None)]).session.is_none());
         assert_eq!(s.username, "own");
         assert_eq!(password(&s), Some("own-pw"));
         assert!(s.credential.unwrap().missing);
@@ -398,7 +540,7 @@ mod tests {
     fn a_folder_in_another_vault_gives_nothing() {
         let folders = [folder("f", None, Some("c1"), Some("other"))];
         let mut s = session(Some("f"), None, Some("team"));
-        assert!(fill(&mut s, Some("team"), &folders, &[cred("c1", "admin", Some("other"))]).is_none());
+        assert!(fill(&mut s, Some("team"), &folders, &[cred("c1", "admin", Some("other"))]).session.is_none());
         assert_eq!(s.username, "own");
         assert!(s.credential.is_none());
     }
@@ -407,7 +549,7 @@ mod tests {
     fn a_session_can_keep_its_own_login_in_a_folder_with_one() {
         let folders = [folder("f", None, Some("c1"), None)];
         let mut s = session(Some("f"), Some(OWN_LOGIN), None);
-        assert!(fill(&mut s, None, &folders, &[cred("c1", "one", None)]).is_none());
+        assert!(fill(&mut s, None, &folders, &[cred("c1", "one", None)]).session.is_none());
         assert_eq!(s.username, "own");
         assert!(s.credential.is_none());
         assert!(check_link(&[], Some(OWN_LOGIN), None).is_ok());
@@ -417,7 +559,7 @@ mod tests {
     fn a_folder_cycle_ends() {
         let folders = [folder("a", Some("b"), None, None), folder("b", Some("a"), None, None)];
         let mut s = session(Some("a"), None, None);
-        assert!(fill(&mut s, None, &folders, &[]).is_none());
+        assert!(fill(&mut s, None, &folders, &[]).session.is_none());
         assert!(s.credential.is_none());
     }
 
@@ -425,7 +567,7 @@ mod tests {
     fn no_credential_leaves_the_session_alone() {
         let mut s = session(None, None, None);
         s.credential = Some(CredentialUse { id: "sent".into(), name: "x".into(), folder_id: None, missing: false });
-        assert!(fill(&mut s, None, &[], &[cred("c1", "admin", None)]).is_none());
+        assert!(fill(&mut s, None, &[], &[cred("c1", "admin", None)]).session.is_none());
         assert_eq!(s.username, "own");
         assert!(s.credential.is_none(), "what the webview sent is not kept");
     }
@@ -444,6 +586,79 @@ mod tests {
         let typed = OwnLogin { username: "new".into(), domain: None, auth_method: AuthMethod::Agent };
         let stored = OwnLogin::of(&session(None, None, None));
         assert_eq!(login_to_store(typed, &[&c], Some(stored)).username, "new");
+    }
+
+    fn with_hop(s: &mut SessionConfig, cred: Option<&str>) {
+        s.jump_chain = Some(vec![JumpHostConfig {
+            host: "bastion".into(),
+            port: 22,
+            username: "hop-own".into(),
+            auth_method: AuthMethod::Password { password: Some("hop-pw".into()), password_ref: None },
+            credential_id: cred.map(Into::into),
+            credential: None,
+        }]);
+    }
+
+    fn hop(s: &SessionConfig) -> &JumpHostConfig {
+        &s.jump_chain.as_ref().unwrap()[0]
+    }
+
+    #[test]
+    fn a_jump_host_can_use_a_credential() {
+        let mut s = session(None, None, None);
+        with_hop(&mut s, Some("c1"));
+        let replaced = fill(&mut s, None, &[], &[cred("c1", "jumper", None)]);
+        assert_eq!(hop(&s).username, "jumper");
+        assert_eq!(replaced.hops[0].as_ref().unwrap().username, "hop-own");
+        assert!(replaced.session.is_none());
+        assert_eq!(s.username, "own", "the session's own login is untouched");
+    }
+
+    #[test]
+    fn a_folder_credential_is_not_used_for_jump_hosts() {
+        let folders = [folder("f", None, Some("c1"), None)];
+        let mut s = session(Some("f"), None, None);
+        with_hop(&mut s, None);
+        fill(&mut s, None, &folders, &[cred("c1", "one", None)]);
+        assert_eq!(s.username, "one");
+        assert_eq!(hop(&s).username, "hop-own");
+    }
+
+    #[test]
+    fn saving_keeps_the_hops_own_login() {
+        let creds = [cred("c1", "jumper", None)];
+        // As stored, and as read (filled in).
+        let mut stored = session(None, None, None);
+        with_hop(&mut stored, Some("c1"));
+        let own = SessionLogins::all(&stored);
+        let mut read = stored.clone();
+        let replaced = fill(&mut read, None, &[], &creds);
+        let filled = SessionLogins::all(&read).only(&replaced);
+        // The editor sends the read session back unchanged.
+        let mut sent = read.clone();
+        let keep = fill_for_save(&mut sent, None, &[], &creds, Some((&own, &filled)));
+        assert_eq!(hop(&sent).username, "jumper", "sealed as used");
+        let mut out = sent.clone();
+        keep.put_into(&mut out);
+        assert_eq!(hop(&out).username, "hop-own");
+        match &hop(&out).auth_method {
+            AuthMethod::Password { password, .. } => assert_eq!(password.as_deref(), Some("hop-pw")),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn a_new_session_does_not_copy_a_credentials_password() {
+        let creds = [cred("c1", "admin", None)];
+        let mut s = session(None, Some("c1"), None);
+        // The editor sent the credential's own login as the session's.
+        s.username = "admin".into();
+        s.auth_method = AuthMethod::Password { password: Some("admin-pw".into()), password_ref: None };
+        let keep = fill_for_save(&mut s, None, &[], &creds, None);
+        let mut out = s.clone();
+        keep.put_into(&mut out);
+        assert_eq!(out.username, "admin");
+        assert!(matches!(out.auth_method, AuthMethod::Agent));
     }
 
     #[test]
