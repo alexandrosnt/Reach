@@ -1111,6 +1111,7 @@
   "session.rdm_import_encrypted": "此导出使用主密钥加密。请在 RDM 中不使用主密钥（且不包含凭据）重新导出，然后导入该文件。",
   "session.rdm_import_none": "导出中未找到 RDP、SSH 或 VNC 条目。",
   "session.rdm_import_unsupported": "不支持 {{type}} 类型的条目",
+  "session.rdm_import_duplicate": "此导出中已有一次",
   "session.rdm_import_done": "已从 RDM 导入 {{count}} 个主机",
   "session.rdm_import_user": "无用户名主机使用的用户名",
   "session.rdm_import_user_hint": "RDM 将用户名与凭据一起保存，因此此导出中部分主机没有用户名。请输入用于这些主机及其 SSH 网关的用户名；如需不同的用户名，可筛选后分批导入。",

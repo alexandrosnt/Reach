@@ -71,7 +71,7 @@ export interface RdmGateway {
 }
 
 /** Why an entry in the export could not become a session. */
-export type RdmSkipReason = 'no_host' | 'bad_port' | 'unsupported';
+export type RdmSkipReason = 'no_host' | 'bad_port' | 'unsupported' | 'duplicate';
 
 export interface RdmSkipped {
 	label: string;
@@ -503,6 +503,15 @@ export function parseRdmExport(raw: string): RdmParseResult {
 		if (kind === 'ssh' && pick(entry, ['Terminal.UseSSHGateway']).toLowerCase() === 'true') {
 			jump = gateways.get(pick(entry, ['Terminal.LinkedSSHGateway']).toLowerCase()) ?? [];
 		}
+		// The same machine and user twice in one export (an entry copied into
+		// a second group, say) is saved once: the first one wins.
+		const twice = hosts.some(
+			(h) => h.kind === kind && h.host.toLowerCase() === address.host.toLowerCase() && h.port === finalPort && h.username === username
+		);
+		if (twice) {
+			skipped.push({ label, reason: 'duplicate' });
+			return;
+		}
 		const keyPath = kind === 'ssh' ? pick(entry, ['Terminal.PrivateKeyPath', 'Putty.PrivateKeyPath', 'PrivateKeyPath']) || null : null;
 
 		hosts.push({
@@ -535,6 +544,16 @@ function looksEncrypted(data: unknown): boolean {
 	};
 	walk(data, '');
 	return found;
+}
+
+/**
+ * The username a session is saved with: the export's, else the one typed in
+ * the dialog (VNC has none). An SSH gateway uses the same one: the export
+ * holds no username for a gateway, and the bastion account is most often
+ * the host's own.
+ */
+export function sessionUser(host: RdmImportHost, fallback: string): string {
+	return host.username || (host.kind === 'vnc' ? '' : fallback.trim());
 }
 
 // ---------------------------------------------------------------------------

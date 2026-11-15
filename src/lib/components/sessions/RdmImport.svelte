@@ -13,7 +13,7 @@
 	import Modal from '#lib/components/shared/Modal.svelte';
 	import Button from '#lib/components/shared/Button.svelte';
 	import { sessionCreate, sessionCreateFolder, sessionList, sessionListFolders, sessionSetFolderCredential, type AuthMethod, type Folder, type JumpHostConfig, type SessionConfig } from '#lib/ipc/sessions.js';
-	import { findChildFolder, findExisting, parseRdmExport, type RdmCredential, type RdmImportHost, type RdmSkipped } from '#lib/sessions/rdm-import.js';
+	import { findChildFolder, findExisting, parseRdmExport, sessionUser, type RdmCredential, type RdmImportHost, type RdmSkipped } from '#lib/sessions/rdm-import.js';
 	import { savedCredentialCreate, savedCredentialList, credentialsFor } from '#lib/ipc/savedCredentials.js';
 	import { addToast } from '#lib/state/toasts.svelte.js';
 	import { t } from '#lib/state/i18n.svelte.js';
@@ -81,6 +81,7 @@
 
 	function skipReason(s: RdmSkipped): string {
 		if (s.reason === 'bad_port') return t('session.rdp_import_bad_port');
+		if (s.reason === 'duplicate') return t('session.rdm_import_duplicate');
 		if (s.reason === 'unsupported') return t('session.rdm_import_unsupported', { type: s.type ?? '?' });
 		return t('session.rdp_import_no_host');
 	}
@@ -165,13 +166,13 @@
 	}
 
 	function userFor(h: RdmImportHost): string {
-		return h.username || (h.kind === 'vnc' ? '' : fallbackUser.trim());
+		return sessionUser(h, fallbackUser);
 	}
 
-	/** The gateway hops; their own credentials are not in the export, so the login asks. */
+	/** The gateway hops, as the host's own user (see sessionUser); their passwords are not in the export, so the login asks. */
 	function jumpFor(h: RdmImportHost): JumpHostConfig[] | null {
 		if (h.jump.length === 0) return null;
-		return h.jump.map((g) => ({ host: g.host, port: g.port, username: fallbackUser.trim(), auth_method: { type: 'Password' } }));
+		return h.jump.map((g) => ({ host: g.host, port: g.port, username: userFor(h), auth_method: { type: 'Password' } }));
 	}
 
 	/**

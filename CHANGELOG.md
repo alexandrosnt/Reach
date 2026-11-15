@@ -2,6 +2,10 @@
 
 All notable changes to Reach are documented here.
 
+## v0.9.2
+- **Import from Remote Desktop Manager** — Sessions › Import now reads a Devolutions Remote Desktop Manager export, a `.rdm` or `.json` file saved without a master key, picked or pasted. RDP, SSH and VNC entries become sessions in the chosen vault, in folders matching their RDM groups, with their usernames, Windows domains and private key paths; an SSH gateway becomes the session's jump host and logs in as the host's user. Credential entries lend their username and domain to the hosts that link them, including through a group. Passwords and other secrets are never read: the session asks on connect. An encrypted export is refused with a note on how to export again. Hosts already saved, and the same host twice in one export, are imported once; anything else that can't be imported is listed with the reason. Contributed by @rsipka (#167).
+- **Czech** — Reach is now in Czech, its tenth language. Contributed by @rsipka (#168).
+
 ## v0.9.1
 - **File explorer: Details view** — A new toolbar button shows each entry as a row of columns, as MobaXterm does: Name, Size, Modified, Owner, Group and Access. Click a heading to sort by it and again to reverse; folders stay on top. Right-click the headings to choose which columns show. A sidebar narrower than the columns scrolls sideways. The view, columns and sort order are remembered on each device. Servers whose `ls` cannot print exact times (BusyBox, BSD, macOS) leave Modified empty. Asked for on Discord.
 - **F5 no longer closes your sessions** — F5, Ctrl+R and Ctrl+F5 (Cmd+R on a Mac) reloaded the app's window and closed every terminal, file list and tab. The reload is stopped; the key still reaches the terminal, so F5 in Midnight Commander and Ctrl+R history search work as before. Reported on Discord.
