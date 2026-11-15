@@ -2635,5 +2635,8 @@
   "credential.delete_used": "Utilisés par des sessions : {{sessions}}, dossiers : {{folders}}. Ils reviennent à leurs propres identifiants enregistrés.",
   "credential.delete_unused": "Aucune session ni aucun dossier ne les utilise.",
   "credential.folder_menu": "Identifiants pour les sessions du dossier",
-  "credential.folder_none": "Aucun"
+  "credential.folder_none": "Aucun",
+  "credential.own_login_hop": "Identifiants propres à ce rebond",
+  "session.rdm_import_credentials": "Enregistrer les {{count}} identifiants de l'export, pour {{hosts}} hôtes sélectionnés",
+  "session.rdm_import_credentials_hint": "Les mots de passe de RDM ne sont pas importés : saisissez chacun une fois dans l'onglet Identifiants et toutes les sessions qui l'utilisent l'obtiennent. Les identifiants transmis par un groupe deviennent ceux du dossier."
 }

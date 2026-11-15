@@ -24,6 +24,10 @@ export interface JumpHostConfig {
   port: number;
   username: string;
   auth_method: AuthMethod;
+  /** A saved credential this hop logs in with, from the session's vault. */
+  credential_id?: string | null;
+  /** Read only: the saved credential the hop's login was filled in from. */
+  credential?: CredentialUse | null;
 }
 
 export interface SessionConfig {

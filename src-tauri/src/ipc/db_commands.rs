@@ -1503,6 +1503,8 @@ mod tests {
                     port: 22,
                     username: "j".into(),
                     auth_method: crate::state::AuthMethod::Agent,
+                    credential_id: None,
+                    credential: None,
                 }])
             })),
             ("proxy", Box::new(|s| {

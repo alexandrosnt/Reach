@@ -2635,5 +2635,8 @@
   "credential.delete_used": "Las usan sesiones: {{sessions}}, carpetas: {{folders}}. Volverán a sus propias credenciales guardadas.",
   "credential.delete_unused": "Ninguna sesión ni carpeta las usa.",
   "credential.folder_menu": "Credenciales para las sesiones de dentro",
-  "credential.folder_none": "Ninguna"
+  "credential.folder_none": "Ninguna",
+  "credential.own_login_hop": "Credenciales propias de este salto",
+  "session.rdm_import_credentials": "Guardar las {{count}} credenciales de la exportación, para {{hosts}} hosts seleccionados",
+  "session.rdm_import_credentials_hint": "Las contraseñas de RDM no se importan: escribe cada una una vez en la pestaña Credenciales y todas las sesiones que la usan la reciben. Las credenciales que transmite un grupo pasan a ser las de su carpeta."
 }

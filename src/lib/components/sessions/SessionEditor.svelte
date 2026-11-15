@@ -88,6 +88,23 @@
 				: (folderCredential?.credential ?? null)
 	);
 
+	/** The saved credential a jump host logs in with; null: its own fields. */
+	function hopCredential(h: { credentialId: string }): SavedCredential | null {
+		return h.credentialId ? (credentials.find((c) => c.id === h.credentialId) ?? null) : null;
+	}
+
+	function pickHopCredential(h: (typeof jumpHops)[number], next: string): void {
+		const wasFilled = !!h.read?.credential && !h.read.credential.missing;
+		h.credentialId = next;
+		if (wasFilled && !hopCredential(h)) {
+			h.authType = 'Password';
+			h.password = '';
+			h.passwordRef = null;
+			h.keyPassphrase = '';
+			h.keyPassphraseRef = null;
+		}
+	}
+
 	function pickCredential(next: string): void {
 		// The fields held the credential's login when the session was read
 		// with one; going back to the session's own shows it blank, so what
@@ -156,7 +173,7 @@
 	let tagsStr = $state('');
 	let folderIdStr = $state('');
 	let jumpEnabled = $state(false);
-	let jumpHops = $state<Array<{host: string; port: string; username: string; authType: 'Password' | 'Key' | 'Agent' | 'Manager'; password: string; keyPath: string; keyPassphrase: string; passwordRef: SecretRef | null; keyPassphraseRef: SecretRef | null}>>([]);
+	let jumpHops = $state<Array<{host: string; port: string; username: string; authType: 'Password' | 'Key' | 'Agent' | 'Manager'; password: string; keyPath: string; keyPassphrase: string; passwordRef: SecretRef | null; keyPassphraseRef: SecretRef | null; credentialId: string; read: JumpHostConfig | null}>>([]);
 	let proxyEnabled = $state(false);
 	let proxyType = $state<'socks5' | 'socks4' | 'http'>('socks5');
 	let proxyHost = $state('127.0.0.1');
@@ -216,6 +233,8 @@
 					keyPassphrase: j.auth_method.type === 'Key' ? (j.auth_method.passphrase ?? '') : '',
 					passwordRef: j.auth_method.type === 'Password' ? (j.auth_method.password_ref ?? null) : null,
 					keyPassphraseRef: j.auth_method.type === 'Key' ? (j.auth_method.passphrase_ref ?? null) : null,
+					credentialId: j.credential_id ?? '',
+					read: j,
 				}));
 			} else {
 				jumpEnabled = false;
@@ -275,7 +294,7 @@
 		// "Password manager" without a chosen entry would save a login with
 		// no password at all.
 		const ssh = kind === 'ssh';
-		if (ssh && ((authType === 'Manager' && !passwordRef && !usedCredential) || (jumpEnabled && jumpHops.some((h) => h.authType === 'Manager' && !h.passwordRef)))) {
+		if (ssh && ((authType === 'Manager' && !passwordRef && !usedCredential) || (jumpEnabled && jumpHops.some((h) => h.authType === 'Manager' && !h.passwordRef && !hopCredential(h))))) {
 			error = t('session.manager_pick_entry');
 			return;
 		}
@@ -331,11 +350,15 @@
 								passphrase_ref: h.keyPassphraseRef ?? undefined
 							}
 						: { type: 'Agent' };
+				// As for the session's own login: a login a credential filled in
+				// goes back as it came, so the backend keeps the hop's own.
+				const filled = !!hopCredential(h) && !!h.read?.credential && !h.read.credential.missing;
 				return {
 					host: h.host.trim(),
 					port: parseInt(h.port, 10) || 22,
-					username: h.username.trim(),
-					auth_method: hopAuth,
+					username: filled && h.read ? h.read.username : h.username.trim(),
+					auth_method: filled && h.read ? h.read.auth_method : hopAuth,
+					credential_id: h.credentialId || null,
 				};
 			})
 			: undefined;
@@ -461,7 +484,7 @@
 	}
 
 	function addHop(): void {
-		jumpHops = [...jumpHops, { host: '', port: '22', username: 'root', authType: 'Password', password: '', keyPath: '', keyPassphrase: '', passwordRef: null, keyPassphraseRef: null }];
+		jumpHops = [...jumpHops, { host: '', port: '22', username: 'root', authType: 'Password', password: '', keyPath: '', keyPassphrase: '', passwordRef: null, keyPassphraseRef: null, credentialId: '', read: null }];
 	}
 
 	function removeHop(index: number): void {
@@ -701,6 +724,26 @@
 								<Input label={t('session.port')} bind:value={hop.port} type="number" placeholder="22" disabled={saving} />
 							</div>
 						</div>
+						{#if credentials.length > 0 || hop.credentialId}
+							<div class="shell-field">
+								<label class="via-label" for={`hop-login-${i}`}>{t('credential.login')}</label>
+								<select id={`hop-login-${i}`} class="via-select" value={hop.credentialId} onchange={(e) => pickHopCredential(hop, e.currentTarget.value)} disabled={saving}>
+									<option value="">{t('credential.own_login_hop')}</option>
+									{#each credentials as c (c.id)}
+										<option value={c.id}>{c.name} ({c.username})</option>
+									{/each}
+									{#if hop.credentialId && !hopCredential(hop)}
+										<option value={hop.credentialId}>{t('credential.missing')}</option>
+									{/if}
+								</select>
+								{#if hopCredential(hop)}
+									<p class="shell-hint">{t('credential.login_hint', { username: hopCredential(hop)?.username ?? '' })}</p>
+								{:else if hop.credentialId}
+									<p class="shell-hint">{t('credential.missing_hint')}</p>
+								{/if}
+							</div>
+						{/if}
+						{#if !hopCredential(hop)}
 						<Input label={t('session.username')} bind:value={hop.username} placeholder="root" disabled={saving} />
 
 						<div class="auth-section">
@@ -735,6 +778,7 @@
 								</Button>
 							</div>
 							<SecretRefField approvable label={t('session.passphrase_optional')} bind:value={hop.keyPassphrase} bind:secretRef={hop.keyPassphraseRef} disabled={saving} />
+						{/if}
 						{/if}
 					</div>
 				{/each}

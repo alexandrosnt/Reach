@@ -29,6 +29,13 @@ pub struct JumpHostConfig {
     pub port: u16,
     pub username: String,
     pub auth_method: AuthMethod,
+    /// A saved credential this hop logs in with, from the session's vault.
+    /// Its username and login win over the hop's own, which stay stored.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_id: Option<String>,
+    /// Read only: the saved credential the hop's login was filled in from.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential: Option<CredentialUse>,
 }
 
 /// What a saved session connects with. Sessions saved before this existed

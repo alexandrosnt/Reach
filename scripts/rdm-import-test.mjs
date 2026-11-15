@@ -285,6 +285,25 @@ section('credentials inherited from a group');
 	check('an unresolved link takes the nearest group credential', byName.app && byName.app.username === 'jdoe' && byName.app.domain === 'BANK');
 	check('no group credential up the path leaves it empty', byName.other && byName.other.username === '');
 	check('an entry with no credential link inherits nothing', byName.none && byName.none.username === '');
+	check('an inherited credential names the group it comes from', byName.app && byName.app.credential?.key === 'fda0' && byName.app.credential.from?.join('|') === 'RDP|Bank');
+	check('the inherited credential is listed once, without a password', r.ok && r.credentials.length === 1 && r.credentials[0].name === 'bank account' && !JSON.stringify(r.credentials).includes('Safe'));
+}
+
+section('a group\'s own login');
+{
+	const xml = `<RDMExport><Connections>
+		<Connection><ConnectionType>Group</ConnectionType><Group>RDP\\Corp</Group><Name>Corp</Name><GroupDetails><UserName>admin</UserName><Domain>CORP</Domain><SafePassword>c2VjcmV0</SafePassword></GroupDetails></Connection>
+		<Connection><ConnectionType>Group</ConnectionType><Group>RDP\\Lab</Group><Name>Lab</Name><ActiveDirectoryConsole><UserName>labber</UserName></ActiveDirectoryConsole><GroupDetails><Domain>LAB</Domain></GroupDetails></Connection>
+		<Connection><ConnectionType>RDPConfigured</ConnectionType><Group>RDP\\Corp\\DC</Group><Name>dc</Name><Url>dc</Url><CredentialConnectionID>1310CF82-6FAB-4B7A-9EEA-3E2E451CA2CF</CredentialConnectionID></Connection>
+		<Connection><ConnectionType>RDPConfigured</ConnectionType><Group>RDP\\Lab</Group><Name>lab</Name><Url>lab</Url><CredentialConnectionID>1310CF82-6FAB-4B7A-9EEA-3E2E451CA2CF</CredentialConnectionID></Connection>
+		<Connection><ConnectionType>RDPConfigured</ConnectionType><Group>RDP\\Corp</Group><Name>mine</Name><Url>mine</Url><RDP><UserName>me</UserName></RDP></Connection>
+	</Connections></RDMExport>`;
+	const r = parseRdmExport(xml);
+	const byName = Object.fromEntries((r.ok ? r.hosts : []).map((h) => [h.name, h]));
+	check('an inherited host takes the group\'s own login', byName.dc?.username === 'admin' && byName.dc.domain === 'CORP' && byName.dc.credential?.key === 'group:rdp\\corp');
+	check('the login can sit in the Active Directory settings', byName.lab?.username === 'labber' && byName.lab.domain === 'LAB');
+	check('a group login becomes a credential named by its path', r.ok && r.credentials.some((c) => c.name === 'RDP / Corp' && c.username === 'admin'));
+	check('a host with its own login keeps it, with no credential', byName.mine?.username === 'me' && byName.mine.credential === null);
 }
 
 section('helpers');

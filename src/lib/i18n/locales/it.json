@@ -2635,5 +2635,8 @@
   "credential.delete_used": "Usate da sessioni: {{sessions}}, cartelle: {{folders}}. Torneranno alle proprie credenziali salvate.",
   "credential.delete_unused": "Nessuna sessione o cartella le usa.",
   "credential.folder_menu": "Credenziali per le sessioni contenute",
-  "credential.folder_none": "Nessuna"
+  "credential.folder_none": "Nessuna",
+  "credential.own_login_hop": "Credenziali proprie di questo jump host",
+  "session.rdm_import_credentials": "Salva i {{count}} accessi dell'esportazione come credenziali, per {{hosts}} host selezionati",
+  "session.rdm_import_credentials_hint": "Le password di RDM non vengono importate: inseriscile una volta nella scheda Credenziali e tutte le sessioni che le usano le ricevono. Le credenziali trasmesse da un gruppo diventano quelle della sua cartella."
 }
