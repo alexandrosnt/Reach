@@ -126,6 +126,19 @@
 						<span class="vault-chip-name">{vault.name}</span>
 					</span>
 				{/if}
+				{#if session.credential}
+					<!-- The login comes from a saved credential: which one, or that it is missing. -->
+					<span
+						class="vault-chip cred-chip"
+						class:missing={session.credential.missing}
+						title={session.credential.missing ? t('credential.missing_hint') : session.credential.folder_id ? t('credential.chip_folder', { name: session.credential.name }) : t('credential.chip', { name: session.credential.name })}
+					>
+						<svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+							<circle cx="7.5" cy="15.5" r="4.5"/><path d="M10.7 12.3 21 2M16 7l3 3M18 5l3 3"/>
+						</svg>
+						<span class="vault-chip-name">{session.credential.missing ? t('credential.missing') : session.credential.name}</span>
+					</span>
+				{/if}
 			</span>
 			{#if session.kind === 'wsl'}
 				<span class="session-detail">
@@ -307,6 +320,11 @@
 	.vault-chip.shared {
 		color: #10b981;
 		background-color: rgba(16, 185, 129, 0.12);
+	}
+
+	.cred-chip.missing {
+		color: var(--color-warning, #f59e0b);
+		background-color: rgba(245, 158, 11, 0.12);
 	}
 
 	.vault-chip-name {

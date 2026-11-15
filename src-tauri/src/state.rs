@@ -99,6 +99,49 @@ pub struct SessionConfig {
     /// Reach, and the commands and weakenings the user allowed.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub ssh_options: Option<crate::ssh::sshconf::session::SshOptions>,
+    /// A saved credential this session logs in with. Its username, domain
+    /// and login win over the session's own, which stay stored as they were
+    /// so an older Reach, or a machine the credential is missing on, still
+    /// has a login to use. Unset: the folder's credential, if any applies;
+    /// "own": the session's own login even then.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_id: Option<String>,
+    /// Read only: the saved credential this session's login was filled
+    /// from when it was read, if one applies. Never stored.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential: Option<CredentialUse>,
+}
+
+/// A login kept once and used by any number of sessions in the same vault:
+/// a session links it by id, or a folder does for the sessions inside it.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SavedCredential {
+    pub id: String,
+    pub name: String,
+    pub username: String,
+    /// Windows logon domain, used by RDP sessions.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub domain: Option<String>,
+    pub auth_method: AuthMethod,
+    /// The vault it is kept in, as for sessions (None = this device's
+    /// private sessions vault). Only sessions in the same vault can use it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub vault_id: Option<String>,
+}
+
+/// Which saved credential a session's login came from, as read.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct CredentialUse {
+    pub id: String,
+    /// The credential's name; empty when it is missing.
+    pub name: String,
+    /// The folder it was inherited from; None when the session links it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub folder_id: Option<String>,
+    /// The credential is not in the session's vault (deleted, or not synced
+    /// yet): the session's own stored login was used.
+    #[serde(default)]
+    pub missing: bool,
 }
 
 /// Proxy configuration for SSH connections (Tor, SOCKS5, HTTP CONNECT).
@@ -176,6 +219,10 @@ pub struct Folder {
     pub parent_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub vault_id: Option<String>,
+    /// A saved credential the sessions inside (at any depth) log in with,
+    /// unless a session links its own or a nearer folder names another.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub credential_id: Option<String>,
 }
 
 /// Configuration for a port-forwarding tunnel.

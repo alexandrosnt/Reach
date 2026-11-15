@@ -3,6 +3,7 @@
 //! All sessions are stored encrypted in SQLite using XChaCha20-Poly1305.
 //! Lookups are O(1) using session_id as the primary key.
 
+use crate::ipc::saved_credential_commands as creds;
 use crate::state::{AppState, AuthMethod, Folder, JumpHostConfig, SessionConfig};
 use crate::vault::types::SecretCategory;
 use secrecy::SecretBox;
@@ -22,6 +23,7 @@ pub async fn session_list(state: State<'_, AppState>) -> Result<Vec<SessionConfi
     }
 
     let mut sessions = Vec::new();
+    let logins = creds::logins(&manager).await;
 
     // 1. Get sessions from __sessions__ vault (private sessions)
     if let Some(vault_id) = get_sessions_vault_id_if_exists(&manager) {
@@ -30,7 +32,8 @@ pub async fn session_list(state: State<'_, AppState>) -> Result<Vec<SessionConfi
                 if let Ok(plaintext) = plaintext {
                     use secrecy::ExposeSecret;
                     if let Ok(json) = String::from_utf8(plaintext.expose_secret().clone()) {
-                        if let Ok(session) = serde_json::from_str::<SessionConfig>(&json) {
+                        if let Ok(mut session) = serde_json::from_str::<SessionConfig>(&json) {
+                            creds::fill(&mut session, None, &logins.folders, &logins.creds);
                             sessions.push(session);
                         }
                     }
@@ -61,6 +64,7 @@ pub async fn session_list(state: State<'_, AppState>) -> Result<Vec<SessionConfi
                                 if let Ok(mut session) = serde_json::from_str::<SessionConfig>(&json) {
                                     // Ensure vault_id is set correctly
                                     session.vault_id = Some(vault_info.id.clone());
+                                    creds::fill(&mut session, Some(&vault_info.id), &logins.folders, &logins.creds);
                                     tracing::info!("session_list: loaded session: {}", session.name);
                                     sessions.push(session);
                                 }
@@ -153,7 +157,7 @@ pub(crate) fn ref_context(s: &SessionConfig, via: Option<&SessionConfig>) -> Opt
 async fn via_for(manager: &crate::vault::VaultManager, s: &SessionConfig) -> Option<SessionConfig> {
     let id = via_id(s)?;
     let loc = locate_session(manager, id).await?;
-    read_session(manager, &loc.vault_id, &loc.secret_id).await.ok()
+    read_session_filled(manager, &loc).await.ok().map(|(s, _)| s)
 }
 
 /// After reading a session: the user's approvals are the ones signed with
@@ -492,7 +496,7 @@ pub(crate) async fn stored_session_and_via(
     let loc = locate_session(&manager, session_id)
         .await
         .ok_or_else(|| format!("Session not found: {}", session_id))?;
-    let mut session = read_session(&manager, &loc.vault_id, &loc.secret_id).await?;
+    let (mut session, _) = read_session_filled(&manager, &loc).await?;
     let via = open_approvals(&manager, &mut session).await;
     Ok((session, via))
 }
@@ -554,6 +558,35 @@ async fn read_session(manager: &crate::vault::VaultManager, vault_id: &str, sess
     serde_json::from_str(&json).map_err(|e| format!("Invalid session data: {}", e))
 }
 
+/// A stored session as everything that uses it reads it: with the saved
+/// credential that applies to it filled in. Also returns the session's own
+/// stored login that the credential's took the place of, if it did.
+async fn read_session_filled(
+    manager: &crate::vault::VaultManager,
+    loc: &SessionLoc,
+) -> Result<(SessionConfig, Option<creds::OwnLogin>), String> {
+    let mut session = read_session(manager, &loc.vault_id, &loc.secret_id).await?;
+    let logins = creds::logins(manager).await;
+    let vault = creds::vault_of(manager, &loc.vault_id);
+    let own = creds::fill(&mut session, vault.as_deref(), &logins.folders, &logins.creds);
+    Ok((session, own))
+}
+
+/// A session as it is written to its vault: with `login` as its own (see
+/// `saved_credential_commands`), and nothing that is only ever read.
+fn to_store(session: &SessionConfig, login: Option<creds::OwnLogin>) -> SessionConfig {
+    let mut s = session.clone();
+    if let Some(login) = login {
+        login.put_into(&mut s);
+    }
+    s.credential = None;
+    for (_, r) in ref_slots_mut(&mut s) {
+        r.trusted = false;
+        r.confirm = false;
+    }
+    s
+}
+
 /// The password manager references of a session the current user has not
 /// approved yet, among those a connect would use; `None` when there are
 /// none. For the session list to ask before it connects.
@@ -587,7 +620,7 @@ pub async fn session_approve_secret_refs(
     let loc = locate_session(&manager, &session_id)
         .await
         .ok_or_else(|| format!("Session not found: {}", session_id))?;
-    let mut session = read_session(&manager, &loc.vault_id, &loc.secret_id).await?;
+    let (mut session, own) = read_session_filled(&manager, &loc).await?;
     // The via session is read once: what is checked against `context` is
     // what is signed.
     let via = via_for(&manager, &session).await;
@@ -596,7 +629,7 @@ pub async fn session_approve_secret_refs(
     let stored = session.clone();
     let (key, who) = (manager.approval_key(), manager.get_user_uuid());
     seal_for(key.as_deref(), who.as_deref(), &mut session, Some(&stored), via.as_ref());
-    let json = serde_json::to_string(&session).map_err(|e| e.to_string())?;
+    let json = serde_json::to_string(&to_store(&session, own)).map_err(|e| e.to_string())?;
     manager
         .update_secret(&loc.vault_id, &loc.secret_id, SecretBox::new(Box::new(json.into_bytes())))
         .await
@@ -671,7 +704,7 @@ pub async fn session_get(
         .ok_or_else(|| format!("Session not found: {}", session_id))?;
 
     // O(1) lookup by primary key
-    let mut session = read_session(&manager, &loc.vault_id, &loc.secret_id).await?;
+    let (mut session, _) = read_session_filled(&manager, &loc).await?;
     open_approvals(&manager, &mut session).await;
     Ok(session)
 }
@@ -706,6 +739,7 @@ pub async fn session_create(
     try_agent_keys: Option<bool>,
     ssh_options: Option<crate::ssh::sshconf::session::SshOptions>,
     wsl_distro: Option<String>,
+    credential_id: Option<String>,
 ) -> Result<SessionConfig, String> {
     let mut manager = state.vault_manager.lock().await;
     let kind = kind.unwrap_or_default();
@@ -759,10 +793,26 @@ pub async fn session_create(
         proxy,
         shell,
         ssh_options: ssh_options.filter(|o| !o.is_empty()),
+        credential_id: credential_id.filter(|c| !c.is_empty()),
+        credential: None,
     };
 
+    // A saved credential's login is filled in, as it is when the session is
+    // read; what is stored as its own is what the editor sent, unless that
+    // is the credential's (then only its username: a credential's password
+    // is not copied into the session).
+    let logins = creds::logins(&manager).await;
+    let vault = session.vault_id.clone();
+    creds::check_link(&logins.creds, session.credential_id.as_deref(), vault.as_deref())?;
+    let sent = creds::fill(&mut session, vault.as_deref(), &logins.folders, &logins.creds);
+    let own = sent.map(|sent| {
+        let filled = creds::OwnLogin::of(&session);
+        let bare = creds::OwnLogin { auth_method: AuthMethod::Agent, ..filled.clone() };
+        creds::login_to_store(sent, &[&filled], Some(bare))
+    });
+
     seal_approvals(&manager, &mut session, None).await;
-    let json = serde_json::to_string(&session).map_err(|e| e.to_string())?;
+    let json = serde_json::to_string(&to_store(&session, own)).map_err(|e| e.to_string())?;
     let plaintext = SecretBox::new(Box::new(json.into_bytes()));
 
     // O(1) insert with session.id as the secret_id
@@ -800,17 +850,40 @@ pub async fn session_update(
     let loc = locate_session(&manager, &session.id).await
         .ok_or_else(|| format!("Session not found: {}", session.id))?;
 
+    let logins = creds::logins(&manager).await;
+    let vault = creds::vault_of(&manager, &loc.vault_id);
+    creds::check_link(&logins.creds, session.credential_id.as_deref(), vault.as_deref())?;
+
     // The record being replaced, as this user reads it: which password
-    // manager references they had approved (see `seal_for`).
-    let stored = match read_session(&manager, &loc.vault_id, &loc.secret_id).await {
+    // manager references they had approved (see `seal_for`), and its own
+    // login and the one a credential filled in, if one did.
+    let (stored, stored_own, stored_filled) = match read_session(&manager, &loc.vault_id, &loc.secret_id).await {
         Ok(mut s) => {
+            let own = creds::fill(&mut s, vault.as_deref(), &logins.folders, &logins.creds);
+            let filled = own.is_some().then(|| creds::OwnLogin::of(&s));
+            let own = own.unwrap_or_else(|| creds::OwnLogin::of(&s));
             open_approvals(&manager, &mut s).await;
-            Some(s)
+            (Some(s), Some(own), filled)
         }
-        Err(_) => None,
+        Err(_) => (None, None, None),
+    };
+
+    // The login sent is the session's own, unless it is one a credential
+    // filled in (the editor shows that one): then the stored own login stays.
+    let sent = creds::OwnLogin::of(&session);
+    let applied = creds::fill(&mut session, vault.as_deref(), &logins.folders, &logins.creds).is_some();
+    let filled_now = applied.then(|| creds::OwnLogin::of(&session));
+    let filled: Vec<&creds::OwnLogin> = filled_now.iter().chain(stored_filled.iter()).collect();
+    let own = creds::login_to_store(sent, &filled, stored_own);
+    let own = if applied {
+        Some(own)
+    } else {
+        // No credential: the session is sealed with the login it is stored with.
+        own.put_into(&mut session);
+        None
     };
     seal_approvals(&manager, &mut session, stored.as_ref()).await;
-    let json = serde_json::to_string(&session).map_err(|e| e.to_string())?;
+    let json = serde_json::to_string(&to_store(&session, own)).map_err(|e| e.to_string())?;
     let plaintext = SecretBox::new(Box::new(json.into_bytes()));
 
     // O(1) update by primary key
@@ -962,6 +1035,7 @@ async fn create_folder(
         name: name.clone(),
         parent_id,
         vault_id,
+        credential_id: None,
     };
 
     let json = serde_json::to_string(&folder).map_err(|e| e.to_string())?;
@@ -1286,6 +1360,107 @@ async fn find_in_user_vaults(manager: &crate::vault::VaultManager, secret_id: &s
 async fn is_user_vault(manager: &crate::vault::VaultManager, vault_id: &str) -> Result<bool, String> {
     let vaults = manager.list_vaults().await.map_err(|e| e.to_string())?;
     Ok(vaults.iter().any(|v| v.id == vault_id && !v.name.starts_with("__")))
+}
+
+/// Set or clear the saved credential a folder's sessions log in with. It
+/// must be in the folder's vault.
+#[tauri::command]
+#[tracing::instrument(skip(state))]
+pub async fn session_set_folder_credential(
+    state: State<'_, AppState>,
+    folder_id: String,
+    credential_id: Option<String>,
+) -> Result<Folder, String> {
+    let manager = state.vault_manager.lock().await;
+    if manager.is_locked() {
+        return Err("Vault is locked".to_string());
+    }
+    let mut folder = read_folders(&manager)
+        .await?
+        .into_iter()
+        .find(|f| f.id == folder_id)
+        .ok_or_else(|| format!("Folder not found: {folder_id}"))?;
+    let credential_id = credential_id.filter(|c| !c.is_empty());
+    let all = creds::read_credentials(&manager).await;
+    creds::check_link(&all, credential_id.as_deref(), folder.vault_id.as_deref())?;
+    folder.credential_id = credential_id;
+    let vault_id = find_folder_vault(&manager, &folder.id)
+        .await
+        .ok_or_else(|| format!("Folder not found: {}", folder.id))?;
+    let json = serde_json::to_vec(&folder).map_err(|e| e.to_string())?;
+    manager
+        .update_secret(&vault_id, &folder.id, SecretBox::new(Box::new(json)))
+        .await
+        .map_err(|e| e.to_string())?;
+    tracing::info!("Folder {} now uses credential {:?}", folder.id, folder.credential_id);
+    Ok(folder)
+}
+
+// --- For saved_credential_commands ---
+
+pub(crate) fn sessions_vault_id(manager: &crate::vault::VaultManager) -> Option<String> {
+    get_sessions_vault_id_if_exists(manager)
+}
+
+pub(crate) async fn sessions_vault(manager: &mut crate::vault::VaultManager) -> Result<String, String> {
+    ensure_sessions_vault(manager).await
+}
+
+pub(crate) async fn row_id_in(manager: &crate::vault::VaultManager, vault_id: &str, id: &str) -> Option<String> {
+    session_row_id(manager, vault_id, id).await
+}
+
+pub(crate) async fn user_vault_holding(manager: &crate::vault::VaultManager, id: &str) -> Option<String> {
+    find_in_user_vaults(manager, id).await
+}
+
+pub(crate) async fn user_vault(manager: &crate::vault::VaultManager, vault_id: &str) -> Result<bool, String> {
+    is_user_vault(manager, vault_id).await
+}
+
+/// Every folder, or none when they cannot be read (a session is then read
+/// as if its folders named no credential).
+pub(crate) async fn all_folders(manager: &crate::vault::VaultManager) -> Vec<Folder> {
+    read_folders(manager).await.unwrap_or_default()
+}
+
+/// Every session and folder that names a credential stops naming it.
+/// Each record is edited as stored, so fields a newer Reach added stay.
+/// Returns how many changed.
+pub(crate) async fn unlink_credential(manager: &crate::vault::VaultManager, credential_id: &str) -> Result<u32, String> {
+    let mut vaults: Vec<(String, &[&str])> = Vec::new();
+    if let Some(v) = get_sessions_vault_id_if_exists(manager) {
+        vaults.push((v, &["session", "custom:session"]));
+    }
+    if let Some(v) = get_folders_vault_id_if_exists(manager) {
+        vaults.push((v, &["folder"]));
+    }
+    for v in manager.list_vaults().await.unwrap_or_default() {
+        if !v.name.starts_with("__") {
+            vaults.push((v.id, &["session", "custom:session", "folder"]));
+        }
+    }
+    let mut changed = 0u32;
+    for (vault_id, categories) in vaults {
+        let Ok(secrets) = manager.read_secrets_in(&vault_id, categories).await else { continue };
+        for (meta, plaintext) in secrets {
+            let Ok(plaintext) = plaintext else { continue };
+            use secrecy::ExposeSecret;
+            let Ok(mut value) = serde_json::from_slice::<serde_json::Value>(plaintext.expose_secret()) else { continue };
+            let Some(obj) = value.as_object_mut() else { continue };
+            if obj.get("credential_id").and_then(|v| v.as_str()) != Some(credential_id) {
+                continue;
+            }
+            obj.remove("credential_id");
+            let json = serde_json::to_vec(&value).map_err(|e| e.to_string())?;
+            manager
+                .update_secret(&vault_id, &meta.id, SecretBox::new(Box::new(json)))
+                .await
+                .map_err(|e| e.to_string())?;
+            changed += 1;
+        }
+    }
+    Ok(changed)
 }
 
 /// Share a session with another user via X25519 key re-wrap.
@@ -1971,8 +2146,8 @@ mod folder_sync_tests {
         // As Reach before 0.8.2 left them: both folders on the device, one
         // naming the shared vault.
         let local = ensure_folders_vault(&mut a).await.unwrap();
-        let old = Folder { id: "old".into(), name: "Servers".into(), parent_id: None, vault_id: Some(team.clone()) };
-        let mine = Folder { id: "mine".into(), name: "Home".into(), parent_id: None, vault_id: None };
+        let old = Folder { id: "old".into(), name: "Servers".into(), parent_id: None, vault_id: Some(team.clone()), credential_id: None };
+        let mine = Folder { id: "mine".into(), name: "Home".into(), parent_id: None, vault_id: None, credential_id: None };
         for f in [&old, &mine] {
             a.create_secret_with_id(&local, &f.id, &f.name, SecretCategory::Folder, put(f)).await.unwrap();
         }

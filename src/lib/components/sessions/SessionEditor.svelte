@@ -11,6 +11,7 @@
 	import { t } from '#lib/state/i18n.svelte.js';
 	import { folderPath } from '#lib/sessions/folder-tree.js';
 	import { open as openDialog } from '@tauri-apps/plugin-dialog';
+	import { savedCredentialList, credentialsFor, type SavedCredential } from '#lib/ipc/savedCredentials.js';
 
 	interface Props {
 		open: boolean;
@@ -42,6 +43,65 @@
 	let wslDistro = $state('');
 	let availableDistros = $state<string[]>([]);
 	let sshSessions = $state<SessionConfig[]>([]);
+
+	/**
+	 * Which login the session uses: '' its folder's saved credential if one
+	 * applies, else its own; OWN_LOGIN its own even then; or a saved
+	 * credential's id. Only credentials in the session's vault are offered.
+	 */
+	const OWN_LOGIN = 'own';
+	let credentialId = $state('');
+	let allCredentials = $state<SavedCredential[]>([]);
+	let sessionVault = $derived(editSession ? (editSession.vault_id ?? null) : vaultId);
+	let credentials = $derived(credentialsFor(allCredentials, sessionVault));
+
+	$effect(() => {
+		if (open) {
+			savedCredentialList()
+				.then((list) => (allCredentials = list))
+				.catch(() => (allCredentials = []));
+		}
+	});
+
+	/** The credential the nearest folder names, for the folder picked here. */
+	let folderCredential = $derived.by(() => {
+		const seen = new Set<string>();
+		let id: string | null = folderIdStr || null;
+		while (id && !seen.has(id)) {
+			seen.add(id);
+			const f = folders.find((x) => x.id === id);
+			if (!f) return null;
+			if (f.credential_id) {
+				return { folder: f, credential: credentials.find((c) => c.id === f.credential_id) ?? null };
+			}
+			id = f.parent_id;
+		}
+		return null;
+	});
+
+	/** The saved credential the login comes from; null: the fields below. */
+	let usedCredential = $derived(
+		credentialId === OWN_LOGIN
+			? null
+			: credentialId
+				? (credentials.find((c) => c.id === credentialId) ?? null)
+				: (folderCredential?.credential ?? null)
+	);
+
+	function pickCredential(next: string): void {
+		// The fields held the credential's login when the session was read
+		// with one; going back to the session's own shows it blank, so what
+		// is saved is what is seen.
+		const wasFilled = !!editSession?.credential && !editSession.credential.missing;
+		credentialId = next;
+		if (wasFilled && !usedCredential) {
+			authType = 'Password';
+			password = '';
+			passwordRef = null;
+			keyPassphrase = '';
+			keyPassphraseRef = null;
+		}
+	}
 
 	$effect(() => {
 		if (open && kind === 'wsl') {
@@ -114,7 +174,7 @@
 	let canSave = $derived(
 		name.trim().length > 0 &&
 		(kind === 'wsl' ? wslDistro.trim().length > 0 : host.trim().length > 0) &&
-		(kind === 'vnc' || kind === 'wsl' || username.trim().length > 0) &&
+		(kind === 'vnc' || kind === 'wsl' || !!usedCredential || username.trim().length > 0) &&
 		!saving
 	);
 
@@ -127,6 +187,7 @@
 			sharePath = editSession.share_path ?? '';
 			viaSessionId = editSession.via_session_id ?? '';
 			wslDistro = editSession.wsl_distro ?? '';
+			credentialId = editSession.credential_id ?? '';
 			name = editSession.name;
 			host = editSession.host;
 			portStr = String(editSession.port);
@@ -178,6 +239,7 @@
 			os = 'windows';
 			sharePath = '';
 			viaSessionId = '';
+			credentialId = '';
 			name = '';
 			host = '';
 			portStr = '22';
@@ -213,7 +275,7 @@
 		// "Password manager" without a chosen entry would save a login with
 		// no password at all.
 		const ssh = kind === 'ssh';
-		if (ssh && ((authType === 'Manager' && !passwordRef) || (jumpEnabled && jumpHops.some((h) => h.authType === 'Manager' && !h.passwordRef)))) {
+		if (ssh && ((authType === 'Manager' && !passwordRef && !usedCredential) || (jumpEnabled && jumpHops.some((h) => h.authType === 'Manager' && !h.passwordRef)))) {
 			error = t('session.manager_pick_entry');
 			return;
 		}
@@ -227,6 +289,8 @@
 		/** Jump hosts, proxies, login shells and ssh_config are SSH's alone. */
 		const desktop = rdp || vnc || wsl;
 		const via = vnc ? viaSessionId || null : null;
+		/** WSL and VNC have no username to share; their login stays their own. */
+		const credential = rdp || kind === 'ssh' ? credentialId || null : null;
 		// RDP and VNC are password logons; the toggle below is SSH-only and
 		// its value is ignored here rather than trusted. WSL signs in by
 		// itself: nothing to keep, so a password left in the form is not saved.
@@ -294,20 +358,23 @@
 
 		try {
 			if (isEditing && editSession) {
+				// A login a credential filled in goes back as it came, so the
+				// backend knows it is not the session's own and keeps that.
+				const filled = !!usedCredential && !!editSession.credential && !editSession.credential.missing;
 				await sessionUpdate({
 					...editSession,
 					name: name.trim(),
 					host: kind === 'wsl' ? (host.trim() || 'wsl') : host.trim(),
 					port,
-					username: vnc ? '' : username.trim(),
-					auth_method: authMethod,
+					username: filled ? editSession.username : vnc ? '' : username.trim(),
+					auth_method: filled ? editSession.auth_method : authMethod,
 					folder_id: folderIdStr || null,
 					tags,
 					jump_chain: desktop ? null : (jumpChain ?? editSession.jump_chain ?? null),
 					proxy: proxyConfig,
 					shell: desktop ? null : (shell.trim() || null),
 					kind,
-					domain: rdp ? (domain.trim() || null) : null,
+					domain: filled ? (editSession.domain ?? null) : rdp ? (domain.trim() || null) : null,
 					// A session that changed protocol changed machine type too.
 					detected_os: rdp ? os : (kind === sessionKind(editSession) ? editSession.detected_os : null),
 					share_path: rdp ? (sharePath.trim() || null) : null,
@@ -315,6 +382,8 @@
 					try_agent_keys: !desktop && authType === 'Key' && tryAgentKeys ? true : null,
 					wsl_distro: kind === 'wsl' ? wslDistro.trim() : null,
 					ssh_options: sshOptionsToSave,
+					credential_id: credential,
+					credential: null,
 				});
 			} else {
 				await sessionCreate({
@@ -336,7 +405,8 @@
 					viaSessionId: via,
 					tryAgentKeys: !desktop && authType === 'Key' && tryAgentKeys,
 					sshOptions: sshOptionsToSave,
-					wslDistro: kind === 'wsl' ? wslDistro.trim() : null
+					wslDistro: kind === 'wsl' ? wslDistro.trim() : null,
+					credentialId: credential
 				});
 			}
 			onsave?.();
@@ -461,16 +531,43 @@
 			</div>
 		{/if}
 
-		{#if kind !== 'vnc' && kind !== 'wsl'}
+		{#if kind === 'ssh' || kind === 'rdp'}
+			<div class="shell-field">
+				<label class="via-label" for="session-login">{t('credential.login')}</label>
+				<select id="session-login" class="via-select" value={credentialId} onchange={(e) => pickCredential(e.currentTarget.value)} disabled={saving}>
+					{#if folderCredential}
+						<option value="">{folderCredential.credential ? t('credential.from_folder', { name: folderCredential.credential.name, folder: folderCredential.folder.name }) : t('credential.from_folder_missing', { folder: folderCredential.folder.name })}</option>
+						<option value={OWN_LOGIN}>{t('credential.own_login')}</option>
+					{:else}
+						<option value="">{t('credential.own_login')}</option>
+					{/if}
+					{#each credentials as c (c.id)}
+						<option value={c.id}>{c.name} ({c.username})</option>
+					{/each}
+					{#if credentialId && credentialId !== OWN_LOGIN && !credentials.some((c) => c.id === credentialId)}
+						<option value={credentialId}>{t('credential.missing')}</option>
+					{/if}
+				</select>
+				{#if usedCredential}
+					<p class="shell-hint">{t('credential.login_hint', { username: usedCredential.username })}</p>
+				{:else if credentialId && credentialId !== OWN_LOGIN}
+					<p class="shell-hint">{t('credential.missing_hint')}</p>
+				{/if}
+			</div>
+		{/if}
+
+		{#if kind !== 'vnc' && kind !== 'wsl' && !usedCredential}
 			<Input label={t('session.username')} bind:value={username} placeholder={kind === 'rdp' ? 'Administrator' : 'root'} disabled={saving} />
 		{/if}
 
 		{#if kind === 'rdp'}
+			{#if !usedCredential}
 			<div class="shell-field">
 				<SecretRefField approvable label={t('session.password_optional')} bind:value={password} bind:secretRef={passwordRef} placeholder={t('session.stored_encrypted')} disabled={saving} onpick={(e) => (username = nameFromEntry(username, e))} />
 				<p class="shell-hint">{t('session.rdp_password_hint')}</p>
 			</div>
 			<Input label={t('session.rdp_domain')} bind:value={domain} placeholder="CORP" disabled={saving} />
+			{/if}
 			<div class="auth-section">
 				<span class="auth-label">{t('session.os')}</span>
 				<div class="auth-toggle">
@@ -512,6 +609,7 @@
 				<p class="shell-hint">{t('session.wsl_user_hint')}</p>
 			</div>
 		{:else}
+		{#if !usedCredential}
 		<div class="auth-section">
 			<span class="auth-label">{t('session.auth_method')}</span>
 			<div class="auth-toggle">
@@ -570,6 +668,7 @@
 				</label>
 				<p class="shell-hint">{t('session.try_agent_keys_hint')}</p>
 			</div>
+		{/if}
 		{/if}
 
 		<div class="shell-field">

@@ -59,6 +59,7 @@ use ipc::monitoring_commands::*;
 use ipc::pty_commands::*;
 #[cfg(desktop)]
 use ipc::serial_commands::*;
+use ipc::saved_credential_commands::*;
 use ipc::session_commands::*;
 use ipc::sftp_commands::*;
 use ipc::dragout_commands::*;
@@ -476,6 +477,11 @@ pub fn run() {
             session_move_to_folder,
             session_list_folders,
             session_create_folder,
+            session_set_folder_credential,
+            saved_credential_list,
+            saved_credential_create,
+            saved_credential_update,
+            saved_credential_delete,
             session_update_folder_parent,
             session_delete_folder,
             session_share,
@@ -886,6 +892,11 @@ pub fn run() {
             session_move_to_folder,
             session_list_folders,
             session_create_folder,
+            session_set_folder_credential,
+            saved_credential_list,
+            saved_credential_create,
+            saved_credential_update,
+            saved_credential_delete,
             session_update_folder_parent,
             session_delete_folder,
             session_share,
