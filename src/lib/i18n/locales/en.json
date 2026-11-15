@@ -2636,5 +2636,7 @@
   "credential.delete_unused": "No session or folder uses it.",
   "credential.folder_menu": "Credential for sessions inside",
   "credential.folder_none": "None",
-  "credential.own_login_hop": "This jump host's own login"
+  "credential.own_login_hop": "This jump host's own login",
+  "session.rdm_import_credentials": "Save the {{count}} logins from the export as credentials, for {{hosts}} selected hosts",
+  "session.rdm_import_credentials_hint": "RDM's passwords are not imported: type each one once in the Credentials tab and every session using it gets it. A login a group passes down becomes that folder's credential."
 }

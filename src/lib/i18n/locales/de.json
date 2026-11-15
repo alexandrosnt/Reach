@@ -2636,5 +2636,7 @@
   "credential.delete_unused": "Keine Sitzung und kein Ordner nutzt sie.",
   "credential.folder_menu": "Zugangsdaten für Sitzungen darin",
   "credential.folder_none": "Keine",
-  "credential.own_login_hop": "Eigene Anmeldung dieses Jump-Hosts"
+  "credential.own_login_hop": "Eigene Anmeldung dieses Jump-Hosts",
+  "session.rdm_import_credentials": "Die {{count}} Anmeldungen aus dem Export als Zugangsdaten speichern, für {{hosts}} ausgewählte Hosts",
+  "session.rdm_import_credentials_hint": "Passwörter aus RDM werden nicht importiert: Jedes einmal im Tab Zugangsdaten eingeben, dann erhält es jede Sitzung, die es nutzt. Eine Anmeldung, die eine Gruppe weitergibt, wird zu den Zugangsdaten dieses Ordners."
 }

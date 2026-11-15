@@ -12,8 +12,9 @@
 	 */
 	import Modal from '#lib/components/shared/Modal.svelte';
 	import Button from '#lib/components/shared/Button.svelte';
-	import { sessionCreate, sessionCreateFolder, sessionList, sessionListFolders, type AuthMethod, type Folder, type JumpHostConfig, type SessionConfig } from '#lib/ipc/sessions.js';
-	import { findChildFolder, findExisting, parseRdmExport, type RdmImportHost, type RdmSkipped } from '#lib/sessions/rdm-import.js';
+	import { sessionCreate, sessionCreateFolder, sessionList, sessionListFolders, sessionSetFolderCredential, type AuthMethod, type Folder, type JumpHostConfig, type SessionConfig } from '#lib/ipc/sessions.js';
+	import { findChildFolder, findExisting, parseRdmExport, type RdmCredential, type RdmImportHost, type RdmSkipped } from '#lib/sessions/rdm-import.js';
+	import { savedCredentialCreate, savedCredentialList, credentialsFor } from '#lib/ipc/savedCredentials.js';
 	import { addToast } from '#lib/state/toasts.svelte.js';
 	import { t } from '#lib/state/i18n.svelte.js';
 
@@ -44,6 +45,11 @@
 	let filter = $state('');
 	/** Used for every host, and gateway, the export gives no username for. */
 	let fallbackUser = $state('');
+	/** The logins RDM keeps apart (credential entries, groups' own), to save as Reach credentials. */
+	let rdmCredentials = $state<RdmCredential[]>([]);
+	let makeCredentials = $state(true);
+	/** Selected hosts that would log in with a saved credential. */
+	const credentialHosts = $derived(hosts.filter((h) => selected.has(h.id) && h.credential).length);
 
 	const target = $derived(vaultId ?? null);
 	const busy = $derived(reading || importing);
@@ -117,6 +123,7 @@
 			await loadSaved();
 			hosts = result.hosts;
 			skipped = result.skipped;
+			rdmCredentials = result.credentials;
 			selected = new Set(result.hosts.filter((h) => !isSaved(h)).map((h) => h.id));
 			parsed = true;
 		} catch (err) {
@@ -167,6 +174,67 @@
 		return h.jump.map((g) => ({ host: g.host, port: g.port, username: fallbackUser.trim(), auth_method: { type: 'Password' } }));
 	}
 
+	/**
+	 * Save the logins the selected hosts use as Reach credentials, once each
+	 * (one already in the vault under the same name and login is reused), and
+	 * set each inherited one on its group's folder. Returns the credential id
+	 * by RDM key, and the credential each folder has by folder id.
+	 */
+	async function saveCredentials(
+		chosen: RdmImportHost[],
+		created: Map<string, string>
+	): Promise<{ ids: Map<string, string>; folderCredential: Map<string, string> }> {
+		const ids = new Map<string, string>();
+		const folderCredential = new Map<string, string>();
+		for (const f of folders) if (f.credential_id && (f.vault_id ?? null) === target) folderCredential.set(f.id, f.credential_id);
+		if (!makeCredentials) return { ids, folderCredential };
+		const have = credentialsFor(await savedCredentialList(), target);
+		for (const c of rdmCredentials) {
+			if (!chosen.some((h) => h.credential?.key === c.key)) continue;
+			const same = have.find((x) => x.name === c.name && x.username === c.username && (x.domain ?? null) === (c.domain ?? null));
+			// No password: RDM's are not read. It is typed once, in the Credentials tab.
+			const saved = same ?? (await savedCredentialCreate({ name: c.name, username: c.username, domain: c.domain, authMethod: { type: 'Password' }, vaultId: target }));
+			ids.set(c.key, saved.id);
+		}
+		// A group the hosts inherit from: its folder gets the credential, unless it has another already.
+		for (const h of chosen) {
+			const from = h.credential?.from;
+			const id = h.credential ? ids.get(h.credential.key) : undefined;
+			if (!from || !id) continue;
+			const folderId = await folderFor(from, created);
+			if (!folderId || folderCredential.has(folderId)) continue;
+			await sessionSetFolderCredential(folderId, id);
+			folderCredential.set(folderId, id);
+		}
+		return { ids, folderCredential };
+	}
+
+	/** The folder id for each level of a group path that exists already (created, or in the vault). */
+	function knownFolders(path: string[], created: Map<string, string>): string[] {
+		const out: string[] = [];
+		let parent: string | null = null;
+		for (let i = 0; i < path.length; i++) {
+			const id: string | undefined = created.get(path.slice(0, i + 1).join('\u0000')) ?? findChildFolder(path[i], parent, target, folders)?.id;
+			if (!id) break;
+			out.push(id);
+			parent = id;
+		}
+		return out;
+	}
+
+	/**
+	 * What a host's session names as its credential: the saved one it links;
+	 * nothing when its folder gives it that one; "own" when it has its own
+	 * login but sits in a folder with a credential, which would win otherwise.
+	 */
+	function credentialIdFor(h: RdmImportHost, ids: Map<string, string>, folderCredential: Map<string, string>, created: Map<string, string>): string | null {
+		const chain = knownFolders(h.folder, created).reverse();
+		const inherited = chain.map((f) => folderCredential.get(f)).find(Boolean) ?? null;
+		const id = h.credential ? (ids.get(h.credential.key) ?? null) : null;
+		if (id) return id === inherited ? null : id;
+		return inherited ? 'own' : null;
+	}
+
 	async function handleImport(): Promise<void> {
 		if (!canImport) return;
 		importing = true;
@@ -175,9 +243,17 @@
 		const created = new Map<string, string>();
 		const failures: { name: string; error: string }[] = [];
 		let count = 0;
+		const chosen = hosts.filter((h) => selected.has(h.id));
+		let ids = new Map<string, string>();
+		let folderCredential = new Map<string, string>();
+		try {
+			({ ids, folderCredential } = await saveCredentials(chosen, created));
+		} catch (err) {
+			// The sessions still import, each with its own login.
+			failures.push({ name: t('credential.tab_credentials'), error: String(err) });
+		}
 		// One host that cannot be saved must not cost the others theirs.
-		for (const h of hosts) {
-			if (!selected.has(h.id)) continue;
+		for (const h of chosen) {
 			try {
 				await sessionCreate({
 					name: h.name,
@@ -187,6 +263,7 @@
 					authMethod: authFor(h),
 					jumpChain: jumpFor(h),
 					folderId: await folderFor(h.folder, created),
+					credentialId: credentialIdFor(h, ids, folderCredential, created),
 					vaultId: target,
 					tags: ['rdm-import'],
 					kind: h.kind,
@@ -233,6 +310,8 @@
 		selected = new Set();
 		filter = '';
 		fallbackUser = '';
+		rdmCredentials = [];
+		makeCredentials = true;
 	}
 </script>
 
@@ -299,6 +378,13 @@
 						<input class="tool-input" type="text" bind:value={fallbackUser} autocomplete="off" spellcheck="false" disabled={busy} />
 					</label>
 					<p class="user-hint" class:warn={missingUser > 0}>{t('session.rdm_import_user_hint')}</p>
+				{/if}
+				{#if rdmCredentials.length > 0}
+					<label class="cred-option">
+						<input type="checkbox" bind:checked={makeCredentials} disabled={busy} />
+						<span>{t('session.rdm_import_credentials', { count: String(rdmCredentials.length), hosts: String(credentialHosts) })}</span>
+					</label>
+					<p class="user-hint">{t('session.rdm_import_credentials_hint')}</p>
 				{/if}
 				<div class="select-actions">
 					<button class="select-btn" type="button" onclick={() => (selected = new Set(selectableHosts.map((h) => h.id)))} disabled={busy}>
@@ -370,6 +456,14 @@
 		gap: 4px;
 		font-size: 0.75rem;
 		color: var(--color-text-secondary);
+	}
+
+	.cred-option {
+		display: flex;
+		align-items: center;
+		gap: 6px;
+		font-size: 0.75rem;
+		color: var(--color-text-primary);
 	}
 
 	.user-hint {

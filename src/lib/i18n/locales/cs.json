@@ -2636,5 +2636,7 @@
   "credential.delete_unused": "Nepoužívá je žádná relace ani složka.",
   "credential.folder_menu": "Přihlašovací údaje pro relace uvnitř",
   "credential.folder_none": "Žádné",
-  "credential.own_login_hop": "Vlastní přihlášení jump hostu"
+  "credential.own_login_hop": "Vlastní přihlášení jump hostu",
+  "session.rdm_import_credentials": "Uložit {{count}} přihlášení z exportu jako přihlašovací údaje pro {{hosts}} vybraných hostitelů",
+  "session.rdm_import_credentials_hint": "Hesla z RDM se neimportují: každé zadáte jednou na kartě Přihlašovací údaje a dostanou ho všechny relace, které ho používají. Přihlášení, které předává skupina, se stane přihlašovacími údaji dané složky."
 }

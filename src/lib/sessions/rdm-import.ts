@@ -6,6 +6,10 @@
  * every object that says its ConnectionType is read as an entry. RDP, SSH and
  * VNC entries become hosts; groups and credential entries are not hosts but
  * a credential entry linked from a host lends it its username and domain.
+ * A host whose credentials are "inherited" takes them from the nearest group
+ * that has some: a linked credential entry, or a login of its own. Each
+ * credential a host uses is listed too, so the dialog can save it once as a
+ * Reach credential (its password is not in what is read; see below).
  * An SSH gateway entry (a VPN entry of the SSHGateway kind) is not a host
  * either, but becomes the jump host of the SSH entries linked to it.
  * Everything else is listed as skipped, with the reason.
@@ -41,6 +45,23 @@ export interface RdmImportHost {
 	folder: string[];
 	/** SSH only: the SSH gateway(s) RDM reaches the host through, outermost first. */
 	jump: RdmGateway[];
+	/** The credential the host logs in with, if it has a username. */
+	credential: RdmHostCredential | null;
+}
+
+/** A login RDM keeps apart from the hosts: a credential entry, or a group's own. */
+export interface RdmCredential {
+	/** The credential entry's ID, or `group:` and the group's path. */
+	key: string;
+	name: string;
+	username: string;
+	domain: string | null;
+}
+
+export interface RdmHostCredential {
+	key: string;
+	/** Inherited: the group path it comes from, for a folder default. Null when the host links it itself. */
+	from: string[] | null;
 }
 
 /** One hop of an RDM SSH gateway entry; its credentials are not in the export. */
@@ -60,7 +81,7 @@ export interface RdmSkipped {
 }
 
 export type RdmParseResult =
-	| { ok: true; hosts: RdmImportHost[]; skipped: RdmSkipped[] }
+	| { ok: true; hosts: RdmImportHost[]; skipped: RdmSkipped[]; credentials: RdmCredential[] }
 	| { ok: false; error: 'bad_file'; detail: string }
 	| { ok: false; error: 'encrypted' }
 	| { ok: false; error: 'no_hosts' };
@@ -354,6 +375,9 @@ const USER_PATHS: Record<RdmKind, string[]> = {
 };
 const CREDENTIAL_USER_PATHS = ['Credentials.UserName', 'Credentials.Username', 'UserName', 'Username'];
 const CREDENTIAL_DOMAIN_PATHS = ['Credentials.Domain', 'Domain'];
+/** A group's own login, for the entries inside that inherit theirs. */
+const GROUP_USER_PATHS = ['GroupDetails.UserName', 'GroupDetails.Username', 'ActiveDirectoryConsole.UserName', 'Credentials.UserName'];
+const GROUP_DOMAIN_PATHS = ['GroupDetails.Domain', 'ActiveDirectoryConsole.Domain', 'Credentials.Domain'];
 
 export function parseRdmExport(raw: string): RdmParseResult {
 	const trimmed = raw.replace(/^﻿/, '').trim();
@@ -384,35 +408,54 @@ export function parseRdmExport(raw: string): RdmParseResult {
 	}
 
 	// Credential entries, by ID, to lend a username and domain to the hosts that link them.
-	const credentials = new Map<string, Obj>();
+	const credentials = new Map<string, RdmCredential>();
 	for (const e of entries) {
 		const id = text(field(e, 'ID')).toLowerCase();
 		const type = text(field(e, 'ConnectionType')).toLowerCase();
-		if (id && (type === 'credential' || type === 'credentials' || (!type && isObj(field(e, 'Credentials'))))) credentials.set(id, e);
+		if (id && (type === 'credential' || type === 'credentials' || (!type && isObj(field(e, 'Credentials'))))) {
+			credentials.set(id, {
+				key: id,
+				name: text(field(e, 'Name')) || pick(e, CREDENTIAL_USER_PATHS) || id,
+				username: pick(e, CREDENTIAL_USER_PATHS),
+				domain: pick(e, CREDENTIAL_DOMAIN_PATHS) || null
+			});
+		}
 	}
 
-	// Groups that name a credential, by their path: an entry linked to a
-	// credential the export doesn't hold (RDM's "inherited" link, or one in
-	// another vault) takes the nearest enclosing group's.
-	const groupCredentials = new Map<string, string>();
+	// Groups with a credential, by their path: a linked credential entry, or
+	// a login of the group's own. An entry linked to a credential the export
+	// doesn't hold (RDM's "inherited" link, or one in another vault) takes
+	// the nearest enclosing group's.
+	const groupCredentials = new Map<string, RdmCredential>();
 	for (const e of entries) {
 		if (text(field(e, 'ConnectionType')).toLowerCase() !== 'group') continue;
-		const link = text(field(e, 'CredentialConnectionID')).toLowerCase();
-		if (link) groupCredentials.set(splitGroup(text(field(e, 'Group'))).join('\\').toLowerCase(), link);
+		const path = splitGroup(text(field(e, 'Group')));
+		const pathKey = path.join('\\').toLowerCase();
+		const link = credentials.get(text(field(e, 'CredentialConnectionID')).toLowerCase());
+		const username = pick(e, GROUP_USER_PATHS);
+		if (link) groupCredentials.set(pathKey, link);
+		else if (username && path.length > 0) {
+			groupCredentials.set(pathKey, {
+				key: `group:${pathKey}`,
+				name: path.join(' / '),
+				username,
+				domain: pick(e, GROUP_DOMAIN_PATHS) || null
+			});
+		}
 	}
-	const credentialFor = (entry: Obj): Obj | undefined => {
+	const credentialFor = (entry: Obj): { cred: RdmCredential; from: string[] | null } | undefined => {
 		const link = text(field(entry, 'CredentialConnectionID')).toLowerCase();
 		if (!link) return undefined;
 		const own = credentials.get(link);
-		if (own) return own;
+		if (own) return { cred: own, from: null };
 		const path = splitGroup(text(field(entry, 'Group')));
 		for (let n = path.length; n > 0; n--) {
-			const up = groupCredentials.get(path.slice(0, n).join('\\').toLowerCase());
-			const found = up ? credentials.get(up) : undefined;
-			if (found) return found;
+			const found = groupCredentials.get(path.slice(0, n).join('\\').toLowerCase());
+			if (found) return { cred: found, from: path.slice(0, n) };
 		}
 		return undefined;
 	};
+	const used = new Map<string, RdmCredential>();
 
 	// SSH gateway entries, by ID, for the SSH hosts that link one.
 	const gateways = new Map<string, RdmGateway[]>();
@@ -446,12 +489,16 @@ export function parseRdmExport(raw: string): RdmParseResult {
 			return;
 		}
 
-		const credential = credentialFor(entry);
-		const username = pick(entry, USER_PATHS[kind]) || (credential ? pick(credential, CREDENTIAL_USER_PATHS) : '');
+		const found = credentialFor(entry);
+		const ownUser = pick(entry, USER_PATHS[kind]);
+		const username = ownUser || found?.cred.username || '';
 		let domain: string | null = null;
 		if (kind === 'rdp') {
-			domain = pick(entry, ['RDP.Domain', 'Domain']) || (credential ? pick(credential, CREDENTIAL_DOMAIN_PATHS) : '') || null;
+			domain = pick(entry, ['RDP.Domain', 'Domain']) || found?.cred.domain || null;
 		}
+		// A login the entry writes out itself is its own; VNC has no username to share.
+		const credential = found && found.cred.username && !ownUser && kind !== 'vnc' ? { key: found.cred.key, from: found.from } : null;
+		if (credential && found) used.set(found.cred.key, found.cred);
 		let jump: RdmGateway[] = [];
 		if (kind === 'ssh' && pick(entry, ['Terminal.UseSSHGateway']).toLowerCase() === 'true') {
 			jump = gateways.get(pick(entry, ['Terminal.LinkedSSHGateway']).toLowerCase()) ?? [];
@@ -468,12 +515,13 @@ export function parseRdmExport(raw: string): RdmParseResult {
 			domain,
 			keyPath,
 			folder: splitGroup(text(field(entry, 'Group'))),
-			jump
+			jump,
+			credential
 		});
 	});
 
 	if (hosts.length === 0 && skipped.length === 0) return { ok: false, error: 'no_hosts' };
-	return { ok: true, hosts, skipped };
+	return { ok: true, hosts, skipped, credentials: [...used.values()] };
 }
 
 /** An export with no entries but an encrypted payload where they should be. */
