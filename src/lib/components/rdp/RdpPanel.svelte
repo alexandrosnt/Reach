@@ -82,6 +82,15 @@
 		clipboardSync: () => (isVnc() ? vncClipboardSync(id) : rdpClipboardSync(id)),
 	};
 
+	/**
+	 * Fire off one piece of input. Input is best effort: once the desktop has
+	 * ended (the server logged the user off, say) the backend refuses it, and
+	 * every mouse move would otherwise be an unhandled rejection.
+	 */
+	function sendInput(input: Promise<unknown>): void {
+		input.catch(() => {});
+	}
+
 	/** Press or release a key named by its position (`KeyboardEvent.code`). */
 	async function pressCode(code: string, down: boolean): Promise<void> {
 		if (isVnc()) {
@@ -428,6 +437,7 @@
 	let moveScheduled = false;
 
 	function onMove(e: MouseEvent): void {
+		if (phase !== 'connected') return;
 		const p = remotePoint(e);
 		if (!p) return;
 		pendingMove = p;
@@ -435,30 +445,32 @@
 		moveScheduled = true;
 		requestAnimationFrame(() => {
 			moveScheduled = false;
-			if (!pendingMove) return;
+			if (!pendingMove || phase !== 'connected') return;
 			const { x, y } = pendingMove;
 			pendingMove = null;
-			void remote.mouse(x, y, 'move');
+			sendInput(remote.mouse(x, y, 'move'));
 		});
 	}
 
 	function onButton(e: MouseEvent, action: 'down' | 'up'): void {
+		if (phase !== 'connected') return;
 		if (e.button > 2) return;
 		const p = remotePoint(e);
 		if (!p) return;
 		if (action === 'down') canvas.focus();
 		e.preventDefault();
-		void remote.mouse(p.x, p.y, action, e.button);
+		sendInput(remote.mouse(p.x, p.y, action, e.button));
 	}
 
 	function onWheel(e: WheelEvent): void {
+		if (phase !== 'connected') return;
 		const p = remotePoint(e);
 		if (!p || e.deltaY === 0) return;
 		e.preventDefault();
 		// A browser notch is deltaY ≈ +100 downwards; an RDP notch is 120 and
 		// positive means towards the user. One notch per event keeps trackpads
 		// from firing a flood of tiny steps.
-		void remote.mouse(p.x, p.y, 'wheel', 0, e.deltaY < 0 ? 120 : -120);
+		sendInput(remote.mouse(p.x, p.y, 'wheel', 0, e.deltaY < 0 ? 120 : -120));
 	}
 
 	/* --- phone ------------------------------------------------------------- */
@@ -482,7 +494,7 @@
 	let composed = '';
 
 	function tapKey(code: string): void {
-		void pressCode(code, true).then(() => pressCode(code, false));
+		sendInput(pressCode(code, true).then(() => pressCode(code, false)));
 	}
 
 	/** Hold Ctrl, Alt and Win as the sticky bar keys say, around `send`. */
@@ -510,10 +522,10 @@
 			}
 			const code = codeFor(ch);
 			if ((barCtrl || barAlt) && code) {
-				void withModifiers(async () => tapKey(code));
+				sendInput(withModifiers(async () => tapKey(code)));
 				continue;
 			}
-			void typeChar(ch.codePointAt(0) ?? 0);
+			sendInput(typeChar(ch.codePointAt(0) ?? 0));
 		}
 	}
 
@@ -578,11 +590,11 @@
 		if (key === 'ctrl-alt-del') {
 			barCtrl = true;
 			barAlt = true;
-			void withModifiers(async () => tapKey('Delete'));
+			sendInput(withModifiers(async () => tapKey('Delete')));
 			return;
 		}
 		if (key === 'win') {
-			void withModifiers(async () => tapKey('MetaLeft'));
+			sendInput(withModifiers(async () => tapKey('MetaLeft')));
 			return;
 		}
 		// Text size is the terminal's; this bar does not offer it.
@@ -591,7 +603,7 @@
 			esc: 'Escape', tab: 'Tab', up: 'ArrowUp', down: 'ArrowDown', left: 'ArrowLeft', right: 'ArrowRight',
 			home: 'Home', end: 'End', pgup: 'PageUp', pgdn: 'PageDown', del: 'Delete'
 		}[key];
-		if (code) void withModifiers(async () => tapKey(code));
+		if (code) sendInput(withModifiers(async () => tapKey(code)));
 	}
 
 	/** A long press is the right button, as on every touch screen. */
@@ -600,7 +612,7 @@
 		if (!onPhone || phase !== 'connected') return;
 		const p = remotePoint(e);
 		if (!p) return;
-		void remote.mouse(p.x, p.y, 'down', 2).then(() => remote.mouse(p.x, p.y, 'up', 2));
+		sendInput(remote.mouse(p.x, p.y, 'down', 2).then(() => remote.mouse(p.x, p.y, 'up', 2)));
 	}
 
 	/* --- keyboard ---------------------------------------------------------- */
@@ -672,7 +684,7 @@
 			const fake = heldKeysyms.get('ControlLeft');
 			if (fake !== undefined && e.timeStamp - ctrlDownAt < 50) {
 				heldKeysyms.delete('ControlLeft');
-				void vncKey(id, fake, false);
+				sendInput(vncKey(id, fake, false));
 			}
 			return;
 		}
@@ -681,7 +693,7 @@
 		e.preventDefault();
 		if (e.code === 'ControlLeft') ctrlDownAt = e.timeStamp;
 		heldKeysyms.set(e.code, keysym);
-		void vncKey(id, keysym, true);
+		sendInput(vncKey(id, keysym, true));
 	}
 
 	function onVncKeyUp(e: KeyboardEvent): void {
@@ -689,7 +701,7 @@
 		if (keysym === undefined) return;
 		e.preventDefault();
 		heldKeysyms.delete(e.code);
-		void vncKey(id, keysym, false);
+		sendInput(vncKey(id, keysym, false));
 	}
 
 	function onKeyDown(e: KeyboardEvent): void {
@@ -711,14 +723,14 @@
 		if (entry) {
 			e.preventDefault();
 			held.add(e.code);
-			void rdpKey(id, entry[0], entry[1], false);
+			sendInput(rdpKey(id, entry[0], entry[1], false));
 			return;
 		}
 		// No position for this key here (a dead-key result, an IME commit):
 		// send what it produced.
 		if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
 			e.preventDefault();
-			void typeChar(e.key.charCodeAt(0));
+			sendInput(typeChar(e.key.charCodeAt(0)));
 		}
 	}
 
@@ -732,16 +744,16 @@
 		if (!entry) return;
 		e.preventDefault();
 		held.delete(e.code);
-		void rdpKey(id, entry[0], entry[1], true);
+		sendInput(rdpKey(id, entry[0], entry[1], true));
 	}
 
 	function releaseAll(): void {
 		for (const code of held) {
 			const entry = SCANCODES[code];
-			if (entry) void rdpKey(id, entry[0], entry[1], true);
+			if (entry) sendInput(rdpKey(id, entry[0], entry[1], true));
 		}
 		held.clear();
-		for (const keysym of heldKeysyms.values()) void vncKey(id, keysym, false);
+		for (const keysym of heldKeysyms.values()) sendInput(vncKey(id, keysym, false));
 		heldKeysyms.clear();
 	}
 
@@ -773,7 +785,9 @@
 			} else if (s.state === 'closed') {
 				phase = 'closed';
 				message = s.reason;
-				releaseAll();
+				// Nothing to release on a desktop that has gone; just forget.
+				held.clear();
+				heldKeysyms.clear();
 			} else if (s.state === 'error') {
 				phase = 'error';
 				message = s.message;
@@ -826,7 +840,7 @@
 			// The size the desktop already has is not a resize. Asking for
 			// it anyway leaves a request the server never answers.
 			if (s.width === canvas.width && s.height === canvas.height) return;
-			void remote.resize(s.width, s.height);
+			sendInput(remote.resize(s.width, s.height));
 		}
 	}
 
