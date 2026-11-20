@@ -24,7 +24,13 @@ Reach keeps the free and open source part and adds what PuTTY leaves out.
 | Sync between machines | Free, through your own [Turso](/sync/what-is-turso/) database | No (sessions live in the Windows registry) |
 | Telnet, rlogin | No | Yes |
 
-Also in Reach: [RDP and VNC](/features/remote-desktop/), Kubernetes, Docker and Compose over SSH, [Ansible](/features/ansible/) and [OpenTofu](/features/opentofu/), a [database workspace](/features/databases/), [snippets](/features/snippets/) and [recipes](/features/recipes/), [live terminal sharing](/features/session-sharing/), [shared vaults](/vault/sharing/), an [AI assistant](/features/ai-assistant/) and an [MCP server](/features/mcp-server/).
+## Also in Reach
+
+- **Logins and host keys as OpenSSH does them:** FIDO2 security keys (`sk-ssh-ed25519`), smart cards and tokens (PKCS#11), Kerberos (GSSAPI), certificates and host-based login; host keys checked against DNS (SSHFP, with DNSSEC validated), connection sharing (ControlMaster) and `ssh -w` tunnels, all from your [ssh_config](/features/jump-hosts/).
+- **A vault that guards itself:** unlock with a YubiKey or other FIDO2 key, with Windows Hello, Touch ID or an Android fingerprint, or a master password. It locks when your computer locks, and its keys stay encrypted in memory and are never swapped to disk.
+- **Around the terminal:** session logs to a file, local terminals and WSL distributions, compress and extract on the server from the [file browser](/features/file-explorer/), and log files inside containers and pods.
+- **DevOps in the same window:** Kubernetes, Docker, Compose and Helm over the SSH session, [Ansible](/features/ansible/) and [OpenTofu](/features/opentofu/), and a [database workspace](/features/databases/) (PostgreSQL, MySQL/MariaDB, SQL Server, SQLite, Redis).
+- **And:** [Passbolt](/vault/password-managers/) as a source of logins, [system monitoring](/features/monitoring/), [snippets](/features/snippets/) and [recipes](/features/recipes/), [live terminal sharing](/features/session-sharing/), [shared vaults](/vault/sharing/), an [AI assistant](/features/ai-assistant/), an [MCP server](/features/mcp-server/), [plugins](/features/plugins/) and [themes](/features/themes/).
 
 ## Where Reach is different
 
