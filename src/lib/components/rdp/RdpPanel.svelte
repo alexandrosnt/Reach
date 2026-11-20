@@ -57,7 +57,7 @@
 	import { t } from '#lib/state/i18n.svelte.js';
 	import { untrustedRefsFromError } from '#lib/ipc/sessions.js';
 	import { getSettings, updateSetting } from '#lib/state/settings.svelte.js';
-	import { isMobile } from '#lib/platform.js';
+	import { isMac, isMobile } from '#lib/platform.js';
 	import { isLockKey, localLocks, onLocksChange, type Locks } from '#lib/utils/lock-keys.js';
 	import MobileKeyBar, { type BarKey } from '#lib/components/shared/MobileKeyBar.svelte';
 
@@ -669,8 +669,9 @@
 	 * as mstsc and RDM do. A new remote session starts with its own lock
 	 * state, so this runs on connect, on focus, and whenever the local state
 	 * changes, in every connected session, so all of them follow the keyboard.
-	 * Lock keys themselves are not sent: the sync sets the remote, so a key
-	 * press could only toggle it a second time.
+	 * Lock keys are still sent as keys too, as mstsc does, for whatever on the
+	 * remote reacts to the key itself (a layout switch on CapsLock, a hotkey);
+	 * the sync after the key's release puts the state right whatever it did.
 	 */
 	function sendLocks(force = false): void {
 		if (isVnc() || phase !== 'connected') return;
@@ -680,7 +681,46 @@
 		sentLocks = locks;
 		void rdpSyncLocks(id, locks.caps, locks.num, locks.scroll).catch(() => {});
 	}
-	const unlistenLocks = onLocksChange(() => sendLocks());
+	/** RDP: a lock key is down in this panel. Its key reaches the remote
+	 *  after the change it caused is already known, so a sync sent then would
+	 *  be toggled back by the key; the key's release syncs instead. */
+	let lockKeyDown = false;
+	// After the event that changed the state has reached this panel's own
+	// handlers, which see it later than the window does.
+	const unlistenLocks = onLocksChange(() => {
+		setTimeout(() => {
+			if (!lockKeyDown) sendLocks();
+		}, 0);
+	});
+
+	/** RDP: send a lock key as a key, then set the remote to the local state. */
+	function onLockKey(e: KeyboardEvent): void {
+		e.preventDefault();
+		const entry = SCANCODES[e.code];
+		if (!entry || e.repeat) return;
+		if (isMac()) {
+			// macOS gives CapsLock only a keydown when it turns on and only a
+			// keyup when it turns off: each is a whole press. The keypad's
+			// Clear arrives as NumLock and is not one.
+			if (e.code === 'NumLock') return;
+			void rdpKey(id, entry[0], entry[1], false)
+				.then(() => rdpKey(id, entry[0], entry[1], true))
+				.then(() => sendLocks(true))
+				.catch(() => {});
+			return;
+		}
+		if (e.type === 'keydown') {
+			lockKeyDown = true;
+			held.add(e.code);
+			void rdpKey(id, entry[0], entry[1], false).catch(() => {});
+			return;
+		}
+		lockKeyDown = false;
+		held.delete(e.code);
+		void rdpKey(id, entry[0], entry[1], true)
+			.then(() => sendLocks(true))
+			.catch(() => {});
+	}
 
 	/** Whether a key event is one this desktop takes. */
 	function isKey(e: KeyboardEvent): boolean {
@@ -729,10 +769,8 @@
 			onVncKeyDown(e);
 			return;
 		}
-		// Lock keys reach the remote as a sync of the local state (see
-		// sendLocks), not as keys.
 		if (isLockKey(e.code)) {
-			e.preventDefault();
+			onLockKey(e);
 			return;
 		}
 		// An RDP server does not repeat a held key: the client sends the key
@@ -761,7 +799,7 @@
 			return;
 		}
 		if (isLockKey(e.code)) {
-			e.preventDefault();
+			onLockKey(e);
 			return;
 		}
 		const entry = SCANCODES[e.code];
@@ -777,6 +815,7 @@
 			if (entry) void rdpKey(id, entry[0], entry[1], true);
 		}
 		held.clear();
+		lockKeyDown = false;
 		for (const keysym of heldKeysyms.values()) void vncKey(id, keysym, false);
 		heldKeysyms.clear();
 	}
