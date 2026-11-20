@@ -77,6 +77,7 @@ export default defineConfig({
 						{ label: 'Installation', slug: 'getting-started/installation' },
 						{ label: 'First Run & Setup', slug: 'getting-started/first-run' },
 						{ label: 'Privacy', slug: 'privacy' },
+						{ label: 'Code signing policy', slug: 'code-signing' },
 					],
 				},
 				{
