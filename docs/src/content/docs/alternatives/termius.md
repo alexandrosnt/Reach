@@ -1,11 +1,11 @@
 ---
 title: "A free, open source Termius alternative"
-description: "Reach is a free, MIT-licensed alternative to Termius for Windows, macOS, Linux and Android: SSH, SFTP, tunnels, RDP and VNC, and sync through your own database, with no subscription and no account."
+description: "Reach is a free, MIT-licensed alternative to Termius for Windows, macOS, Linux and Android: SSH, SFTP, tunnels, RDP and VNC, containers and Kubernetes, and encrypted sync through your own database. No subscription, no account."
 ---
 
 [Termius](https://termius.com) is a polished, cross-platform SSH client. Its free Starter plan covers SSH, SFTP and port forwarding on one device; syncing hosts and keys between devices starts with Pro at $10 a month billed yearly, and Team and Business are $20 and $30 per seat a month (Termius pricing page, November 2026).
 
-Reach does the everyday part of that for free, everything included, with the source open.
+Reach does that everyday work for free, with everything included and the source open, and goes well past SSH.
 
 ## At a glance
 
@@ -17,26 +17,39 @@ Reach does the everyday part of that for free, everything included, with the sou
 | Sync between devices | Free, through your own [Turso](/sync/what-is-turso/) database, encrypted before it leaves the device | Pro and above, through Termius's cloud |
 | Platforms | Windows, macOS, Linux, Android | Windows, macOS, Linux, Android, iOS |
 | SSH, SFTP, port forwarding | Yes | Yes |
-| Remote desktop | [RDP and VNC](/features/remote-desktop/) in a tab | No |
+| Jump hosts | [Yes](/features/jump-hosts/), and every ssh_config keyword | Yes |
+| Remote desktop | [RDP and VNC](/features/remote-desktop/) in a tab | Requested on Termius's roadmap |
+| X11 forwarding | Yes; on Windows Reach [sets up the X server](/settings/general/#x11-server) | Requested on Termius's roadmap |
+| Kubernetes | Yes, with Docker, Compose and Helm, over the SSH session | Requested on Termius's roadmap |
 | Serial console | [Yes](/features/serial/) (desktop) | Yes |
-| Shared vaults for a team | [Yes](/vault/sharing/), free | Team plan |
+| Shared vaults for a team | [Yes](/vault/sharing/), free | Paid plans |
+| Live terminal sharing | [Yes](/features/session-sharing/), free, peer to peer, end-to-end encrypted | Multiplayer, paid plans |
 | Telemetry | [None](/privacy/) | See Termius's privacy policy |
+
+Also in Reach, free: [Ansible](/features/ansible/) and [OpenTofu](/features/opentofu/) runs, a [database workspace](/features/databases/) (PostgreSQL, MySQL/MariaDB, SQL Server, SQLite, Redis), [Passbolt](/vault/password-managers/) as a source of logins, [system monitoring](/features/monitoring/), [recipes](/features/recipes/), [snippets](/features/snippets/), an [AI assistant](/features/ai-assistant/), an [MCP server](/features/mcp-server/), [plugins](/features/plugins/) and [themes](/features/themes/).
 
 ## Where Reach is different
 
-- **Nothing is behind a plan.** Sync, shared vaults, tunnels and every other feature are in the one free app.
-- **Your data stays yours.** Secrets are encrypted on your device (XChaCha20-Poly1305, key in the OS keychain). Sync goes to a database on *your* Turso account, which only ever sees encrypted data. There is no Reach server and no account.
-- **More than SSH.** RDP and VNC desktops, [Ansible](/features/ansible/) and [OpenTofu](/features/opentofu/) runs, [databases](/features/databases/), and [system monitoring](/features/monitoring/) sit next to your terminals.
+- **Nothing is behind a plan.** Sync, shared vaults, terminal sharing and every other feature are in the one free app.
+- **Your data stays yours.** Secrets are encrypted on your device with XChaCha20-Poly1305, with the key in the OS keychain (or behind a master password, or biometrics). Sync goes to a database on *your* Turso account, which only ever stores encrypted data. There is no Reach server and no account.
+- **Your whole server toolbox.** RDP and VNC desktops, containers and Kubernetes, [Ansible](/features/ansible/) and [OpenTofu](/features/opentofu/) runs, [databases](/features/databases/), [system monitoring](/features/monitoring/), [recipes](/features/recipes/), an [AI assistant](/features/ai-assistant/) and an [MCP server](/features/mcp-server/) sit next to your terminals, on desktop and Android alike.
 - **You can read the code.** Every line is on [GitHub](https://github.com/alexandrosnt/Reach).
 
 ## Where Termius is stronger
 
 - **iOS.** Reach has no iPhone or iPad app.
-- **Zero-setup sync.** Termius syncs once you sign in; Reach asks you to create a free Turso database first ([about five minutes](/sync/setup/)).
-- **Mosh and Telnet.** Termius supports both; Reach does not yet.
+- **Zero-setup sync.** Termius syncs once you sign in; with Reach you first [create a free Turso database](/sync/setup/).
+- **Mosh and Telnet.** Termius speaks both; Reach does not.
 
 ## Moving over
 
-Reach imports hosts from `~/.ssh/config` (**+** → **Import SSH config**), from Remote Desktop Manager exports and from `.rdp` files. There is no Termius importer yet; if your hosts are in Termius only, export them to an SSH config first, or add them by hand.
+Reach imports:
+
+- **`~/.ssh/config`**, with jump-host chains (**+** → **Import SSH config**);
+- **Remote Desktop Manager exports** (`.rdm` or `.json`): SSH, RDP and VNC entries, gateways and credentials;
+- **RDP host lists**: a Termix export or a JSON list of hosts;
+- **private keys** (OpenSSH or PEM), pasted or from a file.
+
+There is no Termius importer; if your hosts live only in Termius, put them in an SSH config file first, or add them by hand.
 
 [Download Reach](/download/) — free for Windows, macOS, Linux and Android.

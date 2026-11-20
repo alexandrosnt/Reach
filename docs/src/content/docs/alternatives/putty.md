@@ -24,6 +24,8 @@ Reach keeps the free and open source part and adds what PuTTY leaves out.
 | Sync between machines | Free, through your own [Turso](/sync/what-is-turso/) database | No (sessions live in the Windows registry) |
 | Telnet, rlogin | No | Yes |
 
+Also in Reach: [RDP and VNC](/features/remote-desktop/), Kubernetes, Docker and Compose over SSH, [Ansible](/features/ansible/) and [OpenTofu](/features/opentofu/), a [database workspace](/features/databases/), [snippets](/features/snippets/) and [recipes](/features/recipes/), [live terminal sharing](/features/session-sharing/), [shared vaults](/vault/sharing/), an [AI assistant](/features/ai-assistant/) and an [MCP server](/features/mcp-server/).
+
 ## Where Reach is different
 
 - **Everything in one window.** Tabs, split panes, a file browser beside the terminal and [live system stats](/features/monitoring/) for the host.
@@ -39,6 +41,13 @@ Reach keeps the free and open source part and adds what PuTTY leaves out.
 
 ## Moving over
 
-PuTTY keeps sessions in the Windows registry, and Reach has no PuTTY importer yet. If you also use OpenSSH, import `~/.ssh/config` (**+** → **Import SSH config**); otherwise add hosts by hand. PuTTY `.ppk` keys can be converted to OpenSSH format with PuTTYgen (**Conversions** → **Export OpenSSH key**) and imported into the vault.
+Reach imports:
+
+- **`~/.ssh/config`**, with jump-host chains (**+** → **Import SSH config**);
+- **Remote Desktop Manager exports** (`.rdm` or `.json`): SSH (PuTTY entries included), RDP and VNC entries, gateways and credentials;
+- **RDP host lists**: a Termix export or a JSON list of hosts;
+- **private keys** (OpenSSH or PEM), pasted or from a file.
+
+PuTTY itself keeps sessions in the Windows registry, and Reach does not read them there. If your PuTTY sessions are in Remote Desktop Manager, or you also keep an `~/.ssh/config`, import that; otherwise add hosts by hand. PuTTY `.ppk` keys can be converted to OpenSSH format with PuTTYgen (**Conversions** → **Export OpenSSH key**) and imported into the vault.
 
 [Download Reach](/download/) — free for Windows, macOS, Linux and Android.

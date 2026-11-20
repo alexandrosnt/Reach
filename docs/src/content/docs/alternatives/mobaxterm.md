@@ -21,8 +21,10 @@ Reach covers the same daily work with no limits, on every desktop and on Android
 | Serial console | [Yes](/features/serial/) (desktop) | Yes | Yes |
 | X server for X11 forwarding | Yes: on Windows Reach [downloads VcXsrv](/settings/general/#x11-server) once when you turn it on; Linux and macOS use the system's | Built in | Built in |
 | Telnet, Mosh, rlogin | No | Yes | Yes |
-| Encrypted vault | Yes, key in the OS keychain | Master password | Master password |
-| Sync between machines | Free, through your own [Turso](/sync/what-is-turso/) database | No | No |
+| Saved passwords | [Encrypted vault](/vault/encryption/): key in the OS keychain, or a master password, or biometrics | Master password | Master password |
+| Kubernetes, Docker, Compose, Helm | Yes, over the SSH session | — | — |
+
+Also in Reach, free: [Ansible](/features/ansible/) and [OpenTofu](/features/opentofu/) runs, a [database workspace](/features/databases/) (PostgreSQL, MySQL/MariaDB, SQL Server, SQLite, Redis), [Passbolt](/vault/password-managers/) as a source of logins, [system monitoring](/features/monitoring/), [recipes](/features/recipes/), an [AI assistant](/features/ai-assistant/), an [MCP server](/features/mcp-server/), [plugins](/features/plugins/) and [themes](/features/themes/).
 
 ## Where Reach is different
 
@@ -40,6 +42,13 @@ Reach covers the same daily work with no limits, on every desktop and on Android
 
 ## Moving over
 
-Reach imports hosts from `~/.ssh/config`, from Remote Desktop Manager exports and from `.rdp` files. There is no MobaXterm session importer yet.
+Reach imports:
+
+- **`~/.ssh/config`**, with jump-host chains (**+** → **Import SSH config**);
+- **Remote Desktop Manager exports** (`.rdm` or `.json`): SSH (PuTTY entries included), RDP and VNC entries, gateways and credentials;
+- **RDP host lists**: a Termix export or a JSON list of hosts;
+- **private keys** (OpenSSH or PEM), pasted or from a file.
+
+There is no MobaXterm session importer yet.
 
 [Download Reach](/download/) — free for Windows, macOS, Linux and Android.
