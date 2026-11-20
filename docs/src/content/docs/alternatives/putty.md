@@ -19,6 +19,7 @@ Reach keeps the free and open source part and adds what PuTTY leaves out.
 | Port forwarding | [Yes](/features/tunnels/) | Yes |
 | Jump hosts and ssh_config | [Yes](/features/jump-hosts/) | Proxy settings per session |
 | Serial console | [Yes](/features/serial/) (desktop) | Yes |
+| X11 forwarding | Yes, and on Windows Reach [sets up the X server](/settings/general/#x11-server) itself | Yes, with a separate X server on Windows |
 | RDP and VNC | [Yes](/features/remote-desktop/) | No |
 | Sync between machines | Free, through your own [Turso](/sync/what-is-turso/) database | No (sessions live in the Windows registry) |
 | Telnet, rlogin | No | Yes |

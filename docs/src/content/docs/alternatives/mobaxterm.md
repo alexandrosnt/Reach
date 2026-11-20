@@ -19,7 +19,7 @@ Reach covers the same daily work with no limits, on every desktop and on Android
 | SSH with SFTP browser | Yes, with a [details view](/features/file-explorer/) | Yes | Yes |
 | RDP and VNC | [Yes](/features/remote-desktop/) | Yes | Yes |
 | Serial console | [Yes](/features/serial/) (desktop) | Yes | Yes |
-| Built-in X server | No | Yes | Yes |
+| X server for X11 forwarding | Yes: on Windows Reach [downloads VcXsrv](/settings/general/#x11-server) once when you turn it on; Linux and macOS use the system's | Built in | Built in |
 | Telnet, Mosh, rlogin | No | Yes | Yes |
 | Encrypted vault | Yes, key in the OS keychain | Master password | Master password |
 | Sync between machines | Free, through your own [Turso](/sync/what-is-turso/) database | No | No |
@@ -34,8 +34,8 @@ Reach covers the same daily work with no limits, on every desktop and on Android
 
 ## Where MobaXterm is stronger
 
-- **X11 applications.** MobaXterm ships its own X server, so remote graphical Linux programs open on Windows out of the box. Reach has none.
 - **Telnet, Mosh and rlogin**, and its bundled Unix tools and network daemons (TFTP, NFS and others).
+- **X server in the box.** Its X server is part of the download; Reach fetches VcXsrv the first time you turn X11 on.
 - **Portable edition.** MobaXterm runs from a USB stick without installing.
 
 ## Moving over
