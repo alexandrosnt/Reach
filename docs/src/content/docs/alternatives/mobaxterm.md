@@ -1,0 +1,45 @@
+---
+title: "A free, open source MobaXterm alternative"
+description: "Reach is a free, MIT-licensed alternative to MobaXterm: SSH, SFTP, RDP, VNC, tunnels and a serial console with no session or tunnel limits, on Windows, macOS, Linux and Android."
+---
+
+[MobaXterm](https://mobaxterm.mobatek.net) is the Swiss army knife of Windows remote work: a tabbed SSH client, an X server, RDP, VNC and an SFTP browser in one program. Its free Home Edition is limited to 12 saved sessions, 2 SSH tunnels and 4 macros; the Professional Edition removes the limits for $69 / 49€ per user (MobaXterm download page, November 2026). It runs on Windows only.
+
+Reach covers the same daily work with no limits, on every desktop and on Android.
+
+## At a glance
+
+| | Reach | MobaXterm Home | MobaXterm Professional |
+| --- | --- | --- | --- |
+| Price | Free | Free | $69 / 49€ per user |
+| Licence | Open source (MIT) | Proprietary | Proprietary |
+| Saved sessions | Unlimited | Max. 12 | Unlimited |
+| SSH tunnels | Unlimited | Max. 2 | Unlimited |
+| Platforms | Windows, macOS, Linux, Android | Windows | Windows |
+| SSH with SFTP browser | Yes, with a [details view](/features/file-explorer/) | Yes | Yes |
+| RDP and VNC | [Yes](/features/remote-desktop/) | Yes | Yes |
+| Serial console | [Yes](/features/serial/) (desktop) | Yes | Yes |
+| Built-in X server | No | Yes | Yes |
+| Telnet, Mosh, rlogin | No | Yes | Yes |
+| Encrypted vault | Yes, key in the OS keychain | Master password | Master password |
+| Sync between machines | Free, through your own [Turso](/sync/what-is-turso/) database | No | No |
+
+## Where Reach is different
+
+- **No limits, ever.** Sessions, tunnels and snippets are unlimited, and nothing needs a licence for use at work.
+- **The same app everywhere.** Your sessions and secrets [sync](/sync/setup/) between Windows, macOS, Linux and Android, encrypted before they leave the device.
+- **Built for teams too.** [Shared vaults](/vault/sharing/) and [live session sharing](/features/session-sharing/), peer to peer.
+- **Automation next to the terminal.** [Ansible](/features/ansible/), [OpenTofu](/features/opentofu/), [recipes](/features/recipes/) and [databases](/features/databases/).
+- **Open source.** Read, build or audit it on [GitHub](https://github.com/alexandrosnt/Reach).
+
+## Where MobaXterm is stronger
+
+- **X11 applications.** MobaXterm ships its own X server, so remote graphical Linux programs open on Windows out of the box. Reach has none.
+- **Telnet, Mosh and rlogin**, and its bundled Unix tools and network daemons (TFTP, NFS and others).
+- **Portable edition.** MobaXterm runs from a USB stick without installing.
+
+## Moving over
+
+Reach imports hosts from `~/.ssh/config`, from Remote Desktop Manager exports and from `.rdp` files. There is no MobaXterm session importer yet.
+
+[Download Reach](/download/) — free for Windows, macOS, Linux and Android.

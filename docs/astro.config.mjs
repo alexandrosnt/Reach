@@ -80,6 +80,14 @@ export default defineConfig({
 					],
 				},
 				{
+					label: 'Compare',
+					items: [
+						{ label: 'Termius alternative', slug: 'alternatives/termius' },
+						{ label: 'MobaXterm alternative', slug: 'alternatives/mobaxterm' },
+						{ label: 'PuTTY alternative', slug: 'alternatives/putty' },
+					],
+				},
+				{
 					label: 'Features',
 					items: [
 						{ label: 'SSH Terminal', slug: 'features/ssh-terminal' },

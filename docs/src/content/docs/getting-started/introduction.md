@@ -7,7 +7,7 @@ Reach is a cross-platform SSH client and remote management tool. It runs on Wind
 
 ## Why another SSH client?
 
-PuTTY has been around since 1999 and looks like it. MobaXterm is decent but Windows-only and packed with stuff most people never use. Termius looks nice but wants you to pay a subscription to sync your sessions. SecureCRT costs a fortune.
+PuTTY has been around since 1999 and looks like it. MobaXterm is decent but Windows-only and packed with stuff most people never use. Termius looks nice but wants you to pay a subscription to sync your sessions. SecureCRT costs a fortune. (Side by side: [Reach vs PuTTY](/alternatives/putty/), [vs MobaXterm](/alternatives/mobaxterm/), [vs Termius](/alternatives/termius/).)
 
 Reach tries to be the SSH client you actually want to use. It's free, it's fast, and it works on every platform. Sessions sync across devices if you want them to. Your passwords are encrypted locally with real cryptography, not just "password protected" config files.
 

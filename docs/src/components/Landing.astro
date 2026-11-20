@@ -145,8 +145,12 @@ const CHIPS = [
 				<img class="mark" src={logo.src} alt="" width="112" height="112" />
 			</span>
 		</span>
-		<h1 data-rise style="--delay:120ms">Reach</h1>
-		<p class="promise" data-rise style="--delay:200ms">The free, open source SSH client.</p>
+		<!-- One heading holding both lines: Google reads the h1 as the page's
+		     main title, and "Reach" alone says nothing about what it is. -->
+		<h1>
+			<span class="name" data-rise style="--delay:120ms">Reach</span>
+			<span class="promise" data-rise style="--delay:200ms">The free, open source SSH client.</span>
+		</h1>
 		<p class="blurb" data-rise style="--delay:280ms">
 			SSH terminals, SFTP files, RDP and VNC desktops, tunnels and an encrypted vault in
 			one app for Windows, macOS, Linux and Android. No account, no telemetry.
@@ -565,6 +569,12 @@ const CHIPS = [
 	}
 
 	.lead h1 {
+		margin: 0;
+		font: inherit;
+	}
+
+	.lead .name {
+		display: block;
 		margin: 1.1rem 0 0.25rem;
 		font-size: clamp(3.2rem, 10vw, 5.6rem);
 		line-height: 0.96;
@@ -582,6 +592,7 @@ const CHIPS = [
 	}
 
 	.promise {
+		display: block;
 		margin: 0;
 		font-size: clamp(1.15rem, 2.6vw, 1.6rem);
 		font-weight: 560;
