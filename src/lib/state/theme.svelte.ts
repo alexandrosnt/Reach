@@ -209,11 +209,27 @@ export const LIGHT: Theme = {
 		brightBlue: '#007aff',
 		brightMagenta: '#af52de',
 		brightCyan: '#55bef0',
-		brightWhite: '#1d1d1f'
+		// Must stay light. tview/tcell apps such as gdu draw dialogs as colour
+		// 15 on colour 0; with this set to black, a dialog was a black box with
+		// no text (#174). On the white background terminalContrastFloor below
+		// darkens it again.
+		brightWhite: '#f5f5f7'
 	}
 };
 
 export const BUILT_IN: Theme[] = [DARK, LIGHT];
+
+/**
+ * xterm's minimumContrastRatio for a theme. On a light terminal, text in a
+ * light colour on the default background (bright white, bright yellow) is
+ * nearly invisible, so xterm darkens it until it reads against the cell it
+ * sits on, while the same colour on a dark cell (a TUI dialog) stays light.
+ * 4.5 is the WCAG AA ratio, as VS Code's terminal uses. Dark themes keep
+ * their exact colours.
+ */
+export function terminalContrastFloor(theme: Theme): number {
+	return theme.appearance === 'light' ? 4.5 : 1;
+}
 
 class ThemeState {
 	current = $state<Theme>(DARK);

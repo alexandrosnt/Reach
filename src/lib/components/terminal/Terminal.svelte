@@ -12,7 +12,7 @@
 	import { untrustedRefsFromError } from '#lib/ipc/sessions.js';
 	import { noteLineEntered } from '#lib/state/explorer.svelte.js';
 	import { registerBufferReader, unregisterBufferReader } from '#lib/state/terminal-buffer.svelte.js';
-	import { themeState } from '#lib/state/theme.svelte.js';
+	import { themeState, terminalContrastFloor } from '#lib/state/theme.svelte.js';
 	import { getSettings, updateSetting } from '#lib/state/settings.svelte.js';
 	import { countPasteLines, shouldWarnOnPaste } from '#lib/terminal/paste.js';
 	import { shouldRearmIme, nudgeCaret, REARM_SETTLE_MS } from '#lib/terminal/ime.js';
@@ -344,7 +344,8 @@
 			cursorStyle: 'bar',
 			scrollback: 10000,
 			allowProposedApi: true,
-			theme: { ...themeState.current.terminal }
+			theme: { ...themeState.current.terminal },
+			minimumContrastRatio: terminalContrastFloor(themeState.current)
 		});
 	}
 
@@ -355,6 +356,7 @@
 		const palette = themeState.current.terminal;
 		if (terminal) {
 			terminal.options.theme = { ...palette };
+			terminal.options.minimumContrastRatio = terminalContrastFloor(themeState.current);
 		}
 	});
 

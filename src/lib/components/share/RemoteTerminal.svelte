@@ -15,7 +15,7 @@
 	import { Terminal } from '@xterm/xterm';
 	import { Unicode11Addon } from '@xterm/addon-unicode11';
 	import '@xterm/xterm/css/xterm.css';
-	import { themeState } from '#lib/state/theme.svelte.js';
+	import { themeState, terminalContrastFloor } from '#lib/state/theme.svelte.js';
 	import { getSettings } from '#lib/state/settings.svelte.js';
 	import { t } from '#lib/state/i18n.svelte.js';
 	import * as share from '#lib/state/share.svelte.js';
@@ -42,7 +42,8 @@
 			// resize arrives.
 			cols: remote?.cols ?? 80,
 			rows: remote?.rows ?? 24,
-			theme: { ...themeState.current.terminal }
+			theme: { ...themeState.current.terminal },
+			minimumContrastRatio: terminalContrastFloor(themeState.current)
 		});
 		term.loadAddon(new Unicode11Addon());
 		term.unicode.activeVersion = '11';
@@ -79,7 +80,10 @@
 	// xterm keeps its palette in JS, so a theme change must be pushed in.
 	$effect(() => {
 		const theme = themeState.current.terminal;
-		if (term) term.options.theme = { ...theme };
+		if (term) {
+			term.options.theme = { ...theme };
+			term.options.minimumContrastRatio = terminalContrastFloor(themeState.current);
+		}
 	});
 </script>
 
