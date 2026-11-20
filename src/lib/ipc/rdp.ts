@@ -139,6 +139,11 @@ export async function rdpSyncLocks(id: string, caps: boolean, num: boolean, scro
 	await invoke('rdp_sync_locks', { id, caps, num, scroll });
 }
 
+/** The local NumLock as the system shows it (Linux), or null if unknown. */
+export async function rdpLocalNumlock(): Promise<boolean | null> {
+	return (await invoke<boolean | null>('rdp_local_numlock')) ?? null;
+}
+
 /** A character rather than a key, for text with no scancode here. */
 export async function rdpUnicode(id: string, code: number, release: boolean): Promise<void> {
 	await invoke('rdp_unicode', { id, code, release });
