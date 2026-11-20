@@ -58,7 +58,7 @@ use ironrdp_client::output_channel::{output_channel, OutputEventReceiver};
 use ironrdp_client::rdp::{RdpClient, RdpInputEvent, RdpInputSender, RdpOutputEvent};
 use ironrdp_graphics::pointer::DecodedPointer;
 use ironrdp_pdu::geometry::InclusiveRectangle;
-use ironrdp_pdu::input::fast_path::{FastPathInputEvent, KeyboardFlags};
+use ironrdp_pdu::input::fast_path::{FastPathInputEvent, KeyboardFlags, SynchronizeFlags};
 use ironrdp_pdu::input::mouse::{MousePdu, PointerFlags};
 use ironrdp_pdu::rdp::capability_sets::MajorPlatformType;
 use serde::{Deserialize, Serialize};
@@ -436,6 +436,11 @@ impl RdpManager {
         self.send_fast_path(id, FastPathInputEvent::UnicodeKeyboardEvent(flags, code))
     }
 
+    /// Set the remote's CapsLock, NumLock and ScrollLock to the local ones.
+    pub fn sync_locks(&self, id: &str, caps: bool, num: bool, scroll: bool) -> Result<(), String> {
+        self.send_fast_path(id, FastPathInputEvent::SyncEvent(lock_flags(caps, num, scroll)))
+    }
+
     pub fn resize(&self, id: &str, width: u16, height: u16) -> Result<(), String> {
         let (width, height) = clamp_desktop(width, height);
         tracing::info!("RDP {id}: resize requested to {width}x{height}");
@@ -457,6 +462,26 @@ impl RdpManager {
             .try_send(RdpInputEvent::FastPath(smallvec![event]))
             .map_err(|e| e.to_string())
     }
+}
+
+/// The synchronize event that sets the remote's lock keys to these states.
+///
+/// A new remote session starts with its own lock state, and keys only ever
+/// toggle it, so without this the remote NumLock and CapsLock could be the
+/// opposite of the local ones for the whole session. mstsc sends it on
+/// connect and whenever its window gains focus (MS-RDPBCGR 2.2.8.1.2.2.5).
+pub fn lock_flags(caps: bool, num: bool, scroll: bool) -> SynchronizeFlags {
+    let mut flags = SynchronizeFlags::empty();
+    if caps {
+        flags |= SynchronizeFlags::CAPS_LOCK;
+    }
+    if num {
+        flags |= SynchronizeFlags::NUM_LOCK;
+    }
+    if scroll {
+        flags |= SynchronizeFlags::SCROLL_LOCK;
+    }
+    flags
 }
 
 /// Build the mouse PDU from what the webview knows: where, and what changed.
@@ -1071,6 +1096,15 @@ fn merge_damage(rects: &[InclusiveRectangle]) -> Vec<InclusiveRectangle> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn lock_flags_carry_each_lock_on_its_own_bit() {
+        assert_eq!(lock_flags(false, false, false).bits(), 0);
+        assert_eq!(lock_flags(false, false, true).bits(), 0x01);
+        assert_eq!(lock_flags(false, true, false).bits(), 0x02);
+        assert_eq!(lock_flags(true, false, false).bits(), 0x04);
+        assert_eq!(lock_flags(true, true, true).bits(), 0x07);
+    }
 
     fn nz(v: u16) -> NonZeroU16 {
         NonZeroU16::new(v).unwrap()

@@ -45,11 +45,22 @@ fn pending() -> MutexGuard<'static, HashMap<String, Pending>> {
 /// Cancel every open question, as if the user had pressed Cancel on each,
 /// and tell the window they are withdrawn. Returns how many there were.
 pub(crate) fn cancel_all() -> usize {
-    let drained: Vec<(String, Pending)> = pending().drain().collect();
-    let count = drained.len();
-    for (id, p) in drained {
-        let _ = p.reply.send(None);
-        if let Some(app) = p.app {
+    // Each question is answered before the lock is let go, so a question
+    // gone from the list has always had its answer: a second caller that
+    // finds the list empty must not see one still unanswered. The window is
+    // told after, outside the lock.
+    let withdrawn: Vec<(String, Option<tauri::AppHandle>)> = {
+        let mut open = pending();
+        open.drain()
+            .map(|(id, p)| {
+                let _ = p.reply.send(None);
+                (id, p.app)
+            })
+            .collect()
+    };
+    let count = withdrawn.len();
+    for (id, app) in withdrawn {
+        if let Some(app) = app {
             let _ = app.emit(CLOSED_EVENT, &id);
         }
     }

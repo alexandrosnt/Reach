@@ -134,6 +134,11 @@ export async function rdpKey(id: string, scancode: number, extended: boolean, re
 	await invoke('rdp_key', { id, scancode, extended, release });
 }
 
+/** Set the remote's CapsLock, NumLock and ScrollLock to these states. */
+export async function rdpSyncLocks(id: string, caps: boolean, num: boolean, scroll: boolean): Promise<void> {
+	await invoke('rdp_sync_locks', { id, caps, num, scroll });
+}
+
 /** A character rather than a key, for text with no scancode here. */
 export async function rdpUnicode(id: string, code: number, release: boolean): Promise<void> {
 	await invoke('rdp_unicode', { id, code, release });
