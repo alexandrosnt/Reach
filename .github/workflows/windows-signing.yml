@@ -1,0 +1,173 @@
+name: Windows signing (SignPath)
+
+# The Windows build, signed through SignPath Foundation, outside any release.
+#
+# SignPath signs only files a GitHub workflow uploaded as an artifact, so it can
+# vouch that they were built here from this repository (origin verification).
+# tauri-action builds, bundles and uploads in one step and leaves no point to
+# sign in between, so the Windows build is done in stages:
+#
+#   1. build reach.exe without bundling
+#   2. SignPath signs reach.exe
+#   3. bundle the MSI and NSIS installers around the signed reach.exe
+#   4. SignPath signs both installers
+#   5. sign them for the in-app updater again, since the signatures made while
+#      bundling covered the unsigned files (createUpdaterArtifacts is
+#      v1Compatible, so the .zip of each installer is remade and signed too)
+#
+# Run by hand while this is being set up: it signs with the policy chosen below
+# (test-signing uses SignPath's self-signed test certificate) and keeps the
+# result as a workflow artifact. Nothing is attached to a release.
+
+on:
+  workflow_dispatch:
+    inputs:
+      signing-policy:
+        description: SignPath signing policy
+        type: choice
+        options: [test-signing, release-signing]
+        default: test-signing
+
+permissions:
+  contents: read
+  actions: read
+
+env:
+  SIGNPATH_ORGANIZATION_ID: 5ca94c61-2212-4202-a232-7fe70630293f
+  SIGNPATH_PROJECT: Reach
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Setup Rust
+        # The same fixed Rust as the release and the checks.
+        uses: dtolnay/rust-toolchain@1.99.1
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          save-if: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Read the version
+        id: version
+        shell: bash
+        run: echo "version=$(node -p "require('./src-tauri/tauri.conf.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Build reach.exe
+        run: npx tauri build --no-bundle
+
+      - name: Upload reach.exe for signing
+        id: unsigned-app
+        uses: actions/upload-artifact@v7
+        with:
+          name: unsigned-app
+          path: src-tauri/target/release/reach.exe
+          if-no-files-found: error
+
+      - name: Sign reach.exe
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ env.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT }}
+          signing-policy-slug: ${{ inputs.signing-policy }}
+          artifact-configuration-slug: reach-app
+          github-artifact-id: ${{ steps.unsigned-app.outputs.artifact-id }}
+          wait-for-completion: true
+          # Every signing request is approved by hand.
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-app
+          parameters: |
+            version: ${{ toJSON(steps.version.outputs.version) }}
+
+      - name: Put the signed reach.exe in place
+        shell: pwsh
+        run: |
+          $sig = Get-AuthenticodeSignature signed-app/reach.exe
+          if (-not $sig.SignerCertificate) { throw "signed-app/reach.exe carries no signature" }
+          Write-Host "reach.exe signed by: $($sig.SignerCertificate.Subject)"
+          Copy-Item signed-app/reach.exe src-tauri/target/release/reach.exe -Force
+
+      - name: Bundle the installers
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: npx tauri bundle --bundles msi,nsis
+
+      - name: Gather the installers
+        shell: pwsh
+        run: |
+          $v = '${{ steps.version.outputs.version }}'
+          New-Item -ItemType Directory unsigned-installers | Out-Null
+          Copy-Item "src-tauri/target/release/bundle/msi/Reach_${v}_x64_en-US.msi" unsigned-installers/
+          Copy-Item "src-tauri/target/release/bundle/nsis/Reach_${v}_x64-setup.exe" unsigned-installers/
+
+      - name: Upload the installers for signing
+        id: unsigned-installers
+        uses: actions/upload-artifact@v7
+        with:
+          name: unsigned-installers
+          path: unsigned-installers/
+          if-no-files-found: error
+
+      - name: Sign the installers
+        uses: signpath/github-action-submit-signing-request@v3
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ env.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ env.SIGNPATH_PROJECT }}
+          signing-policy-slug: ${{ inputs.signing-policy }}
+          artifact-configuration-slug: reach-installers
+          github-artifact-id: ${{ steps.unsigned-installers.outputs.artifact-id }}
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 3600
+          output-artifact-directory: signed-installers
+          parameters: |
+            version: ${{ toJSON(steps.version.outputs.version) }}
+
+      # The updater checks a minisign signature over the exact bytes it
+      # downloads. The ones made while bundling cover the unsigned installers,
+      # so each file that ships is signed again here, after SignPath.
+      - name: Sign for the in-app updater
+        shell: pwsh
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        run: |
+          $v = '${{ steps.version.outputs.version }}'
+          $out = New-Item -ItemType Directory release-files
+          foreach ($name in "Reach_${v}_x64_en-US.msi", "Reach_${v}_x64-setup.exe") {
+            $file = "signed-installers/$name"
+            $sig = Get-AuthenticodeSignature $file
+            if (-not $sig.SignerCertificate) { throw "$name carries no signature" }
+            Write-Host "$name signed by: $($sig.SignerCertificate.Subject)"
+            Copy-Item $file $out
+          }
+          # The v1-compatible updater bundles: each installer alone in a zip.
+          Compress-Archive -Path "$out/Reach_${v}_x64_en-US.msi" -DestinationPath "$out/Reach_${v}_x64_en-US.msi.zip"
+          Compress-Archive -Path "$out/Reach_${v}_x64-setup.exe" -DestinationPath "$out/Reach_${v}_x64-setup.nsis.zip"
+          foreach ($f in Get-ChildItem $out -File) {
+            # Bound to the version, as tauri build does for the files it signs.
+            npx tauri signer sign --app-version $v $f.FullName
+            if ($LASTEXITCODE -ne 0) { throw "could not sign $($f.Name) for the updater" }
+          }
+          Get-ChildItem $out | Format-Table Name, Length
+
+      - name: Keep the signed files
+        uses: actions/upload-artifact@v7
+        with:
+          name: reach-windows-signed-${{ steps.version.outputs.version }}
+          path: release-files/
+          if-no-files-found: error

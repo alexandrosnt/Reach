@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SignPath artifact configuration "reach-installers" (project Reach).
+  Signs the two Windows installers. reach.exe inside them was signed by
+  "reach-app" before they were built.
+  The GitHub artifact is a ZIP holding the .msi and the -setup.exe.
+  A copy is kept here so it can be reviewed; SignPath uses the one saved in
+  the project, so change both together.
+-->
+<artifact-configuration xmlns="http://signpath.io/artifact-configuration/v1">
+  <parameters>
+    <parameter name="version" required="true" />
+  </parameters>
+  <zip-file>
+    <msi-file path="Reach_${version}_x64_en-US.msi">
+      <authenticode-sign />
+    </msi-file>
+    <pe-file path="Reach_${version}_x64-setup.exe" product-name="Reach" product-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+  </zip-file>
+</artifact-configuration>
