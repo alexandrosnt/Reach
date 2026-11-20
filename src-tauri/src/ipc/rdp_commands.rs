@@ -103,6 +103,19 @@ pub async fn rdp_key(
     state.rdp_manager.lock().await.send_key(&id, scancode, extended, release)
 }
 
+/// Set the remote's lock keys to the local ones: on connect, on focus, and
+/// after a lock key is pressed.
+#[tauri::command]
+pub async fn rdp_sync_locks(
+    state: tauri::State<'_, AppState>,
+    id: String,
+    caps: bool,
+    num: bool,
+    scroll: bool,
+) -> Result<(), String> {
+    state.rdp_manager.lock().await.sync_locks(&id, caps, num, scroll)
+}
+
 /// A character rather than a key, for text with no scancode on this keyboard.
 #[tauri::command]
 pub async fn rdp_unicode(
