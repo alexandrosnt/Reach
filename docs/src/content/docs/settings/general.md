@@ -33,6 +33,16 @@ Launch Reach automatically when you log in. Uses the OS autostart mechanism (Sta
 
 A link to the Reach Discord. It is always here, so the one-time invitation Reach shows after a few launches can be dismissed for good without losing the way in.
 
+### X11 Server
+
+Shows the windows of graphical programs you start on a server (X11 forwarding), as MobaXterm does.
+
+- **Windows:** turning it on downloads [VcXsrv](https://github.com/marchaesen/vcxsrv) once (about 49 MB, with a progress bar and Cancel), checks it against a fingerprint built into Reach, and starts it with its own cookie. An X server already running is used instead. Turning it off removes it.
+- **Linux:** the system's own X server is used; nothing to install.
+- **macOS:** install [XQuartz](https://www.xquartz.org).
+
+Forwarding is per session: add `ForwardX11 yes` to the session's SSH options, or import a host whose ssh_config has it. Since forwarding X11 lets the server reach your display, Reach asks you to approve it for that session first.
+
 ## Appearance
 
 Visual customization.
