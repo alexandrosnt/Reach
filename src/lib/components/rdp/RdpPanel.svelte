@@ -57,7 +57,8 @@
 	import { t } from '#lib/state/i18n.svelte.js';
 	import { untrustedRefsFromError } from '#lib/ipc/sessions.js';
 	import { getSettings, updateSetting } from '#lib/state/settings.svelte.js';
-	import { isMac, isMobile } from '#lib/platform.js';
+	import { isMobile } from '#lib/platform.js';
+	import { isLockKey, localLocks, onLocksChange, type Locks } from '#lib/utils/lock-keys.js';
 	import MobileKeyBar, { type BarKey } from '#lib/components/shared/MobileKeyBar.svelte';
 
 	interface Props {
@@ -447,10 +448,7 @@
 		if (e.button > 2) return;
 		const p = remotePoint(e);
 		if (!p) return;
-		if (action === 'down') {
-			canvas.focus();
-			if (locksPending) syncLocks(e);
-		}
+		if (action === 'down') canvas.focus();
 		e.preventDefault();
 		void remote.mouse(p.x, p.y, action, e.button);
 	}
@@ -663,28 +661,26 @@
 	 *  then Right Alt at the same instant; that Ctrl is not the user's. */
 	let ctrlDownAt = 0;
 
-	const LOCK_KEYS = new Set(['CapsLock', 'NumLock', 'ScrollLock']);
+	/** RDP: the lock state last sent to the remote. */
+	let sentLocks: Locks | null = null;
 
-	/** RDP: the remote's lock keys have not been set to the local ones since
-	 *  the desktop connected or this panel last gained focus. A new remote
-	 *  session starts with its own lock state, and keys only toggle it, so
-	 *  NumLock and CapsLock could stay inverted for the whole session. */
-	let locksPending = true;
-
-	/** RDP: set the remote's lock keys to this event's local state, as mstsc
-	 *  does on connect and on focus. Only an input event can read the local
-	 *  state, hence the first key or click after connect or focus. */
-	function syncLocks(e: KeyboardEvent | MouseEvent): void {
+	/**
+	 * RDP: make the remote's CapsLock, NumLock and ScrollLock the local ones,
+	 * as mstsc and RDM do. A new remote session starts with its own lock
+	 * state, so this runs on connect, on focus, and whenever the local state
+	 * changes, in every connected session, so all of them follow the keyboard.
+	 * Lock keys themselves are not sent: the sync sets the remote, so a key
+	 * press could only toggle it a second time.
+	 */
+	function sendLocks(force = false): void {
 		if (isVnc() || phase !== 'connected') return;
-		locksPending = false;
-		void rdpSyncLocks(
-			id,
-			e.getModifierState('CapsLock'),
-			// A Mac keyboard has no NumLock and its keypad always types digits.
-			isMac() || e.getModifierState('NumLock'),
-			e.getModifierState('ScrollLock'),
-		).catch(() => {});
+		const locks = localLocks();
+		if (!locks) return;
+		if (!force && sentLocks && sentLocks.caps === locks.caps && sentLocks.num === locks.num && sentLocks.scroll === locks.scroll) return;
+		sentLocks = locks;
+		void rdpSyncLocks(id, locks.caps, locks.num, locks.scroll).catch(() => {});
 	}
+	const unlistenLocks = onLocksChange(() => sendLocks());
 
 	/** Whether a key event is one this desktop takes. */
 	function isKey(e: KeyboardEvent): boolean {
@@ -733,13 +729,15 @@
 			onVncKeyDown(e);
 			return;
 		}
+		// Lock keys reach the remote as a sync of the local state (see
+		// sendLocks), not as keys.
+		if (isLockKey(e.code)) {
+			e.preventDefault();
+			return;
+		}
 		// An RDP server does not repeat a held key: the client sends the key
 		// down again for each repeat, as mstsc does, and the server counts each
-		// one. A held lock key must not toggle again.
-		if (e.repeat && LOCK_KEYS.has(e.code)) return;
-		// A lock key's local state at its own keydown is not reliably the new
-		// one yet; its keyup sets the remote instead.
-		if (locksPending && !LOCK_KEYS.has(e.code)) syncLocks(e);
+		// one.
 
 		const entry = SCANCODES[e.code];
 		if (entry) {
@@ -762,14 +760,15 @@
 			onVncKeyUp(e);
 			return;
 		}
+		if (isLockKey(e.code)) {
+			e.preventDefault();
+			return;
+		}
 		const entry = SCANCODES[e.code];
 		if (!entry) return;
 		e.preventDefault();
 		held.delete(e.code);
 		void rdpKey(id, entry[0], entry[1], true);
-		// The key toggled the remote's lock; make sure it now matches the local
-		// one, in case the two were apart before it.
-		if (LOCK_KEYS.has(e.code)) syncLocks(e);
 	}
 
 	function releaseAll(): void {
@@ -806,7 +805,8 @@
 			if (s.state === 'connected' || s.state === 'loggedIn') {
 				phase = 'connected';
 				message = '';
-				locksPending = true;
+				sentLocks = null;
+				sendLocks();
 				resizeNotBefore = Date.now() + SETTLE_MS;
 			} else if (s.state === 'closed') {
 				phase = 'closed';
@@ -870,6 +870,7 @@
 
 	onDestroy(() => {
 		unlisten?.();
+		unlistenLocks();
 		sizeObserver?.disconnect();
 		if (resizeTimer) clearTimeout(resizeTimer);
 		releaseAll();
@@ -909,7 +910,7 @@
 		onkeyup={onKeyUp}
 		onblur={releaseAll}
 		onfocus={() => {
-			locksPending = true;
+			sendLocks(true);
 			if (phase === 'connected') void remote.clipboardSync().catch(() => {});
 		}}
 		oncontextmenu={onLongPress}

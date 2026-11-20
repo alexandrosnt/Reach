@@ -116,6 +116,38 @@ pub async fn rdp_sync_locks(
     state.rdp_manager.lock().await.sync_locks(&id, caps, num, scroll)
 }
 
+/// The local NumLock, where the webview cannot tell it: WebKit (Linux and
+/// macOS) reports only CapsLock to `getModifierState`. On Linux the keyboard
+/// LEDs are readable in sysfs whatever the display server; `None` elsewhere
+/// or when no keyboard LED is found.
+#[tauri::command]
+pub fn rdp_local_numlock() -> Option<bool> {
+    local_numlock()
+}
+
+#[cfg(target_os = "linux")]
+fn local_numlock() -> Option<bool> {
+    let mut found = None;
+    for entry in std::fs::read_dir("/sys/class/leds").ok()?.flatten() {
+        let name = entry.file_name();
+        if !name.to_string_lossy().ends_with("::numlock") {
+            continue;
+        }
+        let Ok(value) = std::fs::read_to_string(entry.path().join("brightness")) else {
+            continue;
+        };
+        // Every keyboard has its own LED; any lit one means NumLock is on.
+        let lit = value.trim().parse::<u32>().map(|v| v > 0).unwrap_or(false);
+        found = Some(found.unwrap_or(false) || lit);
+    }
+    found
+}
+
+#[cfg(not(target_os = "linux"))]
+fn local_numlock() -> Option<bool> {
+    None
+}
+
 /// A character rather than a key, for text with no scancode on this keyboard.
 #[tauri::command]
 pub async fn rdp_unicode(
