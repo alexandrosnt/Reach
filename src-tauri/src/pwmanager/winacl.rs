@@ -93,11 +93,17 @@ fn read_access(path: &Path) -> Result<(String, Vec<String>), String> {
         for i in 0..u32::from(count) {
             let mut ace: *mut core::ffi::c_void = std::ptr::null_mut();
             unsafe { GetAce(dacl, i, &mut ace) }.map_err(|e| e.to_string())?;
-            let header = unsafe { &*(ace as *const ACE_HEADER) };
+            // GetAce sets a valid pointer whenever it succeeds; an empty one
+            // is refused rather than trusted, as a check that fails closed.
+            let Some(header) = (unsafe { ace.cast::<ACE_HEADER>().as_ref() }) else {
+                return Err(format!("access entry {i} of {} could not be read", path.display()));
+            };
             if header.AceType != ACCESS_ALLOWED_ACE_TYPE || header.AceFlags & INHERIT_ONLY_ACE != 0 {
                 continue;
             }
-            let allowed = unsafe { &*(ace as *const ACCESS_ALLOWED_ACE) };
+            // SAFETY: not null (checked above), and an entry of this type is an
+            // ACCESS_ALLOWED_ACE, its SID following the fixed part.
+            let allowed = unsafe { &*ace.cast::<ACCESS_ALLOWED_ACE>() };
             if allowed.Mask & REPLACING_RIGHTS != 0 {
                 writers.push(sid_string(PSID(&allowed.SidStart as *const u32 as *mut _))?);
             }
