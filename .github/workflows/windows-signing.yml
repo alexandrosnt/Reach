@@ -8,12 +8,24 @@ name: Windows signing (SignPath)
 # sign in between, so the Windows build is done in stages:
 #
 #   1. build reach.exe without bundling
-#   2. SignPath signs reach.exe
-#   3. bundle the MSI and NSIS installers around the signed reach.exe
-#   4. SignPath signs both installers
-#   5. sign them for the in-app updater again, since the signatures made while
+#   2. make one copy of reach.exe per installer, each marked with its bundle
+#      type the way the Tauri bundler would (see below)
+#   3. SignPath signs both copies
+#   4. bundle the MSI and NSIS installers, each around its own signed copy,
+#      with the bundler's own patching turned off
+#   5. SignPath signs both installers
+#   6. sign them for the in-app updater again, since the signatures made while
 #      bundling covered the unsigned files (createUpdaterArtifacts is
 #      v1Compatible, so the .zip of each installer is remade and signed too)
+#   7. check every signature, including reach.exe inside each installer
+#
+# Why two copies: while bundling, Tauri overwrites the placeholder
+# __TAURI_BUNDLE_TYPE_VAR_UNK in the main binary with _MSI or _NSS, so the
+# updater knows which installer to fetch (tauri-bundler, patch_binary). Done
+# after signing, that broke the signature: the first test run's MSI held a
+# reach.exe whose signature read HashMismatch. The same bytes are written here
+# before signing, and --no-binary-patching keeps the bundler from writing them
+# again.
 #
 # Run by hand while this is being set up: it signs with the policy chosen below
 # (test-signing uses SignPath's self-signed test certificate) and keeps the
@@ -68,12 +80,30 @@ jobs:
       - name: Build reach.exe
         run: npx tauri build --no-bundle
 
-      - name: Upload reach.exe for signing
+      # The same edit tauri-bundler's patch_binary makes: the placeholder,
+      # found exactly once, overwritten in place with a token of equal length.
+      - name: Make one reach.exe per installer
+        shell: node {0}
+        run: |
+          const fs = require('fs');
+          const exe = fs.readFileSync('src-tauri/target/release/reach.exe');
+          const token = Buffer.from('__TAURI_BUNDLE_TYPE_VAR_UNK');
+          const at = exe.indexOf(token);
+          if (at < 0 || exe.indexOf(token, at + 1) >= 0) throw new Error('expected the bundle type placeholder exactly once in reach.exe');
+          for (const [dir, tag] of [['msi', 'MSI'], ['nsis', 'NSS']]) {
+            const copy = Buffer.from(exe);
+            Buffer.from(`__TAURI_BUNDLE_TYPE_VAR_${tag}`).copy(copy, at);
+            fs.mkdirSync(`unsigned-app/${dir}`, { recursive: true });
+            fs.writeFileSync(`unsigned-app/${dir}/reach.exe`, copy);
+            console.log(`unsigned-app/${dir}/reach.exe marked ${tag} at ${at}`);
+          }
+
+      - name: Upload both copies for signing
         id: unsigned-app
         uses: actions/upload-artifact@v7
         with:
           name: unsigned-app
-          path: src-tauri/target/release/reach.exe
+          path: unsigned-app/
           if-no-files-found: error
 
       - name: Sign reach.exe
@@ -92,19 +122,22 @@ jobs:
           parameters: |
             version: ${{ toJSON(steps.version.outputs.version) }}
 
-      - name: Put the signed reach.exe in place
-        shell: pwsh
-        run: |
-          $sig = Get-AuthenticodeSignature signed-app/reach.exe
-          if (-not $sig.SignerCertificate) { throw "signed-app/reach.exe carries no signature" }
-          Write-Host "reach.exe signed by: $($sig.SignerCertificate.Subject)"
-          Copy-Item signed-app/reach.exe src-tauri/target/release/reach.exe -Force
-
+      # Each installer around its own signed copy. The bundler must not touch
+      # the binary again, or the signature breaks.
       - name: Bundle the installers
+        shell: pwsh
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npx tauri bundle --bundles msi,nsis
+        run: |
+          foreach ($kind in 'msi', 'nsis') {
+            $sig = Get-AuthenticodeSignature "signed-app/$kind/reach.exe"
+            if (-not $sig.SignerCertificate -or $sig.Status -eq 'HashMismatch') { throw "signed-app/$kind/reach.exe is not signed ($($sig.Status))" }
+            Write-Host "$kind reach.exe signed by: $($sig.SignerCertificate.Subject)"
+            Copy-Item "signed-app/$kind/reach.exe" src-tauri/target/release/reach.exe -Force
+            npx tauri bundle --bundles $kind --no-binary-patching
+            if ($LASTEXITCODE -ne 0) { throw "bundling $kind failed" }
+          }
 
       - name: Gather the installers
         shell: pwsh
@@ -164,6 +197,42 @@ jobs:
             if ($LASTEXITCODE -ne 0) { throw "could not sign $($f.Name) for the updater" }
           }
           Get-ChildItem $out | Format-Table Name, Length
+
+      # Every signature, including reach.exe inside each installer, the one
+      # that broke when the bundler patched it after signing. The test
+      # certificate's root is not trusted on Windows, so for test-signing a
+      # signature is accepted when intact; for release-signing it must be Valid.
+      - name: Check every signature
+        shell: pwsh
+        run: |
+          $v = '${{ steps.version.outputs.version }}'
+          $release = '${{ inputs.signing-policy }}' -eq 'release-signing'
+          function Check($path, $what) {
+            $s = Get-AuthenticodeSignature $path
+            $ok = $s.SignerCertificate -and ($s.Status -eq 'Valid' -or (-not $release -and $s.Status -eq 'UnknownError'))
+            Write-Host "$what : $($s.Status) | $($s.SignerCertificate.Subject)"
+            if (-not $ok) { throw "$what is not properly signed ($($s.Status))" }
+          }
+          function CheckMark($path, $tag, $what) {
+            $text = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes($path))
+            if (-not $text.Contains("__TAURI_BUNDLE_TYPE_VAR_$tag")) { throw "$what is not marked $tag for the updater" }
+          }
+          Check "release-files/Reach_${v}_x64_en-US.msi" 'MSI'
+          Check "release-files/Reach_${v}_x64-setup.exe" 'setup.exe'
+
+          $msi = New-Item -ItemType Directory check-msi
+          $p = Start-Process msiexec -ArgumentList "/a `"$PWD\release-files\Reach_${v}_x64_en-US.msi`" /qn TARGETDIR=`"$($msi.FullName)`"" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "could not unpack the MSI ($($p.ExitCode))" }
+          $inner = Get-ChildItem $msi -Recurse -Filter reach.exe | Select-Object -First 1
+          if (-not $inner) { throw "no reach.exe in the MSI" }
+          Check $inner.FullName 'reach.exe in the MSI'
+          CheckMark $inner.FullName 'MSI' 'reach.exe in the MSI'
+
+          7z x "release-files/Reach_${v}_x64-setup.exe" -ocheck-nsis -y | Out-Null
+          $inner = Get-ChildItem check-nsis -Recurse -Filter reach.exe | Select-Object -First 1
+          if (-not $inner) { throw "no reach.exe in setup.exe" }
+          Check $inner.FullName 'reach.exe in setup.exe'
+          CheckMark $inner.FullName 'NSS' 'reach.exe in setup.exe'
 
       - name: Keep the signed files
         uses: actions/upload-artifact@v7

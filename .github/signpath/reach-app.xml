@@ -2,7 +2,8 @@
 <!--
   SignPath artifact configuration "reach-app" (project Reach).
   Signs the program itself, before the installers are built around it.
-  The GitHub artifact is a ZIP holding only reach.exe.
+  The GitHub artifact is a ZIP holding two copies of reach.exe, one marked for
+  the MSI and one for the NSIS installer (see windows-signing.yml for why).
   A copy is kept here so it can be reviewed; SignPath uses the one saved in
   the project, so change both together.
 -->
@@ -11,7 +12,10 @@
     <parameter name="version" required="true" />
   </parameters>
   <zip-file>
-    <pe-file path="reach.exe" product-name="Reach" product-version="${version}">
+    <pe-file path="msi/reach.exe" product-name="Reach" product-version="${version}">
+      <authenticode-sign />
+    </pe-file>
+    <pe-file path="nsis/reach.exe" product-name="Reach" product-version="${version}">
       <authenticode-sign />
     </pe-file>
   </zip-file>
