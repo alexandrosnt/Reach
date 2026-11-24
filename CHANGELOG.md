@@ -2,6 +2,13 @@
 
 All notable changes to Reach are documented here.
 
+## v0.9.3
+- **RDP: NumLock, CapsLock and ScrollLock follow your keyboard** — A new remote session starts with its own lock state, and Reach never told it yours, so the keypad could type arrows with NumLock on and CapsLock could be inverted for the whole session. Reach now sends the local state with the RDP synchronize event, as mstsc does: when a session connects, when it gets the focus and whenever a lock key changes, to every open RDP session. Lock keys are no longer sent as keys, so they can't toggle the remote twice. On Linux, where WebKit doesn't report NumLock, Reach reads it from the keyboard LED; a Mac keyboard has no NumLock, so it counts as on. Reported by @ecotwist (#179); Linux fixes by @rsipka (#181).
+- **RDP: a held key repeats** — Holding a key typed one character. An RDP server doesn't repeat a held key itself; the client sends it again for each repeat, as mstsc does, and Reach now does too. VNC is unchanged. Reported by @ecotwist (#178).
+- **Light theme: TUI dialogs show their text** — In Reach Light, bright white was the same colour as black, so dialogs of programs such as gdu showed as an empty black box. Bright white is white again, and light themes now raise text contrast to at least 4.5:1 (WCAG AA), so pale text on the white background stays readable. Reported by @elizabevil (#174).
+- **Hardening** — The local MCP server takes requests of at most 1 MiB and batches of at most 32 calls, and the Windows permission check for the Passbolt CLI fails closed on an unexpected answer (CodeQL alerts 104–106; none was exploitable).
+- **Updates** — SvelteKit 3.4.0, Svelte 5.59.1, Vite 8.3.8, Tauri API 2.12.5 and CLI 2.12.6; the docs site is on Astro 7.4.13.
+
 ## v0.9.2
 - **Import from Remote Desktop Manager** — Sessions › Import now reads a Devolutions Remote Desktop Manager export, a `.rdm` or `.json` file saved without a master key, picked or pasted. RDP, SSH and VNC entries become sessions in the chosen vault, in folders matching their RDM groups, with their usernames, Windows domains and private key paths; an SSH gateway becomes the session's jump host and logs in as the host's user. Credential entries lend their username and domain to the hosts that link them, including through a group. Passwords and other secrets are never read: the session asks on connect. An encrypted export is refused with a note on how to export again. Hosts already saved, and the same host twice in one export, are imported once; anything else that can't be imported is listed with the reason. Contributed by @rsipka (#167).
 - **Czech** — Reach is now in Czech, its tenth language. Contributed by @rsipka (#168).
